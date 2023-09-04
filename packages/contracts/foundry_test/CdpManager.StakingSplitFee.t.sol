@@ -8,18 +8,18 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
 
     address private splitFeeRecipient;
-    mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
-    mapping(bytes32 => uint) private _targetCdpPrevColls;
-    mapping(bytes32 => uint) private _targetCdpPrevFeeApplied;
+    mapping(bytes32 => uint256) private _targetCdpPrevCollUnderlyings;
+    mapping(bytes32 => uint256) private _targetCdpPrevColls;
+    mapping(bytes32 => uint256) private _targetCdpPrevFeeApplied;
 
     struct LocalFeeSplitVar {
-        uint _prevStFeePerUnitg;
-        uint _prevTotalCollUnderlying;
+        uint256 _prevSystemStEthFeePerUnitIndex;
+        uint256 _prevTotalCollUnderlying;
     }
 
     ////////////////////////////////////////////////////////////////////////////
     // Staking Split Fee Invariants for ebtc system
-    // - cdp_manager_fee1： global variable stFeePerUnitg is increasing upon rebasing up
+    // - cdp_manager_fee1： global variable systemStEthFeePerUnitIndex is increasing upon rebasing up
     // - cdp_manager_fee2： global collateral is increasing upon rebasing up
     // - cdp_manager_fee3： active individual CDP collateral is increasing upon rebasing up
     // - cdp_manager_fee4： active individual CDP is associated with fee split according to its stake
@@ -27,8 +27,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_fee1(LocalFeeSplitVar memory _var) internal {
         assertGt(
-            cdpManager.stFeePerUnitg(),
-            _var._prevStFeePerUnitg,
+            cdpManager.systemStEthFeePerUnitIndex(),
+            _var._prevSystemStEthFeePerUnitIndex,
             "System Invariant: cdp_manager_fee1"
         );
     }
@@ -42,9 +42,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _assert_cdp_manager_invariant_fee3(LocalFeeSplitVar memory _var) internal {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        for (uint i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        for (uint256 i = 0; i < _cdpCount; ++i) {
+            CdpState memory _cdpState = _getDebtAndCollShares(cdpManager.CdpIds(i));
             assertGt(
                 collateral.getPooledEthByShares(_cdpState.coll),
                 _targetCdpPrevCollUnderlyings[cdpManager.CdpIds(i)],
@@ -54,10 +54,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _assert_cdp_manager_invariant_fee4(LocalFeeSplitVar memory _var) internal view {
-        uint _cdpCount = cdpManager.getCdpIdsCount();
-        for (uint i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getEntireDebtAndColl(cdpManager.CdpIds(i));
-            uint _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.coll;
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        for (uint256 i = 0; i < _cdpCount; ++i) {
+            CdpState memory _cdpState = _getDebtAndCollShares(cdpManager.CdpIds(i));
+            uint256 _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.coll;
 
             require(
                 _utils.assertApproximateEq(
@@ -93,10 +93,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
-        uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
-        (uint _feeSplitDistributed, ) = cdpManager.getAccumulatedFeeSplitApplied(
+        uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
+        (uint256 _feeSplitDistributed, ) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
-            _stFeePerUnitg
+            _systemStEthFeePerUnitIndex
         );
 
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed / 1e18;
@@ -107,21 +107,21 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     /// @dev Expect internal accounting allocated to fee recipient to change, and actual token balance to stay the same.
-    /// @dev token balance would change when fee coll is claimed to fee recipient in getFeeRecipientClaimableColl()
-    function _takeSplitFee(uint _totalColl, uint _expectedFee) internal {
-        uint _totalCollBefore = _totalColl;
-        uint _collateralTokensInActivePoolBefore = collateral.balanceOf(address(activePool));
-        uint _internalAccountingCollBefore = activePool.getStEthColl();
-        uint _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
-        uint _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableColl();
+    /// @dev token balance would change when fee coll is claimed to fee recipient in getFeeRecipientClaimableCollShares()
+    function _takeSplitFee(uint256 _totalColl, uint256 _expectedFee) internal {
+        uint256 _totalCollBefore = _totalColl;
+        uint256 _collateralTokensInActivePoolBefore = collateral.balanceOf(address(activePool));
+        uint256 _internalAccountingCollBefore = activePool.getSystemCollShares();
+        uint256 _feeBalBefore = collateral.balanceOf(splitFeeRecipient);
+        uint256 _feeInternalAccountingBefore = activePool.getFeeRecipientClaimableCollShares();
 
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
-        uint _totalCollAfter = cdpManager.getEntireSystemColl();
-        uint _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));
-        uint _internalAccountingCollAfter = activePool.getStEthColl();
-        uint _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
-        uint _feeInternalAccountingAfter = activePool.getFeeRecipientClaimableColl();
+        uint256 _totalCollAfter = cdpManager.getEntireSystemColl();
+        uint256 _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));
+        uint256 _internalAccountingCollAfter = activePool.getSystemCollShares();
+        uint256 _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
+        uint256 _feeInternalAccountingAfter = activePool.getFeeRecipientClaimableCollShares();
 
         /**
         This split only updates internal accounting, all tokens remain in ActivePool, tokens are actually transfered by a pull model function to feeRecipient.
@@ -180,12 +180,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _populateCdpStatus(bytes32 _cdpId) internal {
-        CdpState memory _cdpState = _getEntireDebtAndColl(_cdpId);
+        CdpState memory _cdpState = _getDebtAndCollShares(_cdpId);
         _targetCdpPrevColls[_cdpId] = _cdpState.coll;
         _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(_cdpState.coll);
     }
 
-    function _ensureDebtAmountValidity(uint _debtAmt) internal pure {
+    function _ensureDebtAmountValidity(uint256 _debtAmt) internal pure {
         vm.assume(_debtAmt > 1e18);
         vm.assume(_debtAmt < 10000e18);
     }
@@ -194,17 +194,17 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     function testRebasingUps(uint256 debtAmt) public {
         _ensureDebtAmountValidity(debtAmt);
 
-        uint _curPrice = priceFeedMock.getPrice();
+        uint256 _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
-        uint _loop = 10;
-        for (uint i = 0; i < _loop; ++i) {
+        uint256 _loop = 10;
+        for (uint256 i = 0; i < _loop; ++i) {
             // get original status for the system
-            uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
-            uint _totalColl = cdpManager.getEntireSystemColl();
-            uint _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
+            uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
+            uint256 _totalColl = cdpManager.getEntireSystemColl();
+            uint256 _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
 
             // prepare CDP status for invariant check
             _populateCdpStatus(cdpId1);
@@ -213,10 +213,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             skip(1 days);
 
             // Rebasing up
-            uint _curIndex = collateral.getPooledEthByShares(1e18);
-            uint _newIndex = _curIndex + 5e16;
+            uint256 _curIndex = collateral.getPooledEthByShares(1e18);
+            uint256 _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
-            (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
+            (uint256 _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
 
             // take fee split
             _takeSplitFee(_totalColl, _expectedFee);
@@ -225,7 +225,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _applySplitFee(cdpId1, users[0]);
 
             _ensureSystemInvariants();
-            LocalFeeSplitVar memory _var = LocalFeeSplitVar(_stFeePerUnitg, _totalCollUnderlying);
+            LocalFeeSplitVar memory _var = LocalFeeSplitVar(
+                _systemStEthFeePerUnitIndex,
+                _totalCollUnderlying
+            );
             _ensureSystemInvariants_RebasingUp(_var);
         }
     }
@@ -240,7 +243,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _ensureDebtAmountValidity(debtAmt2);
         _ensureDebtAmountValidity(debtAmt3);
 
-        uint _curPrice = priceFeedMock.getPrice();
+        uint256 _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);
         uint256 coll2 = _utils.calculateCollAmount(debtAmt2, _curPrice, 297e16);
         uint256 coll3 = _utils.calculateCollAmount(debtAmt3, _curPrice, 297e16);
@@ -249,12 +252,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId2 = _openTestCDP(users[1], coll2, debtAmt2);
         bytes32 cdpId3 = _openTestCDP(users[2], coll3, debtAmt3);
 
-        uint _loop = 10;
-        for (uint i = 0; i < _loop; ++i) {
+        uint256 _loop = 10;
+        for (uint256 i = 0; i < _loop; ++i) {
             // get original status for the system
-            uint _stFeePerUnitg = cdpManager.stFeePerUnitg();
-            uint _totalColl = cdpManager.getEntireSystemColl();
-            uint _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
+            uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
+            uint256 _totalColl = cdpManager.getEntireSystemColl();
+            uint256 _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
 
             // prepare CDP status for invariant check
             _populateCdpStatus(cdpId1);
@@ -265,10 +268,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             skip(1 days);
 
             // Rebasing up
-            uint _curIndex = collateral.getPooledEthByShares(1e18);
-            uint _newIndex = _curIndex + 5e16;
+            uint256 _curIndex = collateral.getPooledEthByShares(1e18);
+            uint256 _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
-            (uint _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
+            (uint256 _expectedFee, , ) = cdpManager.calcFeeUponStakingReward(_newIndex, _curIndex);
 
             // take fee split
             _takeSplitFee(_totalColl, _expectedFee);
@@ -279,7 +282,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _applySplitFee(cdpId3, users[2]);
 
             _ensureSystemInvariants();
-            LocalFeeSplitVar memory _var = LocalFeeSplitVar(_stFeePerUnitg, _totalCollUnderlying);
+            LocalFeeSplitVar memory _var = LocalFeeSplitVar(
+                _systemStEthFeePerUnitIndex,
+                _totalCollUnderlying
+            );
             _ensureSystemInvariants_RebasingUp(_var);
         }
     }

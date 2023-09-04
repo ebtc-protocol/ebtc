@@ -228,7 +228,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
     /// @dev coll should come from positionManager's account
     function test_PositionManagerCanAddColl() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
-        uint _cdpColl = cdpManager.getCdpColl(userCdpId);
+        uint _cdpColl = cdpManager.getCdpCollShares(userCdpId);
         uint _collChange = 1e17;
 
         BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
@@ -239,7 +239,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         BalanceSnapshot b = new BalanceSnapshot(tokens, accounts);
 
         assertEq(
-            cdpManager.getCdpColl(userCdpId),
+            cdpManager.getCdpCollShares(userCdpId),
             _cdpColl + _collChange,
             "collateral in CDP mismatch after positionManager addColl()"
         );
