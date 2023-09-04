@@ -68,6 +68,8 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
 
         dealCollateral(address(stethReceiver), fee);
 
+        uint256 initialBalanceOfPool = collateral.balanceOf(address(activePool)); // B4 gift
+
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
         uint _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
         dealCollateral(address(activePool), _suggar);
@@ -82,10 +84,14 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
             abi.encodePacked(uint256(0))
         );
 
-        assertEq(collateral.balanceOf(address(activePool)), _suggar);
+        assertEq(collateral.balanceOf(address(activePool)), _suggar + initialBalanceOfPool, "Sugar");
 
         // Check fees were sent and balance increased exactly by the expected fee amount
-        assertEq(collateral.balanceOf(activePool.feeRecipientAddress()), prevFeeBalance + fee);
+        assertEq(
+            collateral.balanceOf(activePool.feeRecipientAddress()),
+            prevFeeBalance + fee,
+            "Fee Recipient"
+        );
     }
 
     /// @dev Can take a 0 flashloan, nothing happens
