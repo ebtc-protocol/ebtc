@@ -93,7 +93,7 @@ contract HintHelpers is LiquityBase {
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
                     uint _cachedEbtcToRedeem = vars.remainingEbtcToRedeem;
-                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
+                    (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculateCdpStateAfterPartialRedemption(
                         vars,
                         currentCdpDebt,
                         _price
@@ -130,7 +130,7 @@ contract HintHelpers is LiquityBase {
      * @return newColl The new collateral amount after partial redemption.
      * @return newNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
      */
-    function _calculatePartialRedeem(
+    function _calculateCdpStateAfterPartialRedemption(
         LocalVariables_getRedemptionHints memory vars,
         uint currentCdpDebt,
         uint _price
@@ -162,7 +162,7 @@ contract HintHelpers is LiquityBase {
 
     /**
      * @notice Get the collateral amount of a CDP after applying split fee.
-     * @dev This is an internal function used by _calculatePartialRedeem.
+     * @dev This is an internal function used by _calculateCdpStateAfterPartialRedemption.
      * @param _cdpId The identifier of the CDP.
      * @param _newIndex The new index after the split fee is applied.
      * @param _oldIndex The old index before the split fee is applied.
