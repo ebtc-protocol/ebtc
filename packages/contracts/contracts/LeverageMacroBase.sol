@@ -319,12 +319,12 @@ contract LeverageMacroBase {
     // Change leverage or something
     struct AdjustCdpOperation {
         bytes32 _cdpId;
-        uint256 _collWithdrawal;
+        uint256 _stEthBalanceDecrease;
         uint256 _EBTCChange;
         bool _isDebtIncrease;
         bytes32 _upperHint;
         bytes32 _lowerHint;
-        uint256 _collAddAmount;
+        uint256 _stEthBalanceIncrease;
     }
 
     // Repay and Close
@@ -472,12 +472,12 @@ contract LeverageMacroBase {
 
         borrowerOperations.adjustCdpWithColl(
             flData._cdpId,
-            flData._collWithdrawal,
+            flData._stEthBalanceDecrease,
             flData._EBTCChange,
             flData._isDebtIncrease,
             flData._upperHint,
             flData._lowerHint,
-            flData._collAddAmount
+            flData._stEthBalanceIncrease
         );
     }
 

@@ -10,7 +10,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
   Tests around GracePeriod
  */
 contract GracePeriodBaseTests is eBTCBaseFixture {
-    event TCRNotified(uint TCR); /// NOTE: Mostly for debugging to ensure synch
+    event TCRNotified(uint256 TCR); /// NOTE: Mostly for debugging to ensure synch
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -205,9 +205,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         //redemption
         (
             bytes32 firstRedemptionHint,
-            uint partialRedemptionHintNICR,
-            uint truncatedEBTCamount,
-            uint partialRedemptionNewColl
+            uint256 partialRedemptionHintNICR,
+            uint256 truncatedEBTCamount,
+            uint256 partialRedemptionNewColl
         ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
         cdpManager.redeemCollateral(
             toRedeem,
@@ -248,7 +248,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdps[i] = _openTestCDP(users[0], coll2, debt2);
         }
 
-        uint TCR = cdpManager.getTCR(_curPrice);
+        uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
 
         // Move past bootstrap phase to allow redemptions

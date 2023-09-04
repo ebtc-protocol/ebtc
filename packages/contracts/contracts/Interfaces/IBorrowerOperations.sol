@@ -15,15 +15,15 @@ interface IBorrowerOperations is IPositionManagers {
     event EBTCTokenAddressChanged(address _ebtcTokenAddress);
     event FeeRecipientAddressChanged(address _feeRecipientAddress);
     event CollateralAddressChanged(address _collTokenAddress);
-    event FlashLoanSuccess(address _receiver, address _token, uint _amount, uint _fee);
+    event FlashLoanSuccess(address _receiver, address _token, uint256 _amount, uint256 _fee);
 
     // --- Functions ---
 
     function openCdp(
-        uint _EBTCAmount,
+        uint256 _EBTCAmount,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint256 _stEthBalance
     ) external returns (bytes32);
 
     function openCdpFor(
@@ -38,26 +38,26 @@ interface IBorrowerOperations is IPositionManagers {
         bytes32 _cdpId,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAmount
+        uint256 _stEthBalanceIncrease
     ) external;
 
     function withdrawColl(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _stEthBalanceDecrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
 
     function withdrawEBTC(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
 
     function repayEBTC(
         bytes32 _cdpId,
-        uint _amount,
+        uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
@@ -66,8 +66,8 @@ interface IBorrowerOperations is IPositionManagers {
 
     function adjustCdp(
         bytes32 _cdpId,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint
@@ -75,15 +75,15 @@ interface IBorrowerOperations is IPositionManagers {
 
     function adjustCdpWithColl(
         bytes32 _cdpId,
-        uint _collWithdrawal,
-        uint _debtChange,
+        uint256 _stEthBalanceDecrease,
+        uint256 _debtChange,
         bool isDebtIncrease,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint _collAddAmount
+        uint256 _stEthBalanceIncrease
     ) external;
 
-    function claimCollateral() external;
+    function claimSurplusCollShares() external;
 
     function feeRecipientAddress() external view returns (address);
 }

@@ -23,16 +23,16 @@ contract SortedCdpsTester {
         sortedCdps.reInsert(_id, _newNICR, _prevId, _nextId);
     }
 
-    function getNominalICR(bytes32) external pure returns (uint) {
+    function getNominalICR(bytes32) external pure returns (uint256) {
         return 1;
     }
 
-    function getCurrentICR(bytes32, uint) external pure returns (uint) {
+    function getICR(bytes32, uint256) external pure returns (uint256) {
         return 1;
     }
 
     // dummy return 0 for nonExistent check
-    function getCdpStatus(bytes32 _id) external view returns (uint) {
+    function getCdpStatus(bytes32 _id) external view returns (uint256) {
         return 0;
     }
 }

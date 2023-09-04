@@ -146,7 +146,7 @@
     {
       "constant": true,
       "inputs": [],
-      "name": "getStEthColl",
+      "name": "getSystemCollShares",
       "outputs": [
         {
           "internalType": "uint256",

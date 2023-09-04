@@ -190,56 +190,56 @@ contract('Gas compensation tests', async accounts => {
   })
 
   // --- Test ICRs with virtual debt ---
-  it('getCurrentICR(): Incorporates virtual debt, and returns the correct ICR for new cdps', async () => {
+  it('getICR(): Incorporates virtual debt, and returns the correct ICR for new cdps', async () => {
     const price = await priceFeed.getPrice()
     await openCdp({ ICR: toBN(dec(200, 18)), extraParams: { from: whale } })
 
     // A opens with 1 ETH, 110 EBTC
     await openCdp({ ICR: toBN('1818181818181818181'), extraParams: { from: alice } })
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-    const alice_ICR = (await cdpManager.getCurrentICR(_aliceCdpId, price)).toString()
+    const alice_ICR = (await cdpManager.getICR(_aliceCdpId, price)).toString()
     // Expect aliceICR = (1 * 200) / (110) = 181.81%
     assert.isAtMost(th.getDifference(alice_ICR, '1818181818181818181'), 1000)
 
     // B opens with 0.5 ETH, 50 EBTC
     await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-    const bob_ICR = (await cdpManager.getCurrentICR(_bobCdpId, price)).toString()
+    const bob_ICR = (await cdpManager.getICR(_bobCdpId, price)).toString()
     // Expect Bob's ICR = (0.5 * 200) / 50 = 200%
     assert.isAtMost(th.getDifference(bob_ICR, dec(2, 18)), 1000)
 
     // F opens with 1 ETH, 100 EBTC
     await openCdp({ ICR: toBN(dec(2, 18)), extraEBTCAmount: dec(100, 18), extraParams: { from: flyn } })
     let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
-    const flyn_ICR = (await cdpManager.getCurrentICR(_flynCdpId, price)).toString()
+    const flyn_ICR = (await cdpManager.getICR(_flynCdpId, price)).toString()
     // Expect Flyn's ICR = (1 * 200) / 100 = 200%
     assert.isAtMost(th.getDifference(flyn_ICR, dec(2, 18)), 1000)
 
     // C opens with 2.5 ETH, 160 EBTC
     await openCdp({ ICR: toBN(dec(3125, 15)), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-    const carol_ICR = (await cdpManager.getCurrentICR(_carolCdpId, price)).toString()
+    const carol_ICR = (await cdpManager.getICR(_carolCdpId, price)).toString()
     // Expect Carol's ICR = (2.5 * 200) / (160) = 312.50%
     assert.isAtMost(th.getDifference(carol_ICR, '3125000000000000000'), 1000)
 
     // D opens with 1 ETH, 0 EBTC
     await openCdp({ ICR: toBN(dec(4, 18)), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
-    const dennis_ICR = (await cdpManager.getCurrentICR(_dennisCdpId, price)).toString()
+    const dennis_ICR = (await cdpManager.getICR(_dennisCdpId, price)).toString()
     // Expect Dennis's ICR = (1 * 200) / (50) = 400.00%
     assert.isAtMost(th.getDifference(dennis_ICR, dec(4, 18)), 1000)
 
     // E opens with 4405.45 ETH, 32598.35 EBTC
     await openCdp({ ICR: toBN('27028668628933700000'), extraParams: { from: erin } })
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
-    const erin_ICR = (await cdpManager.getCurrentICR(_erinCdpId, price)).toString()
+    const erin_ICR = (await cdpManager.getICR(_erinCdpId, price)).toString()
     // Expect Erin's ICR = (4405.45 * 200) / (32598.35) = 2702.87%
     assert.isAtMost(th.getDifference(erin_ICR, '27028668628933700000'), 100000)
 
     // H opens with 1 ETH, 180 EBTC
     await openCdp({ ICR: toBN('1111111111111111111'), extraParams: { from: harriet } })
     let _harrietCdpId = await sortedCdps.cdpOfOwnerByIndex(harriet, 0);
-    const harriet_ICR = (await cdpManager.getCurrentICR(_harrietCdpId, price)).toString()
+    const harriet_ICR = (await cdpManager.getICR(_harrietCdpId, price)).toString()
     // Expect Harriet's ICR = (1 * 200) / (180) = 111.11%
     assert.isAtMost(th.getDifference(harriet_ICR, '1111111111111111111'), 1000)
   })
@@ -360,7 +360,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
+    const aliceICR = await cdpManager.getICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
@@ -392,7 +392,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_2)
+    const bobICR = await cdpManager.getICR(_bobCdpId, price_2)
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
@@ -438,7 +438,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
+    const aliceICR = await cdpManager.getICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
@@ -467,7 +467,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_1)
+    const bobICR = await cdpManager.getICR(_bobCdpId, price_1)
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
@@ -589,7 +589,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
+    const aliceICR = await cdpManager.getICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)	
@@ -624,7 +624,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_2)
+    const bobICR = await cdpManager.getICR(_bobCdpId, price_2)
     assert.isTrue(bobICR.lte(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives
@@ -664,7 +664,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const aliceICR = await cdpManager.getCurrentICR(_aliceCdpId, price_1)
+    const aliceICR = await cdpManager.getICR(_aliceCdpId, price_1)
     assert.isTrue(aliceICR.lt(mv._MCR))
 
     // Liquidate A (use 0 gas price to easily check the amount the compensation amount the liquidator receives)	
@@ -695,7 +695,7 @@ contract('Gas compensation tests', async accounts => {
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
-    const bobICR = await cdpManager.getCurrentICR(_bobCdpId, price_1)
+    const bobICR = await cdpManager.getICR(_bobCdpId, price_1)
     assert.isTrue(bobICR.lt(mv._MCR))
 
     // Liquidate B (use 0 gas price to easily check the amount the compensation amount the liquidator receives)
@@ -740,14 +740,14 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_dennisCdpId, price)).lt(mv._MCR))
 
     // Check E, F have ICR > MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_erinCdpId, price)).gt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_flynCdpId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_erinCdpId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_flynCdpId, price)).gt(mv._MCR))
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
@@ -810,7 +810,7 @@ contract('Gas compensation tests', async accounts => {
     await openCdp({ ICR: toBN(dec(545, 16)), extraEBTCAmount: dec(1, 23), extraParams: { from: dennis } })
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const EBTCinDefaultPool_0 = await defaultPool.getEBTCDebt()
+    const EBTCinDefaultPool_0 = await defaultPool.getSystemDebt()
 
     // price drops to 200 
     await priceFeed.setPrice(dec(200, 18))
@@ -820,10 +820,10 @@ contract('Gas compensation tests', async accounts => {
     // assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_dennisCdpId, price)).lt(mv._MCR))
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
@@ -859,7 +859,7 @@ contract('Gas compensation tests', async accounts => {
     const liquidatorBalance_after = web3.utils.toBN(await web3.eth.getBalance(liquidator))
 
     // Check EBTC in DefaultPool has decreased
-    const EBTCinDefaultPool_1 = await defaultPool.getEBTCDebt()
+    const EBTCinDefaultPool_1 = await defaultPool.getSystemDebt()
     assert.isFalse(EBTCinDefaultPool_1.eq(EBTCinDefaultPool_0))
 
     // Check liquidator's balance has increased by the expected compensation amount
@@ -868,7 +868,7 @@ contract('Gas compensation tests', async accounts => {
     assert.isAtMost(th.getDifference(expectedGasComp, compensationReceived), 1000)
 
     // Check ETH in defaultPool now equals the expected liquidated collateral
-    const ETHinDefaultPool = (await defaultPool.getStEthColl()).toString()
+    const ETHinDefaultPool = (await defaultPool.getSystemCollShares()).toString()
     assert.isAtMost(th.getDifference('0', ETHinDefaultPool), 1000)
   })
 
@@ -900,14 +900,14 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_dennisCdpId, price)).lt(mv._MCR))
 
     // Check E, F have ICR > MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_erinCdpId, price)).gt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_flynCdpId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_erinCdpId, price)).gt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_flynCdpId, price)).gt(mv._MCR))
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
@@ -981,10 +981,10 @@ contract('Gas compensation tests', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
     // Check A, B, C, D have ICR < MCR
-    assert.isTrue((await cdpManager.getCurrentICR(_aliceCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_bobCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_carolCdpId, price)).lt(mv._MCR))
-    assert.isTrue((await cdpManager.getCurrentICR(_dennisCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_aliceCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_bobCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_carolCdpId, price)).lt(mv._MCR))
+    assert.isTrue((await cdpManager.getICR(_dennisCdpId, price)).lt(mv._MCR))
 
     const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
     const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
@@ -1068,7 +1068,7 @@ contract('Gas compensation tests', async accounts => {
         // Check gas compensation is the same for all cdps
         const coll = (await cdpManager.Cdps(_account_cdps[account]))[1]
 
-        const ICR = await cdpManager.getCurrentICR(_account_cdps[account], price)
+        const ICR = await cdpManager.getICR(_account_cdps[account], price)
         ICRList.push(ICR)
 
 
@@ -1117,7 +1117,7 @@ contract('Gas compensation tests', async accounts => {
       const ICRList = []
 
       for (account of _20_accounts) {
-        const ICR = await cdpManager.getCurrentICR(_account_cdps[account], price)
+        const ICR = await cdpManager.getICR(_account_cdps[account], price)
         ICRList.push(ICR)
 
         // Check cdp ordering by ICR is maintained
@@ -1174,7 +1174,7 @@ contract('Gas compensation tests', async accounts => {
       const ICRList = []
 
       for (account of accountsList) {
-        const ICR = await cdpManager.getCurrentICR(_account_cdps[account], price)
+        const ICR = await cdpManager.getICR(_account_cdps[account], price)
         ICRList.push(ICR)
 
         // Check cdp ordering by ICR is maintained
