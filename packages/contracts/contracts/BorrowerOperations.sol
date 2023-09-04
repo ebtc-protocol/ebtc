@@ -448,6 +448,10 @@ contract BorrowerOperations is
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
 
+        // Collision check: collisions should never occur, but if one does we want to ensure an active CDP is not overridden
+        // Overriding an inactive (closed) CDP should function as expected
+        _requireCdpIsNonExistant(_cdpId);
+
         // Collateral is stored in shares form for normalization
         cdpManager.initializeCdp(
             _cdpId,
@@ -737,6 +741,11 @@ contract BorrowerOperations is
     function _requireCdpisActive(ICdpManager _cdpManager, bytes32 _cdpId) internal view {
         uint status = _cdpManager.getCdpStatus(_cdpId);
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
+    }
+
+    function _requireCdpIsNonExistant(bytes32 _cdpId) internal view {
+        uint status = cdpManager.getCdpStatus(_cdpId);
+        require(status == 0, "BorrowerOperations: Cdp is active or has been previously closed");
     }
 
     function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
