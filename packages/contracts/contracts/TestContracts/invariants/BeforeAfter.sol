@@ -1,8 +1,14 @@
 pragma solidity 0.8.17;
 
+import {Pretty, Strings} from "../Pretty.sol";
 import {BaseStorageVariables} from "../BaseStorageVariables.sol";
 
 abstract contract BeforeAfter is BaseStorageVariables {
+    using Strings for string;
+    using Pretty for uint256;
+    using Pretty for int256;
+    using Pretty for bool;
+
     struct Vars {
         uint256 nicrBefore;
         uint256 nicrAfter;
@@ -64,9 +70,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.priceBefore = priceFeedMock.fetchPrice();
 
         vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
-        vars.icrBefore = _cdpId != bytes32(0)
-            ? cdpManager.getICR(_cdpId, vars.priceBefore)
-            : 0;
+        vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceBefore) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
@@ -107,7 +111,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
         bytes[] memory _calldatas = new bytes[](2);
 
         _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncGlobalAccountingAndGracePeriod.selector);
+        _calldatas[0] = abi.encodeWithSelector(
+            cdpManager.syncGlobalAccountingAndGracePeriod.selector
+        );
 
         _targets[1] = address(cdpManager);
         _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceBefore);
@@ -168,7 +174,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
         bytes[] memory _calldatas = new bytes[](2);
 
         _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncGlobalAccountingAndGracePeriod.selector);
+        _calldatas[0] = abi.encodeWithSelector(
+            cdpManager.syncGlobalAccountingAndGracePeriod.selector
+        );
 
         _targets[1] = address(cdpManager);
         _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceAfter);
@@ -181,6 +189,197 @@ abstract contract BeforeAfter is BaseStorageVariables {
             }
             bytes memory returnData = abi.decode(reason, (bytes));
             vars.newTcrAfter = abi.decode(returnData, (uint256));
+        }
+    }
+
+    function _diff() internal view returns (string memory log) {
+        log = string("\n\t\t\t\tBefore\t\t\tAfter\n");
+        if (vars.activePoolCollBefore != vars.activePoolCollAfter) {
+            log = log
+                .concat("activePoolColl\t\t\t")
+                .concat(vars.activePoolCollBefore.pretty())
+                .concat("\t")
+                .concat(vars.activePoolCollAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.collSurplusPoolBefore != vars.collSurplusPoolAfter) {
+            log = log
+                .concat("collSurplusPool\t\t\t")
+                .concat(vars.collSurplusPoolBefore.pretty())
+                .concat("\t")
+                .concat(vars.collSurplusPoolAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.nicrBefore != vars.nicrAfter) {
+            log = log
+                .concat("nicr\t\t\t\t")
+                .concat(vars.nicrBefore.pretty())
+                .concat("\t")
+                .concat(vars.nicrAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.icrBefore != vars.icrAfter) {
+            log = log
+                .concat("icr\t\t\t\t")
+                .concat(vars.icrBefore.pretty())
+                .concat("\t")
+                .concat(vars.icrAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.feeSplitBefore != vars.feeSplitAfter) {
+            log = log
+                .concat("feeSplit\t\t\t\t")
+                .concat(vars.feeSplitBefore.pretty())
+                .concat("\t")
+                .concat(vars.feeSplitAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.feeRecipientTotalCollBefore != vars.feeRecipientTotalCollAfter) {
+            log = log
+                .concat("feeRecipientTotalColl\t")
+                .concat(vars.feeRecipientTotalCollBefore.pretty())
+                .concat("\t")
+                .concat(vars.feeRecipientTotalCollAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.actorCollBefore != vars.actorCollAfter) {
+            log = log
+                .concat("actorColl\t\t\t\t")
+                .concat(vars.actorCollBefore.pretty())
+                .concat("\t")
+                .concat(vars.actorCollAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.actorEbtcBefore != vars.actorEbtcAfter) {
+            log = log
+                .concat("actorEbtc\t\t\t\t")
+                .concat(vars.actorEbtcBefore.pretty())
+                .concat("\t")
+                .concat(vars.actorEbtcAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.actorCdpCountBefore != vars.actorCdpCountAfter) {
+            log = log
+                .concat("actorCdpCount\t\t\t")
+                .concat(vars.actorCdpCountBefore.pretty())
+                .concat("\t")
+                .concat(vars.actorCdpCountAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.cdpCollBefore != vars.cdpCollAfter) {
+            log = log
+                .concat("cdpColl\t\t\t\t")
+                .concat(vars.cdpCollBefore.pretty())
+                .concat("\t")
+                .concat(vars.cdpCollAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.cdpDebtBefore != vars.cdpDebtAfter) {
+            log = log
+                .concat("cdpDebt\t\t\t\t")
+                .concat(vars.cdpDebtBefore.pretty())
+                .concat("\t")
+                .concat(vars.cdpDebtAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.liquidatorRewardSharesBefore != vars.liquidatorRewardSharesAfter) {
+            log = log
+                .concat("liquidatorRewardShares\t\t")
+                .concat(vars.liquidatorRewardSharesBefore.pretty())
+                .concat("\t")
+                .concat(vars.liquidatorRewardSharesAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.sortedCdpsSizeBefore != vars.sortedCdpsSizeAfter) {
+            log = log
+                .concat("sortedCdpsSize\t\t\t")
+                .concat(vars.sortedCdpsSizeBefore.pretty())
+                .concat("\t")
+                .concat(vars.sortedCdpsSizeAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.cdpStatusBefore != vars.cdpStatusAfter) {
+            log = log
+                .concat("cdpStatus\t\t\t")
+                .concat(vars.cdpStatusBefore.pretty())
+                .concat("\t")
+                .concat(vars.cdpStatusAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.tcrBefore != vars.tcrAfter) {
+            log = log
+                .concat("tcr\t\t\t\t")
+                .concat(vars.tcrBefore.pretty())
+                .concat("\t")
+                .concat(vars.tcrAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.newTcrBefore != vars.newTcrAfter) {
+            log = log
+                .concat("newTcr\t\t\t\t")
+                .concat(vars.newTcrBefore.pretty())
+                .concat("\t")
+                .concat(vars.newTcrAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.debtBefore != vars.debtAfter) {
+            log = log
+                .concat("debt\t\t\t\t")
+                .concat(vars.debtBefore.pretty())
+                .concat("\t")
+                .concat(vars.debtAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.ebtcTotalSupplyBefore != vars.ebtcTotalSupplyAfter) {
+            log = log
+                .concat("ebtcTotalSupply\t\t\t")
+                .concat(vars.ebtcTotalSupplyBefore.pretty())
+                .concat("\t")
+                .concat(vars.ebtcTotalSupplyAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.ethPerShareBefore != vars.ethPerShareAfter) {
+            log = log
+                .concat("ethPerShare\t\t\t")
+                .concat(vars.ethPerShareBefore.pretty())
+                .concat("\t")
+                .concat(vars.ethPerShareAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.isRecoveryModeBefore != vars.isRecoveryModeAfter) {
+            log = log
+                .concat("isRecoveryMode\t\t\t")
+                .concat(vars.isRecoveryModeBefore.pretty())
+                .concat("\t")
+                .concat(vars.isRecoveryModeAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.lastGracePeriodStartTimestampBefore != vars.lastGracePeriodStartTimestampAfter) {
+            log = log
+                .concat("lastGracePeriodStartTimestamp\t")
+                .concat(vars.lastGracePeriodStartTimestampBefore.pretty())
+                .concat("\t")
+                .concat(vars.lastGracePeriodStartTimestampAfter.pretty())
+                .concat("\n");
+        }
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore !=
+            vars.lastGracePeriodStartTimestampIsSetAfter
+        ) {
+            log = log
+                .concat("lastGracePeriodStartTimestampIsSet\t")
+                .concat(vars.lastGracePeriodStartTimestampIsSetBefore.pretty())
+                .concat("\t")
+                .concat(vars.lastGracePeriodStartTimestampIsSetAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.hasGracePeriodPassedBefore != vars.hasGracePeriodPassedAfter) {
+            log = log
+                .concat("hasGracePeriodPassed\t\t")
+                .concat(vars.hasGracePeriodPassedBefore.pretty())
+                .concat("\t")
+                .concat(vars.hasGracePeriodPassedAfter.pretty())
+                .concat("\n");
         }
     }
 }

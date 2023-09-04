@@ -465,27 +465,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
-        vars.activePoolCollBefore = activePool.getSystemCollShares();
-        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
-        vars.collSurplusPoolBefore = collSurplusPool.getTotalSurplusCollShares();
-        vars.debtBefore = activePool.getSystemDebt();
-        vars.priceBefore = priceFeedMock.getPrice();
-        vars.actorEbtcBefore = eBTCToken.balanceOf(user);
-        vars.actorCollBefore = collateral.balanceOf(user);
-        vars.ethPerShareBefore = collateral.getEthPerShare();
-
-        (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
-            cdpManager.stEthIndex()
-            ? cdpManager.calcFeeUponStakingReward(
-                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
-                cdpManager.stEthIndex()
-            )
-            : (0, 0, 0);
-
-        vars.feeRecipientTotalCollBefore =
-            activePool.getFeeRecipientClaimableCollShares() +
-            collateral.balanceOf(activePool.feeRecipientAddress()) +
-            vars.feeSplitBefore;
+        _before(_cdpId);
 
         cdpManager.redeemCollateral(
             77233452000714940,
@@ -497,16 +477,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             302083018134466905
         );
 
-        vars.activePoolCollAfter = activePool.getSystemCollShares();
-        vars.liquidatorRewardSharesAfter = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
-        vars.collSurplusPoolAfter = collSurplusPool.getTotalSurplusCollShares();
-        vars.debtAfter = activePool.getSystemDebt();
-        vars.priceAfter = priceFeedMock.getPrice();
-        vars.actorEbtcAfter = eBTCToken.balanceOf(user);
-        vars.actorCollAfter = collateral.balanceOf(user);
-        vars.feeRecipientTotalCollAfter =
-            activePool.getFeeRecipientClaimableCollShares() +
-            collateral.balanceOf(activePool.feeRecipientAddress());
+        _after(_cdpId);
+        console.log(_diff());
 
         uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);
         uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);

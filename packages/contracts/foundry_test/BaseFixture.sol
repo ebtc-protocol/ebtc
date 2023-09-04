@@ -22,8 +22,10 @@ import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
+import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
+import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
 
-contract eBTCBaseFixture is Test, BaseStorageVariables, BytecodeReader, LogUtils {
+contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeReader, LogUtils {
     uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint256 public constant CCR = 125e16; // 125%
@@ -90,6 +92,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BytecodeReader, LogUtils
 
     Utilities internal _utils;
 
+    address[] internal emptyAddresses;
+
     ////////////////////////////////////////////////////////////////////////////
     // Structs
     ////////////////////////////////////////////////////////////////////////////
@@ -106,6 +110,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BytecodeReader, LogUtils
     */
     function setUp() public virtual {
         _utils = new Utilities();
+        actor = new Actor(emptyAddresses, emptyAddresses);
 
         defaultGovernance = _utils.getNextSpecialAddress();
 
