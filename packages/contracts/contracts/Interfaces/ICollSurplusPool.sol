@@ -5,11 +5,6 @@ pragma solidity 0.8.17;
 interface ICollSurplusPool {
     // --- Events ---
 
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-    event CdpManagerAddressChanged(address _newCdpManagerAddress);
-    event ActivePoolAddressChanged(address _newActivePoolAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
-
     event SurplusCollSharesUpdated(address indexed _account, uint256 _newBalance);
     event CollSharesTransferred(address _to, uint256 _amount);
 

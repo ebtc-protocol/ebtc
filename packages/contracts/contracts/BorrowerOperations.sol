@@ -134,16 +134,7 @@ contract BorrowerOperations is
         _CACHED_CHAIN_ID = _chainID();
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
 
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit ActivePoolAddressChanged(_activePoolAddress);
-        emit CollSurplusPoolAddressChanged(_collSurplusPoolAddress);
-        emit PriceFeedAddressChanged(_priceFeedAddress);
-        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit EBTCTokenAddressChanged(_ebtcTokenAddress);
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
-        emit CollateralAddressChanged(_collTokenAddress);
-
-        // No longer need a concept of ownership if there is no initializer
     }
 
     /**

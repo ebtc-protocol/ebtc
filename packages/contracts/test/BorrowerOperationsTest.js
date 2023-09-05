@@ -186,7 +186,7 @@ contract('BorrowerOperations', async accounts => {
 	      //console.log(_cdpId);
 	      let _cdpStatus = await cdpManager.getCdpStatus(_cdpId);
 	      assert.equal(_cdpStatus, 1);			
-	      let _cdpOwner = await sortedCdps.existCdpOwners(_cdpId);
+	      let _cdpOwner = await sortedCdps.getOwnerAddress(_cdpId);
 	      assert.equal(_cdpOwner, mtsTester.address);	  
 	      let _ii = _ei + 1;
 	      for(;_ii < _openedCdpEvts.length;_ii++){
@@ -194,7 +194,7 @@ contract('BorrowerOperations', async accounts => {
 	          assert.notEqual(_iCdpId, _cdpId);
 	          let _iCdpStatus = await cdpManager.getCdpStatus(_iCdpId);
 	          assert.equal(_iCdpStatus, 1);  		
-	          let _iCdpOwner = await sortedCdps.existCdpOwners(_iCdpId);
+	          let _iCdpOwner = await sortedCdps.getOwnerAddress(_iCdpId);
 	          assert.equal(_iCdpOwner, mtsTester.address);
 	      }
 	  }
@@ -213,7 +213,7 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue(cdpSize == 1);
 	  assert.isTrue((cdpSize - cdpIds) == 0);
 	  let lastCdpId = await sortedCdps.getLast();
-	  let lastCdpOwner = await sortedCdps.existCdpOwners(lastCdpId);
+	  let lastCdpOwner = await sortedCdps.getOwnerAddress(lastCdpId);
 	  assert.isTrue(lastCdpOwner == alice);
 	  let _aliceOwnedCdps = await sortedCdps.cdpCountOf(alice);
 	  assert.isTrue(_aliceOwnedCdps == 1);	  
@@ -227,9 +227,9 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue(cdpSize == 2);
 	  assert.isTrue((cdpIds - cdpSize) == 0);
 	  lastCdpId = await sortedCdps.getLast();
-	  lastCdpOwner = await sortedCdps.existCdpOwners(lastCdpId);
+	  lastCdpOwner = await sortedCdps.getOwnerAddress(lastCdpId);
 	  let firstCdpId = await sortedCdps.getFirst();
-	  let firstCdpOwner = await sortedCdps.existCdpOwners(firstCdpId);
+	  let firstCdpOwner = await sortedCdps.getOwnerAddress(firstCdpId);
 	  assert.isTrue(lastCdpOwner == alice);
 	  assert.isTrue(firstCdpOwner == alice);
 	  assert.isTrue(firstCdpId != lastCdpId);
@@ -249,7 +249,7 @@ contract('BorrowerOperations', async accounts => {
 	  assert.isTrue(cdpSize == 1);
 	  assert.isTrue((cdpIds - cdpSize) == 0);
 	  lastCdpId = await sortedCdps.getLast();
-	  lastCdpOwner = await sortedCdps.existCdpOwners(lastCdpId);
+	  lastCdpOwner = await sortedCdps.getOwnerAddress(lastCdpId);
 	  assert.isTrue(firstCdpId == lastCdpId);	
 	  assert.isTrue(firstCdpOwner == lastCdpOwner); 
 	  _aliceOwnedCdps = await sortedCdps.cdpCountOf(alice);
@@ -469,7 +469,7 @@ contract('BorrowerOperations', async accounts => {
     //   assert.isAtMost(th.getDifference(dennis_Stake), 100)
     // })
 
-    it.only("addColl(), reverts if cdp is not owned by caller (does not consider approved positionManagers)", async () => {
+    it("addColl(), reverts if cdp is not owned by caller (does not consider approved positionManagers)", async () => {
       // A, B open cdps
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: bob } })

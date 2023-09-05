@@ -61,8 +61,8 @@ contract('SortedCdps', async accounts => {
   const openCdp = async (params) => th.openCdp(contracts, params)
 
   const checkCdpId = async (_cdpId, _owner) => {
-        assert.equal((await contracts.sortedCdps.existCdpOwners(_cdpId)), (await sortedCdps.getOwnerAddress(_cdpId)));
-        assert.equal((await contracts.sortedCdps.existCdpOwners(_cdpId)), _owner);
+        assert.equal((await contracts.sortedCdps.getOwnerAddress(_cdpId)), (await sortedCdps.getOwnerAddress(_cdpId)));
+        assert.equal((await contracts.sortedCdps.getOwnerAddress(_cdpId)), _owner);
   }
 
   describe('SortedCdps', () => {	
@@ -73,6 +73,7 @@ contract('SortedCdps', async accounts => {
     })  
 	
     beforeEach(async () => {
+      await deploymentHelper.setDeployGasPrice(1000000000)
       contracts = await deploymentHelper.deployTesterContractsHardhat()
       let LQTYContracts = {}
       LQTYContracts.feeRecipient = contracts.feeRecipient;
