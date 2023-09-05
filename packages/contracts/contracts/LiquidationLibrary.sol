@@ -454,7 +454,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // get count of liquidatable CDPs
             uint256 _cnt;
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
-                uint256 _icr = getICR(_cdpId, _price);
+                uint256 _icr = getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;
