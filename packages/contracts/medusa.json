@@ -5,7 +5,7 @@
 		"timeout": 0,
 		"testLimit": 0,
 		"callSequenceLength": 100,
-		"corpusDirectory": "",
+		"corpusDirectory": "medusa",
 		"coverageEnabled": true,
 		"deploymentOrder": [
 			"EchidnaTester"
@@ -50,9 +50,9 @@
 				}
 			},
 			"propertyTesting": {
-				"enabled": true,
+				"enabled": false,
 				"testPrefixes": [
-					"fuzz_"
+					"echidna_"
 				]
 			},
 			"optimizationTesting": {
