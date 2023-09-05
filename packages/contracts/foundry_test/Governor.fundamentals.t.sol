@@ -4,7 +4,7 @@ import "forge-std/Test.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 contract GovernorFundamentalsTest is eBTCBaseFixture {
-    uint constant TEST_ROLE = 100;
+    uint256 constant TEST_ROLE = 100;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -47,7 +47,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
     // Setup: Assign a few addresses with various roles
     // Test: getUsersByRole should return the expected list of addresses for each role
 
-    function test_GetUsersByRoleReturnsExpected(uint usersWithRole) public {
+    function test_GetUsersByRoleReturnsExpected(uint256 usersWithRole) public {
         vm.assume(usersWithRole < 100);
         uint8 testRole = 50;
 
@@ -56,7 +56,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
 
         // grant role to all users
         vm.startPrank(defaultGovernance);
-        for (uint i = 0; i < expectedUsers.length; i++) {
+        for (uint256 i = 0; i < expectedUsers.length; i++) {
             authority.setUserRole(expectedUsers[i], testRole, true);
         }
         vm.stopPrank();
@@ -65,7 +65,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
 
         assertEq(actualUsers.length, expectedUsers.length, "Returned users length mismatch");
 
-        for (uint i = 0; i < expectedUsers.length; i++) {
+        for (uint256 i = 0; i < expectedUsers.length; i++) {
             assertEq(actualUsers[i], address(expectedUsers[i]), "Returned user address mismatch");
         }
     }
@@ -73,7 +73,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
     // Setup: Assign a few addresses with various roles, then add and remove users
     // Test: getUsersByRole should return the updated list of addresses for each role after additions and removals
     function test_GetUsersByRoleReturnsExpectedAfterAddingAndRemovingUsers(
-        uint usersWithRole
+        uint256 usersWithRole
     ) public {
         // vm.assume(usersWithRole < 100);
         // uint8 testRole = 50;
@@ -81,21 +81,21 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
         // address payable[] memory expectedUsers = _utils.createUsers(usersWithRole);
         // // grant role to all users
         // vm.startPrank(defaultGovernance);
-        // for (uint i = 0; i < expectedUsers.length; i++) {
+        // for (uint256 i = 0; i < expectedUsers.length; i++) {
         //     authority.setUserRole(expectedUsers[i], testRole, true);
         // }
         // vm.stopPrank();
         // // remove role from some users
         // // generate random value between expectedUsers - 1 and 0
-        // uint usersToRemove = 0;
-        // uint numUsersExpected = expectedUsers.length - usersToRemove;
+        // uint256 usersToRemove = 0;
+        // uint256 numUsersExpected = expectedUsers.length - usersToRemove;
         // // accumulate users that should have been removed into a new list
         // // create list of users that remain
         // address[] memory actualUsers = authority.getUsersByRole(testRole);
         // assertEq(actualUsers.length, expectedUsers.length - usersToRemove, "Returned users length mismatch");
         // // assert each user that was removed is not in the actual list
         // // asert each user that was not removed is in the actual list
-        // for (uint i = 0; i < actualUsers.length; i++) {
+        // for (uint256 i = 0; i < actualUsers.length; i++) {
         //     assertEq(actualUsers[i], expectedUsers[i], "Returned user address mismatch");
         // }
     }
@@ -128,7 +128,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
         funcSigs[6] = bytes4(keccak256("burnCapability(address,bytes4)"));
 
         // Grant testRole all setter capabilities on authority
-        for (uint i = 0; i < funcSigs.length; i++) {
+        for (uint256 i = 0; i < funcSigs.length; i++) {
             authority.setRoleCapability(role, address(authority), funcSigs[i], true);
         }
 

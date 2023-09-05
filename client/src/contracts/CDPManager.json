@@ -464,7 +464,7 @@
           "type": "address"
         }
       ],
-      "name": "getCurrentICR",
+      "name": "getICR",
       "outputs": [
         {
           "internalType": "uint256",
@@ -684,7 +684,7 @@
           "type": "address"
         }
       ],
-      "name": "rewardSnapshots",
+      "name": "debtRedistributionIndex",
       "outputs": [
         {
           "internalType": "uint256",

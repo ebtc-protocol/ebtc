@@ -26,7 +26,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         _dealCollateralAndPrepForUse(user);
 
         vm.startPrank(user);
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
@@ -35,7 +35,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         assert(sortedCdps.getLast() == "");
 
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
-        assertEq(cdpManager.getCdpIdsCount(), 1);
+        assertEq(cdpManager.getActiveCdpsCount(), 1);
         // Make sure valid cdpId returned and user is it's owner
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         assert(cdpId != "");
@@ -54,19 +54,19 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         _dealCollateralAndPrepForUse(user);
 
         vm.startPrank(user);
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
         // Make sure there is no CDPs in the system yet
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
-        assertEq(cdpManager.getCdpIdsCount(), 1);
+        assertEq(cdpManager.getActiveCdpsCount(), 1);
 
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Borrow for the second time so user has enough eBTC to close their first CDP
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
-        assertEq(cdpManager.getCdpIdsCount(), 2);
+        assertEq(cdpManager.getActiveCdpsCount(), 2);
 
         // Check that user has 2x eBTC balance as they opened 2 CDPs
         assertEq(eBTCToken.balanceOf(user), borrowedAmount * 2);
@@ -116,10 +116,10 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
 
     // @dev Attempt to open a CDP with net coll below the minimum allowed and ensure it fails
     // @dev The collateral value passed into the openCdp function is interpretted as netColl + liqudiatorReward. The fixed liqudiator reward is taken out before netColl is checked
-    function testMinCollTooLow(uint netColl) public {
+    function testMinCollTooLow(uint256 netColl) public {
         vm.assume(netColl < borrowerOperations.MIN_NET_COLL());
 
-        uint collPlusLiquidatorReward = netColl + borrowerOperations.LIQUIDATOR_REWARD();
+        uint256 collPlusLiquidatorReward = netColl + borrowerOperations.LIQUIDATOR_REWARD();
 
         address payable[] memory users;
         users = _utils.createUsers(1);
@@ -139,14 +139,14 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
      * Checks that each CDP id is unique and the amount of opened CDPs == amount of users
      */
     function testCdpsForManyUsers() public {
-        uint collAmnt = 30 ether;
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 collAmnt = 30 ether;
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             collAmnt,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
         );
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+        for (uint256 userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
 
             _dealCollateralAndPrepForUse(user);
@@ -174,10 +174,10 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
      */
     function testCdpsForManyUsersManyColl() public {
         // Iterate thru all users and open CDP for each of them with randomized collateral
-        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+        for (uint256 userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
-            uint collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
-            uint borrowedAmount = _utils.calculateBorrowAmount(
+            uint256 collAmount = _utils.generateRandomNumber(28 ether, 10000000 ether, user);
+            uint256 borrowedAmount = _utils.calculateBorrowAmount(
                 collAmount,
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO
@@ -212,16 +212,16 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         vm.assume(collAmount > 1 ether);
         vm.assume(collAmount < 10000000 ether);
 
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO_DEFENSIVE
         );
         // Net Debt == initial Debt + Fee taken
-        uint feeTaken = borrowedAmount * FEE;
-        uint borrowedAmountWithFee = borrowedAmount + feeTaken;
+        uint256 feeTaken = borrowedAmount * FEE;
+        uint256 borrowedAmountWithFee = borrowedAmount + feeTaken;
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+        for (uint256 userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.deal(user, 10000000 ether);
             // If collAmount was too small, debt will not reach threshold, hence system should revert
@@ -241,7 +241,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
     function testCdpsForManyUsersManyCollManyCdps() public {
         // Randomize number of CDPs
         // Iterate thru all users and open CDP for each of them
-        for (uint userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
+        for (uint256 userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             // Create multiple CDPs per user
             address user = _utils.getNextUserAddress();
             vm.startPrank(user);
@@ -249,14 +249,14 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
             collateral.approve(address(borrowerOperations), type(uint256).max);
             collateral.deposit{value: 100000000000 ether}();
             // Randomize collateral amount
-            uint collAmount = _utils.generateRandomNumber(100000 ether, 10000000 ether, user);
-            uint collAmountChunk = collAmount / AMOUNT_OF_CDPS;
-            uint borrowedAmount = _utils.calculateBorrowAmount(
+            uint256 collAmount = _utils.generateRandomNumber(100000 ether, 10000000 ether, user);
+            uint256 collAmountChunk = collAmount / AMOUNT_OF_CDPS;
+            uint256 borrowedAmount = _utils.calculateBorrowAmount(
                 collAmountChunk,
                 priceFeedMock.fetchPrice(),
                 COLLATERAL_RATIO
             );
-            for (uint cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
+            for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
                 borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmountChunk);
                 // Get User's CDP and check it for uniqueness
                 bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
