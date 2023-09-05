@@ -83,12 +83,18 @@ contract CRLens {
         return abi.decode(reason, (uint256));
     }
 
+    /// @notice Returns the TCR of the system after the fee split
+    /// @dev Call this from offChain with `eth_call` to avoid paying for gas
+    ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
     function quoteRealTCR() external returns (uint256) {
         try this.getRealTCR(true) {} catch (bytes memory reason) {
             return parseRevertReason(reason);
         }
     }
 
+    /// @notice Returns the TCR of the system after the fee split
+    /// @dev Call this from offChain with `eth_call` to avoid paying for gas
+    ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
     function quoteRealICR(bytes32 cdpId) external returns (uint256) {
         try this.getRealICR(cdpId, true) {} catch (bytes memory reason) {
             return parseRevertReason(reason);
