@@ -71,7 +71,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         uint256 initialBalanceOfPool = collateral.balanceOf(address(activePool)); // B4 gift
 
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
-        uint _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
+        uint256 _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
         dealCollateral(address(activePool), _suggar);
         vm.assume(giftAmount > 0);
 
@@ -110,7 +110,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
     }
 
     /// @dev Cannot send ETH to ActivePool
-    function testCannotsendStEthColl(uint256 amount) public {
+    function testCannottransferSystemCollShares(uint256 amount) public {
         vm.deal(address(this), amount);
         vm.assume(amount > 0);
 
@@ -191,8 +191,8 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         // The feeBps function MUST return the fee charged for a loan of amount token.
         assertTrue(fee >= 0);
         assertEq(
-            uint(fee),
-            (uint256(amount) * uint256(activePool.feeBps())) / uint(activePool.MAX_BPS())
+            uint256(fee),
+            (uint256(amount) * uint256(activePool.feeBps())) / uint256(activePool.MAX_BPS())
         );
 
         // If the token is not supported feeBps MUST revert.

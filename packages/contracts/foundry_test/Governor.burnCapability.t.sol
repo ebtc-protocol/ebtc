@@ -24,14 +24,14 @@ contract GovernorBurnCapabilityTest is eBTCBaseFixture {
             address(borrowerOperations),
             SET_FEE_BPS_SIG
         );
-        assertEq(uint(flag), uint(IRolesAuthority.CapabilityFlag.None));
+        assertEq(uint256(flag), uint256(IRolesAuthority.CapabilityFlag.None));
 
         // burn
         authority.burnCapability(address(borrowerOperations), SET_FEE_BPS_SIG);
 
         // confirm burned
         flag = authority.capabilityFlag(address(borrowerOperations), SET_FEE_BPS_SIG);
-        assertEq(uint(flag), uint(IRolesAuthority.CapabilityFlag.Burned));
+        assertEq(uint256(flag), uint256(IRolesAuthority.CapabilityFlag.Burned));
 
         vm.stopPrank();
     }
@@ -86,14 +86,14 @@ contract GovernorBurnCapabilityTest is eBTCBaseFixture {
             address(borrowerOperations),
             SET_FEE_BPS_SIG
         );
-        assertEq(uint(flag), uint(IRolesAuthority.CapabilityFlag.Public));
+        assertEq(uint256(flag), uint256(IRolesAuthority.CapabilityFlag.Public));
 
         // burn
         authority.burnCapability(address(borrowerOperations), SET_FEE_BPS_SIG);
 
         // confirm burned
         flag = authority.capabilityFlag(address(borrowerOperations), SET_FEE_BPS_SIG);
-        assertEq(uint(flag), uint(IRolesAuthority.CapabilityFlag.Burned));
+        assertEq(uint256(flag), uint256(IRolesAuthority.CapabilityFlag.Burned));
 
         vm.stopPrank();
     }

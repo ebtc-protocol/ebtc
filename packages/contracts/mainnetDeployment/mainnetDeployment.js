@@ -301,7 +301,7 @@ async function mainnetDeploy(configParams) {
   // Check deployer now has an open cdp
   cdpCount = await ebtcCore.sortedCdps.cdpCountOf(deployerWallet.address)
   assert.equal(cdpCount, 1)
-  const cdpId = await ebtcCore.sortedCdps._ownedCdps(deployerWallet.address, 0)
+  const cdpId = await ebtcCore.sortedCdps.cdpOfOwnerByIndex(deployerWallet.address, 0)
   console.log(`deployer is in sorted list after making cdp: ${await ebtcCore.sortedCdps.contains(cdpId)}`)
 
   const deployerCdp = await ebtcCore.cdpManager.Cdps(cdpId)
@@ -443,7 +443,7 @@ async function mainnetDeploy(configParams) {
   cdpCount = await ebtcCore.sortedCdps.cdpCountOf(account2Wallet.address)
   console.log(`Acct 2 CDP count is ${cdpCount}`)
   assert.equal(cdpCount, 1)
-  const cdpId2 = await ebtcCore.sortedCdps._ownedCdps(account2Wallet.address, 0)
+  const cdpId2 = await ebtcCore.sortedCdps.cdpOfOwnerByIndex(account2Wallet.address, 0)
   console.log(`Acct 2 is in sorted list after making cdp: ${await ebtcCore.sortedCdps.contains(cdpId2)}`)
 
   const acct2Cdp = await ebtcCore.cdpManager.Cdps(cdpId2)
@@ -465,7 +465,7 @@ async function mainnetDeploy(configParams) {
   th.logBN("EBTC-ETH Pair's current ETH reserves", reserves[1])
 
   // Number of cdps
-  const numCdps = await ebtcCore.cdpManager.getCdpIdsCount()
+  const numCdps = await ebtcCore.cdpManager.getActiveCdpsCount()
   console.log(`number of cdps: ${numCdps} `)
 
   // Sorted list size
@@ -500,9 +500,9 @@ async function mainnetDeploy(configParams) {
   th.logBN("Snapshot of total cdp collateral before last liq. ", totalCollateralSnapshot)
 
   const L_STETHColl = await ebtcCore.cdpManager.L_STETHColl()
-  const L_EBTCDebt = await ebtcCore.cdpManager.L_EBTCDebt()
+  const systemDebtRedistributionIndex = await ebtcCore.cdpManager.systemDebtRedistributionIndex()
   th.logBN("L_STETHColl", L_STETHColl)
-  th.logBN("L_EBTCDebt", L_EBTCDebt)
+  th.logBN("systemDebtRedistributionIndex", systemDebtRedistributionIndex)
 
 
   // TODO: Uniswap *LQTY-ETH* pool size (check it's deployed?)

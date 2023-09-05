@@ -19,8 +19,8 @@ contract BorrowerOperationsGovernanceStateUpdatesTest is eBTCBaseInvariants {
         Confirm flash fee bps is updated afterwards
      */
     function test_FlashFeeBpsGlobalStateUpdated() public {
-        (uint oldIndex, uint newIndex, uint storedIndex) = _increaseCollateralIndex();
-        uint oldFee = borrowerOperations.feeBps();
+        (uint256 oldIndex, uint256 newIndex, uint256 storedIndex) = _increaseCollateralIndex();
+        uint256 oldFee = borrowerOperations.feeBps();
 
         vm.startPrank(defaultGovernance);
         borrowerOperations.setFeeBps(oldFee);
@@ -34,7 +34,7 @@ contract BorrowerOperationsGovernanceStateUpdatesTest is eBTCBaseInvariants {
         Confirm global state is updated afterwards
      */
     function test_FlashLoansPausedGlobalStateUpdated() public {
-        (uint oldIndex, uint newIndex, uint storedIndex) = _increaseCollateralIndex();
+        (uint256 oldIndex, uint256 newIndex, uint256 storedIndex) = _increaseCollateralIndex();
 
         vm.startPrank(defaultGovernance);
         borrowerOperations.setFlashLoansPaused(false);
@@ -48,7 +48,7 @@ contract BorrowerOperationsGovernanceStateUpdatesTest is eBTCBaseInvariants {
         Confirm global state is updated afterwards
      */
     function test_FeeRecipientAddressGlobalStateUpdated() public {
-        (uint oldIndex, uint newIndex, uint storedIndex) = _increaseCollateralIndex();
+        (uint256 oldIndex, uint256 newIndex, uint256 storedIndex) = _increaseCollateralIndex();
 
         vm.startPrank(defaultGovernance);
         borrowerOperations.setFeeRecipientAddress(address(1));

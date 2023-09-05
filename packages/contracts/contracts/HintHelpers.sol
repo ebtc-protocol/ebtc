@@ -14,13 +14,9 @@ contract HintHelpers is LiquityBase {
 
     // --- Events ---
 
-    event SortedCdpsAddressChanged(address _sortedCdpsAddress);
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event CollateralAddressChanged(address _collTokenAddress);
-
     struct LocalVariables_getRedemptionHints {
-        uint remainingEbtcToRedeem;
-        uint minNetDebtInBTC;
+        uint256 remainingEbtcToRedeem;
+        uint256 minNetDebtInBTC;
         bytes32 currentCdpId;
         address currentCdpUser;
     }
@@ -35,10 +31,6 @@ contract HintHelpers is LiquityBase {
     ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
-
-        emit SortedCdpsAddressChanged(_sortedCdpsAddress);
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit CollateralAddressChanged(_collateralAddress);
     }
 
     // --- Functions ---
@@ -54,17 +46,17 @@ contract HintHelpers is LiquityBase {
      * @return partialRedemptionNewColl The new collateral amount after partial redemption.
      */
     function getRedemptionHints(
-        uint _EBTCamount,
-        uint _price,
-        uint _maxIterations
+        uint256 _EBTCamount,
+        uint256 _price,
+        uint256 _maxIterations
     )
         external
         view
         returns (
             bytes32 firstRedemptionHint,
-            uint partialRedemptionHintNICR,
-            uint truncatedEBTCamount,
-            uint partialRedemptionNewColl
+            uint256 partialRedemptionHintNICR,
+            uint256 truncatedEBTCamount,
+            uint256 partialRedemptionNewColl
         )
     {
         LocalVariables_getRedemptionHints memory vars;
@@ -75,7 +67,7 @@ contract HintHelpers is LiquityBase {
 
             while (
                 vars.currentCdpUser != address(0) &&
-                cdpManager.getCurrentICR(vars.currentCdpId, _price) < MCR
+                cdpManager.getICR(vars.currentCdpId, _price) < MCR
             ) {
                 vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
                 vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
@@ -95,12 +87,12 @@ contract HintHelpers is LiquityBase {
                 _maxIterations-- > 0
             ) {
                 // Apply pending debt
-                uint currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) +
-                    cdpManager.getPendingEBTCDebtReward(vars.currentCdpId);
+                uint256 currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) +
+                    cdpManager.getPendingRedistributedDebt(vars.currentCdpId);
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
-                    uint _cachedEbtcToRedeem = vars.remainingEbtcToRedeem;
+                    uint256 _cachedEbtcToRedeem = vars.remainingEbtcToRedeem;
                     (partialRedemptionNewColl, partialRedemptionHintNICR) = _calculatePartialRedeem(
                         vars,
                         currentCdpDebt,
@@ -140,28 +132,28 @@ contract HintHelpers is LiquityBase {
      */
     function _calculatePartialRedeem(
         LocalVariables_getRedemptionHints memory vars,
-        uint currentCdpDebt,
-        uint _price
-    ) internal view returns (uint, uint) {
+        uint256 currentCdpDebt,
+        uint256 _price
+    ) internal view returns (uint256, uint256) {
         // maxReemable = min(remainingToRedeem, currentDebt)
-        uint maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
+        uint256 maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
-        uint newColl;
-        uint _oldIndex = cdpManager.stFPPSg();
-        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+        uint256 newColl;
+        uint256 _oldIndex = cdpManager.stEthIndex();
+        uint256 _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         if (_oldIndex < _newIndex) {
             newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
         } else {
-            (, newColl, ) = cdpManager.getEntireDebtAndColl(vars.currentCdpId);
+            (, newColl, ) = cdpManager.getDebtAndCollShares(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
-        uint collToReceive = collateral.getSharesByPooledEth(
+        uint256 collToReceive = collateral.getSharesByPooledEth(
             (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
         );
 
-        uint _newCollAfter = newColl - collToReceive;
+        uint256 _newCollAfter = newColl - collToReceive;
         return (
             _newCollAfter,
             LiquityMath._computeNominalCR(_newCollAfter, currentCdpDebt - maxRedeemableEBTC)
@@ -178,20 +170,20 @@ contract HintHelpers is LiquityBase {
      */
     function _getCollateralWithSplitFeeApplied(
         bytes32 _cdpId,
-        uint _newIndex,
-        uint _oldIndex
-    ) internal view returns (uint) {
-        uint _deltaFeePerUnit;
-        uint _newStFeePerUnit;
-        uint _perUnitError;
-        uint _feeTaken;
+        uint256 _newIndex,
+        uint256 _oldIndex
+    ) internal view returns (uint256) {
+        uint256 _deltaFeePerUnit;
+        uint256 _newStFeePerUnit;
+        uint256 _perUnitError;
+        uint256 _feeTaken;
 
         (_feeTaken, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
             _newIndex,
             _oldIndex
         );
-        _newStFeePerUnit = _deltaFeePerUnit + cdpManager.stFeePerUnitg();
-        (, uint newColl) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _newStFeePerUnit);
+        _newStFeePerUnit = _deltaFeePerUnit + cdpManager.systemStEthFeePerUnitIndex();
+        (, uint256 newColl) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _newStFeePerUnit);
         return newColl;
     }
 
@@ -205,11 +197,11 @@ contract HintHelpers is LiquityBase {
     be <= sqrt(length) positions away from the correct insert position.
     */
     function getApproxHint(
-        uint _CR,
-        uint _numTrials,
-        uint _inputRandomSeed
-    ) external view returns (bytes32 hint, uint diff, uint latestRandomSeed) {
-        uint arrayLength = cdpManager.getCdpIdsCount();
+        uint256 _CR,
+        uint256 _numTrials,
+        uint256 _inputRandomSeed
+    ) external view returns (bytes32 hint, uint256 diff, uint256 latestRandomSeed) {
+        uint256 arrayLength = cdpManager.getActiveCdpsCount();
 
         if (arrayLength == 0) {
             return (sortedCdps.nonExistId(), 0, _inputRandomSeed);
@@ -219,17 +211,17 @@ contract HintHelpers is LiquityBase {
         diff = LiquityMath._getAbsoluteDifference(_CR, cdpManager.getNominalICR(hint));
         latestRandomSeed = _inputRandomSeed;
 
-        uint i = 1;
+        uint256 i = 1;
 
         while (i < _numTrials) {
-            latestRandomSeed = uint(keccak256(abi.encodePacked(latestRandomSeed)));
+            latestRandomSeed = uint256(keccak256(abi.encodePacked(latestRandomSeed)));
 
-            uint arrayIndex = latestRandomSeed % arrayLength;
+            uint256 arrayIndex = latestRandomSeed % arrayLength;
             bytes32 _cId = cdpManager.getIdFromCdpIdsArray(arrayIndex);
-            uint currentNICR = cdpManager.getNominalICR(_cId);
+            uint256 currentNICR = cdpManager.getNominalICR(_cId);
 
             // check if abs(current - CR) > abs(closest - CR), and update closest if current is closer
-            uint currentDiff = LiquityMath._getAbsoluteDifference(currentNICR, _CR);
+            uint256 currentDiff = LiquityMath._getAbsoluteDifference(currentNICR, _CR);
 
             if (currentDiff < diff) {
                 diff = currentDiff;
@@ -240,12 +232,16 @@ contract HintHelpers is LiquityBase {
     }
 
     /// @notice Compute nominal CR for a specified collateral and debt amount
-    function computeNominalCR(uint _coll, uint _debt) external pure returns (uint) {
+    function computeNominalCR(uint256 _coll, uint256 _debt) external pure returns (uint256) {
         return LiquityMath._computeNominalCR(_coll, _debt);
     }
 
     /// @notice Compute CR for a specified collateral and debt amount
-    function computeCR(uint _coll, uint _debt, uint _price) external pure returns (uint) {
+    function computeCR(
+        uint256 _coll,
+        uint256 _debt,
+        uint256 _price
+    ) external pure returns (uint256) {
         return LiquityMath._computeCR(_coll, _debt, _price);
     }
 }

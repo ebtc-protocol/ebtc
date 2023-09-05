@@ -89,12 +89,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @dev Set RM grace period based on specified system collShares, system debt, and price
     /// @dev Variant for internal use in redemptions and liquidations
     function _syncGracePeriodForGivenValues(
-        uint systemCollShares,
-        uint systemDebt,
-        uint price
+        uint256 systemCollShares,
+        uint256 systemDebt,
+        uint256 price
     ) internal {
         // Compute TCR with specified values
-        uint newTCR = LiquityMath._computeCR(
+        uint256 newTCR = LiquityMath._computeCR(
             collateral.getPooledEthByShares(systemCollShares),
             systemDebt,
             price
@@ -117,6 +117,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             _gracePeriod >= MINIMUM_GRACE_PERIOD,
             "CdpManager: Grace period below minimum duration"
         );
+
+        syncGlobalAccountingAndGracePeriod();
         recoveryModeGracePeriod = _gracePeriod;
         emit GracePeriodSet(_gracePeriod);
     }
@@ -138,78 +140,78 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // --- Data structures ---
 
-    uint public constant SECONDS_IN_ONE_MINUTE = 60;
+    uint256 public constant SECONDS_IN_ONE_MINUTE = 60;
 
-    uint public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION * 5) / 1000; // 0.5%
-    uint public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
+    uint256 public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION * 5) / 1000; // 0.5%
+    uint256 public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
     bool public redemptionsPaused;
     /*
      * Half-life of 12h. 12h = 720 min
      * (1/2) = d^720 => d = (1/2)^(1/720)
      */
-    uint public minuteDecayFactor = 999037758833783000;
-    uint public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
-    uint public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
+    uint256 public minuteDecayFactor = 999037758833783000;
+    uint256 public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
+    uint256 public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
 
     // During bootsrap period redemptions are not allowed
-    uint public constant BOOTSTRAP_PERIOD = 14 days;
+    uint256 public constant BOOTSTRAP_PERIOD = 14 days;
 
-    uint internal immutable deploymentStartTime;
+    uint256 internal immutable deploymentStartTime;
 
     /*
      * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction,
      * in order to calc the new base rate from a redemption.
      * Corresponds to (1 / ALPHA) in the white paper.
      */
-    uint public beta = 2;
+    uint256 public beta = 2;
 
-    uint public baseRate;
+    uint256 public baseRate;
 
-    uint public stakingRewardSplit;
+    uint256 public stakingRewardSplit;
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
-    uint public lastFeeOperationTime;
+    uint256 public lastRedemptionTimestamp;
 
     mapping(bytes32 => Cdp) public Cdps;
 
-    uint public override totalStakes;
+    uint256 public override totalStakes;
 
     // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
-    uint public totalStakesSnapshot;
+    uint256 public totalStakesSnapshot;
 
     // Snapshot of the total collateral across the ActivePool, immediately after the latest liquidation and split fee claim
-    uint public totalCollateralSnapshot;
+    uint256 public totalCollateralSnapshot;
 
     /*
-     * L_EBTCDebt track the sums of accumulated liquidation rewards per unit staked.
+     * systemDebtRedistributionIndex track the sums of accumulated liquidation rewards per unit staked.
      * During its lifetime, each stake earns:
      *
-     * A EBTCDebt increase  of ( stake * [L_EBTCDebt - L_EBTCDebt(0)] )
+     * A systemDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
      *
-     * Where L_EBTCDebt(0) are snapshots of L_EBTCDebt
+     * Where systemDebtRedistributionIndex(0) are snapshots of systemDebtRedistributionIndex
      * for the active Cdp taken at the instant the stake was made
      */
-    uint public L_EBTCDebt;
+    uint256 public systemDebtRedistributionIndex;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
-    uint256 public override stFPPSg;
-    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to L_EBTCDebt */
-    uint256 public override stFeePerUnitg;
+    uint256 public override stEthIndex;
+    /* Global Fee accumulator (never decreasing) per stake unit in CDPManager, similar to systemDebtRedistributionIndex */
+    uint256 public override systemStEthFeePerUnitIndex;
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
-    uint256 public override stFeePerUnitgError;
+    uint256 public override systemStEthFeePerUnitIndexError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
-    mapping(bytes32 => uint256) public stFeePerUnitcdp;
+    mapping(bytes32 => uint256) public stFeePerUnitIndex;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
-    mapping(bytes32 => uint) public rewardSnapshots;
+    mapping(bytes32 => uint256) public debtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
     // Error trackers for the cdp redistribution calculation
-    uint public lastETHError_Redistribution;
-    uint public lastEBTCDebtError_Redistribution;
+    uint256 public lastETHError_Redistribution;
+    uint256 public lastEBTCDebtErrorRedistribution;
 
     constructor(
         address _liquidationLibraryAddress,
@@ -232,8 +234,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         collSurplusPool = ICollSurplusPool(_collSurplusPool);
         ebtcToken = IEBTCToken(_ebtcToken);
         sortedCdps = ISortedCdps(_sortedCdps);
-
-        emit LiquidationLibraryAddressChanged(_liquidationLibraryAddress);
     }
 
     /**
@@ -265,7 +265,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             "CdpManagerStorage: close non-exist or non-active CDP!"
         );
 
-        uint CdpIdsArrayLength = CdpIds.length;
+        uint256 CdpIdsArrayLength = CdpIds.length;
         _requireMoreThanOneCdpInSystem(CdpIdsArrayLength);
 
         Cdps[_cdpId].status = closedStatus;
@@ -273,8 +273,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
-        rewardSnapshots[_cdpId] = 0;
-        stFeePerUnitcdp[_cdpId] = 0;
+        debtRedistributionIndex[_cdpId] = 0;
+        stFeePerUnitIndex[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
@@ -290,11 +290,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      *
      * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
      */
-    function _updateSystemSnapshots_excludeCollRemainder(uint _collRemainder) internal {
-        uint _totalStakesSnapshot = totalStakes;
+    function _updateSystemSnapshotsExcludeCollRemainder(uint256 _collRemainder) internal {
+        uint256 _totalStakesSnapshot = totalStakes;
         totalStakesSnapshot = _totalStakesSnapshot;
 
-        uint _totalCollateralSnapshot = activePool.getStEthColl() - _collRemainder;
+        uint256 _totalCollateralSnapshot = activePool.getSystemCollShares() - _collRemainder;
         totalCollateralSnapshot = _totalCollateralSnapshot;
 
         emit SystemSnapshotsUpdated(_totalStakesSnapshot, _totalCollateralSnapshot);
@@ -303,16 +303,17 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /**
     get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     */
-    function _getRedistributedEBTCDebt(
+    function _getPendingRedistributedDebt(
         bytes32 _cdpId
-    ) internal view returns (uint pendingEBTCDebtReward) {
+    ) internal view returns (uint256 pendingEBTCDebtReward) {
         Cdp storage cdp = Cdps[_cdpId];
 
         if (cdp.status != Status.active) {
             return 0;
         }
 
-        uint rewardPerUnitStaked = L_EBTCDebt - rewardSnapshots[_cdpId];
+        uint256 rewardPerUnitStaked = systemDebtRedistributionIndex -
+            debtRedistributionIndex[_cdpId];
 
         if (rewardPerUnitStaked > 0) {
             pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
@@ -330,29 +331,29 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         // Returns true if there have been any redemptions
-        return (rewardSnapshots[_cdpId] < L_EBTCDebt);
+        return (debtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
     function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
-        uint _L_EBTCDebt = L_EBTCDebt;
+        uint256 _L_EBTCDebt = systemDebtRedistributionIndex;
 
-        rewardSnapshots[_cdpId] = _L_EBTCDebt;
-        emit CdpSnapshotsUpdated(_cdpId, _L_EBTCDebt);
+        debtRedistributionIndex[_cdpId] = _L_EBTCDebt;
+        emit CdpDebtRedistributionIndexUpdated(_cdpId, _L_EBTCDebt);
     }
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
-    function _applyPendingState(bytes32 _cdpId) internal {
+    function _syncAccounting(bytes32 _cdpId) internal {
         _applyAccumulatedFeeSplit(_cdpId);
 
         // Compute pending rewards
-        uint pendingEBTCDebtReward = _getRedistributedEBTCDebt(_cdpId);
+        uint256 pendingEBTCDebtReward = _getPendingRedistributedDebt(_cdpId);
         if (pendingEBTCDebtReward > 0) {
             Cdp storage _cdp = Cdps[_cdpId];
-            uint prevDebt = _cdp.debt;
-            uint prevColl = _cdp.coll;
+            uint256 prevDebt = _cdp.debt;
+            uint256 prevColl = _cdp.coll;
 
             // Apply pending rewards to cdp's state
-            uint _newDebt = prevDebt + pendingEBTCDebtReward;
+            uint256 _newDebt = prevDebt + pendingEBTCDebtReward;
             _cdp.debt = _newDebt;
 
             _updateRedistributedDebtSnapshot(_cdpId);
@@ -366,14 +367,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
                 _newDebt,
                 prevColl,
                 Cdps[_cdpId].stake,
-                CdpOperation.applyPendingState
+                CdpOperation.syncAccounting
             );
         }
     }
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
     function _removeStake(bytes32 _cdpId) internal {
-        uint _newTotalStakes = totalStakes - Cdps[_cdpId].stake;
+        uint256 _newTotalStakes = totalStakes - Cdps[_cdpId].stake;
         totalStakes = _newTotalStakes;
         Cdps[_cdpId].stake = 0;
         emit TotalStakesUpdated(_newTotalStakes);
@@ -381,10 +382,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Update borrower's stake based on their latest collateral value
     // and update totalStakes accordingly as well
-    function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint) {
-        (uint newStake, uint oldStake) = _updateStakeForCdp(_cdpId);
+    function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint256) {
+        (uint256 newStake, uint256 oldStake) = _updateStakeForCdp(_cdpId);
 
-        uint _newTotalStakes = totalStakes + newStake - oldStake;
+        uint256 _newTotalStakes = totalStakes + newStake - oldStake;
         totalStakes = _newTotalStakes;
 
         emit TotalStakesUpdated(_newTotalStakes);
@@ -393,18 +394,18 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     // Update borrower's stake based on their latest collateral value
-    function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint, uint) {
+    function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint256, uint256) {
         Cdp storage _cdp = Cdps[_cdpId];
-        uint newStake = _computeNewStake(_cdp.coll);
-        uint oldStake = _cdp.stake;
+        uint256 newStake = _computeNewStake(_cdp.coll);
+        uint256 oldStake = _cdp.stake;
         _cdp.stake = newStake;
 
         return (newStake, oldStake);
     }
 
     // Calculate a new stake based on the snapshots of the totalStakes and totalCollateral taken at the last liquidation
-    function _computeNewStake(uint _coll) internal view returns (uint) {
-        uint stake;
+    function _computeNewStake(uint256 _coll) internal view returns (uint256) {
+        uint256 stake;
         if (totalCollateralSnapshot == 0) {
             stake = _coll;
         } else {
@@ -425,7 +426,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      * Remove a Cdp owner from the CdpOwners array, not preserving array order. Removing owner 'B' does the following:
      * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
      */
-    function _removeCdp(bytes32 _cdpId, uint CdpIdsArrayLength) internal {
+    function _removeCdp(bytes32 _cdpId, uint256 CdpIdsArrayLength) internal {
         Status cdpStatus = Cdps[_cdpId].status;
         // It’s set in caller function `_closeCdp`
         require(
@@ -434,8 +435,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         );
 
         uint128 index = Cdps[_cdpId].arrayIndex;
-        uint length = CdpIdsArrayLength;
-        uint idxLast = length - 1;
+        uint256 length = CdpIdsArrayLength;
+        uint256 idxLast = length - 1;
 
         require(index <= idxLast, "CdpManagerStorage: CDP indexing overflow!");
 
@@ -443,7 +444,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         CdpIds[index] = idToMove;
         Cdps[idToMove].arrayIndex = index;
-        emit CdpIndexUpdated(idToMove, index);
+        emit CdpArrayIndexUpdated(idToMove, index);
 
         CdpIds.pop();
     }
@@ -452,12 +453,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Calculate TCR given an price, and the entire system coll and debt.
     function _computeTCRWithGivenSystemValues(
-        uint _entireSystemColl,
-        uint _entireSystemDebt,
-        uint _price
-    ) internal view returns (uint) {
-        uint _totalColl = collateral.getPooledEthByShares(_entireSystemColl);
-        return LiquityMath._computeCR(_totalColl, _entireSystemDebt, _price);
+        uint256 _systemCollShares,
+        uint256 _systemDebt,
+        uint256 _price
+    ) internal view returns (uint256) {
+        uint256 _totalColl = collateral.getPooledEthByShares(_systemCollShares);
+        return LiquityMath._computeCR(_totalColl, _systemDebt, _price);
     }
 
     // --- Staking-Reward Fee split functions ---
@@ -471,40 +472,41 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     function _applyPendingGlobalState() internal {
-        (uint _oldIndex, uint _newIndex) = _syncIndex();
+        (uint256 _oldIndex, uint256 _newIndex) = _syncStEthIndex();
         if (_newIndex > _oldIndex && totalStakes > 0) {
-            (uint _feeTaken, uint _deltaFeePerUnit, uint _perUnitError) = calcFeeUponStakingReward(
-                _newIndex,
-                _oldIndex
-            );
+            (
+                uint256 _feeTaken,
+                uint256 _deltaFeePerUnit,
+                uint256 _perUnitError
+            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
-            _updateSystemSnapshots_excludeCollRemainder(0);
+            _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
 
     /// @notice Claim Fee Split, toggles Grace Period accordingly
     /// @notice Call this if you want to accrue feeSplit
-    function syncPendingGlobalState() public {
+    function syncGlobalAccountingAndGracePeriod() public {
         _applyPendingGlobalState(); // Apply // Could trigger RM
         syncGracePeriod(); // Synch Grace Period
     }
 
     // Update the global index via collateral token
-    function _syncIndex() internal returns (uint, uint) {
-        uint _oldIndex = stFPPSg;
-        uint _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+    function _syncStEthIndex() internal returns (uint256, uint256) {
+        uint256 _oldIndex = stEthIndex;
+        uint256 _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
-            stFPPSg = _newIndex;
+            stEthIndex = _newIndex;
             lastIndexTimestamp = block.timestamp;
-            emit CollateralGlobalIndexUpdated(_oldIndex, _newIndex, block.timestamp);
+            emit StEthIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
         return (_oldIndex, _newIndex);
     }
 
     // Calculate fee for given pair of collateral indexes, following are returned values:
     // - fee split in collateral token which will be deduced from current total system collateral
-    // - fee split increase per unit, used to update stFeePerUnitg
-    // - fee split calculation error, used to update stFeePerUnitgError
+    // - fee split increase per unit, used to update systemStEthFeePerUnitIndex
+    // - fee split calculation error, used to update systemStEthFeePerUnitIndexError
     function calcFeeUponStakingReward(
         uint256 _newIndex,
         uint256 _prevIndex
@@ -518,7 +520,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
-        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) + stFeePerUnitgError;
+        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
+            systemStEthFeePerUnitIndexError;
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
         uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
         return (_feeTaken, _deltaFeePerUnit, _perUnitError);
@@ -531,14 +534,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _deltaPerUnit,
         uint256 _newErrorPerUnit
     ) internal {
-        uint _oldPerUnit = stFeePerUnitg;
-        uint _newPerUnit = _oldPerUnit + _deltaPerUnit;
+        uint256 _oldPerUnit = systemStEthFeePerUnitIndex;
+        uint256 _newPerUnit = _oldPerUnit + _deltaPerUnit;
 
-        stFeePerUnitg = _newPerUnit;
-        stFeePerUnitgError = _newErrorPerUnit;
+        systemStEthFeePerUnitIndex = _newPerUnit;
+        systemStEthFeePerUnitIndexError = _newErrorPerUnit;
 
-        require(activePool.getStEthColl() > _feeTaken, "CDPManager: fee split is too big");
-        activePool.allocateFeeRecipientColl(_feeTaken);
+        require(activePool.getSystemCollShares() > _feeTaken, "CDPManager: fee split is too big");
+        activePool.allocateSystemCollSharesToFeeRecipient(_feeTaken);
 
         emit CollateralFeePerUnitUpdated(_oldPerUnit, _newPerUnit, _feeTaken);
     }
@@ -546,36 +549,36 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Apply accumulated fee split distributed to the CDP
     // and update its accumulator tracker accordingly
     function _applyAccumulatedFeeSplit(bytes32 _cdpId) internal {
-        // TODO Ensure global states like stFeePerUnitg get timely updated
+        // TODO Ensure global states like systemStEthFeePerUnitIndex get timely updated
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
         _applyPendingGlobalState();
 
-        uint _oldPerUnitCdp = stFeePerUnitcdp[_cdpId];
-        uint _stFeePerUnitg = stFeePerUnitg;
+        uint256 _oldPerUnitCdp = stFeePerUnitIndex[_cdpId];
+        uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
-        if (_oldPerUnitCdp == _stFeePerUnitg) {
-            // @audit this case is much more frequent, so can be handled first
+        if (_oldPerUnitCdp == _systemStEthFeePerUnitIndex) {
+            // this case is much more frequent, so can be handled first
             return;
         }
 
         if (_oldPerUnitCdp == 0) {
-            stFeePerUnitcdp[_cdpId] = _stFeePerUnitg;
+            stFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
             return;
         }
 
-        (uint _feeSplitDistributed, uint _newColl) = getAccumulatedFeeSplitApplied(
+        (uint256 _feeSplitDistributed, uint256 _newColl) = getAccumulatedFeeSplitApplied(
             _cdpId,
-            _stFeePerUnitg
+            _systemStEthFeePerUnitIndex
         );
         Cdps[_cdpId].coll = _newColl;
-        stFeePerUnitcdp[_cdpId] = _stFeePerUnitg;
+        stFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
 
         emit CdpFeeSplitApplied(
             _cdpId,
             _oldPerUnitCdp,
-            _stFeePerUnitg,
+            _systemStEthFeePerUnitIndex,
             _feeSplitDistributed,
             _newColl
         );
@@ -584,18 +587,23 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint _stFeePerUnitg
-    ) public view returns (uint, uint) {
-        uint _stFeePerUnitcdp = stFeePerUnitcdp[_cdpId];
-        uint _cdpCol = Cdps[_cdpId].coll;
+        uint256 _systemStEthFeePerUnitIndex
+    ) public view returns (uint256, uint256) {
+        uint256 _stFeePerUnitIndex = stFeePerUnitIndex[_cdpId];
+        uint256 _cdpCol = Cdps[_cdpId].coll;
 
-        if (_stFeePerUnitcdp == 0 || _cdpCol == 0 || _stFeePerUnitcdp == _stFeePerUnitg) {
+        if (
+            _stFeePerUnitIndex == 0 ||
+            _cdpCol == 0 ||
+            _stFeePerUnitIndex == _systemStEthFeePerUnitIndex
+        ) {
             return (0, _cdpCol);
         }
 
-        uint _feeSplitDistributed = Cdps[_cdpId].stake * (_stFeePerUnitg - _stFeePerUnitcdp);
+        uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
+            (_systemStEthFeePerUnitIndex - _stFeePerUnitIndex);
 
-        uint _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
+        uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
         if (_scaledCdpColl > _feeSplitDistributed) {
             return (
@@ -613,7 +621,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         require(Cdps[_cdpId].status == Status.active, "CdpManager: Cdp does not exist or is closed");
     }
 
-    function _requireMoreThanOneCdpInSystem(uint CdpOwnersArrayLength) internal view {
+    function _requireMoreThanOneCdpInSystem(uint256 CdpOwnersArrayLength) internal view {
         require(
             CdpOwnersArrayLength > 1 && sortedCdps.getSize() > 1,
             "CdpManager: Only one cdp in the system"
@@ -631,41 +639,41 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getNominalICR(bytes32 _cdpId) external view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
+    function getNominalICR(bytes32 _cdpId) external view returns (uint256) {
+        (uint256 currentEBTCDebt, uint256 currentETH, ) = getDebtAndCollShares(_cdpId);
 
-        uint NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
+        uint256 NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
         return NICR;
     }
 
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getCurrentICR(bytes32 _cdpId, uint _price) public view returns (uint) {
-        (uint currentEBTCDebt, uint currentETH, ) = getEntireDebtAndColl(_cdpId);
+    function getICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
+        (uint256 currentEBTCDebt, uint256 currentETH, ) = getDebtAndCollShares(_cdpId);
 
-        uint _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
-        uint ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
+        uint256 _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
+        uint256 ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
         return ICR;
     }
 
     /**
     get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     */
-    function getPendingEBTCDebtReward(
+    function getPendingRedistributedDebt(
         bytes32 _cdpId
-    ) public view returns (uint pendingEBTCDebtReward) {
-        return _getRedistributedEBTCDebt(_cdpId);
+    ) public view returns (uint256 pendingEBTCDebtReward) {
+        return _getPendingRedistributedDebt(_cdpId);
     }
 
-    function hasPendingRewards(bytes32 _cdpId) public view returns (bool) {
+    function hasPendingRedistributedDebt(bytes32 _cdpId) public view returns (bool) {
         return _hasRedistributedDebt(_cdpId);
     }
 
     // Return the Cdps entire debt and coll struct
-    function _getEntireDebtAndColl(
+    function _getDebtAndCollShares(
         bytes32 _cdpId
     ) internal view returns (LocalVar_CdpDebtColl memory) {
-        (uint256 entireDebt, uint256 entireColl, uint pendingDebtReward) = getEntireDebtAndColl(
+        (uint256 entireDebt, uint256 entireColl, uint256 pendingDebtReward) = getDebtAndCollShares(
             _cdpId
         );
         return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
@@ -673,14 +681,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
-    function getEntireDebtAndColl(
+    function getDebtAndCollShares(
         bytes32 _cdpId
-    ) public view returns (uint debt, uint coll, uint pendingEBTCDebtReward) {
+    ) public view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) {
         debt = Cdps[_cdpId].debt;
-        (, uint _newColl) = getAccumulatedFeeSplitApplied(_cdpId, stFeePerUnitg);
+        (, uint256 _newColl) = getAccumulatedFeeSplitApplied(_cdpId, systemStEthFeePerUnitIndex);
         coll = _newColl;
 
-        pendingEBTCDebtReward = getPendingEBTCDebtReward(_cdpId);
+        pendingEBTCDebtReward = getPendingRedistributedDebt(_cdpId);
 
         debt = debt + pendingEBTCDebtReward;
     }

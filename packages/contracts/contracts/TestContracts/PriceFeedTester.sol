@@ -12,7 +12,7 @@ contract PriceFeedTester is PriceFeed {
         address _ethBtcCLFeed
     ) PriceFeed(_tellorCallerAddress, _authorityAddress, _collEthCLFeed, _ethBtcCLFeed) {}
 
-    function setLastGoodPrice(uint _lastGoodPrice) external {
+    function setLastGoodPrice(uint256 _lastGoodPrice) external {
         lastGoodPrice = _lastGoodPrice;
     }
 

@@ -6,9 +6,6 @@ pragma solidity 0.8.17;
 interface ISortedCdps {
     // --- Events ---
 
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event SortedCdpsAddressChanged(address _sortedDoublyLLAddress);
-    event BorrowerOperationsAddressChanged(address _borrowerOperationsAddress);
     event NodeAdded(bytes32 _id, uint _NICR);
     event NodeRemoved(bytes32 _id);
 
@@ -59,25 +56,30 @@ interface ISortedCdps {
 
     function getOwnerAddress(bytes32 _id) external pure returns (address);
 
-    function existCdpOwners(bytes32 _id) external view returns (address);
-
     function nonExistId() external view returns (bytes32);
 
     function cdpCountOf(address owner) external view returns (uint256);
 
+    function cdpCountOf(
+        address owner,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) external view returns (uint256);
+
     function getCdpsOf(address owner) external view returns (bytes32[] memory);
+
+    function getCdpsOf(
+        address owner,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) external view returns (bytes32[] memory);
 
     function cdpOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
 
-    // Mapping from cdp owner to list of owned cdp IDs
-    // mapping(address => mapping(uint256 => bytes32)) public _ownedCdps;
-    function _ownedCdps(address, uint256) external view returns (bytes32);
-
-    // Mapping from cdp ID to index within owner cdp list
-    // mapping(bytes32 => uint256) public _ownedCdpIndex;
-    function _ownedCdpIndex(bytes32) external view returns (uint256);
-
-    // Mapping from cdp owner to its owned cdps count
-    // mapping(address => uint256) public _ownedCount;
-    function _ownedCount(address) external view returns (uint256);
+    function cdpOfOwnerByIndex(
+        address owner,
+        uint256 index,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) external view returns (bytes32);
 }
