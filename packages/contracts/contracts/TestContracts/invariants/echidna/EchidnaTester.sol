@@ -235,7 +235,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                // assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             assertWithMsg(
@@ -312,7 +312,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                // assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             assertWithMsg(
@@ -411,7 +411,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                // assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
 
             if (

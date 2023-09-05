@@ -353,6 +353,30 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         }
     }
 
+    function testL01() public {
+        bytes32 _cdpId = openCdp(2617747364563249548978545473700197415155670830, 1);
+        setEthPerShare(20046846852775467150329156883749791329258318260232426600677744413254647633);
+        openCdp(7, 566564181883770452);
+        setEthPerShare(184285425546798060011740674459326314940834449738546498486046250902558222321);
+        setEthPerShare(19187829665432980635563099599229152892109566460977248638969147422445827);
+        addColl(1, 3816132918153623529054679378161788308872616803819851218451);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        _before(_cdpId);
+        partialLiquidate(
+            1631020564268751141804267840,
+            88534139559654018254419258514416369130870805778276
+        );
+        _after(_cdpId);
+        console2.log(_diff());
+        console2.log("isRecoveryModeBefore", vars.isRecoveryModeBefore);
+
+        assertTrue(
+            vars.newIcrBefore < cdpManager.MCR() ||
+                (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            L_01
+        );
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
