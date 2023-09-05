@@ -443,7 +443,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _n,
         bool _recovery,
         uint256 _price
-    ) internal view returns (bytes32[] memory _array) {
+    ) internal returns (bytes32[] memory _array) {
         if (_n > 0) {
             bytes32 _last = sortedCdps.getLast();
             bytes32 _first = sortedCdps.getFirst();
@@ -454,6 +454,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             // get count of liquidatable CDPs
             uint256 _cnt;
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
+                // Accrue the CDP FIRST
+                _syncAccounting(_cdpId); // Ensure ICR is latest
                 uint256 _icr = getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
