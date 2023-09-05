@@ -123,6 +123,15 @@ contract SortedCdps is ISortedCdps {
         return _cdpOfOwnerByIndex(owner, index, bytes32(0), 0);
     }
 
+    function cdpOfOwnerByIndex(
+        address owner,
+        uint256 index,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) external view override returns (bytes32) {
+        return _cdpOfOwnerByIndex(owner, index, startNodeId, maxNodes);
+    }
+
     function _cdpOfOwnerByIndex(
         address owner,
         uint256 index,
@@ -158,6 +167,14 @@ contract SortedCdps is ISortedCdps {
         return _cdpCountOf(owner, bytes32(0), 0);
     }
 
+    function cdpCountOf(
+        address owner,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) external view override returns (uint256) {
+        return _cdpCountOf(owner, startNodeId, maxNodes);
+    }
+
     function _cdpCountOf(
         address owner,
         bytes32 startNodeId,
@@ -186,6 +203,17 @@ contract SortedCdps is ISortedCdps {
         // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
         uint _ownedCount = _cdpCountOf(owner, bytes32(0), 0);
         return _getCdpsOf(owner, bytes32(0), 0, _ownedCount);
+    }
+
+    function getCdpsOf(
+        address owner,
+        bytes32 startNodeId,
+        uint maxNodes
+    ) external view override returns (bytes32[] memory) {
+        // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
+        // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
+        uint _ownedCount = _cdpCountOf(owner, startNodeId, maxNodes);
+        return _getCdpsOf(owner, startNodeId, maxNodes, _ownedCount);
     }
 
     function _getCdpsOf(
