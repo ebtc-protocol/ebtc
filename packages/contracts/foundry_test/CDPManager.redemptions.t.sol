@@ -484,57 +484,17 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
         uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
 
-        console2.log("ActivePool", vars.activePoolCollBefore, vars.activePoolCollAfter);
-        console2.log("CollSurplusPool", vars.collSurplusPoolBefore, vars.collSurplusPoolAfter);
-        console2.log(
-            "LiquidatorRewards",
-            vars.liquidatorRewardSharesBefore,
-            vars.liquidatorRewardSharesAfter
-        );
-        console2.log("Debt", vars.debtBefore, vars.debtAfter);
-        console2.log("Paid", paidEbtc);
-        console2.log("Redeemed", redeemedColl);
-        console2.log("Fee", fee);
-
-        console2.log(
-            "coll",
-            (vars.activePoolCollBefore +
-                vars.liquidatorRewardSharesBefore +
-                vars.collSurplusPoolBefore),
-            (vars.activePoolCollAfter +
-                vars.liquidatorRewardSharesAfter +
-                vars.collSurplusPoolAfter +
-                fee)
-        );
-        console2.log("debt", (vars.debtBefore), (vars.debtAfter));
-
-        console2.log(
-            "$$",
-            ((vars.activePoolCollBefore +
-                vars.liquidatorRewardSharesBefore +
-                vars.collSurplusPoolBefore) * vars.priceBefore) /
-                1e18 -
-                vars.debtBefore,
-            ((vars.activePoolCollAfter +
-                vars.liquidatorRewardSharesAfter +
-                vars.collSurplusPoolAfter) * vars.priceAfter) /
-                1e18 -
-                vars.debtAfter
-        );
-
-        console2.log("$", (vars.debtBefore), (vars.debtAfter));
-
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore) * vars.priceBefore) /
             1e18 -
-            vars.debtBefore;
+            vars.cdpDebtBefore;
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
             fee) * vars.priceAfter) /
             1e18 -
-            vars.debtAfter;
+            vars.cdpDebtAfter;
 
         console2.log("value", beforeValue, afterValue);
 

@@ -206,7 +206,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) internal log {
+    function liquidate(uint _i) internal {
         actor = actors[msg.sender];
 
         bool success;
@@ -233,11 +233,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         if (success) {
             if (vars.icrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    L_12
-                );
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             // assertWithMsg(
@@ -273,7 +269,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) external log {
+    function partialLiquidate(uint _i, uint _partialAmount) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -304,16 +300,15 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         _after(_cdpId);
 
         if (success) {
-            (uint256 _newEntireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
-            assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
+            assertLt(
+                vars.cdpDebtAfter,
+                vars.cdpDebtBefore,
+                "Partial liquidation must reduce CDP debt"
+            );
 
             if (vars.icrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    L_12
-                );
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             // assertWithMsg(
@@ -357,7 +352,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function liquidateCdps(uint _n) external log {
+    function liquidateCdps(uint _n) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -409,13 +404,9 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             }
 
             if (minIcrBefore > cdpManager.LICR()) {
-                emit LogUint256("minIcrBefore", minIcrBefore);
+                emit L3(minIcrBefore, vars.newTcrBefore, vars.newTcrAfter);
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    L_12
-                );
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
 
             if (
@@ -453,7 +444,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         uint _partialRedemptionHintNICR,
         uint _maxFeePercentage,
         uint _maxIterations
-    ) external log {
+    ) external {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
             "CdpManager: Redemptions are not allowed during bootstrap phase"
@@ -501,7 +492,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
         if (_maxIterations == 1) {
-            assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+            assertGte(vars.cdpDebtBefore, vars.cdpCollAfter, CDPM_05);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
             // if (!_atLeastOneCdpIsLiquidatableBefore) {
             //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
@@ -545,7 +536,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal log {
+    function flashLoanColl(uint _amount) internal {
         actor = actors[msg.sender];
 
         bool success;
@@ -606,7 +597,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) internal log {
+    function flashLoanEBTC(uint _amount) internal {
         actor = actors[msg.sender];
 
         bool success;
@@ -664,7 +655,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) external log {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -753,7 +744,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function addColl(uint _coll, uint256 _i) external log {
+    function addColl(uint _coll, uint256 _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -973,7 +964,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         _after(_cdpId);
 
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-        assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+        assertGte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawEBTC must not decrease debt");
         assertEq(
             vars.actorEbtcAfter,
             vars.actorEbtcBefore + _amount,
@@ -1011,7 +1002,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) external log {
+    function repayEBTC(uint _amount, uint256 _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1046,11 +1037,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-        assertGt(
-            vars.newTcrAfter,
-            vars.newTcrBefore,
-            BO_08
-        );
+        assertGt(vars.newTcrAfter, vars.newTcrBefore, BO_08);
 
         assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
         assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
@@ -1089,7 +1076,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function closeCdp(uint _i) external log {
+    function closeCdp(uint _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1177,7 +1164,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) external log {
+    ) external {
         actor = actors[msg.sender];
 
         bool success;

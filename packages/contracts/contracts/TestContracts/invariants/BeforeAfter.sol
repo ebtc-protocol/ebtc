@@ -38,8 +38,6 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 tcrAfter;
         uint256 newTcrBefore;
         uint256 newTcrAfter;
-        uint256 debtBefore;
-        uint256 debtAfter;
         uint256 ebtcTotalSupplyBefore;
         uint256 ebtcTotalSupplyAfter;
         uint256 ethPerShareBefore;
@@ -77,7 +75,6 @@ abstract contract BeforeAfter is BaseStorageVariables {
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
         vars.cdpStatusBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
-        vars.debtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
         vars.isRecoveryModeBefore = cdpManager.checkRecoveryMode(vars.priceBefore);
         (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
@@ -140,7 +137,6 @@ abstract contract BeforeAfter is BaseStorageVariables {
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
         vars.cdpStatusAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
-        vars.debtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
 
         vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
         (vars.feeSplitAfter, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
@@ -320,14 +316,6 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 .concat(vars.newTcrBefore.pretty())
                 .concat("\t")
                 .concat(vars.newTcrAfter.pretty())
-                .concat("\n");
-        }
-        if (vars.debtBefore != vars.debtAfter) {
-            log = log
-                .concat("debt\t\t\t\t")
-                .concat(vars.debtBefore.pretty())
-                .concat("\t")
-                .concat(vars.debtAfter.pretty())
                 .concat("\n");
         }
         if (vars.ebtcTotalSupplyBefore != vars.ebtcTotalSupplyAfter) {
