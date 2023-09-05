@@ -231,16 +231,16 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         _after(_cdpId);
 
         if (success) {
-            if (vars.icrBefore > cdpManager.LICR()) {
+            if (vars.newIcrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-            // assertWithMsg(
-            //     vars.icrBefore < cdpManager.MCR() ||
-            //         (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            //     L_01
-            // );
+            assertWithMsg(
+                vars.newIcrBefore < cdpManager.MCR() ||
+                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                L_01
+            );
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
                 vars.isRecoveryModeBefore &&
@@ -306,16 +306,16 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 "Partial liquidation must reduce CDP debt"
             );
 
-            if (vars.icrBefore > cdpManager.LICR()) {
+            if (vars.newIcrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-            // assertWithMsg(
-            //     vars.icrBefore < cdpManager.MCR() ||
-            //         (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            //     L_01
-            // );
+            assertWithMsg(
+                vars.newIcrBefore < cdpManager.MCR() ||
+                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                L_01
+            );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(

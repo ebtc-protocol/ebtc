@@ -14,6 +14,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 nicrAfter;
         uint256 icrBefore;
         uint256 icrAfter;
+        uint256 newIcrBefore;
+        uint256 newIcrAfter;
         uint256 feeSplitBefore;
         uint256 feeSplitAfter;
         uint256 feeRecipientTotalCollBefore;
@@ -124,6 +126,22 @@ abstract contract BeforeAfter is BaseStorageVariables {
             bytes memory returnData = abi.decode(reason, (bytes));
             vars.newTcrBefore = abi.decode(returnData, (uint256));
         }
+
+        _targets[0] = address(cdpManager);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, _cdpId);
+
+        _targets[1] = address(cdpManager);
+        _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, _cdpId, vars.priceBefore);
+
+        // Compute new ICR after syncAccounting and revert to previous snapshot in oder to not affect the current state
+        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+            assembly {
+                // Slice the sighash.
+                reason := add(reason, 0x04)
+            }
+            bytes memory returnData = abi.decode(reason, (bytes));
+            vars.newIcrBefore = abi.decode(returnData, (uint256));
+        }
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -186,6 +204,22 @@ abstract contract BeforeAfter is BaseStorageVariables {
             bytes memory returnData = abi.decode(reason, (bytes));
             vars.newTcrAfter = abi.decode(returnData, (uint256));
         }
+
+        _targets[0] = address(cdpManager);
+        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, _cdpId);
+
+        _targets[1] = address(cdpManager);
+        _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, _cdpId, vars.priceAfter);
+
+        // Compute new ICR after syncAccounting and revert to previous snapshot in oder to not affect the current state
+        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+            assembly {
+                // Slice the sighash.
+                reason := add(reason, 0x04)
+            }
+            bytes memory returnData = abi.decode(reason, (bytes));
+            vars.newIcrAfter = abi.decode(returnData, (uint256));
+        }
     }
 
     function _diff() internal view returns (string memory log) {
@@ -220,6 +254,14 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 .concat(vars.icrBefore.pretty())
                 .concat("\t")
                 .concat(vars.icrAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.newIcrBefore != vars.newIcrAfter) {
+            log = log
+                .concat("newIcr\t\t\t\t")
+                .concat(vars.newIcrBefore.pretty())
+                .concat("\t")
+                .concat(vars.newIcrAfter.pretty())
                 .concat("\n");
         }
         if (vars.feeSplitBefore != vars.feeSplitAfter) {
