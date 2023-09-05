@@ -62,7 +62,9 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // prepare local variables
         uint256 _ICR = getICR(_cdpId, _price);
-        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(_price);
+        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
+            _price
+        );
 
         // If CDP is above MCR
         if (_ICR >= MCR) {
