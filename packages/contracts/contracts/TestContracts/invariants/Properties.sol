@@ -99,13 +99,13 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore) * vars.priceBefore) /
             1e18 -
-            vars.debtBefore;
+            vars.cdpDebtBefore;
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
             fee) * vars.priceAfter) /
             1e18 -
-            vars.debtAfter;
+            vars.cdpDebtAfter;
         return afterValue >= beforeValue || isApproximateEq(afterValue, beforeValue, 0.01e18);
     }
 
@@ -113,7 +113,9 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         ICollateralToken collateral,
         CollSurplusPool collSurplusPool
     ) internal view returns (bool) {
-        return collateral.sharesOf(address(collSurplusPool)) >= collSurplusPool.getTotalSurplusCollShares();
+        return
+            collateral.sharesOf(address(collSurplusPool)) >=
+            collSurplusPool.getTotalSurplusCollShares();
     }
 
     event L(string, uint);
@@ -247,7 +249,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         Vars memory vars
     ) internal view returns (bool) {
         if (vars.isRecoveryModeBefore) {
-            if (vars.debtAfter > vars.debtBefore) return (vars.icrAfter > cdpManager.MCR());
+            if (vars.cdpDebtAfter > vars.cdpDebtBefore) return (vars.icrAfter > cdpManager.MCR());
             else return true;
         } else {
             return (vars.icrAfter > cdpManager.MCR());

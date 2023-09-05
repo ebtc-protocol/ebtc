@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.17;
 
-import "@crytic/properties/contracts/util/PropertiesConstants.sol";
-
 import "../../../Interfaces/ICdpManagerData.sol";
 import "../../../Dependencies/SafeMath.sol";
 import "../../../CdpManager.sol";
@@ -25,256 +23,13 @@ import "../Properties.sol";
 import "../Actor.sol";
 import "./EchidnaBaseTester.sol";
 import "./EchidnaProperties.sol";
-import "./EchidnaBeforeAfter.sol";
+import "../BeforeAfter.sol";
 import "./EchidnaAssertionHelper.sol";
 
-contract EchidnaTester is
-    EchidnaBeforeAfter,
-    EchidnaProperties,
-    EchidnaAssertionHelper,
-    PropertiesConstants
-{
+contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper {
     constructor() payable {
         _setUp();
         _setUpActors();
-    }
-
-    function _setUp() internal {
-        defaultGovernance = msg.sender;
-        ebtcDeployer = new EBTCDeployer();
-
-        // Default governance is deployer
-        // vm.prank(defaultGovernance);
-        collateral = new CollateralTokenTester();
-
-        EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
-
-        {
-            bytes memory creationCode;
-            bytes memory args;
-
-            // Use EBTCDeployer to deploy all contracts at determistic addresses
-
-            // Authority
-            creationCode = type(Governor).creationCode;
-            args = abi.encode(address(this));
-
-            authority = Governor(
-                ebtcDeployer.deploy(ebtcDeployer.AUTHORITY(), abi.encodePacked(creationCode, args))
-            );
-
-            // Liquidation Library
-            creationCode = type(LiquidationLibrary).creationCode;
-            args = abi.encode(
-                addr.borrowerOperationsAddress,
-                addr.collSurplusPoolAddress,
-                addr.ebtcTokenAddress,
-                addr.sortedCdpsAddress,
-                addr.activePoolAddress,
-                addr.priceFeedAddress,
-                address(collateral)
-            );
-
-            liqudationLibrary = LiquidationLibrary(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.LIQUIDATION_LIBRARY(),
-                    abi.encodePacked(creationCode, args)
-                )
-            );
-
-            // CDP Manager
-            creationCode = type(CdpManager).creationCode;
-            args = abi.encode(
-                addr.liquidationLibraryAddress,
-                addr.authorityAddress,
-                addr.borrowerOperationsAddress,
-                addr.collSurplusPoolAddress,
-                addr.ebtcTokenAddress,
-                addr.sortedCdpsAddress,
-                addr.activePoolAddress,
-                addr.priceFeedAddress,
-                address(collateral)
-            );
-
-            cdpManager = CdpManager(
-                ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
-            );
-
-            // Borrower Operations
-            creationCode = type(BorrowerOperations).creationCode;
-            args = abi.encode(
-                addr.cdpManagerAddress,
-                addr.activePoolAddress,
-                addr.collSurplusPoolAddress,
-                addr.priceFeedAddress,
-                addr.sortedCdpsAddress,
-                addr.ebtcTokenAddress,
-                addr.feeRecipientAddress,
-                address(collateral)
-            );
-
-            borrowerOperations = BorrowerOperations(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.BORROWER_OPERATIONS(),
-                    abi.encodePacked(creationCode, args)
-                )
-            );
-
-            // Price Feed Mock
-            creationCode = type(PriceFeedTestnet).creationCode;
-            args = abi.encode(addr.authorityAddress);
-
-            priceFeedTestnet = PriceFeedTestnet(
-                ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
-            );
-
-            // Sorted CDPS
-            creationCode = type(SortedCdps).creationCode;
-            args = abi.encode(
-                type(uint256).max,
-                addr.cdpManagerAddress,
-                addr.borrowerOperationsAddress
-            );
-
-            sortedCdps = SortedCdps(
-                ebtcDeployer.deploy(ebtcDeployer.SORTED_CDPS(), abi.encodePacked(creationCode, args))
-            );
-
-            // Active Pool
-            creationCode = type(ActivePool).creationCode;
-            args = abi.encode(
-                addr.borrowerOperationsAddress,
-                addr.cdpManagerAddress,
-                address(collateral),
-                addr.collSurplusPoolAddress,
-                addr.feeRecipientAddress
-            );
-
-            activePool = ActivePool(
-                ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
-            );
-
-            // Coll Surplus Pool
-            creationCode = type(CollSurplusPool).creationCode;
-            args = abi.encode(
-                addr.borrowerOperationsAddress,
-                addr.cdpManagerAddress,
-                addr.activePoolAddress,
-                address(collateral)
-            );
-
-            collSurplusPool = CollSurplusPool(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.COLL_SURPLUS_POOL(),
-                    abi.encodePacked(creationCode, args)
-                )
-            );
-
-            // Hint Helpers
-            creationCode = type(HintHelpers).creationCode;
-            args = abi.encode(
-                addr.sortedCdpsAddress,
-                addr.cdpManagerAddress,
-                address(collateral),
-                addr.activePoolAddress,
-                addr.priceFeedAddress
-            );
-
-            hintHelpers = HintHelpers(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.HINT_HELPERS(),
-                    abi.encodePacked(creationCode, args)
-                )
-            );
-
-            // eBTC Token
-            creationCode = type(EBTCTokenTester).creationCode;
-            args = abi.encode(
-                addr.cdpManagerAddress,
-                addr.borrowerOperationsAddress,
-                addr.authorityAddress
-            );
-
-            eBTCToken = EBTCTokenTester(
-                ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
-            );
-
-            // Fee Recipieint
-            creationCode = type(FeeRecipient).creationCode;
-            args = abi.encode(
-                addr.ebtcTokenAddress,
-                addr.cdpManagerAddress,
-                addr.borrowerOperationsAddress,
-                addr.activePoolAddress,
-                address(collateral)
-            );
-
-            feeRecipient = FeeRecipient(
-                ebtcDeployer.deploy(
-                    ebtcDeployer.FEE_RECIPIENT(),
-                    abi.encodePacked(creationCode, args)
-                )
-            );
-
-            // Configure authority
-            authority.setRoleName(0, "Admin");
-            authority.setRoleName(1, "eBTCToken: mint");
-            authority.setRoleName(2, "eBTCToken: burn");
-            authority.setRoleName(3, "CDPManager: all");
-            authority.setRoleName(4, "PriceFeed: setTellorCaller");
-            authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
-
-            authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
-
-            authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
-
-            authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
-            authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
-            authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
-            authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
-
-            authority.setRoleCapability(4, address(priceFeedTestnet), SET_TELLOR_CALLER_SIG, true);
-
-            authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
-            authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
-
-            authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
-            authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
-
-            authority.setUserRole(defaultGovernance, 0, true);
-            authority.setUserRole(defaultGovernance, 1, true);
-            authority.setUserRole(defaultGovernance, 2, true);
-            authority.setUserRole(defaultGovernance, 3, true);
-            authority.setUserRole(defaultGovernance, 4, true);
-            authority.setUserRole(defaultGovernance, 5, true);
-
-            authority.transferOwnership(defaultGovernance);
-        }
-    }
-
-    function _setUpActors() internal {
-        bool success;
-        address[] memory tokens = new address[](2);
-        tokens[0] = address(eBTCToken);
-        tokens[1] = address(collateral);
-        address[] memory callers = new address[](2);
-        callers[0] = address(borrowerOperations);
-        callers[1] = address(activePool);
-        address[] memory addresses = new address[](3);
-        addresses[0] = USER1;
-        addresses[1] = USER2;
-        addresses[2] = USER3;
-        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
-            actors[addresses[i]] = new Actor(tokens, callers);
-            (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
-            assert(success);
-            (success, ) = actors[addresses[i]].proxy(
-                address(collateral),
-                abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
-                INITIAL_COLL_BALANCE
-            );
-            assert(success);
-        }
     }
 
     ///////////////////////////////////////////////////////
@@ -285,7 +40,7 @@ contract EchidnaTester is
         uint256 ans;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
             if (cdpManager.getICR(currentCdp, _price) < cdpManager.MCR()) {
@@ -303,7 +58,7 @@ contract EchidnaTester is
         uint256 i = 0;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
             ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getICR(currentCdp, _price)});
@@ -424,7 +179,7 @@ contract EchidnaTester is
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getICR(_cId, priceFeedTestnet.getPrice()) < cdpManager.MCR()
+            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -451,7 +206,7 @@ contract EchidnaTester is
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) internal log {
+    function liquidate(uint _i) internal {
         actor = actors[msg.sender];
 
         bool success;
@@ -464,7 +219,7 @@ contract EchidnaTester is
         (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
 
         _before(_cdpId);
 
@@ -476,20 +231,16 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            if (vars.icrBefore > cdpManager.LICR()) {
+            if (vars.newIcrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    L_12
-                );
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-            // assertWithMsg(
-            //     vars.icrBefore < cdpManager.MCR() ||
-            //         (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            //     L_01
-            // );
+            assertWithMsg(
+                vars.newIcrBefore < cdpManager.MCR() ||
+                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                L_01
+            );
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
                 vars.isRecoveryModeBefore &&
@@ -518,7 +269,7 @@ contract EchidnaTester is
         }
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) external log {
+    function partialLiquidate(uint _i, uint _partialAmount) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -549,23 +300,22 @@ contract EchidnaTester is
         _after(_cdpId);
 
         if (success) {
-            (uint256 _newEntireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
-            assertLt(_newEntireDebt, entireDebt, "Partial liquidation must reduce CDP debt");
+            assertLt(
+                vars.cdpDebtAfter,
+                vars.cdpDebtBefore,
+                "Partial liquidation must reduce CDP debt"
+            );
 
-            if (vars.icrBefore > cdpManager.LICR()) {
+            if (vars.newIcrBefore > cdpManager.LICR()) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    L_12
-                );
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-            // assertWithMsg(
-            //     vars.icrBefore < cdpManager.MCR() ||
-            //         (vars.icrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            //     L_01
-            // );
+            assertWithMsg(
+                vars.newIcrBefore < cdpManager.MCR() ||
+                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                L_01
+            );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             assertGte(
@@ -602,7 +352,7 @@ contract EchidnaTester is
         }
     }
 
-    function liquidateCdps(uint _n) external log {
+    function liquidateCdps(uint _n) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -613,7 +363,7 @@ contract EchidnaTester is
         _n = clampBetween(_n, 1, cdpManager.getActiveCdpsCount());
 
         uint256 totalCdpsBelowMcr = _totalCdpsBelowMcr();
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         Cdp[] memory cdpsBefore = _getCdpIdsAndICRs();
 
         _before(bytes32(0));
@@ -654,13 +404,9 @@ contract EchidnaTester is
             }
 
             if (minIcrBefore > cdpManager.LICR()) {
-                emit LogUint256("minIcrBefore", minIcrBefore);
+                emit L3(minIcrBefore, vars.newTcrBefore, vars.newTcrAfter);
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    L_12
-                );
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
 
             if (
@@ -698,7 +444,7 @@ contract EchidnaTester is
         uint _partialRedemptionHintNICR,
         uint _maxFeePercentage,
         uint _maxIterations
-    ) external log {
+    ) external {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
             "CdpManager: Redemptions are not allowed during bootstrap phase"
@@ -721,7 +467,7 @@ contract EchidnaTester is
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
         bool _atLeastOneCdpIsLiquidatableBefore = _atLeastOneCdpIsLiquidatable(
             _getCdpIdsAndICRs(),
-            cdpManager.checkRecoveryMode(priceFeedTestnet.getPrice())
+            cdpManager.checkRecoveryMode(priceFeedMock.getPrice())
         );
 
         _before(_cdpId);
@@ -746,7 +492,7 @@ contract EchidnaTester is
 
         assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
         if (_maxIterations == 1) {
-            assertGte(vars.debtBefore, vars.debtAfter, CDPM_05);
+            assertGte(vars.cdpDebtBefore, vars.cdpCollAfter, CDPM_05);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
             // if (!_atLeastOneCdpIsLiquidatableBefore) {
             //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
@@ -790,7 +536,7 @@ contract EchidnaTester is
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal log {
+    function flashLoanColl(uint _amount) internal {
         actor = actors[msg.sender];
 
         bool success;
@@ -851,7 +597,7 @@ contract EchidnaTester is
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) internal log {
+    function flashLoanEBTC(uint _amount) internal {
         actor = actors[msg.sender];
 
         bool success;
@@ -909,14 +655,14 @@ contract EchidnaTester is
         }
     }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) external log {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) external {
         actor = actors[msg.sender];
 
         bool success;
         bytes memory returnData;
 
         // we pass in CCR instead of MCR in case it's the first one
-        uint price = priceFeedTestnet.getPrice();
+        uint price = priceFeedMock.getPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
@@ -998,7 +744,7 @@ contract EchidnaTester is
         }
     }
 
-    function addColl(uint _coll, uint256 _i) external log {
+    function addColl(uint _coll, uint256 _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1218,7 +964,7 @@ contract EchidnaTester is
         _after(_cdpId);
 
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-        assertGte(vars.debtAfter, vars.debtBefore, "withdrawEBTC must not decrease debt");
+        assertGte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawEBTC must not decrease debt");
         assertEq(
             vars.actorEbtcAfter,
             vars.actorEbtcBefore + _amount,
@@ -1256,7 +1002,7 @@ contract EchidnaTester is
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) external log {
+    function repayEBTC(uint _amount, uint256 _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1291,11 +1037,7 @@ contract EchidnaTester is
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-        assertGt(
-            vars.newTcrAfter,
-            vars.newTcrBefore,
-            BO_08
-        );
+        assertGt(vars.newTcrAfter, vars.newTcrBefore, BO_08);
 
         assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
         assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
@@ -1334,7 +1076,7 @@ contract EchidnaTester is
         }
     }
 
-    function closeCdp(uint _i) external log {
+    function closeCdp(uint _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1422,7 +1164,7 @@ contract EchidnaTester is
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) external log {
+    ) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1518,12 +1260,12 @@ contract EchidnaTester is
     ///////////////////////////////////////////////////////
 
     function setPrice(uint256 _newPrice) external {
-        uint256 currentPrice = priceFeedTestnet.getPrice();
+        uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = clampBetween(
             _newPrice,
             (currentPrice * 1e18) / MAX_PRICE_CHANGE_PERCENT,
             (currentPrice * MAX_PRICE_CHANGE_PERCENT) / 1e18
         );
-        priceFeedTestnet.setPrice(_newPrice);
+        priceFeedMock.setPrice(_newPrice);
     }
 }

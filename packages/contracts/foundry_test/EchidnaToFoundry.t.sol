@@ -13,7 +13,6 @@ import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrow
  */
 contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     address user;
-    address actor;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;
     uint256 private constant MAX_FLASHLOAN_ACTIONS = 4;
 
@@ -22,7 +21,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         eBTCBaseFixture.connectCoreContracts();
         eBTCBaseFixture.connectLQTYContractsToCore();
         user = address(this);
-        actor = user;
         vm.startPrank(address(this));
         vm.deal(user, INITIAL_COLL_BALANCE);
         collateral.deposit{value: INITIAL_COLL_BALANCE}();
@@ -128,11 +126,11 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         setEthPerShare(427559125359927817315385493025244950085348258422237142673507024064172809185);
         openCdp(3571529399317342246939748969305228181926514889773271968455159558869, 9858);
         setEthPerShare(3643538871032775039067393294322983338235379072440222187277243527);
-        vars.actorCollBefore = collateral.balanceOf(actor);
+        vars.actorCollBefore = collateral.balanceOf(address(user));
         vars.cdpCollBefore = cdpManager.getCdpCollShares(_cdpId);
         vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
         closeCdp(0);
-        vars.actorCollAfter = collateral.balanceOf(actor);
+        vars.actorCollAfter = collateral.balanceOf(address(user));
         console.log(
             "\tcloseCdpGasCompensation",
             vars.actorCollBefore,
