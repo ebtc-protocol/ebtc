@@ -2,19 +2,8 @@
 
 pragma solidity 0.8.17;
 
-interface IPriceFeed {
-    function fetchPrice() external returns (uint256);
-}
-
-interface ICdpManager {
-    function syncPendingGlobalState() external;
-
-    function applyPendingState(bytes32) external;
-
-    function getCurrentICR(bytes32, uint256) external view returns (uint256);
-
-    function getTCR(uint256) external view returns (uint256);
-}
+import "./Interfaces/IPriceFeed.sol";
+import "./Interfaces/ICdpManager.sol";
 
 /// @notice The contract allows to check real CR of CDPs
 ///   Acknowledgement: https://github.com/Uniswap/v3-periphery/blob/main/contracts/lens/Quoter.sol
@@ -33,7 +22,7 @@ contract CRLens {
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     function getRealTCR(bool revertValue) external returns (uint256) {
         // Synch State
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         // Return latest
         uint price = priceFeed.fetchPrice();
@@ -53,9 +42,9 @@ contract CRLens {
     /// @notice Return the ICR of a CDP after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     function getRealICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
-        cdpManager.applyPendingState(cdpId);
+        cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
-        uint256 icr = cdpManager.getCurrentICR(cdpId, price);
+        uint256 icr = cdpManager.getICR(cdpId, price);
 
         if (revertValue) {
             assembly {
