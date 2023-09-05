@@ -330,6 +330,29 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         repayEBTC(1, 509846657665200610349434642309205663062);
     }
 
+    function testPartialLiquidationMustImproveTcr() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        bytes32 _cdpId = openCdp(68629174294586120195720659243770282172476486778, 1);
+        setEthPerShare(20046846852775467150329156883749791329258318260232426600677744413254647633);
+        openCdp(7, 566564181883770452);
+        setEthPerShare(184285425546798060011740674459326314940834449738546498486046250902558222321);
+        setEthPerShare(19187829665432980635563099599229152892109566460977248638969147422445827);
+        addColl(2, 139233217088015393513096172332961988464897223753205435228023);
+        _before(_cdpId);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        partialLiquidate(
+            605242160239744977678172846486,
+            88053821468781230873210853613504128873491483931172289
+        );
+        _after(_cdpId);
+        console2.log(_diff());
+
+        if (vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore) {
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+        }
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -483,6 +506,19 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         cdpManager.liquidateCdps(_n);
     }
 
+    function partialLiquidate(uint _i, uint _partialAmount) internal {
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+
+        bytes32 _cdpId = _getRandomCdp(_i);
+
+        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        require(entireDebt > 0, "CDP must have debt");
+
+        _partialAmount = clampBetween(_partialAmount, 0, entireDebt - 1);
+
+        cdpManager.partiallyLiquidate(_cdpId, _partialAmount, _cdpId, _cdpId);
+    }
+
     function flashLoanColl(uint _amount) internal {
         _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
 
@@ -628,7 +664,9 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         bytes[] memory _calldatas = new bytes[](2);
 
         _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncGlobalAccountingAndGracePeriod.selector);
+        _calldatas[0] = abi.encodeWithSelector(
+            cdpManager.syncGlobalAccountingAndGracePeriod.selector
+        );
 
         _targets[1] = address(cdpManager);
         _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, priceFeedMock.getPrice());
@@ -646,6 +684,11 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
             newTcr = abi.decode(returnData, (uint256));
             console2.log("newTcr", newTcr);
         }
+    }
+
+    function _getRandomCdp(uint _i) internal view returns (bytes32) {
+        uint _cdpIdx = _i % cdpManager.getActiveCdpsCount();
+        return cdpManager.CdpIds(_cdpIdx);
     }
 
     error Simulate(bytes);

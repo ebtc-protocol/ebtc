@@ -58,6 +58,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         bool lastGracePeriodStartTimestampIsSetAfter;
         bool hasGracePeriodPassedBefore;
         bool hasGracePeriodPassedAfter;
+        uint256 systemDebtRedistributionIndexBefore;
+        uint256 systemDebtRedistributionIndexAfter;
     }
 
     Vars vars;
@@ -105,6 +107,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >
             cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+        vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
 
         address[] memory _targets = new address[](2);
         bytes[] memory _calldatas = new bytes[](2);
@@ -183,6 +186,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >
             cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+        vars.systemDebtRedistributionIndexAfter = cdpManager.systemDebtRedistributionIndex();
 
         address[] memory _targets = new address[](2);
         bytes[] memory _calldatas = new bytes[](2);
@@ -331,17 +335,17 @@ abstract contract BeforeAfter is BaseStorageVariables {
         if (vars.sortedCdpsSizeBefore != vars.sortedCdpsSizeAfter) {
             log = log
                 .concat("sortedCdpsSize\t\t\t")
-                .concat(vars.sortedCdpsSizeBefore.pretty())
-                .concat("\t")
-                .concat(vars.sortedCdpsSizeAfter.pretty())
+                .concat(vars.sortedCdpsSizeBefore.pretty(0))
+                .concat("\t\t\t")
+                .concat(vars.sortedCdpsSizeAfter.pretty(0))
                 .concat("\n");
         }
         if (vars.cdpStatusBefore != vars.cdpStatusAfter) {
             log = log
                 .concat("cdpStatus\t\t\t")
-                .concat(vars.cdpStatusBefore.pretty())
-                .concat("\t")
-                .concat(vars.cdpStatusAfter.pretty())
+                .concat(vars.cdpStatusBefore.pretty(0))
+                .concat("\t\t\t")
+                .concat(vars.cdpStatusAfter.pretty(0))
                 .concat("\n");
         }
         if (vars.tcrBefore != vars.tcrAfter) {
@@ -406,6 +410,14 @@ abstract contract BeforeAfter is BaseStorageVariables {
         if (vars.hasGracePeriodPassedBefore != vars.hasGracePeriodPassedAfter) {
             log = log
                 .concat("hasGracePeriodPassed\t\t")
+                .concat(vars.hasGracePeriodPassedBefore.pretty())
+                .concat("\t\t\t")
+                .concat(vars.hasGracePeriodPassedAfter.pretty())
+                .concat("\n");
+        }
+        if (vars.systemDebtRedistributionIndexBefore != vars.systemDebtRedistributionIndexAfter) {
+            log = log
+                .concat("systemDebtRedistributionIndex\t\t")
                 .concat(vars.hasGracePeriodPassedBefore.pretty())
                 .concat("\t")
                 .concat(vars.hasGracePeriodPassedAfter.pretty())

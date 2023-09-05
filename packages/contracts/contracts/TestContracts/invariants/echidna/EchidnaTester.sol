@@ -231,7 +231,9 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         _after(_cdpId);
 
         if (success) {
-            if (vars.newIcrBefore > cdpManager.LICR()) {
+            if (
+                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+            ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
@@ -306,7 +308,9 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 "Partial liquidation must reduce CDP debt"
             );
 
-            if (vars.newIcrBefore > cdpManager.LICR()) {
+            if (
+                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+            ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
@@ -403,8 +407,9 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 }
             }
 
-            if (minIcrBefore > cdpManager.LICR()) {
-                emit L3(minIcrBefore, vars.newTcrBefore, vars.newTcrAfter);
+            if (
+                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+            ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }

@@ -36,7 +36,7 @@
 			"assertionTesting": {
 				"enabled": true,
 				"testViewMethods": false,
-				"assertionModes": {
+				"panicCodeConfig": {
 					"failOnCompilerInsertedPanic": false,
 					"failOnAssertion": true,
 					"failOnArithmeticUnderflow": false,
