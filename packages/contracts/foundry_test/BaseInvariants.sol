@@ -66,7 +66,7 @@ contract eBTCBaseInvariants is eBTCBaseFixture {
             _sum = _sum + _debt;
         }
         require(
-            _utils.assertApproximateEq(_sum, cdpManager.getEntireSystemDebt(), _tolerance),
+            _utils.assertApproximateEq(_sum, cdpManager.getSystemDebt(), _tolerance),
             "System Invariant: active_pool_5"
         );
     }

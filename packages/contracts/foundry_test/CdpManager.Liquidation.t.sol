@@ -113,14 +113,14 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             uint256 _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
-            uint256 _debtSystemBefore = cdpManager.getEntireSystemDebt();
+            uint256 _debtSystemBefore = cdpManager.getSystemDebt();
 
             _waitUntilRMColldown();
 
             vm.prank(users[0]);
             cdpManager.liquidate(cdpId1);
             uint256 _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
-            uint256 _debtSystemAfter = cdpManager.getEntireSystemDebt();
+            uint256 _debtSystemAfter = cdpManager.getSystemDebt();
             assertEq(
                 _expectedLiqDebt,
                 _debtLiquidatorBefore - _debtLiquidatorAfter,
@@ -212,15 +212,15 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             deal(address(eBTCToken), users[0], _cdpState.debt); // sugardaddy liquidator
             {
                 uint256 _debtLiquidatorBefore = eBTCToken.balanceOf(users[0]);
-                uint256 _debtSystemBefore = cdpManager.getEntireSystemDebt();
-                uint256 _collSystemBefore = cdpManager.getEntireSystemColl();
+                uint256 _debtSystemBefore = cdpManager.getSystemDebt();
+                uint256 _collSystemBefore = cdpManager.getSystemCollShares();
                 _waitUntilRMColldown();
                 vm.prank(users[0]);
 
                 cdpManager.partiallyLiquidate(cdpId1, _partialLiq._repaidDebt, cdpId1, cdpId1);
                 uint256 _debtLiquidatorAfter = eBTCToken.balanceOf(users[0]);
-                uint256 _debtSystemAfter = cdpManager.getEntireSystemDebt();
-                uint256 _collSystemAfter = cdpManager.getEntireSystemColl();
+                uint256 _debtSystemAfter = cdpManager.getSystemDebt();
+                uint256 _collSystemAfter = cdpManager.getSystemCollShares();
                 assertEq(
                     _expectedLiqDebt,
                     _debtLiquidatorBefore - _debtLiquidatorAfter,
@@ -265,7 +265,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _multipleCDPsLiq(uint256 _n, bytes32[] memory _cdps, address _liquidator) internal {
         /// entire systme debt = activePool
-        uint256 _debtSystemBefore = cdpManager.getEntireSystemDebt();
+        uint256 _debtSystemBefore = cdpManager.getSystemDebt();
 
         deal(address(eBTCToken), _liquidator, _debtSystemBefore); // sugardaddy liquidator
         uint256 _debtLiquidatorBefore = eBTCToken.balanceOf(_liquidator);
@@ -280,7 +280,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         }
 
         uint256 _debtLiquidatorAfter = eBTCToken.balanceOf(_liquidator);
-        uint256 _debtSystemAfter = cdpManager.getEntireSystemDebt();
+        uint256 _debtSystemAfter = cdpManager.getSystemDebt();
 
         // calc debt in system by summing up all CDPs debt
         uint256 _leftTotalDebt;
@@ -425,7 +425,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // prepare sequence liquidation
         address _liquidator = users[users.length - 1];
-        deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
+        deal(address(eBTCToken), _liquidator, cdpManager.getSystemDebt()); // sugardaddy liquidator
         _waitUntilRMColldown();
 
         uint256 _liquidatorBalBefore = collateral.balanceOf(_liquidator);
@@ -463,7 +463,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // prepare batch liquidation
         address _liquidator = users[users.length - 1];
-        deal(address(eBTCToken), _liquidator, cdpManager.getEntireSystemDebt()); // sugardaddy liquidator
+        deal(address(eBTCToken), _liquidator, cdpManager.getSystemDebt()); // sugardaddy liquidator
         _waitUntilRMColldown();
 
         uint256 _liquidatorBalBefore = collateral.balanceOf(_liquidator);

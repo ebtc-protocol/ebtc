@@ -662,8 +662,8 @@ contract('CdpManager', async accounts => {
 
     const TCR_0 = await th.getTCR(contracts)
 
-    const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
+    const entireSystemCollBefore = await cdpManager.getSystemCollShares()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
 
     const expectedTCR_0 = entireSystemCollBefore.mul(price).div(entireSystemDebtBefore)
 

@@ -35,7 +35,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_fee2(LocalFeeSplitVar memory _var) internal {
         assertGt(
-            collateral.getPooledEthByShares(cdpManager.getEntireSystemColl()),
+            collateral.getPooledEthByShares(cdpManager.getSystemCollShares()),
             _var._prevTotalCollUnderlying,
             "System Invariant: cdp_manager_fee2"
         );
@@ -117,7 +117,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         cdpManager.syncGlobalAccountingAndGracePeriod();
 
-        uint256 _totalCollAfter = cdpManager.getEntireSystemColl();
+        uint256 _totalCollAfter = cdpManager.getSystemCollShares();
         uint256 _collateralTokensInActivePoolAfter = collateral.balanceOf(address(activePool));
         uint256 _internalAccountingCollAfter = activePool.getSystemCollShares();
         uint256 _feeBalAfter = collateral.balanceOf(splitFeeRecipient);
@@ -203,7 +203,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         for (uint256 i = 0; i < _loop; ++i) {
             // get original status for the system
             uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
-            uint256 _totalColl = cdpManager.getEntireSystemColl();
+            uint256 _totalColl = cdpManager.getSystemCollShares();
             uint256 _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
 
             // prepare CDP status for invariant check
@@ -256,7 +256,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         for (uint256 i = 0; i < _loop; ++i) {
             // get original status for the system
             uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
-            uint256 _totalColl = cdpManager.getEntireSystemColl();
+            uint256 _totalColl = cdpManager.getSystemCollShares();
             uint256 _totalCollUnderlying = collateral.getPooledEthByShares(_totalColl);
 
             // prepare CDP status for invariant check

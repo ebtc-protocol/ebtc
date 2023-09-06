@@ -85,7 +85,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _apBalAfter = await collToken.balanceOf(activePool.address);
 	  
       let _aliceColl = await cdpManager.getCdpCollShares(_aliceCdpId); 
-      let _totalColl = await cdpManager.getEntireSystemColl(); 
+      let _totalColl = await cdpManager.getSystemCollShares(); 
       th.assertIsApproximatelyEqual(_aliceColl, _totalColl, 0);	
 	  
       let _underlyingBalBefore = _totalColl.mul(_newIndex).div(mv._1e18BN);
@@ -119,7 +119,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _expectedFeeShare = _fees[0];
       await borrowerOperations.withdrawEBTC(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
       let _aliceCollAfter = await cdpManager.getCdpCollShares(_aliceCdpId); 
-      let _totalCollAfter = await cdpManager.getEntireSystemColl(); 
+      let _totalCollAfter = await cdpManager.getSystemCollShares(); 
       th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceColl.sub(_expectedFeeShare), _errorTolerance);
       th.assertIsApproximatelyEqual(_totalCollAfter, _totalColl.sub(_expectedFeeShare), _errorTolerance);
 	  
@@ -172,7 +172,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           th.assertIsApproximatelyEqual(_totalStakeAdded, _totalStake, _errorTolerance);
           let _aliceColl = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[1]; 
           let _bobColl = (await cdpManager.getDebtAndCollShares(_bobCdpId))[1]; 
-          let _totalColl = await cdpManager.getEntireSystemColl(); 
+          let _totalColl = await cdpManager.getSystemCollShares(); 
           let _totalCollBeforeAdded = toBN(_aliceColl.toString()).add(toBN(_bobColl.toString()));
           th.assertIsApproximatelyEqual(_totalCollBeforeAdded, _totalColl, _errorTolerance);
           
@@ -216,7 +216,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _aliceExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _systemStEthFeePerUnitIndex);
           let _bobExpectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_bobCdpId, _systemStEthFeePerUnitIndex);
 	     
-          let _totalCollAfter = await cdpManager.getEntireSystemColl();  	 
+          let _totalCollAfter = await cdpManager.getSystemCollShares();  	 
 	  
           th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceExpectedFeeApplied[1], _errorTolerance);
           th.assertIsApproximatelyEqual(_bobCollAfter, _bobExpectedFeeApplied[1], _errorTolerance);
@@ -414,7 +414,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
       let _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
       let _activeColl = await activePool.getSystemCollShares();
-      let _systemDebt = await cdpManager.getEntireSystemDebt();
+      let _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_activeColl, _cdpDebtColl[1], _errorTolerance.toNumber());
       th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
 	  
@@ -429,7 +429,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // final check
       _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
-      _systemDebt = await cdpManager.getEntireSystemDebt();
+      _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
 	  
       _cdpColl = _cdpDebtColl[1];
@@ -583,8 +583,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _1e36 = mv._1e18BN.mul(mv._1e18BN);
 
       // calculate triggering CDP parameters
-      let _totalC = await cdpManager.getEntireSystemColl();
-      let _totalD = await cdpManager.getEntireSystemDebt();	  
+      let _totalC = await cdpManager.getSystemCollShares();
+      let _totalD = await cdpManager.getSystemDebt();	  
       let _icrUpper = _CCR// icr < CCR
       let _numerator = _totalC.mul(_idxPrime).mul(toBN(_price)).div(_1e36).sub(_CCR.mul(_totalD).div(mv._1e18BN));// (C * I' * p - CCR * D)
       let _icrLower = _CCR.mul(_newIndex).mul(toBN(_price)).mul(minDebt).div(_1e36).div(_numerator.add(minDebt.mul(toBN(_price)).mul(_newIndex).div(_1e36)))// icr > (2 * p * I * CCR) / (C * I' * p - CCR * D + 2 * p * I)

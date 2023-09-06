@@ -871,7 +871,7 @@ contract EchidnaTester {
             (uint256 _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum = _sum.add(_debt);
         }
-        if (!_assertApproximateEq(_sum, cdpManager.getEntireSystemDebt(), diff_tolerance)) {
+        if (!_assertApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance)) {
             return false;
         }
         return true;

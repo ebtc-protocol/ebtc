@@ -516,7 +516,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 deltaIndexFees = (deltaIndex * stakingRewardSplit) / MAX_REWARD_SPLIT;
 
         // we take the fee for all CDPs immediately which is scaled by index precision
-        uint256 _deltaFeeSplit = deltaIndexFees * getEntireSystemColl();
+        uint256 _deltaFeeSplit = deltaIndexFees * getSystemCollShares();
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;

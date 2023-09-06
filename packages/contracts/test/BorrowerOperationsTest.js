@@ -4010,8 +4010,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(1, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, false, debtChange, false, price))
 
-        let _cdpColl = await cdpManager.getEntireSystemColl();
-        let _cdpTotalDebt = await cdpManager.getEntireSystemDebt();
+        let _cdpColl = await cdpManager.getSystemCollShares();
+        let _cdpTotalDebt = await cdpManager.getSystemDebt();
         const expectedTCR = (_cdpColl.add(toBN('0')).sub(toBN(collChange))).mul(price)
           .div(_cdpTotalDebt.add(toBN('0')).sub(toBN(debtChange)))
 
@@ -4050,8 +4050,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(100, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, true, price))
 
-        let _cdpColl = await cdpManager.getEntireSystemColl();
-        let _cdpTotalDebt = await cdpManager.getEntireSystemDebt();
+        let _cdpColl = await cdpManager.getSystemCollShares();
+        let _cdpTotalDebt = await cdpManager.getSystemDebt();
         const expectedTCR = (_cdpColl.add(toBN('0')).add(toBN(collChange))).mul(price)
           .div(_cdpTotalDebt.add(toBN('0')).add(toBN(debtChange)))
 
@@ -4090,8 +4090,8 @@ contract('BorrowerOperations', async accounts => {
         const debtChange = dec(1, 18)
         const newTCR = (await borrowerOperations.getNewTCRFromCdpChange(collChange, true, debtChange, false, price))
         
-        let _cdpColl = await cdpManager.getEntireSystemColl();
-        let _cdpTotalDebt = await cdpManager.getEntireSystemDebt();
+        let _cdpColl = await cdpManager.getSystemCollShares();
+        let _cdpTotalDebt = await cdpManager.getSystemDebt();
         const expectedTCR = (_cdpColl.add(toBN('0')).add(toBN(collChange))).mul(price)
           .div(_cdpTotalDebt.add(toBN('0')).sub(toBN(debtChange)))
 

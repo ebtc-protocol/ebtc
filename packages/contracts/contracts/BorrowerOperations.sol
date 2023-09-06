@@ -990,9 +990,9 @@ contract BorrowerOperations is
         bool _isDebtIncrease,
         uint256 _price
     ) internal view returns (uint256) {
-        uint256 _shareColl = getEntireSystemColl();
+        uint256 _shareColl = getSystemCollShares();
         uint256 totalColl = collateral.getPooledEthByShares(_shareColl);
-        uint256 totalDebt = _getEntireSystemDebt();
+        uint256 totalDebt = _getSystemDebt();
 
         totalColl = _isCollIncrease ? totalColl + _collChange : totalColl - _collChange;
         totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;

@@ -277,8 +277,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // ensure there is more than one CDP
         _singleCdpSetupWithICR(user, 200e16);
         (, bytes32 userCdpid) = _singleCdpSetupWithICR(user, _toRedeemICR);
-        uint256 _totalCollBefore = cdpManager.getEntireSystemColl();
-        uint256 _totalDebtBefore = cdpManager.getEntireSystemDebt();
+        uint256 _totalCollBefore = cdpManager.getSystemCollShares();
+        uint256 _totalDebtBefore = cdpManager.getSystemDebt();
         uint256 _redeemedDebt = cdpManager.getCdpDebt(userCdpid);
         uint256 _cdpColl = cdpManager.getCdpCollShares(userCdpid);
         uint256 _cdpLiqReward = cdpManager.getCdpLiquidatorRewardShares(userCdpid);
@@ -290,12 +290,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             _checkFullyRedeemedCdp(userCdpid, user, _cdpColl, _redeemedDebt);
             _utils.assertApproximateEq(
                 _totalCollBefore - _cdpColl,
-                cdpManager.getEntireSystemColl(),
+                cdpManager.getSystemCollShares(),
                 ICR_COMPARE_TOLERANCE
             );
             assertEq(
                 _totalDebtBefore - _redeemedDebt,
-                cdpManager.getEntireSystemDebt(),
+                cdpManager.getSystemDebt(),
                 "total debt mismatch after redemption!!!"
             );
         }
@@ -324,8 +324,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         (, bytes32 userCdpid1) = _singleCdpSetupWithICR(users[0], _toRedeemICR);
         (, bytes32 userCdpid2) = _singleCdpSetupWithICR(users[1], _toRedeemICR + 2e16);
         (, bytes32 userCdpid3) = _singleCdpSetupWithICR(users[2], _toRedeemICR + 4e16);
-        uint256 _totalCollBefore = cdpManager.getEntireSystemColl();
-        uint256 _totalDebtBefore = cdpManager.getEntireSystemDebt();
+        uint256 _totalCollBefore = cdpManager.getSystemCollShares();
+        uint256 _totalDebtBefore = cdpManager.getSystemDebt();
         uint256 _cdpDebt1 = cdpManager.getCdpDebt(userCdpid1);
         uint256 _cdpDebt2 = cdpManager.getCdpDebt(userCdpid2);
         uint256 _cdpDebt3 = cdpManager.getCdpDebt(userCdpid3);
@@ -346,12 +346,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
                     _cdpColl1 -
                     _cdpColl2 -
                     (((_cdpDebt3 * 1e18) / 2) / _originalPrice),
-                cdpManager.getEntireSystemColl(),
+                cdpManager.getSystemCollShares(),
                 ICR_COMPARE_TOLERANCE
             );
             assertEq(
                 _totalDebtBefore - _redeemedDebt,
-                cdpManager.getEntireSystemDebt(),
+                cdpManager.getSystemDebt(),
                 "total debt mismatch after redemption!!!"
             );
         }

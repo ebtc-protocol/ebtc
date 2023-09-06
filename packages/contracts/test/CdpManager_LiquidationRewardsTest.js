@@ -472,7 +472,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const E_entireColl_0 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     // entireSystemColl, excluding A 
-    const denominatorColl_1 = (await cdpManager.getEntireSystemColl()).sub(A_entireColl_0)
+    const denominatorColl_1 = (await cdpManager.getSystemCollShares()).sub(A_entireColl_0)
 
     // Liquidate A
     // console.log(`ICR A: ${await cdpManager.getICR(A, price)}`)
@@ -494,7 +494,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const E_entireColl_1 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     // entireSystemColl, excluding C
-    const denominatorColl_2 = (await cdpManager.getEntireSystemColl()).sub(C_entireColl_1)
+    const denominatorColl_2 = (await cdpManager.getSystemCollShares()).sub(C_entireColl_1)
 
     // Liquidate C
     await debtToken.transfer(owner, (await debtToken.balanceOf(C)), {from: C});	
@@ -513,7 +513,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const E_entireColl_2 = (await th.getEntireCollAndDebt(contracts, _eCdpId)).entireColl
 
     // entireSystemColl, excluding E
-    const denominatorColl_3 = (await cdpManager.getEntireSystemColl()).sub(E_entireColl_2)
+    const denominatorColl_3 = (await cdpManager.getSystemCollShares()).sub(E_entireColl_2)
 
     // Liquidate E
     await debtToken.transfer(owner, (await debtToken.balanceOf(E)), {from: E});	

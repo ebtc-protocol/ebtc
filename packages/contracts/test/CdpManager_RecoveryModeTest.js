@@ -1319,16 +1319,16 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
     assert.isTrue(ICR_A.lt(mv._MCR) && ICR_A.lt(await th.getTCR(contracts)))
 
-    const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()
+    const entireSystemCollBefore = await cdpManager.getSystemCollShares()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()
 
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
     await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from : whale});
     await cdpManager.liquidate(_aliceCdpId, { from: owner })
 
     // Expect system debt and system coll not reduced
-    const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtAfter = await cdpManager.getEntireSystemDebt()
+    const entireSystemCollAfter = await cdpManager.getSystemCollShares()
+    const entireSystemDebtAfter = await cdpManager.getSystemDebt()
 
     const changeInEntireSystemColl = entireSystemCollBefore.sub(entireSystemCollAfter)
     const changeInEntireSystemDebt = entireSystemDebtBefore.sub(entireSystemDebtAfter)
@@ -3044,8 +3044,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
 
-    const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()	  
+    const entireSystemCollBefore = await cdpManager.getSystemCollShares()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()	  
 	  	  
     // trigger cooldown and pass the liq wait
     await cdpManager.syncGracePeriod();
@@ -3064,8 +3064,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const tx = await cdpManager.liquidateCdps(10)
 
     // Expect system debt reduced by 203 EBTC and system coll 2.3 ETH
-    const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtAfter = await cdpManager.getEntireSystemDebt()
+    const entireSystemCollAfter = await cdpManager.getSystemCollShares()
+    const entireSystemDebtAfter = await cdpManager.getSystemDebt()
 
     const changeInEntireSystemColl = entireSystemCollBefore.sub(entireSystemCollAfter)
     const changeInEntireSystemDebt = entireSystemDebtBefore.sub(entireSystemDebtAfter)
@@ -3788,8 +3788,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))
 
-    const entireSystemCollBefore = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtBefore = await cdpManager.getEntireSystemDebt()	  
+    const entireSystemCollBefore = await cdpManager.getSystemCollShares()
+    const entireSystemDebtBefore = await cdpManager.getSystemDebt()	  
 	  	  
     // trigger cooldown and pass the liq wait
     await cdpManager.syncGracePeriod();
@@ -3804,8 +3804,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await cdpManager.batchLiquidateCdps(cdpsToLiquidate)
 
     // Expect system debt reduced by 203 EBTC and system coll by 2 ETH
-    const entireSystemCollAfter = await cdpManager.getEntireSystemColl()
-    const entireSystemDebtAfter = await cdpManager.getEntireSystemDebt()
+    const entireSystemCollAfter = await cdpManager.getSystemCollShares()
+    const entireSystemDebtAfter = await cdpManager.getSystemDebt()
 
     const changeInEntireSystemColl = entireSystemCollBefore.sub(entireSystemCollAfter)
     const changeInEntireSystemDebt = entireSystemDebtBefore.sub(entireSystemDebtAfter)

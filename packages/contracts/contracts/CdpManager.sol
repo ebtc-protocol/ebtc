@@ -575,8 +575,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /**
     Returns the systemic entire debt assigned to Cdps, i.e. the systemDebt value of the Active Pool.
      */
-    function getEntireSystemDebt() public view returns (uint256 entireSystemDebt) {
-        return _getEntireSystemDebt();
+    function getSystemDebt() public view returns (uint256 entireSystemDebt) {
+        return _getSystemDebt();
     }
 
     /**
