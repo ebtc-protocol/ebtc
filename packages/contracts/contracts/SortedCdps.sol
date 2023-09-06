@@ -120,10 +120,10 @@ contract SortedCdps is ISortedCdps {
         address owner,
         uint256 index
     ) external view override returns (bytes32) {
-        return _cdpOfOwnerByIndex(owner, index, bytes32(0), 0);
+        return _cdpOfOwnerByIndex(owner, index, dummyId, 0);
     }
 
-    function cdpOfOwnerByIndex(
+    function cdpOfOwnerByIdx(
         address owner,
         uint256 index,
         bytes32 startNodeId,
@@ -138,8 +138,11 @@ contract SortedCdps is ISortedCdps {
         bytes32 startNodeId,
         uint maxNodes
     ) internal view returns (bytes32) {
-        bytes32 _currentCdpId = data.tail;
+        // walk the list, until we get to the indexed CDP
+        // start at the given node or from the tail of list
+        bytes32 _currentCdpId = (startNodeId == dummyId ? data.tail : startNodeId);
         uint _currentIndex = 0;
+        uint i;
 
         while (_currentCdpId != dummyId) {
             // if the current Cdp is owned by specified owner
@@ -152,19 +155,25 @@ contract SortedCdps is ISortedCdps {
                     _currentIndex = _currentIndex + 1;
                 }
             }
+            ++i;
 
             // move to the next Cdp in the list
             _currentCdpId = data.nodes[_currentCdpId].prevId;
+
+            // cut the run if we exceed expected iterations through the loop
+            if (maxNodes > 0 && i >= maxNodes) {
+                break;
+            }
         }
 
         // if we reach end without seeing the specified index for the owner, a Cdp of that index doesn't exist (they have fewer active Cdps than that)
-        revert("SortedCdps: index exceeds owned count of owner");
+        revert("SortedCdps: index exceeds owned count of owner or specify a bigger maxNodes");
     }
 
     /// @notice Get active Cdp count of a given address
     /// @dev Intended for off-chain use, O(n) operation on size of linked list
     function cdpCountOf(address owner) external view override returns (uint256) {
-        return _cdpCountOf(owner, bytes32(0), 0);
+        return _cdpCountOf(owner, dummyId, 0);
     }
 
     function cdpCountOf(
@@ -180,18 +189,26 @@ contract SortedCdps is ISortedCdps {
         bytes32 startNodeId,
         uint maxNodes
     ) internal view returns (uint256) {
-        // walk the list, until we get to the index
-        bytes32 _currentCdpId = data.tail;
+        // walk the list, until we get to the count
+        // start at the given node or from the tail of list
+        bytes32 _currentCdpId = (startNodeId == dummyId ? data.tail : startNodeId);
         uint _ownedCount = 0;
+        uint i = 0;
 
         while (_currentCdpId != dummyId) {
             // if the current Cdp is owned by specified owner
             if (getOwnerAddress(_currentCdpId) == owner) {
                 _ownedCount = _ownedCount + 1;
             }
+            ++i;
 
             // move to the next Cdp in the list
             _currentCdpId = data.nodes[_currentCdpId].prevId;
+
+            // cut the run if we exceed expected iterations through the loop
+            if (maxNodes > 0 && i >= maxNodes) {
+                break;
+            }
         }
         return _ownedCount;
     }
@@ -201,8 +218,8 @@ contract SortedCdps is ISortedCdps {
     function getCdpsOf(address owner) external view override returns (bytes32[] memory) {
         // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
         // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
-        uint _ownedCount = _cdpCountOf(owner, bytes32(0), 0);
-        return _getCdpsOf(owner, bytes32(0), 0, _ownedCount);
+        uint _ownedCount = _cdpCountOf(owner, dummyId, 0);
+        return _getCdpsOf(owner, dummyId, 0, _ownedCount);
     }
 
     function getCdpsOf(
@@ -222,22 +239,46 @@ contract SortedCdps is ISortedCdps {
         uint maxNodes,
         uint maxArraySize
     ) internal view returns (bytes32[] memory) {
+        if (maxArraySize == 0) {
+            return new bytes32[](0);
+        }
+
         // Two-pass strategy, halving the amount of Cdps we can process before relying on pagination or off-chain methods
-        bytes32[] memory userCdps = new bytes32[](maxArraySize);
+        bytes32[] memory userCdps = new bytes32[](
+            (maxNodes > 0 && maxNodes < maxArraySize) ? maxNodes : maxArraySize
+        );
         uint i = 0;
+        uint _cdpRetrieved;
 
         // walk the list, until we get to the index
-        bytes32 _currentCdpId = data.tail;
+        // start at the given node or from the tail of list
+        bytes32 _currentCdpId = (startNodeId == dummyId ? data.tail : startNodeId);
 
         while (_currentCdpId != dummyId) {
             // if the current Cdp is owned by specified owner
             if (getOwnerAddress(_currentCdpId) == owner) {
                 userCdps[i] = _currentCdpId;
-                i++;
+                ++_cdpRetrieved;
             }
+            ++i;
 
             // move to the next Cdp in the list
             _currentCdpId = data.nodes[_currentCdpId].prevId;
+
+            // cut the run if we exceed expected iterations through the loop
+            if (maxNodes > 0 && i >= maxNodes) {
+                break;
+            }
+        }
+
+        // if CDP number retrieved not equal to expected then we make a new copy
+        if (_cdpRetrieved > 0 && _cdpRetrieved != userCdps.length) {
+            bytes32[] memory _copyUserCdps = new bytes32[](_cdpRetrieved);
+            for (uint i = 0; i < _cdpRetrieved; ++i) {
+                require(userCdps[i] != dummyId, "SortedCdps: invalid CDP retrieved by getCdpsOf()");
+                _copyUserCdps[i] = userCdps[i];
+            }
+            userCdps = _copyUserCdps;
         }
 
         return userCdps;
