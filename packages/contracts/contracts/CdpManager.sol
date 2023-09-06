@@ -861,10 +861,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return Cdps[_cdpId].coll;
     }
 
-    function getCdpStEthBalance(bytes32 _cdpId) external view returns (uint) {
-        return collateral.getPooledEthByShares(Cdps[_cdpId].coll);
-    }
-
     /**
         @notice Get shares value of the liquidator gas incentive reward stored for a CDP. 
         @notice This value is processed when a CDP closes. 

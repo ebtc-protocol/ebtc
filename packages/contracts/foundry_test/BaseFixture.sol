@@ -529,4 +529,9 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         cdpManager.syncGracePeriod();
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
     }
+
+    function _getCdpStEthBalance(bytes32 _cdpId) public view returns (uint) {
+        uint collShares = cdpManager.getCdpCollShares(_cdpId);
+        return collateral.getPooledEthByShares(collShares);
+    }
 }

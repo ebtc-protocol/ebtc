@@ -195,14 +195,12 @@ contract PositionManagersTest is eBTCBaseInvariants {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         vm.assume(collToWithdraw > 0);
-        vm.assume(collToWithdraw < cdpManager.getCdpStEthBalance(userCdpId));
-        vm.assume(
-            cdpManager.getCdpStEthBalance(userCdpId) - collToWithdraw > cdpManager.MIN_NET_COLL()
-        );
+        vm.assume(collToWithdraw < _getCdpStEthBalance(userCdpId));
+        vm.assume(_getCdpStEthBalance(userCdpId) - collToWithdraw > cdpManager.MIN_NET_COLL());
 
         uint price = priceFeedMock.fetchPrice();
         uint newICR = hintHelpers.computeCR(
-            cdpManager.getCdpStEthBalance(userCdpId) - collToWithdraw,
+            _getCdpStEthBalance(userCdpId) - collToWithdraw,
             cdpManager.getCdpDebt(userCdpId),
             price
         );
