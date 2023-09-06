@@ -257,7 +257,7 @@ contract SortedCdps is ISortedCdps {
         while (_currentCdpId != dummyId) {
             // if the current Cdp is owned by specified owner
             if (getOwnerAddress(_currentCdpId) == owner) {
-                userCdps[i] = _currentCdpId;
+                userCdps[_cdpRetrieved] = _currentCdpId;
                 ++_cdpRetrieved;
             }
             ++i;
