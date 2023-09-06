@@ -64,11 +64,13 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _ICR = getICR(_cdpId, _price);
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithTotalCollAndDebt(_price);
 
+        require(_ICR < _TCR, "ICR must be below TCR in any mode"); /// @audit Look for edge cases, _ICR == _TCR also _ICR < CCR as to encourage Delayed Sniping)
+
         // If CDP is above MCR
         if (_ICR >= MCR) {
             // We must be in RM
             require(
-                _TCR < CCR && _ICR < _TCR, /// @audit Look for edge cases, _ICR == _TCR also _ICR < CCR as to encourage Delayed Sniping
+                _TCR < CCR,
                 "CdpManager: ICR is not below liquidation threshold in current mode"
             );
 
