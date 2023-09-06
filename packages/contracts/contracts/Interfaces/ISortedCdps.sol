@@ -76,7 +76,7 @@ interface ISortedCdps {
 
     function cdpOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
 
-    function cdpOfOwnerByIndex(
+    function cdpOfOwnerByIdx(
         address owner,
         uint256 index,
         bytes32 startNodeId,
