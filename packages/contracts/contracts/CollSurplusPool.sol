@@ -51,11 +51,6 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         if (_authorityAddress != address(0)) {
             _initializeAuthority(_authorityAddress);
         }
-
-        emit BorrowerOperationsAddressChanged(_borrowerOperationsAddress);
-        emit CdpManagerAddressChanged(_cdpManagerAddress);
-        emit ActivePoolAddressChanged(_activePoolAddress);
-        emit CollateralAddressChanged(_collTokenAddress);
     }
 
     /**

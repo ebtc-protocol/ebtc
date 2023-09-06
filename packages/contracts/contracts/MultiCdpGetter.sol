@@ -15,8 +15,8 @@ contract MultiCdpGetter {
         uint256 snapshotEBTCDebt;
     }
 
-    CdpManager public cdpManager; // XXX Cdps missing from ICdpManager?
-    ISortedCdps public sortedCdps;
+    CdpManager public immutable cdpManager;
+    ISortedCdps public immutable sortedCdps;
 
     /// @notice Creates a new MultiCdpGetter contract
     /// @param _cdpManager The CdpManager contract

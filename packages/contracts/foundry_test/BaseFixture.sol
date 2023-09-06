@@ -13,6 +13,7 @@ import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
+import {MultiCdpGetter} from "../contracts/MultiCdpGetter.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
@@ -90,6 +91,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
 
+    MultiCdpGetter internal cdpGetter;
     Utilities internal _utils;
 
     address[] internal emptyAddresses;
@@ -294,6 +296,17 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
             feeRecipient = FeeRecipient(
                 ebtcDeployer.deploy(
                     ebtcDeployer.FEE_RECIPIENT(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // Multi Cdp Getter
+            creationCode = type(MultiCdpGetter).creationCode;
+            args = abi.encode(addr.cdpManagerAddress, addr.sortedCdpsAddress);
+
+            cdpGetter = MultiCdpGetter(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.MULTI_CDP_GETTER(),
                     abi.encodePacked(creationCode, args)
                 )
             );

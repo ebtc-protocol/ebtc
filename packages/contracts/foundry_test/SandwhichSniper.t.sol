@@ -8,13 +8,13 @@ contract SandWhichSniperTest is eBTCBaseFixture {
     address payable[] users;
 
     address private splitFeeRecipient;
-    mapping(bytes32 => uint256) private _targetCdpPrevCollUnderlyings;
-    mapping(bytes32 => uint256) private _targetCdpPrevColls;
-    mapping(bytes32 => uint256) private _targetCdpPrevFeeApplied;
+    mapping(bytes32 => uint) private _targetCdpPrevCollUnderlyings;
+    mapping(bytes32 => uint) private _targetCdpPrevColls;
+    mapping(bytes32 => uint) private _targetCdpPrevFeeApplied;
 
     struct LocalFeeSplitVar {
-        uint256 _prevSystemStEthFeePerUnitIndex;
-        uint256 _prevTotalCollUnderlying;
+        uint _prevStFeePerUnitg;
+        uint _prevTotalCollUnderlying;
     }
 
     ////////////////////////////////////////////////////////////////////////////
@@ -43,12 +43,12 @@ contract SandWhichSniperTest is eBTCBaseFixture {
 
         /** SETUP */
         // Rebase collateral so it's never 1/1
-        uint256 _curIndex = collateral.getPooledEthByShares(1e18);
-        uint256 _newIndex = _curIndex + 5e16;
+        uint _curIndex = collateral.getPooledEthByShares(1e18);
+        uint _newIndex = _curIndex + 5e16;
         collateral.setEthPerShare(_newIndex);
 
         // Base Deposits
-        uint256 _curPrice = priceFeedMock.getPrice();
+        uint _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16); // Literally at the edge, for similicity
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
@@ -101,7 +101,6 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         cdpManager.liquidate(cdpIdVictim);
         uint256 tcrEnd = cdpManager.getTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
-        assertEq(cdpManager.getCdpStatus(cdpIdVictim), 3); //closedByLiquidation
-        //assertGt(tcrEnd, 1250000000000000000);
+        assertEq(cdpManager.getCdpStatus(cdpIdVictim), 1); //Still Open (And safe until end of Grace Period)
     }
 }

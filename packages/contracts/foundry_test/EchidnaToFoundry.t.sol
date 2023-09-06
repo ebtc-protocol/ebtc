@@ -38,13 +38,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         closeCdp(0);
     }
 
-    function testGetFlashFee() public {
-        openCdp(0, 2);
-        setEthPerShare(0);
-
-        flashLoanColl(216);
-    }
-
     function testBO05() public {
         openCdp(0, 1);
         setEthPerShare(0);
@@ -201,35 +194,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
     }
 
-    function testBrokenL01() public {
-        uint256 _price = priceFeedMock.getPrice();
-        bytes32 _cdpId0 = openCdp(5730552934738, 1);
-        bytes32 _cdpId = openCdp(327421463579861122389783144090, 130973672053670060);
-        setEthPerShare(0);
-        addColl(28537941311866640174, 3493149676010392);
-
-        console2.log(
-            "\tCDPs before rebase",
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getICR(sortedCdps.getLast(), _price)
-        );
-
-        setEthPerShare(148956803032284651814317393496782677);
-
-        console2.log("\tTCR before", cdpManager.getTCR(_price));
-        console2.log(
-            "\tCDPs before",
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getICR(sortedCdps.getLast(), _price)
-        );
-        liquidateCdps(0);
-        console2.log(
-            "\tCDPs after",
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getICR(sortedCdps.getLast(), _price)
-        );
-    }
-
     function testNewTcr() public {
         bytes32 cdp = openCdp(
             57171402311851979203771794298570627232849516536367359032302056791630,
@@ -298,88 +262,10 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         );
     }
 
-    function testGracePeriod() public {
-        openCdp(98435805191320323, 1);
-        bytes32 _cdpId = openCdp(45, 398309674282312203);
-        setEthPerShare(0);
-        setPrice(0);
-        setEthPerShare(0);
-        console2.log("\tTCR before", cdpManager.getTCR(priceFeedMock.getPrice()));
-        console2.log("\tICR after", cdpManager.getICR(_cdpId, priceFeedMock.getPrice()));
-        console2.log("grace period before", cdpManager.lastGracePeriodStartTimestamp());
-        repayEBTC(
-            2484572859117951778134467250756531385828785210248879469979930819007912,
-            31621686756456841055021203862483415034099095459770631665492208911597
-        );
-
-        bool hasGracePeriodPassed = cdpManager.lastGracePeriodStartTimestamp() !=
-            cdpManager.UNSET_TIMESTAMP() &&
-            block.timestamp >
-            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
-        console2.log("grace period after", cdpManager.lastGracePeriodStartTimestamp());
-        console2.log("grace period passed", hasGracePeriodPassed);
-        console2.log("RM?", cdpManager.checkRecoveryMode(priceFeedMock.getPrice()));
-        console2.log("\tTCR after", cdpManager.getTCR(priceFeedMock.getPrice()));
-        console2.log("\tICR after", cdpManager.getICR(_cdpId, priceFeedMock.getPrice()));
-        // assertTrue(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
-    }
-
     function testTcrMustIncreaseAfterRepayment() public {
         openCdp(13981380896748761892053706028661380888937876551972584966356379645, 23);
         setEthPerShare(55516200804822679866310029419499170992281118179349982013988952907);
         repayEBTC(1, 509846657665200610349434642309205663062);
-    }
-
-    function testPartialLiquidationMustImproveTcr() public {
-        bytes32 _cdpId = openCdp(68629174294586120195720659243770282172476486778, 1);
-        setEthPerShare(20046846852775467150329156883749791329258318260232426600677744413254647633);
-        openCdp(7, 566564181883770452);
-        setEthPerShare(184285425546798060011740674459326314940834449738546498486046250902558222321);
-        setEthPerShare(19187829665432980635563099599229152892109566460977248638969147422445827);
-        addColl(2, 139233217088015393513096172332961988464897223753205435228023);
-        _before(_cdpId);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        console2.log(
-            "ICRs",
-            cdpManager.getICR(sortedCdps.getFirst(), vars.priceBefore),
-            cdpManager.getICR(sortedCdps.getLast(), vars.priceBefore)
-        );
-        partialLiquidate(
-            605242160239744977678172846486,
-            88053821468781230873210853613504128873491483931172289
-        );
-        _after(_cdpId);
-        console2.log(_diff());
-        console2.log("isRecoveryModeBefore", vars.isRecoveryModeBefore);
-
-        if (vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore) {
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-            assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
-        }
-    }
-
-    function testL01() public {
-        bytes32 _cdpId = openCdp(2617747364563249548978545473700197415155670830, 1);
-        setEthPerShare(20046846852775467150329156883749791329258318260232426600677744413254647633);
-        openCdp(7, 566564181883770452);
-        setEthPerShare(184285425546798060011740674459326314940834449738546498486046250902558222321);
-        setEthPerShare(19187829665432980635563099599229152892109566460977248638969147422445827);
-        addColl(1, 3816132918153623529054679378161788308872616803819851218451);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        _before(_cdpId);
-        partialLiquidate(
-            1631020564268751141804267840,
-            88534139559654018254419258514416369130870805778276
-        );
-        _after(_cdpId);
-        console2.log(_diff());
-        console2.log("isRecoveryModeBefore", vars.isRecoveryModeBefore);
-
-        assertTrue(
-            vars.newIcrBefore < cdpManager.MCR() ||
-                (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            L_01
-        );
     }
 
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {

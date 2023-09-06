@@ -402,45 +402,4 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         assertEq(userEbtcBefore - repayAmount, userEbtcAfter, BO_07);
     }
-
-    function testAllCdpsShouldMaintainAMinimumCollateralSize() public {
-        uint collAmount = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
-        uint _EBTCAmount = 1;
-        uint withdrawAmount = 186970840931894992;
-        uint ethPerShare = 0.909090909090909092e18;
-        address user = _utils.getNextUserAddress();
-
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10 ether}();
-
-        console2.log("openCdp", _EBTCAmount, collAmount);
-        bytes32 _cdpId = borrowerOperations.openCdp(_EBTCAmount, HINT, HINT, collAmount);
-
-        console2.log("setETHPerShare", ethPerShare);
-        collateral.setEthPerShare(ethPerShare);
-
-        console2.log(">> CDP coll before", cdpManager.getCdpCollShares(_cdpId));
-        console2.log(
-            ">> CDP shares before",
-            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
-        );
-
-        console2.log("withdrawColl", withdrawAmount);
-        borrowerOperations.withdrawColl(_cdpId, withdrawAmount, _cdpId, _cdpId);
-
-        console2.log(">> CDP coll after", cdpManager.getCdpCollShares(_cdpId));
-        console2.log(
-            ">> CDP shares after",
-            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
-        );
-
-        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-        assertGe(
-            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
-            GENERAL_10
-        );
-    }
 }

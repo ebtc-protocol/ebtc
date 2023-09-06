@@ -8,7 +8,6 @@ interface IPool {
 
     event ETHBalanceUpdated(uint256 _newBalance);
     event EBTCBalanceUpdated(uint256 _newBalance);
-    event ActivePoolAddressChanged(address _newActivePoolAddress);
     event CollSharesTransferred(address _to, uint256 _amount);
 
     // --- Functions ---
