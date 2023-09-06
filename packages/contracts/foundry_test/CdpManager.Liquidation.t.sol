@@ -642,6 +642,76 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
     }
 
+    // == FSM TEST ==//
+    // Can NEVER liquidate if CDP above CCR
+    // NOTE: Capped ICR to u64 because infinitely high values are not meaningful
+    function testCanNeverLiquidateIfCdpAboveCCR(uint64 victimICR) public {
+        vm.assume(victimICR > cdpManager.CCR());
+        uint256 _goodICR = 1.35e18;
+        // Open Whale CDP
+        (, bytes32 vulnerableCdpId) = _singleCdpSetup(users[0], _goodICR);
+
+        // Trigger RM for Whale
+        priceFeedMock.setPrice(priceFeedMock.fetchPrice() * 90 / 100);
+
+        // Open Safe CDP
+        (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
+
+        // Show it cannot be liquidated
+        vm.expectRevert();
+        cdpManager.liquidate(safeCdpId);
+
+        vm.expectRevert();
+        cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
+    }
+
+    // Can NEVER liquidate if CDP above TCR
+    /**
+        Open Whale, trigger RM open safe show it cannot
+     */
+
+    function testCanNeverLiquidateIfCdpAboveTCR(uint64 victimICR) public {
+        uint256 _goodICR = 1.35e18;
+        // Open Whale CDP
+        (, bytes32 vulnerableCdpId) = _singleCdpSetup(users[0], _goodICR);
+
+        // Trigger RM for Whale
+        priceFeedMock.setPrice(priceFeedMock.fetchPrice() * 90 / 100);
+
+        // NOTE: Moved here so we maybe in RM but are never liquidatable due to current logic
+        // We're above TCR
+        // We're below CCR
+        // We in RM
+        // TODO: Need to fix this one by determining coll and debt in the future (we're prevented from taking this much risk here)
+        vm.assume(victimICR > cdpManager.getTCR(priceFeedMock.fetchPrice()));
+        vm.assume(victimICR < cdpManager.CCR()); // It's at risk but above // TODO: Need to open before here, F
+        uint256 _TCR = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        bool _recoveryMode = _TCR < cdpManager.CCR();
+        vm.assume(_recoveryMode);
+
+        // Open Safe CDP
+        (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
+
+        // Show it cannot be liquidated
+        vm.expectRevert();
+        cdpManager.liquidate(safeCdpId);
+
+        vm.expectRevert();
+        cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
+    }
+
+    // Can liquidate after 15 mins if CDP is in Buffer
+    /**
+        Open Whale, open victim, trigger RM, show that it cannot, wait 15 show that i can
+     */
+
+    // Can Always liquidate if CDP below MCR
+    /**
+        Open Whale, open victim at risk, trigger victim < MCR, show that it can always be liquidated
+     */
+    
+    // == END FSM TEST == //
+
     /// @dev open Cdp then with price change to a fuzzed _liqICR
     /// @dev According to the specific range for given _liqICR
     /// @dev full liquidation premium should match expected calculation:
