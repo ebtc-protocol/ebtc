@@ -35,7 +35,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         uint256 newStakingRewardSplit
     ) public {
         // TODO: Test the actual math from this works out
-        vm.assume(newStakingRewardSplit <= cdpManager.MAX_REWARD_SPLIT());
+        newStakingRewardSplit = bound(newStakingRewardSplit, 0, cdpManager.MAX_REWARD_SPLIT());
 
         address user = _utils.getNextUserAddress();
 
@@ -57,7 +57,11 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     function testCDPManagerSetStakingRewardSplitValueLimits(
         uint256 newInvalidStakingRewardSplit
     ) public {
-        vm.assume(newInvalidStakingRewardSplit > cdpManager.MAX_REWARD_SPLIT());
+        newInvalidStakingRewardSplit = bound(
+            newInvalidStakingRewardSplit,
+            cdpManager.MAX_REWARD_SPLIT(),
+            type(uint256).max
+        );
 
         address user = _utils.getNextUserAddress();
 
@@ -86,8 +90,11 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         uint256 newRedemptionFeeFloor
     ) public {
         // TODO: Test the actual math from this works out
-        vm.assume(newRedemptionFeeFloor >= cdpManager.MIN_REDEMPTION_FEE_FLOOR());
-        vm.assume(newRedemptionFeeFloor <= cdpManager.DECIMAL_PRECISION());
+        newRedemptionFeeFloor = bound(
+            newRedemptionFeeFloor,
+            cdpManager.MIN_REDEMPTION_FEE_FLOOR(),
+            cdpManager.DECIMAL_PRECISION()
+        );
 
         address user = _utils.getNextUserAddress();
 
@@ -157,9 +164,10 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetMinuteDecayFactorWithPermission(uint256 newMinuteDecayFactor) public {
-        vm.assume(
-            newMinuteDecayFactor >= cdpManager.MIN_MINUTE_DECAY_FACTOR() &&
-                newMinuteDecayFactor <= cdpManager.MAX_MINUTE_DECAY_FACTOR()
+        newMinuteDecayFactor = bound(
+            newMinuteDecayFactor,
+            cdpManager.MIN_MINUTE_DECAY_FACTOR(),
+            cdpManager.MAX_MINUTE_DECAY_FACTOR()
         );
 
         address user = _utils.getNextUserAddress();
@@ -226,7 +234,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function test_CdpManagerSetGracePeriod_Auth(uint128 newGracePeriod) public {
-        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
+        newGracePeriod = uint128(
+            bound(newGracePeriod, cdpManager.MINIMUM_GRACE_PERIOD(), type(uint128).max)
+        );
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
         uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
@@ -238,7 +248,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function test_CdpManagerSetGracePeriodValid_Succeeds(uint128 newGracePeriod) public {
-        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD());
+        newGracePeriod = uint128(
+            bound(newGracePeriod, cdpManager.MINIMUM_GRACE_PERIOD(), type(uint128).max)
+        );
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
         uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
@@ -253,8 +265,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     function test_CdpManagerSetGracePeriodValid_IsEnforcedForUnsetGracePeriod(
         uint128 newGracePeriod
     ) public {
-        vm.assume(newGracePeriod >= cdpManager.MINIMUM_GRACE_PERIOD() + 2);
-        vm.assume(newGracePeriod < type(uint128).max / 10); // prevent unrealistic overflow
+        newGracePeriod = uint128(
+            bound(newGracePeriod, cdpManager.MINIMUM_GRACE_PERIOD() + 2, type(uint128).max / 10)
+        ); // prevent unrealistic overflow
 
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
@@ -274,7 +287,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function test_CdpManagerSetGracePeriodInvalid_Reverts(uint128 newGracePeriod) public {
-        vm.assume(newGracePeriod < cdpManager.MINIMUM_GRACE_PERIOD());
+        newGracePeriod = uint128(bound(newGracePeriod, 0, cdpManager.MINIMUM_GRACE_PERIOD() - 1));
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
         uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
@@ -289,7 +302,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     function test_CdpManagerSetGracePeriodInvalid_RevertsAndIsNotEnforcedForUnsetGracePeriod(
         uint128 newGracePeriod
     ) public {
-        vm.assume(newGracePeriod < cdpManager.MINIMUM_GRACE_PERIOD());
+        newGracePeriod = uint128(bound(newGracePeriod, 0, cdpManager.MINIMUM_GRACE_PERIOD() - 1));
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
         uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();

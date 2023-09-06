@@ -39,8 +39,6 @@ contract SandWhichSniperTest is eBTCBaseFixture {
     function test_snipeViaPriceDradwown() public {
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
 
-        vm.assume(debtAmt > 1e18);
-
         /** SETUP */
         // Rebase collateral so it's never 1/1
         uint256 _curIndex = collateral.getPooledEthByShares(1e18);

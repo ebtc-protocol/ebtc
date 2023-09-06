@@ -57,16 +57,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         users = _utils.createUsers(4);
     }
 
-    function _ensureDebtAmountValidity(uint256 _debtAmt) internal pure {
-        vm.assume(_debtAmt > 1e18);
-        vm.assume(_debtAmt < 10000e18);
-    }
-
-    function _ensureCollAmountValidity(uint256 _collAmt) internal pure {
-        vm.assume(_collAmt > 22e17);
-        vm.assume(_collAmt < 10000e18);
-    }
-
     function _checkAvailableToLiq(bytes32 _cdpId, uint256 _price) internal view returns (bool) {
         uint256 _TCR = cdpManager.getTCR(_price);
         uint256 _ICR = cdpManager.getICR(_cdpId, _price);
@@ -76,15 +66,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     // Test single CDP liquidation with price fluctuation
     function testLiquidateSingleCDP(uint256 price, uint256 debtAmt) public {
-        _ensureDebtAmountValidity(debtAmt);
+        debtAmt = bound(debtAmt, 1e18, 10000e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
-        vm.assume(price > _curPrice / 10000);
-        vm.assume(_curPrice / 2 > price);
+        price = bound(price, _curPrice / 10000, _curPrice / 2);
 
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
-
-        vm.assume(coll1 > 22e17); // Must reach minimum coll threshold
+        coll1 = bound(coll1, 22e17, type(uint256).max);
 
         vm.prank(users[0]);
         collateral.approve(address(borrowerOperations), type(uint256).max);
@@ -153,9 +141,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     // - when its ICR is higher than LICR then the collateral to liquidator is (repaidDebt * LICR) / price
     // - when its ICR is lower than LICR then the collateral to liquidator is (repaidDebt * ICR) / price
     function testPartiallyLiquidateSingleCDP(uint256 debtAmt, uint256 partialRatioBps) public {
-        _ensureDebtAmountValidity(debtAmt);
-        vm.assume(partialRatioBps < 10000);
-        vm.assume(partialRatioBps > 0);
+        debtAmt = bound(debtAmt, 1e18, 10000e18);
+        partialRatioBps = bound(partialRatioBps, 1, 10000 - 1);
 
         uint256 _curPrice = priceFeedMock.getPrice();
 
@@ -316,12 +303,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 debtAmt1,
         uint256 debtAmt2
     ) public {
-        _ensureDebtAmountValidity(debtAmt1);
-        _ensureDebtAmountValidity(debtAmt2);
+        debtAmt1 = bound(debtAmt1, 1e18, 10000e18);
+        debtAmt2 = bound(debtAmt2, 1e18, 10000e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
-        vm.assume(price > _curPrice / 10000);
-        vm.assume(_curPrice / 2 > price);
+        price = bound(price, _curPrice / 10000, _curPrice / 2);
 
         uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);
         uint256 coll2 = _utils.calculateCollAmount(debtAmt2, _curPrice, 297e16);
@@ -367,12 +353,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 debtAmt1,
         uint256 debtAmt2
     ) public {
-        _ensureDebtAmountValidity(debtAmt1);
-        _ensureDebtAmountValidity(debtAmt2);
+        debtAmt1 = bound(debtAmt1, 1e18, 10000e18);
+        debtAmt2 = bound(debtAmt2, 1e18, 10000e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
-        vm.assume(price > _curPrice / 10000);
-        vm.assume(_curPrice / 2 > price);
+        price = bound(price, _curPrice / 10000, _curPrice / 2);
 
         uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);
         uint256 coll2 = _utils.calculateCollAmount(debtAmt2, _curPrice, 297e16);
@@ -567,8 +552,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     /// @dev Cdp ICR between 110% (MCR) and 100%
     /// @dev premium = ICR-100%
     function test_LiqPremiumWithCdpOvercollateralized_BelowMaxPremium(uint256 ICR) public {
-        vm.assume(ICR > cdpManager.MCR());
-        vm.assume(ICR <= cdpManager.CCR());
+        ICR = bound(ICR, cdpManager.MCR() + 1, cdpManager.CCR());
 
         // ensure there is more than one CDP
         _singleCdpSetup(users[0], 156e16);
@@ -604,8 +588,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     /// @dev Cdp ICR between 125% (CCR) and 110% (MCR)
     /// @dev premium = 110%
     function test_LiqPremiumWithCdpOvercollateralized_AboveMaxPremium(uint256 ICR) public {
-        vm.assume(ICR >= 111e16);
-        vm.assume(ICR <= 120e16);
+        ICR = bound(ICR, 111e16, 120e16);
 
         // ensure there is more than one CDP
         _singleCdpSetup(users[0], 170e16);
@@ -654,8 +637,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _belowCCR = 124e16;
 
         // ensure liquidation ICR falls in reasonable range
-        vm.assume(_liqICR >= 1e15);
-        vm.assume(_liqICR < _belowCCR);
+        _liqICR = bound(_liqICR, 1e15, _belowCCR - 1);
 
         // ensure price change would give expected fuzz ICR
         uint256 _originalPrice = priceFeedMock.fetchPrice();

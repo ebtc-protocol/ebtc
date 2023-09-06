@@ -54,11 +54,10 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
     ///   TODO: Add a max / max - 1 test to show what happens
     function testBasicLoanSTETH(uint128 loanAmount, uint128 giftAmount) public {
         require(address(stethReceiver) != address(0));
+        // Funny enough 0 reverts because of deal not
+        loanAmount = uint128(bound(loanAmount, 1, activePool.maxFlashLoan(address(collateral))));
 
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
-
-        // Funny enough 0 reverts because of deal not
-        vm.assume(loanAmount > 0);
 
         // No cheecky overflow
         vm.assume(loanAmount + fee <= type(uint256).max);
@@ -73,7 +72,6 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
         // Give a bunch of ETH to the pool so we can loan it and randomly gift some to activePool
         uint256 _suggar = giftAmount > loanAmount ? giftAmount : loanAmount;
         dealCollateral(address(activePool), _suggar);
-        vm.assume(giftAmount > 0);
 
         uint256 prevFeeBalance = collateral.balanceOf(activePool.feeRecipientAddress());
         // Perform flashloan
@@ -112,7 +110,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
     /// @dev Cannot send ETH to ActivePool
     function testCannottransferSystemCollShares(uint256 amount) public {
         vm.deal(address(this), amount);
-        vm.assume(amount > 0);
+        amount = bound(amount, 1, type(uint256).max);
 
         vm.expectRevert("ActivePool: Caller is not BorrowerOperations");
         payable(address(activePool)).call{value: amount}("");
@@ -167,8 +165,8 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
      */
     function testSTETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(randomToken != address(collateral));
-        vm.assume(amount > 0);
-        vm.assume(flashFee <= activePool.MAX_FEE_BPS());
+        amount = uint128(bound(amount, 1, type(uint128).max));
+        flashFee = bound(flashFee, 0, activePool.MAX_FEE_BPS());
 
         vm.prank(defaultGovernance);
         activePool.setFeeBps(flashFee);

@@ -185,14 +185,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevCollUnderlyings[_cdpId] = collateral.getPooledEthByShares(_cdpState.coll);
     }
 
-    function _ensureDebtAmountValidity(uint256 _debtAmt) internal pure {
-        vm.assume(_debtAmt > 1e18);
-        vm.assume(_debtAmt < 10000e18);
-    }
-
     // Test staking fee split with multiple rebasing up
     function testRebasingUps(uint256 debtAmt) public {
-        _ensureDebtAmountValidity(debtAmt);
+        debtAmt = bound(debtAmt, 1e18, 10000e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 297e16);
@@ -239,9 +234,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 debtAmt2,
         uint256 debtAmt3
     ) public {
-        _ensureDebtAmountValidity(debtAmt1);
-        _ensureDebtAmountValidity(debtAmt2);
-        _ensureDebtAmountValidity(debtAmt3);
+        debtAmt1 = bound(debtAmt1, 1e18, 10000e18);
+        debtAmt2 = bound(debtAmt2, 1e18, 10000e18);
+        debtAmt3 = bound(debtAmt3, 1e18, 10000e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt1, _curPrice, 297e16);

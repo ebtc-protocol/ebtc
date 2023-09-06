@@ -72,7 +72,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testEBTCAttack(uint128 amount) public {
-        vm.assume(amount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
+        amount = uint128(bound(amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken))));
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
@@ -121,8 +121,8 @@ contract FlashLoanAttack is eBTCBaseFixture {
 
     function testWethAttack(uint112 amount) public {
         uint256 _maxAvailable = activePool.getSystemCollShares();
-        vm.assume(amount < (_maxAvailable / 2));
-        vm.assume(amount > cdpManager.LIQUIDATOR_REWARD());
+
+        amount = uint112(bound(amount, cdpManager.LIQUIDATOR_REWARD() + 1, _maxAvailable / 2 - 1));
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 

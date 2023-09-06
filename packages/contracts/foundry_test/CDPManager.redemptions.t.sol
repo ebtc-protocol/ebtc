@@ -85,10 +85,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     }
 
     function testMultipleRedemption(uint256 _cdpNumber, uint256 _collAmt) public {
-        vm.assume(_cdpNumber > 1);
-        vm.assume(_cdpNumber <= 1000);
-        vm.assume(_collAmt > 22e17);
-        vm.assume(_collAmt <= 10000e18);
+        _cdpNumber = bound(_cdpNumber, 2, 1000);
+        _collAmt = bound(_collAmt, 22e17 + 1, 10000e18);
         uint256 _price = priceFeedMock.getPrice();
 
         // open random cdps with increasing ICR
@@ -118,7 +116,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 _debt = _utils.calculateBorrowAmount(_collAmt, _price, COLLATERAL_RATIO * 1000);
         _openTestCDP(_redeemer, _collAmt, _debt);
         uint256 _redeemNumber = _utils.generateRandomNumber(1, _cdpNumber - 1, _redeemer);
-        vm.assume(_redeemNumber > 0);
         uint256 _redeemDebt;
         for (uint256 i = 0; i < _redeemNumber; ++i) {
             CdpState memory _state = _getDebtAndCollShares(_cdpIds[i]);
@@ -269,8 +266,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         address user = _utils.getNextUserAddress();
 
         // ensure redemption ICR falls in reasonable range
-        vm.assume(_toRedeemICR > cdpManager.MCR());
-        vm.assume(_toRedeemICR <= cdpManager.CCR());
+        _toRedeemICR = bound(_toRedeemICR, cdpManager.MCR() + 1, cdpManager.CCR());
 
         uint256 _originalPrice = priceFeedMock.fetchPrice();
 
@@ -314,8 +310,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         users = _utils.createUsers(3);
 
         // ensure redemption ICR falls in reasonable range
-        vm.assume(_toRedeemICR > cdpManager.MCR());
-        vm.assume(_toRedeemICR <= cdpManager.CCR());
+        _toRedeemICR = bound(_toRedeemICR, cdpManager.MCR() + 1, cdpManager.CCR());
 
         uint256 _originalPrice = priceFeedMock.fetchPrice();
 

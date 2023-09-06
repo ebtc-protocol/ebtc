@@ -194,10 +194,10 @@ contract PositionManagersTest is eBTCBaseInvariants {
     function test_PositionManagerCanWithdrawColl(uint collToWithdraw) public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
-        vm.assume(collToWithdraw > 0);
-        vm.assume(collToWithdraw < cdpManager.getCdpStEthBalance(userCdpId));
-        vm.assume(
-            cdpManager.getCdpStEthBalance(userCdpId) - collToWithdraw > cdpManager.MIN_NET_COLL()
+        collToWithdraw = bound(
+            collToWithdraw,
+            1,
+            cdpManager.getCdpStEthBalance(userCdpId) - cdpManager.MIN_NET_COLL() - 1
         );
 
         uint price = priceFeedMock.fetchPrice();

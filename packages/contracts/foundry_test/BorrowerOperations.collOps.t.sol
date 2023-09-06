@@ -91,8 +91,7 @@ contract CDPOpsTest is eBTCBaseFixture {
      * @param increaseAmnt The amount of collateral to increase in the CDP.
      */
     function testIncreaseCRHappyFuzz(uint96 increaseAmnt) public {
-        vm.assume(increaseAmnt > 1e1);
-        vm.assume(increaseAmnt < type(uint96).max);
+        increaseAmnt = uint96(bound(increaseAmnt, 1e1, type(uint96).max));
         uint256 collAmount = 28 ether;
         uint256 netColl = collAmount - borrowerOperations.LIQUIDATOR_REWARD();
         address user = _utils.getNextUserAddress();

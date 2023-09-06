@@ -37,7 +37,6 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
      */
     function test_TcrDecreasesAfterClaiming() public {
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
-        vm.assume(debtAmt > 1e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16);
@@ -172,8 +171,6 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
     // Change the TCR to see different results
     function test_canNeverTriggerRMManual() public {
         uint256 debtAmt = 1e20; // TODO: Consider fuzz
-
-        vm.assume(debtAmt > 1e18);
 
         uint256 _curPrice = priceFeedMock.getPrice();
 
