@@ -40,7 +40,7 @@ contract FeeSplitClaimFlashReceiver is IERC3156FlashBorrower {
         bytes calldata data
     ) external override returns (bytes32) {
         // Move state (Causes CollShares to change downwads)
-        cdpManager.syncPendingGlobalState();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         // Approve to repay (Should ensure this works)
         IERC20(token).approve(msg.sender, amount + fee);
