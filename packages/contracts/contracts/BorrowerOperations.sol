@@ -321,7 +321,7 @@ contract BorrowerOperations is
         vars.coll = cdpManager.getCdpCollShares(_cdpId);
 
         // Get the cdp's old ICR before the adjustment, and what its new ICR will be after the adjustment
-        uint256 _cdpStEthBalance = collateral.getPooledEthByShares(vars.coll); //@audit why do we get this from the contract rather than cached state? it's up to date and everything else uses it
+        uint256 _cdpStEthBalance = collateral.getPooledEthByShares(vars.coll);
         require(
             _stEthBalanceDecrease <= _cdpStEthBalance,
             "BorrowerOperations: withdraw more collateral than CDP has!"

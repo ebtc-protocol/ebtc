@@ -559,7 +559,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
         if (_oldPerUnitCdp == _systemStEthFeePerUnitIndex) {
-            // @audit this case is much more frequent, so can be handled first
+            // this case is much more frequent, so can be handled first
             return;
         }
 

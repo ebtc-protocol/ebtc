@@ -13,6 +13,7 @@ import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/FeeRecipient.sol";
 import {EBTCToken} from "../contracts/EBTCToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
+import {MultiCdpGetter} from "../contracts/MultiCdpGetter.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
@@ -100,6 +101,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
     Governor authority;
     LiquidationLibrary liqudationLibrary;
     EBTCDeployer ebtcDeployer;
+    MultiCdpGetter cdpGetter;
     address defaultGovernance;
 
     Utilities internal _utils;
@@ -306,6 +308,17 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
             feeRecipient = FeeRecipient(
                 ebtcDeployer.deploy(
                     ebtcDeployer.FEE_RECIPIENT(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
+
+            // Multi Cdp Getter
+            creationCode = type(MultiCdpGetter).creationCode;
+            args = abi.encode(addr.cdpManagerAddress, addr.sortedCdpsAddress);
+
+            cdpGetter = MultiCdpGetter(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.MULTI_CDP_GETTER(),
                     abi.encodePacked(creationCode, args)
                 )
             );
