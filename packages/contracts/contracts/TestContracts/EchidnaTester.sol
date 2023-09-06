@@ -104,7 +104,7 @@ contract EchidnaTester {
         uint256 debtReduction;
     }
 
-    constructor() public payable {
+    constructor() payable {
         _setUp();
         _connectCoreContracts();
         _connectLQTYContractsToCore();
