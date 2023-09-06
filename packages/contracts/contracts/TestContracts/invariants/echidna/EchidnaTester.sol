@@ -235,7 +235,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                // assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             assertWithMsg(
@@ -312,7 +312,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                // assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             assertWithMsg(
@@ -411,7 +411,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                // assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                assertGt(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
 
             if (
@@ -508,7 +508,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             //     );
             // }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/6#issuecomment-1702653146
-            // assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
+            assertWithMsg(invariant_CDPM_04(vars), CDPM_04);
         }
         assertGt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
 
