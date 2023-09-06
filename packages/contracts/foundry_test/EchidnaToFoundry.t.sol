@@ -331,7 +331,6 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
     }
 
     function testPartialLiquidationMustImproveTcr() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
         bytes32 _cdpId = openCdp(68629174294586120195720659243770282172476486778, 1);
         setEthPerShare(20046846852775467150329156883749791329258318260232426600677744413254647633);
         openCdp(7, 566564181883770452);
@@ -340,12 +339,18 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         addColl(2, 139233217088015393513096172332961988464897223753205435228023);
         _before(_cdpId);
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        console2.log(
+            "ICRs",
+            cdpManager.getICR(sortedCdps.getFirst(), vars.priceBefore),
+            cdpManager.getICR(sortedCdps.getLast(), vars.priceBefore)
+        );
         partialLiquidate(
             605242160239744977678172846486,
             88053821468781230873210853613504128873491483931172289
         );
         _after(_cdpId);
         console2.log(_diff());
+        console2.log("isRecoveryModeBefore", vars.isRecoveryModeBefore);
 
         if (vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore) {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
