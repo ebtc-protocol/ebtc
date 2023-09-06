@@ -646,13 +646,25 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     // Can NEVER liquidate if CDP above CCR
     // NOTE: Capped ICR to u64 because infinitely high values are not meaningful
     function testCanNeverLiquidateIfCdpAboveCCR(uint64 victimICR) public {
+        // Calculate the TCR that they will have after the price decrease
+        // Not the one they have on open
+        // The one on open is a consequence
+
         vm.assume(victimICR > cdpManager.CCR());
-        uint256 _goodICR = 1.35e18;
+        uint256 currentPrice = priceFeedMock.fetchPrice();
+        uint256 endICR = 1.20e18; // In RM
+
+        // We always decrease price by 10%
+        uint256 newPrice = (currentPrice * 90) / 100;
+
+        // Find ICRs we need
+        uint256 whaleICR = (endICR * currentPrice) / newPrice;
+
         // Open Whale CDP
-        (, bytes32 vulnerableCdpId) = _singleCdpSetup(users[0], _goodICR);
+        (, bytes32 vulnerableCdpId) = _singleCdpSetup(users[0], whaleICR);
 
         // Trigger RM for Whale
-        priceFeedMock.setPrice(priceFeedMock.fetchPrice() * 90 / 100);
+        priceFeedMock.setPrice(newPrice);
 
         // Open Safe CDP
         (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
@@ -671,26 +683,32 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
      */
 
     function testCanNeverLiquidateIfCdpAboveTCR(uint64 victimICR) public {
-        uint256 _goodICR = 1.35e18;
-        // Open Whale CDP
-        (, bytes32 vulnerableCdpId) = _singleCdpSetup(users[0], _goodICR);
+        uint256 currentPrice = priceFeedMock.fetchPrice();
+        uint256 endICR = 1.20e18; // In RM
 
-        // Trigger RM for Whale
-        priceFeedMock.setPrice(priceFeedMock.fetchPrice() * 90 / 100);
+        // We always decrease price by 10%
+        uint256 newPrice = (currentPrice * 90) / 100;
 
-        // NOTE: Moved here so we maybe in RM but are never liquidatable due to current logic
-        // We're above TCR
-        // We're below CCR
-        // We in RM
-        // TODO: Need to fix this one by determining coll and debt in the future (we're prevented from taking this much risk here)
-        vm.assume(victimICR > cdpManager.getTCR(priceFeedMock.fetchPrice()));
-        vm.assume(victimICR < cdpManager.CCR()); // It's at risk but above // TODO: Need to open before here, F
-        uint256 _TCR = cdpManager.getTCR(priceFeedMock.fetchPrice());
-        bool _recoveryMode = _TCR < cdpManager.CCR();
-        vm.assume(_recoveryMode);
+        uint256 whaleICR = (endICR * currentPrice) / newPrice;
+
+        vm.assume(victimICR > endICR); // Strictly greater than whale, which will be <= TCR which means this CDP is always > TCR
+        vm.assume(victimICR < cdpManager.CCR());
+
+        uint256 victimOpenICR = (victimICR * currentPrice) / newPrice;
 
         // Open Safe CDP
-        (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
+        (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimOpenICR);
+
+        // Open Whale CDP
+        (, bytes32 vulnerableCdpId) = _singleCdpSetup(users[0], whaleICR);
+
+        // Trigger RM for Whale
+        priceFeedMock.setPrice(newPrice);
+
+        // We are in RM
+        uint256 _TCR = cdpManager.getTCR(newPrice);
+        bool _recoveryMode = _TCR < cdpManager.CCR();
+        vm.assume(_recoveryMode);
 
         // Show it cannot be liquidated
         vm.expectRevert();
@@ -698,18 +716,53 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         vm.expectRevert();
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
-    }
 
-    // Can liquidate after 15 mins if CDP is in Buffer
-    /**
-        Open Whale, open victim, trigger RM, show that it cannot, wait 15 show that i can
-     */
+        // Can liquidate after 15 mins if CDP is in Buffer
+        // Applies to Whale
+        cdpManager.syncGracePeriod();
+
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+
+        vm.startPrank(users[0]);
+        // Liquidate the Whale
+        cdpManager.partiallyLiquidate(vulnerableCdpId, 123, bytes32(0), bytes32(0));
+
+        cdpManager.liquidate(vulnerableCdpId);
+    }
 
     // Can Always liquidate if CDP below MCR
     /**
         Open Whale, open victim at risk, trigger victim < MCR, show that it can always be liquidated
      */
-    
+    function testCanAlwaysLiquidateifBelowMCR(uint64 victimICR) public {
+        uint256 currentPrice = priceFeedMock.fetchPrice();
+        uint256 endICR = 1.35e18; // SAFE
+
+        // We always decrease price by 10%
+        uint256 newPrice = (currentPrice * 90) / 100;
+
+        uint256 whaleICR = (endICR * currentPrice) / newPrice;
+
+        vm.assume(victimICR < (cdpManager.MCR() * 100) / 90); // Strictly greater than whale, which will be <= TCR which means this CDP is always > TCR
+        vm.assume(victimICR > (cdpManager.MCR() * 90) / 100); // Must be able to open
+        console.log("victimICR", victimICR);
+
+        uint256 victimOpenICR = (victimICR * currentPrice) / newPrice;
+        console.log("victimOpenICR", victimOpenICR);
+
+        // Open Unsafe CDP
+        (, bytes32 liquidatableCdp) = _singleCdpSetup(users[0], victimOpenICR);
+
+        // Open Whale CDP
+        (, bytes32 whaleCdpId) = _singleCdpSetup(users[0], whaleICR);
+
+        vm.startPrank(users[0]);
+        // Liquidate the Whale
+        cdpManager.partiallyLiquidate(liquidatableCdp, 123, bytes32(0), bytes32(0));
+
+        cdpManager.liquidate(liquidatableCdp);
+    }
+
     // == END FSM TEST == //
 
     /// @dev open Cdp then with price change to a fuzzed _liqICR
