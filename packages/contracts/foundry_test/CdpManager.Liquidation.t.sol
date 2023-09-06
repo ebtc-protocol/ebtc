@@ -693,7 +693,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 endICR = 1.20e18; // In RM
 
         // We always decrease price by 10%
-        uint256 newPrice = (currentPrice * 90) / 100;
+        uint256 newPrice = (currentPrice * 85) / 100;
 
         uint256 whaleICR = (endICR * currentPrice) / newPrice;
 
