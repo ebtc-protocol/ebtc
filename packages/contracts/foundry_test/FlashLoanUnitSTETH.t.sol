@@ -165,7 +165,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
       Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
         If successful, flashLoan MUST return true.
      */
-    function testWETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
+    function testSTETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(randomToken != address(collateral));
         vm.assume(amount > 0);
         vm.assume(flashFee <= activePool.MAX_FEE_BPS());
