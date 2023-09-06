@@ -669,6 +669,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Open Safe CDP
         (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
 
+        // Go through Grace Period
+        cdpManager.syncGracePeriod();
+
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.startPrank(users[0]);
+
         // Show it cannot be liquidated
         vm.expectRevert();
         cdpManager.liquidate(safeCdpId);
@@ -710,6 +716,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _recoveryMode = _TCR < cdpManager.CCR();
         vm.assume(_recoveryMode);
 
+        // Go through Grace Period
+        cdpManager.syncGracePeriod();
+
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.startPrank(users[0]);
+
         // Show it cannot be liquidated
         vm.expectRevert();
         cdpManager.liquidate(safeCdpId);
@@ -717,13 +729,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.expectRevert();
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
 
-        // Can liquidate after 15 mins if CDP is in Buffer
-        // Applies to Whale
-        cdpManager.syncGracePeriod();
-
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-
-        vm.startPrank(users[0]);
         // Liquidate the Whale
         cdpManager.partiallyLiquidate(vulnerableCdpId, 123, bytes32(0), bytes32(0));
 
