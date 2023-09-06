@@ -738,23 +738,27 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 currentPrice = priceFeedMock.fetchPrice();
         uint256 endICR = 1.35e18; // SAFE
 
-        // We always decrease price by 10%
-        uint256 newPrice = (currentPrice * 90) / 100;
+        // We always decrease price by 25%
+        uint256 newPrice = (currentPrice * 25) / 100;
 
         uint256 whaleICR = (endICR * currentPrice) / newPrice;
 
-        vm.assume(victimICR < (cdpManager.MCR() * 100) / 90); // Strictly greater than whale, which will be <= TCR which means this CDP is always > TCR
-        vm.assume(victimICR > (cdpManager.MCR() * 90) / 100); // Must be able to open
+        vm.assume(victimICR < cdpManager.MCR()); // Must be liquidatable after price drop
         console.log("victimICR", victimICR);
 
         uint256 victimOpenICR = (victimICR * currentPrice) / newPrice;
         console.log("victimOpenICR", victimOpenICR);
+
+        vm.assume(victimOpenICR > cdpManager.CCR()); // Must be able to open
 
         // Open Unsafe CDP
         (, bytes32 liquidatableCdp) = _singleCdpSetup(users[0], victimOpenICR);
 
         // Open Whale CDP
         (, bytes32 whaleCdpId) = _singleCdpSetup(users[0], whaleICR);
+
+        // Trigger Price Change Which causes Victim to be liquidatable
+        priceFeedMock.setPrice(newPrice);
 
         vm.startPrank(users[0]);
         // Liquidate the Whale
