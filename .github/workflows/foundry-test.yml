@@ -44,4 +44,4 @@ jobs:
 
       - name: Foundry Test
         working-directory: ./packages/contracts/
-        run: forge test -vvv
+        run: forge test -vvv ${{ github.base_ref == 'main' && '--fuzz-runs 10000' || '' }}
