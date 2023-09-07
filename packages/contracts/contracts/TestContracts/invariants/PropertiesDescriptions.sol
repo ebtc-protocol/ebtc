@@ -45,6 +45,7 @@ abstract contract PropertiesDescriptions {
     string constant SL_02 =
         "SL-02: The the first(highest) ICR in the sorted list should be greater or equal to TCR (with tolerance due to rounding errors)";
     string constant SL_03 = "SL-03: All CDPs have status active and stake greater than zero";
+    string constant SL_05 = "SL-05: The CDPs should be sorted in descending order of new ICR (accrued)";
 
     ///////////////////////////////////////////////////////
     // Borrower Operations

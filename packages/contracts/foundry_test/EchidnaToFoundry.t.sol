@@ -11,7 +11,7 @@ import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrow
  * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
  * The objective is to go from random values to hardcoded values that can be analyzed more easily
  */
-contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
+contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     address user;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;
     uint256 private constant MAX_FLASHLOAN_ACTIONS = 4;
@@ -266,6 +266,110 @@ contract EchidnaToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower 
         openCdp(13981380896748761892053706028661380888937876551972584966356379645, 23);
         setEthPerShare(55516200804822679866310029419499170992281118179349982013988952907);
         repayEBTC(1, 509846657665200610349434642309205663062);
+    }
+
+    function testPropertySL05() public {
+        setEthPerShare(
+            12137138735364853393659783413495902950573335538668689540776328203983925215811
+        );
+        setEthPerShare(30631887070343426798280082917191654654292863364863423646265020494943238699);
+        setEthPerShare(776978999485790388950919620588735464671614128565904936170116473650448744381);
+        openCdp(168266871339698218615133335629239858353993370046701339713750467499, 1);
+        setEthPerShare(
+            18259119993128374494182960141815059756667443030056035825036320914502997177865
+        );
+        addColl(
+            7128974394460579557571027269632372427504086125697185719639350284139296986,
+            53241717733798681974905139247559310444497207854177943207741265181147256271
+        );
+        openCdp(
+            37635557627948612150381079279416828011988176534495127519810996522075020800647,
+            136472217300866767
+        );
+        setEthPerShare(445556188509986934837462424);
+        openCdp(12181230440821352134148880356120823470441483581757, 1);
+        setEthPerShare(612268882000635712391494911936034158156169162782123690926313314401353750575);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        bytes32 currentCdp = sortedCdps.getFirst();
+        uint256 i = 0;
+        uint256 _price = priceFeedMock.getPrice();
+        console2.log("\tbefore");
+
+        address[] memory _targets = new address[](2);
+        bytes[] memory _calldatas = new bytes[](2);
+        _targets[0] = address(cdpManager);
+        _targets[1] = address(cdpManager);
+
+        uint256 newIcr;
+
+        while (currentCdp != bytes32(0)) {
+            _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, currentCdp);
+            _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, currentCdp, _price);
+
+            try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+                assembly {
+                    // Slice the sighash.
+                    reason := add(reason, 0x04)
+                }
+                bytes memory returnData = abi.decode(reason, (bytes));
+                newIcr = abi.decode(returnData, (uint256));
+            }
+
+            console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        _before(bytes32(0));
+        liquidateCdps(0);
+        _after(bytes32(0));
+        console2.log(_diff());
+        console2.log("\tafter");
+        i = 0;
+        currentCdp = sortedCdps.getFirst();
+        while (currentCdp != bytes32(0)) {
+            _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, currentCdp);
+            _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, currentCdp, _price);
+
+            try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+                assembly {
+                    // Slice the sighash.
+                    reason := add(reason, 0x04)
+                }
+                bytes memory returnData = abi.decode(reason, (bytes));
+                newIcr = abi.decode(returnData, (uint256));
+            }
+
+            console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        assertTrue(invariant_SL_05(actor, cdpManager, priceFeedMock, sortedCdps), SL_05);
+    }
+
+    function testPropertyCSP01() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(4875031885513970860143576544506802817390763544834983767953988765, 2);
+        setEthPerShare(165751067651587426758928329439401399262641793);
+        openCdp(0, 1);
+        repayEBTC(365894549068404535662610420582951074074566619457568347292095201808, 22293884342);
+        _before(bytes32(0));
+        console2.log(
+            "CSP",
+            collateral.sharesOf(address(collSurplusPool)),
+            collSurplusPool.getTotalSurplusCollShares()
+        );
+        redeemCollateral(
+            457124696465624691469821009088209599710133263214077681392799765737718,
+            109056029728595120081267952673704432671053472351341847857754147758,
+            40494814561017944903952057713046004326662485653288253330497571770,
+            0
+        );
+        console2.log(
+            "CSP",
+            collateral.sharesOf(address(collSurplusPool)),
+            collSurplusPool.getTotalSurplusCollShares()
+        );
+        _after(bytes32(0));
+        console2.log(_diff());
+        assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {

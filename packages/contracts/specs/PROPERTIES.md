@@ -57,6 +57,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | SL-02 | The the first(highest) ICR in the sorted list should be greater or equal to TCR | High Level | ⚠️ |
 | SL-03 | All CDPs have status active and stake greater than zero | High Level | ✅ |
 | SL-04 | Nodes need only be re-inserted to the sorted list upon a CDP operation - when the owner adds or removes collateral or debt to their position. Only if the Debt and Coll ratio changes as well, if the ratio remains the same, a call to re-insert may happen, but the resulting order should be the same (e.g. add more coll and debt at same CR) | Variable Transitions | |
+| SL-05 | The CDPs should be sorted in descending order of new ICR (accrued) | Variable Transitions | ✅ |
 
 ## General
 

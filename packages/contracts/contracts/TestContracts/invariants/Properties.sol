@@ -12,6 +12,7 @@ import {PriceFeedTestnet} from "../testnet/PriceFeedTestnet.sol";
 import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
+import {Actor} from "./Actor.sol";
 
 abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     function invariant_AP_01(
@@ -195,6 +196,45 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return true;
     }
 
+    function invariant_SL_05(
+        Actor actor,
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedTestnet,
+        SortedCdps sortedCdps
+    ) internal returns (bool) {
+        address[] memory _targets = new address[](2);
+        bytes[] memory _calldatas = new bytes[](2);
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        _targets[0] = address(cdpManager);
+        _targets[1] = address(cdpManager);
+
+        uint256 _price = priceFeedMock.getPrice();
+        uint256 newIcrPrevious = type(uint256).max;
+
+        while (currentCdp != bytes32(0)) {
+            _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, currentCdp);
+            _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, currentCdp, _price);
+
+            // Compute new ICR after syncAccounting and revert to previous snapshot in oder to not affect the current state
+            try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
+                assembly {
+                    // Slice the sighash.
+                    reason := add(reason, 0x04)
+                }
+                bytes memory returnData = abi.decode(reason, (bytes));
+                uint256 newIcr = abi.decode(returnData, (uint256));
+                if (newIcr > newIcrPrevious) {
+                    return false;
+                }
+                newIcrPrevious = newIcr;
+            }
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        return true;
+    }
+
     function invariant_GENERAL_01(Vars memory vars) internal view returns (bool) {
         return !vars.isRecoveryModeBefore ? !vars.isRecoveryModeAfter : true;
     }
@@ -205,11 +245,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         EBTCToken eBTCToken
     ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
+        // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getTCR(priceFeedTestnet.getPrice()) > 1 ether
-                ? cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice() >=
+            cdpManager.getTCR(priceFeedTestnet.getPrice()) > collateral.getPooledEthByShares(1e18)
+                ? (cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice()) / 1e18 >=
                     eBTCToken.totalSupply()
-                : cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice() <
+                : (cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice()) / 1e18 <
                     eBTCToken.totalSupply();
     }
 

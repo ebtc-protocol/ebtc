@@ -53,7 +53,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         return ans;
     }
 
-    function _getCdpIdsAndICRs() internal returns (Cdp[] memory ans) {
+    function _getCdpIdsAndICRs() internal view returns (Cdp[] memory ans) {
         ans = new Cdp[](sortedCdps.getSize());
         uint256 i = 0;
         bytes32 currentCdp = sortedCdps.getFirst();

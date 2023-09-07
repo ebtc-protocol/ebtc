@@ -418,9 +418,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
         if (vars.systemDebtRedistributionIndexBefore != vars.systemDebtRedistributionIndexAfter) {
             log = log
                 .concat("systemDebtRedistributionIndex\t\t")
-                .concat(vars.hasGracePeriodPassedBefore.pretty())
+                .concat(vars.systemDebtRedistributionIndexBefore.pretty())
                 .concat("\t")
-                .concat(vars.hasGracePeriodPassedAfter.pretty())
+                .concat(vars.systemDebtRedistributionIndexAfter.pretty())
                 .concat("\n");
         }
     }

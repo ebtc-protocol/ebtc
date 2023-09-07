@@ -56,6 +56,10 @@ abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
         return invariant_SL_03(cdpManager, priceFeedMock, sortedCdps);
     }
 
+    function echidna_sorted_list_invariant_5() public returns (bool) {
+        return invariant_SL_05(actor, cdpManager, priceFeedMock, sortedCdps);
+    }
+
     function echidna_GENERAL_02() public returns (bool) {
         return invariant_GENERAL_02(cdpManager, priceFeedMock, eBTCToken);
     }
