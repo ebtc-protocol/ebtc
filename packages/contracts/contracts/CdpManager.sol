@@ -382,7 +382,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
+            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) { /// @audit This is VIEW CR not real
                 _cId = sortedCdps.getPrev(_cId);
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }
@@ -404,8 +404,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-                _syncAccounting(_cId);
-
+                _syncAccounting(_cId); /// @audit From above to here the CR could have gone "negative"
+                /// @audit Would redeeming such a Cdp cause issues?
                 LocalVariables_RedeemCollateralFromCdp
                     memory _redeemColFromCdp = LocalVariables_RedeemCollateralFromCdp(
                         _cId,

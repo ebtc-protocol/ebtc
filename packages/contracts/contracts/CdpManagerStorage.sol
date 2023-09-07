@@ -486,7 +486,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     /// @notice Claim Fee Split, toggles Grace Period accordingly
     /// @notice Call this if you want to accrue feeSplit
-    function syncGlobalAccountingAndGracePeriod() public {
+    function syncGlobalAccountingAndGracePeriod() public { /// @audit Ensure this is added to tester
         _applyPendingGlobalState(); // Apply // Could trigger RM
         syncGracePeriod(); // Synch Grace Period
     }
@@ -572,7 +572,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             _cdpId,
             _systemStEthFeePerUnitIndex
         );
-        Cdps[_cdpId].coll = _newColl;
+        Cdps[_cdpId].coll = _newColl; // TODO: NICR changes
         stFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
 
         emit CdpFeeSplitApplied(

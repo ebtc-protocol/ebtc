@@ -834,7 +834,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     (vars.ICR < MCR || canLiquidateRecoveryMode(vars.ICR, _TCR))
                 ) {
                     vars.price = _price;
-                    _applyAccumulatedFeeSplit(vars.cdpId);
+                    _applyAccumulatedFeeSplit(vars.cdpId); /// @audit What happens to pending debt?
                     _getLiquidationValuesRecoveryMode(
                         _price,
                         vars.entireSystemDebt,
