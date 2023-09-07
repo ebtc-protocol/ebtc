@@ -295,25 +295,10 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         uint256 _price = priceFeedMock.getPrice();
         console2.log("\tbefore");
 
-        address[] memory _targets = new address[](2);
-        bytes[] memory _calldatas = new bytes[](2);
-        _targets[0] = address(cdpManager);
-        _targets[1] = address(cdpManager);
-
         uint256 newIcr;
 
         while (currentCdp != bytes32(0)) {
-            _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, currentCdp);
-            _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, currentCdp, _price);
-
-            try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-                assembly {
-                    // Slice the sighash.
-                    reason := add(reason, 0x04)
-                }
-                bytes memory returnData = abi.decode(reason, (bytes));
-                newIcr = abi.decode(returnData, (uint256));
-            }
+            newIcr = crLens.quoteRealICR(currentCdp);
 
             console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
             currentCdp = sortedCdps.getNext(currentCdp);
@@ -326,22 +311,12 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         i = 0;
         currentCdp = sortedCdps.getFirst();
         while (currentCdp != bytes32(0)) {
-            _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, currentCdp);
-            _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, currentCdp, _price);
-
-            try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-                assembly {
-                    // Slice the sighash.
-                    reason := add(reason, 0x04)
-                }
-                bytes memory returnData = abi.decode(reason, (bytes));
-                newIcr = abi.decode(returnData, (uint256));
-            }
+            newIcr = crLens.quoteRealICR(currentCdp);
 
             console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
             currentCdp = sortedCdps.getNext(currentCdp);
         }
-        assertTrue(invariant_SL_05(actor, cdpManager, priceFeedMock, sortedCdps), SL_05);
+        assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);
     }
 
     function testPropertyCSP01() public {

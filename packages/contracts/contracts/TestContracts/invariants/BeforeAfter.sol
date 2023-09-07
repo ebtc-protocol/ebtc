@@ -109,42 +109,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
 
-        address[] memory _targets = new address[](2);
-        bytes[] memory _calldatas = new bytes[](2);
-
-        _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(
-            cdpManager.syncGlobalAccountingAndGracePeriod.selector
-        );
-
-        _targets[1] = address(cdpManager);
-        _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceBefore);
-
-        // Compute new TCR after syncGlobalAccountingAndGracePeriod and revert to previous snapshot in oder to not affect the current state
-        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-            assembly {
-                // Slice the sighash.
-                reason := add(reason, 0x04)
-            }
-            bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newTcrBefore = abi.decode(returnData, (uint256));
-        }
-
-        _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, _cdpId);
-
-        _targets[1] = address(cdpManager);
-        _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, _cdpId, vars.priceBefore);
-
-        // Compute new ICR after syncAccounting and revert to previous snapshot in oder to not affect the current state
-        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-            assembly {
-                // Slice the sighash.
-                reason := add(reason, 0x04)
-            }
-            bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newIcrBefore = abi.decode(returnData, (uint256));
-        }
+        vars.newTcrBefore = crLens.quoteRealTCR();
+        vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -188,42 +154,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
         vars.systemDebtRedistributionIndexAfter = cdpManager.systemDebtRedistributionIndex();
 
-        address[] memory _targets = new address[](2);
-        bytes[] memory _calldatas = new bytes[](2);
-
-        _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(
-            cdpManager.syncGlobalAccountingAndGracePeriod.selector
-        );
-
-        _targets[1] = address(cdpManager);
-        _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, vars.priceAfter);
-
-        // Compute new TCR after syncGlobalAccountingAndGracePeriod and revert to previous snapshot in oder to not affect the current state
-        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-            assembly {
-                // Slice the sighash.
-                reason := add(reason, 0x04)
-            }
-            bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newTcrAfter = abi.decode(returnData, (uint256));
-        }
-
-        _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(cdpManager.syncAccounting.selector, _cdpId);
-
-        _targets[1] = address(cdpManager);
-        _calldatas[1] = abi.encodeWithSelector(cdpManager.getICR.selector, _cdpId, vars.priceAfter);
-
-        // Compute new ICR after syncAccounting and revert to previous snapshot in oder to not affect the current state
-        try actor.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-            assembly {
-                // Slice the sighash.
-                reason := add(reason, 0x04)
-            }
-            bytes memory returnData = abi.decode(reason, (bytes));
-            vars.newIcrAfter = abi.decode(returnData, (uint256));
-        }
+        vars.newTcrAfter = crLens.quoteRealTCR();
+        vars.newIcrAfter = crLens.quoteRealICR(_cdpId);
     }
 
     function _diff() internal view returns (string memory log) {

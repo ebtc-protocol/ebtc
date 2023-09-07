@@ -17,6 +17,7 @@ import {CollateralTokenTester} from "./CollateralTokenTester.sol";
 import {Governor} from "../Governor.sol";
 import {EBTCDeployer} from "../EBTCDeployer.sol";
 import {Actor} from "./invariants/Actor.sol";
+import {CRLens} from "../CRLens.sol";
 
 abstract contract BaseStorageVariables {
     PriceFeedTestnet internal priceFeedMock;
@@ -40,4 +41,6 @@ abstract contract BaseStorageVariables {
 
     mapping(address => Actor) internal actors;
     Actor internal actor;
+
+    CRLens internal crLens;
 }

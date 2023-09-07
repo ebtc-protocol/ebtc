@@ -24,6 +24,7 @@ import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
+import {CRLens} from "../contracts/CRLens.sol";
 import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
 
 contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeReader, LogUtils {
@@ -112,7 +113,6 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     */
     function setUp() public virtual {
         _utils = new Utilities();
-        actor = new Actor(emptyAddresses, emptyAddresses);
 
         defaultGovernance = _utils.getNextSpecialAddress();
 
@@ -367,6 +367,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         authority.setUserRole(defaultGovernance, 4, true);
         authority.setUserRole(defaultGovernance, 5, true);
         authority.setUserRole(defaultGovernance, 6, true);
+
+        crLens = new CRLens(address(cdpManager), address(priceFeedMock));
 
         vm.stopPrank();
     }
