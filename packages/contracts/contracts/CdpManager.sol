@@ -521,7 +521,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function syncAccounting(bytes32 _cdpId) external override {
-        _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
+        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
         return _syncAccounting(_cdpId);
     }
 
