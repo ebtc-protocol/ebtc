@@ -164,7 +164,13 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         uint256 _sharesAmount
     ) public override returns (uint256) {
         uint256 _tknAmt = getPooledEthByShares(_sharesAmount);
-        transfer(_recipient, _tknAmt);
+
+        // NOTE: Changed here to transfer underlying shares without rounding
+        balances[msg.sender] -= _sharesAmount;
+        balances[_recipient] += _sharesAmount;
+
+        emit Transfer(msg.sender, _recipient, _tknAmt, _sharesAmount);
+
         return _tknAmt;
     }
 
