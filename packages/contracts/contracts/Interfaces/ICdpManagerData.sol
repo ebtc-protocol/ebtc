@@ -52,7 +52,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         address indexed _borrower,
         uint256 _debt,
         uint256 _coll,
-        CdpOperation operation
+        CdpOperation operation,
+        address _liquidator,
+        uint _premiumToLiquidator
     );
     event BaseRateUpdated(uint256 _baseRate);
     event LastRedemptionTimestampUpdated(uint256 _lastFeeOpTime);
