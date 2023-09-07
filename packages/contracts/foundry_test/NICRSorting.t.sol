@@ -25,7 +25,7 @@ contract NICRSortingTest is eBTCBaseInvariants {
         collateral.setEthPerShare(1.2e18);
 
         // Deposit 100 shares (B)
-        uint newCdpStEthBalance = 100e18 * collateral.getPooledEthByShares(100e18) / 100e18;
+        uint newCdpStEthBalance = (100e18 * collateral.getPooledEthByShares(100e18)) / 100e18;
         (, bytes32 cdp1) = _openTestCdpAtICR(users[1], newCdpStEthBalance, 150e16);
 
         console.log(cdpManager.getCdpCollShares(cdp0));
