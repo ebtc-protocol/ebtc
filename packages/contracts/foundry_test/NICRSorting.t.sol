@@ -17,6 +17,8 @@ contract NICRSortingTest is eBTCBaseInvariants {
         users = _utils.createUsers(4);
     }
 
+    /// @dev Should maintain despite switch in ordering due to applying fee split to just one of the Cdps after a large rebase
+    /// @dev Note the current example does not swtich ordering if outdated NICR data was used.
     function test_NICROrderingShouldStaySameAfterFeeSplit() public {
         // Deposit 100 shares (A)
         (, bytes32 cdp0) = _openTestCdpAtICR(users[0], 100e18, 150e16);
@@ -48,7 +50,5 @@ contract NICRSortingTest is eBTCBaseInvariants {
         _printSortedCdpsList();
 
         _ensureSystemInvariants();
-
-        revert();
     }
 }
