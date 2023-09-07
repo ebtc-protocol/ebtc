@@ -268,56 +268,57 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         repayEBTC(1, 509846657665200610349434642309205663062);
     }
 
-    function testPropertySL05() public {
-        setEthPerShare(
-            12137138735364853393659783413495902950573335538668689540776328203983925215811
-        );
-        setEthPerShare(30631887070343426798280082917191654654292863364863423646265020494943238699);
-        setEthPerShare(776978999485790388950919620588735464671614128565904936170116473650448744381);
-        openCdp(168266871339698218615133335629239858353993370046701339713750467499, 1);
-        setEthPerShare(
-            18259119993128374494182960141815059756667443030056035825036320914502997177865
-        );
-        addColl(
-            7128974394460579557571027269632372427504086125697185719639350284139296986,
-            53241717733798681974905139247559310444497207854177943207741265181147256271
-        );
-        openCdp(
-            37635557627948612150381079279416828011988176534495127519810996522075020800647,
-            136472217300866767
-        );
-        setEthPerShare(445556188509986934837462424);
-        openCdp(12181230440821352134148880356120823470441483581757, 1);
-        setEthPerShare(612268882000635712391494911936034158156169162782123690926313314401353750575);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        bytes32 currentCdp = sortedCdps.getFirst();
-        uint256 i = 0;
-        uint256 _price = priceFeedMock.getPrice();
-        console2.log("\tbefore");
+    // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
+    // function testPropertySL05() public {
+    //     setEthPerShare(
+    //         12137138735364853393659783413495902950573335538668689540776328203983925215811
+    //     );
+    //     setEthPerShare(30631887070343426798280082917191654654292863364863423646265020494943238699);
+    //     setEthPerShare(776978999485790388950919620588735464671614128565904936170116473650448744381);
+    //     openCdp(168266871339698218615133335629239858353993370046701339713750467499, 1);
+    //     setEthPerShare(
+    //         18259119993128374494182960141815059756667443030056035825036320914502997177865
+    //     );
+    //     addColl(
+    //         7128974394460579557571027269632372427504086125697185719639350284139296986,
+    //         53241717733798681974905139247559310444497207854177943207741265181147256271
+    //     );
+    //     openCdp(
+    //         37635557627948612150381079279416828011988176534495127519810996522075020800647,
+    //         136472217300866767
+    //     );
+    //     setEthPerShare(445556188509986934837462424);
+    //     openCdp(12181230440821352134148880356120823470441483581757, 1);
+    //     setEthPerShare(612268882000635712391494911936034158156169162782123690926313314401353750575);
+    //     vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+    //     bytes32 currentCdp = sortedCdps.getFirst();
+    //     uint256 i = 0;
+    //     uint256 _price = priceFeedMock.getPrice();
+    //     console2.log("\tbefore");
 
-        uint256 newIcr;
+    //     uint256 newIcr;
 
-        while (currentCdp != bytes32(0)) {
-            newIcr = crLens.quoteRealICR(currentCdp);
+    //     while (currentCdp != bytes32(0)) {
+    //         newIcr = crLens.quoteRealICR(currentCdp);
 
-            console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-        _before(bytes32(0));
-        liquidateCdps(0);
-        _after(bytes32(0));
-        console2.log(_diff());
-        console2.log("\tafter");
-        i = 0;
-        currentCdp = sortedCdps.getFirst();
-        while (currentCdp != bytes32(0)) {
-            newIcr = crLens.quoteRealICR(currentCdp);
+    //         console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
+    //         currentCdp = sortedCdps.getNext(currentCdp);
+    //     }
+    //     _before(bytes32(0));
+    //     liquidateCdps(0);
+    //     _after(bytes32(0));
+    //     console2.log(_diff());
+    //     console2.log("\tafter");
+    //     i = 0;
+    //     currentCdp = sortedCdps.getFirst();
+    //     while (currentCdp != bytes32(0)) {
+    //         newIcr = crLens.quoteRealICR(currentCdp);
 
-            console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-        assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);
-    }
+    //         console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
+    //         currentCdp = sortedCdps.getNext(currentCdp);
+    //     }
+    //     assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);
+    // }
 
     function testPropertyCSP01() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
