@@ -494,6 +494,7 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
         console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
         console.log("stEthGlobalIndex   :", cdpManager.stEthIndex());
         console.log("price              :", price);
+        console.log("");
     }
 
     function _getICR(bytes32 cdpId) internal returns (uint256) {
@@ -522,6 +523,20 @@ contract eBTCBaseFixture is Test, BytecodeReader, LogUtils {
             node = sortedCdps.getPrev(node);
             borrower = sortedCdps.getOwnerAddress(node);
         }
+    }
+
+    function _printSortedCdpsList() internal {
+        bytes32 _currentCdpId = sortedCdps.getLast();
+        uint counter = 0;
+
+        while (_currentCdpId != sortedCdps.dummyId()) {
+            uint NICR = cdpManager.getNominalICR(_currentCdpId);
+            console.log(counter, bytes32ToString(_currentCdpId));
+            console.log(NICR);
+            _currentCdpId = sortedCdps.getPrev(_currentCdpId);
+            counter += 1;
+        }
+        console.log("");
     }
 
     /// @dev Ensure a given CdpId is not in the Sorted Cdps LL.

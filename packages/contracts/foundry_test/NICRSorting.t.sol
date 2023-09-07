@@ -34,6 +34,7 @@ contract NICRSortingTest is eBTCBaseInvariants {
         console.log("Before syncAccounting");
         _printAllCdps();
         _printSystemState();
+        _printSortedCdpsList();
 
         assertEq(cdpManager.getCdpCollShares(cdp0), cdpManager.getCdpCollShares(cdp1));
 
@@ -44,6 +45,7 @@ contract NICRSortingTest is eBTCBaseInvariants {
         console.log("After syncAccounting");
         _printAllCdps();
         _printSystemState();
+        _printSortedCdpsList();
 
         _ensureSystemInvariants();
 
