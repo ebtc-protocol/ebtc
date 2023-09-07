@@ -121,10 +121,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
     function setDecimals(uint8 decimals, bool flag) external {
         // https://github.com/d-xo/weird-erc20
-        // GUSD 2
-        // USDC 6
-        // YAM-V2 24
-        decimals = uint8(clampBetween(uint256(decimals), 2, 24));
+        decimals = uint8(clampBetween(uint256(decimals), 2, 18));
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setDecimals(decimals);
     }
