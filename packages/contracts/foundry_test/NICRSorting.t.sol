@@ -25,11 +25,23 @@ contract NICRSortingTest is eBTCBaseInvariants {
         collateral.setEthPerShare(1.2e18);
 
         // Deposit 100 shares (B)
-        (, bytes32 cdp1) = _openTestCdpAtICR(users[1], 100e18, 150e16);
+        uint newCdpStEthBalance = 100e18 * collateral.getPooledEthByShares(100e18);
+        (, bytes32 cdp1) = _openTestCdpAtICR(users[1], newCdpStEthBalance, 150e16);
+
+        console.log("Before syncAccounting");
+        _printAllCdps();
+        _printSystemState();
 
         // Accure + fee split (A) -> A is 90 shares
         vm.prank(address(borrowerOperations));
         cdpManager.syncAccounting(cdp0);
+
+        console.log("After syncAccounting");
+        _printAllCdps();
+        _printSystemState();
+
         _ensureSystemInvariants();
+
+        revert();
     }
 }
