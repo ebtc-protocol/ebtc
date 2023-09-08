@@ -68,6 +68,8 @@ abstract contract PropertiesDescriptions {
         "GENERAL-02: The dollar value of the locked stETH exceeds the dollar value of the issued eBTC if TCR is greater than 100%";
     string constant GENERAL_03 =
         "GENERAL-03: CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations";
+    string constant GENERAL_05 =
+        "GENERAL-05: At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events";
     string constant GENERAL_09 =
         "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR";
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";

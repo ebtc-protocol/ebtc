@@ -66,7 +66,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-02 | The dollar value of the locked stETH exceeds the dollar value of the issued eBTC if TCR is greater than 100% | High-Level | ✅ |
 | GENERAL-03 | CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations | Valid States | ✅ |
 | GENERAL-04 | stETH in the system lives in ththe ActivePool, the DefaultPool. When an operation is made, stETH is transferred in one of three ways: From a user to a Pool, From a Pool to a user, and From one Pool to another Pool. Except for Liquidations and Redemptions | Variable Transitions | |
-| GENERAL-05 | At all times, the total stETH balance of the system exceeds the deposits if there is no negative rebasing events | High Level |  |
+| GENERAL-05 | At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events | High Level |  |
 | GENERAL-06 | At all times, the total debt is greater than the sum of all debts from all CDPs | High Level | ✅ |
 | GENERAL-07 | Without a price change, a rebasing event, or a redistribution, my position can never reduce in absolute value | State Transitions | |
 | GENERAL-08 | At all times TCR = SUM(ICR) for all CDPs | High Level |  |
