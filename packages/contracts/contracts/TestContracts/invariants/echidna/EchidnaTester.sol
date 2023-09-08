@@ -266,6 +266,13 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            assertGte(
+                vars.actorCollAfter,
+                vars.actorCollBefore +
+                    collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
+                L_09
+            );
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -393,19 +400,14 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 _n,
                 "liquidateCdps must not liquidate more than n CDPs"
             );
-            uint256 minIcrBefore = type(uint256).max;
-            for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-                emit L3(i, cdpsLiquidated[i].icr, vars.isRecoveryModeBefore ? 1 : 0);
-                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-                // assertWithMsg(
-                //     cdpsLiquidated[i].icr < cdpManager.MCR() ||
-                //         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
-                //     L_01
-                // );
-                if (cdpsLiquidated[i].icr < minIcrBefore) {
-                    minIcrBefore = cdpsLiquidated[i].icr;
-                }
-            }
+            // for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
+            // assertWithMsg(
+            //     cdpsLiquidated[i].icr < cdpManager.MCR() ||
+            //         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            //     L_01
+            // );
+            // }
 
             if (
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
