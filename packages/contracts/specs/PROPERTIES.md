@@ -32,8 +32,8 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 
 | Property | Description | Category | Tested |
 | --- | --- | --- | --- |
-| BO-01 | Users can only open CDPs with healthy ICR | Unit Tests | TODO: Opening CDP can never directly trigger RM, Can NEVER open below 110 |
-| BO-02 | Users must repay all debt to close a CDP | State Transitions | TODO: Always, at all time, in all conditions |
+| BO-01 | Users can only open CDPs with healthy ICR | Unit Tests | ✅ |
+| BO-02 | Users must repay all debt to close a CDP | State Transitions | ✅ |
 | BO-03 | Adding collateral improves the Nominal ICR of a CDP if there is no rebase | Unit Tests | ✅ |
 | BO-04 | Removing collateral does not increase the Nominal ICR | Unit Tests | ✅ |
 | BO-05 | If an existing CDP's adjustment reduces its ICR in Recovery Mode, the transaction is only executed if the resulting TCR is above 125% | State Transitions | TODO: May change to TCR + Buffer. KEY invariant |

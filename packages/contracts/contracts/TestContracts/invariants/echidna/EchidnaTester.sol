@@ -705,6 +705,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             _after(_cdpId);
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertGt(vars.icrAfter, cdpManager.MCR(), BO_01);
 
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
@@ -1107,6 +1108,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         if (success) {
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
+            assertEq(vars.cdpDebtAfter, 0, BO_02);
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,
                 vars.sortedCdpsSizeAfter,
