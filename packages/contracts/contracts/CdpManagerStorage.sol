@@ -201,8 +201,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint256 public override systemStEthFeePerUnitIndexError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
     mapping(bytes32 => uint256) public stEthFeePerUnitIndex;
-    /* Update timestamp for global index */
-    uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
     mapping(bytes32 => uint256) public debtRedistributionIndex;
 
@@ -497,7 +495,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
         if (_newIndex != _oldIndex) {
             stEthIndex = _newIndex;
-            lastIndexTimestamp = block.timestamp;
             emit StEthIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
         return (_oldIndex, _newIndex);
