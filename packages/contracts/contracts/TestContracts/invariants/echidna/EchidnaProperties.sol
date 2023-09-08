@@ -68,6 +68,7 @@ abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
     function echidna_GENERAL_03() public returns (bool) {
         return invariant_GENERAL_03(cdpManager, borrowerOperations, eBTCToken, collateral);
     }
+
     function echidna_GENERAL_05() public returns (bool) {
         return invariant_GENERAL_05(activePool, collateral);
     }
