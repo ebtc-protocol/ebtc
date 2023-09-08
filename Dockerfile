@@ -1,5 +1,7 @@
+## This Dockerfile is here to help you make Echidna work if you have issues with the installation of it or slither
+
 ## Built with docker build -t my/fuzzy:latest .
-## Run with 
+## Run with (if you have already ran tests and compilation)
 ## cd code && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
 
 ## If you've never built the repo
