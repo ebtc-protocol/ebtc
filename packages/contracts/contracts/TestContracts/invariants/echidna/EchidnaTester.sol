@@ -206,7 +206,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) internal {
+    function liquidate(uint _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -291,7 +291,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
-        _partialAmount = clampBetween(_partialAmount, 0, entireDebt - 1);
+        // forcing partial liquidation, otherwise passing upper and lower bounds would be equivalent to `liquidate(uint _i)` and we would have to rewrite the invariants
+        _partialAmount = clampBetween(_partialAmount, 1, entireDebt - 1);
 
         _before(_cdpId);
 
