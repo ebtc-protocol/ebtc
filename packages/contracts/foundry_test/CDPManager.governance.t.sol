@@ -59,7 +59,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     ) public {
         newInvalidStakingRewardSplit = bound(
             newInvalidStakingRewardSplit,
-            cdpManager.MAX_REWARD_SPLIT(),
+            cdpManager.MAX_REWARD_SPLIT() + 1,
             type(uint256).max
         );
 
