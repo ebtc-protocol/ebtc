@@ -251,6 +251,13 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             eBTCToken.balanceOf(address(borrowerOperations)) == 0;
     }
 
+    function invariant_GENERAL_05(
+        ActivePool activePool,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        return collateral.sharesOf(address(activePool)) >= activePool.getSystemCollShares();
+    }
+
     function invariant_GENERAL_06(
         EBTCToken eBTCToken,
         CdpManager cdpManager,
