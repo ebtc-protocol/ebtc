@@ -488,8 +488,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _collFirstPre = await cdpManager.getCdpCollShares(_bobCdpId);
       let _debtInLiquidatorPre = await debtToken.balanceOf(alice);
       let _ethLiquidatorPre = await web3.eth.getBalance(alice);		
-      let _collLiquidatorPre = await collToken.balanceOf(alice); 	  
+      let _collLiquidatorPre = await collToken.balanceOf(alice); 	
+      let _debtToColl = _partialAmount.mul(mv._1e18BN).div(toBN(_newPrice));  
       let _liqTx = await cdpManager.partiallyLiquidate(_bobCdpId, _partialAmount, _bobCdpId, _bobCdpId, {from: alice});
+      const partialLiqEvents = th.getAllEventsByName(_liqTx, 'CdpPartiallyLiquidated')
+      let _liquidator = th.getEventValByName(partialLiqEvents[0], '_liquidator');
+      assert.isTrue(_liquidator == alice);
+      let _premiumToLiquidator = th.getEventValByName(partialLiqEvents[0], '_premiumToLiquidator');
       let _ethLiquidatorPost = await web3.eth.getBalance(alice);	
       let _collLiquidatorPost = await collToken.balanceOf(alice);	
       let _collFirstPost = await cdpManager.getCdpCollShares(_bobCdpId);  	  	  
@@ -500,6 +505,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _debtDecreased = toBN(_debtFirstPre.toString()).sub(toBN(_debtFirstPost.toString()));
       let _debtInLiquidatorDecreased = toBN(_debtInLiquidatorPre.toString()).sub(toBN(_debtInLiquidatorPost.toString()));
       let _collDecreased = toBN(_collFirstPre.toString()).sub(toBN(_collFirstPost.toString()));
+      assert.isTrue(_premiumToLiquidator.eq(_collLiquidatorPost.sub(_collLiquidatorPre).sub(_debtToColl)));
       
       // check debt change & calculation in receovery mode
       assert.equal(_debtDecreased.toString(), _debtInLiquidatorDecreased.toString(), '!partially liquidation debt change in liquidator');
@@ -534,7 +540,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _newPrice = dec(2350, 13);
       await priceFeed.setPrice(_newPrice);
 	  
-      // FIXME get some pending rewards for remaining CDP
+      // get some redistributed debts for remaining CDP
       let _ownerDebt = await cdpManager.getCdpDebt(_ownerCdpId);
       await debtToken.transfer(owner, toBN(_ownerDebt.toString()).sub(toBN((await debtToken.balanceOf(owner)).toString())), {from: alice});	
       await cdpManager.liquidateCdps(1, {from: owner});
@@ -562,7 +568,13 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _collLiquidatorPre = await collToken.balanceOf(bob);	  
       let _debtInAllPoolPre = toBN((await activePool.getSystemDebt()).toString()).toString();
       let _collInAllPoolPre = toBN((await activePool.getSystemCollShares()).toString()).toString();
+	  
+      let _debtToColl = _partialAmount.mul(mv._1e18BN).div(toBN(_newPrice));
       const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmount, _aliceCdpId, _aliceCdpId, {from: bob}) 
+      const partialLiqEvents = th.getAllEventsByName(tx, 'CdpPartiallyLiquidated')
+      let _liquidator = th.getEventValByName(partialLiqEvents[0], '_liquidator');
+      assert.isTrue(_liquidator == bob);
+      let _premiumToLiquidator = th.getEventValByName(partialLiqEvents[0], '_premiumToLiquidator');
       let _collRemaining = await cdpManager.getCdpCollShares(_aliceCdpId); 
       let _stakeRemaining = await cdpManager.getCdpStake(_aliceCdpId);
       let _debtRemaining = await cdpManager.getCdpDebt(_aliceCdpId);
@@ -577,6 +589,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _colSystemPost = await cdpManager.getEntireSystemColl();
       let _ethLiquidatorPost = await web3.eth.getBalance(bob);	
       let _collLiquidatorPost = await collToken.balanceOf(bob);
+      assert.isTrue(_premiumToLiquidator.eq(_collLiquidatorPost.sub(_collLiquidatorPre).sub(_debtToColl)));
 
       // check CdpUpdated event
       const troveUpdatedEvents = th.getAllEventsByName(tx, 'CdpUpdated')

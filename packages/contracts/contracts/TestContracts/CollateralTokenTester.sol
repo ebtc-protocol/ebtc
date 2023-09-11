@@ -76,8 +76,9 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         emit Withdrawal(msg.sender, wad, _share);
     }
 
-    function totalSupply() public view override returns (uint256) {
-        return _totalBalance;
+    function totalSupply() public view override returns (uint) {
+        uint _tmp = _mul(_ethPerShare, _totalBalance);
+        return _div(_tmp, 1e18);
     }
 
     // Permissioned functions
@@ -144,6 +145,10 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         _ethPerShare = _ePerS;
     }
 
+    function getEthPerShare() external view returns (uint256) {
+        return _ethPerShare;
+    }
+
     function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
         uint256 _tmp = _mul(1e18, _ethAmount);
         return _div(_tmp, _ethPerShare);
@@ -159,7 +164,13 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         uint256 _sharesAmount
     ) public override returns (uint256) {
         uint256 _tknAmt = getPooledEthByShares(_sharesAmount);
-        transfer(_recipient, _tknAmt);
+
+        // NOTE: Changed here to transfer underlying shares without rounding
+        balances[msg.sender] -= _sharesAmount;
+        balances[_recipient] += _sharesAmount;
+
+        emit Transfer(msg.sender, _recipient, _tknAmt, _sharesAmount);
+
         return _tknAmt;
     }
 
