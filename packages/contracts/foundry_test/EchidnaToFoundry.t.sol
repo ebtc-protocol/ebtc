@@ -348,6 +348,21 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
+    function testMinCdpSize() public {
+        openCdp(0, 1);
+        openCdp(
+            72288567839925548448879814980609186672926104313635808777211548693631,
+            132140405255026398
+        );
+        setEthPerShare(0);
+
+        bytes32 _cdpId = _getRandomCdp(7);
+        _before(_cdpId);
+        partialLiquidate(7, 0);
+        _after(_cdpId);
+        console2.log(_diff());
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint ans = low + (value % (high - low + 1));
@@ -501,16 +516,17 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         cdpManager.liquidateCdps(_n);
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) internal {
+    function partialLiquidate(uint _i, uint _partialAmount) internal returns (bytes32 _cdpId) {
         require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
-        bytes32 _cdpId = _getRandomCdp(_i);
+        _cdpId = _getRandomCdp(_i);
 
         (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = clampBetween(_partialAmount, 0, entireDebt - 1);
 
+        console2.log("partiallyLiquidate", _i % cdpManager.getActiveCdpsCount(), _partialAmount);
         cdpManager.partiallyLiquidate(_cdpId, _partialAmount, _cdpId, _cdpId);
     }
 

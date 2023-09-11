@@ -52,6 +52,8 @@ abstract contract PropertiesDescriptions {
     // Borrower Operations
     ///////////////////////////////////////////////////////
 
+    string constant BO_01 = "BO-01: Users can only open CDPs with healthy ICR";
+    string constant BO_02 = "BO-02: Users must repay all debt to close a CDP";
     string constant BO_03 = "BO-03: Adding collateral improves Nominal ICR";
     string constant BO_04 = "BO-04: Removing collateral does not increase the Nominal ICR";
     string constant BO_05 =
@@ -87,6 +89,8 @@ abstract contract PropertiesDescriptions {
 
     string constant L_01 =
         "L-01: Liquidation only succeeds if ICR < 110% in Normal Mode, or if ICR < 125% in Recovery Mode";
+    string constant L_09 =
+        "L-09: Undercollateralized liquidations are also incentivized with the Gas Stipend";
     string constant L_12 = "L-12: TCR must increase after liquidation with no redistributions";
     string constant L_14 =
         "If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp";

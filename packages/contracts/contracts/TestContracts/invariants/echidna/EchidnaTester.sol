@@ -206,7 +206,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) internal {
+    function liquidate(uint _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -266,6 +266,13 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 assertWithMsg(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            assertGte(
+                vars.actorCollAfter,
+                vars.actorCollBefore +
+                    collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
+                L_09
+            );
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -284,7 +291,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
-        _partialAmount = clampBetween(_partialAmount, 0, entireDebt - 1);
+        // forcing partial liquidation, otherwise passing upper and lower bounds would be equivalent to `liquidate(uint _i)` and we would have to rewrite the invariants
+        _partialAmount = clampBetween(_partialAmount, 1, entireDebt - 1);
 
         _before(_cdpId);
 
@@ -393,19 +401,14 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 _n,
                 "liquidateCdps must not liquidate more than n CDPs"
             );
-            uint256 minIcrBefore = type(uint256).max;
-            for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-                emit L3(i, cdpsLiquidated[i].icr, vars.isRecoveryModeBefore ? 1 : 0);
-                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-                // assertWithMsg(
-                //     cdpsLiquidated[i].icr < cdpManager.MCR() ||
-                //         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
-                //     L_01
-                // );
-                if (cdpsLiquidated[i].icr < minIcrBefore) {
-                    minIcrBefore = cdpsLiquidated[i].icr;
-                }
-            }
+            // for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
+            // assertWithMsg(
+            //     cdpsLiquidated[i].icr < cdpManager.MCR() ||
+            //         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            //     L_01
+            // );
+            // }
 
             if (
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
@@ -705,6 +708,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             _after(_cdpId);
 
             assertWithMsg(invariant_GENERAL_01(vars), GENERAL_01);
+            assertGt(vars.icrAfter, cdpManager.MCR(), BO_01);
 
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
@@ -1107,6 +1111,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         if (success) {
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
+            assertEq(vars.cdpDebtAfter, 0, BO_02);
             assertEq(
                 vars.sortedCdpsSizeBefore - 1,
                 vars.sortedCdpsSizeAfter,
