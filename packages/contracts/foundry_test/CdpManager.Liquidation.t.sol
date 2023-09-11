@@ -729,8 +729,12 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
 
+        uint256 liquidationCheckpoint = vm.snapshot();
         // Liquidate the Whale
         cdpManager.partiallyLiquidate(vulnerableCdpId, 123, bytes32(0), bytes32(0));
+
+        vm.revertTo(liquidationCheckpoint); // Revert to ensure we can always liquidate
+        // Some liquidations could end up undoing RM
 
         cdpManager.liquidate(vulnerableCdpId);
     }
