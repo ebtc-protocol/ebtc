@@ -117,7 +117,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
     // @dev Attempt to open a CDP with net coll below the minimum allowed and ensure it fails
     // @dev The collateral value passed into the openCdp function is interpretted as netColl + liqudiatorReward. The fixed liqudiator reward is taken out before netColl is checked
     function testMinCollTooLow(uint256 netColl) public {
-        vm.assume(netColl < borrowerOperations.MIN_NET_COLL());
+        netColl = bound(netColl, 0, borrowerOperations.MIN_NET_COLL() - 1);
 
         uint256 collPlusLiquidatorReward = netColl + borrowerOperations.LIQUIDATOR_REWARD();
 
@@ -209,8 +209,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
      * In case debt is below MIN_NET_DEBT, expect CDP opening to fail, otherwise it should be ok
      */
     function testCdpsForManyUsersManyMinDebtTooLow(uint96 collAmount) public {
-        vm.assume(collAmount > 1 ether);
-        vm.assume(collAmount < 10000000 ether);
+        collAmount = uint96(bound(collAmount, 1 ether, 10000000 ether));
 
         uint256 borrowedAmount = _utils.calculateBorrowAmount(
             collAmount,
