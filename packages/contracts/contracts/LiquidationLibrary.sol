@@ -414,12 +414,16 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _debtAndColl.entireDebt,
                 _debtAndColl.entireColl
             );
+            uint _debtToColl = (_partialDebt * 1e18) / _partialState._price;
+            uint _cappedColl = collateral.getPooledEthByShares(_partialColl);
             emit CdpPartiallyLiquidated(
                 _cdpId,
                 sortedCdps.getOwnerAddress(_cdpId),
                 _partialDebt,
                 _partialColl,
-                CdpOperation.partiallyLiquidate
+                CdpOperation.partiallyLiquidate,
+                msg.sender,
+                _cappedColl > _debtToColl ? (_cappedColl - _debtToColl) : 0
             );
         }
         return (_partialDebt, _partialColl);

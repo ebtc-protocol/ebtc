@@ -79,8 +79,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
     // Fuzzing different amounts of eBTC repaid
     function testRepayEBTCFuzz(uint88 repayAmnt) public {
-        vm.assume(repayAmnt > 1e10);
-        vm.assume(repayAmnt < type(uint88).max);
+        repayAmnt = uint88(bound(repayAmnt, 1e10, type(uint88).max));
         // Coll amount will always be max of uint96
         uint256 collAmount = type(uint96).max;
         address user = _utils.getNextUserAddress();
@@ -223,10 +222,8 @@ contract CDPOpsTest is eBTCBaseFixture {
     // Fuzz for borrowing and withdrawing eBTC from CDP
     // Handle scenarios when users try to withdraw too much eBTC resulting in either ICR < MCR or TCR < CCR
     function testWithdrawEBTCFuzz(uint96 withdrawAmnt, uint96 collAmount) public {
-        vm.assume(withdrawAmnt > 1e13);
-        vm.assume(collAmount > 30e18);
-        vm.assume(withdrawAmnt < type(uint96).max);
-        vm.assume(collAmount < type(uint96).max);
+        withdrawAmnt = uint96(bound(withdrawAmnt, 1e13, type(uint96).max));
+        collAmount = uint96(bound(collAmount, 30e18, type(uint96).max));
 
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);

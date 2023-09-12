@@ -30,11 +30,39 @@ contract CDPOpsTest is eBTCBaseFixture {
         }
         vm.stopPrank();
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
+        bytes32[] memory cdpsByMaxNode = sortedCdps.getCdpsOf(
+            user,
+            sortedCdps.dummyId(),
+            AMOUNT_OF_CDPS
+        );
+        bytes32[] memory cdpsByStartNode = sortedCdps.getCdpsOf(
+            user,
+            sortedCdps.getLast(),
+            AMOUNT_OF_CDPS
+        );
         for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
-            bytes32 cdp = cdps[cdpIx];
-            assertEq(cdp, cdpId);
+            bytes32 _cdpId = sortedCdps.cdpOfOwnerByIdx(user, 0, cdpId, 1);
+            assertEq(_cdpId, cdpId);
+            assertEq(cdps[cdpIx], cdpId);
+            assertEq(cdpsByMaxNode[cdpIx], cdpId);
+            assertEq(cdpsByStartNode[cdpIx], cdpId);
         }
+        // check count of CDP owned by the user
+        uint _cdpCountOf = sortedCdps.cdpCountOf(user);
+        uint _cdpCountOfByMaxNode = sortedCdps.cdpCountOf(
+            user,
+            sortedCdps.dummyId(),
+            AMOUNT_OF_CDPS
+        );
+        uint _cdpCountOfByStartNode = sortedCdps.cdpCountOf(
+            user,
+            sortedCdps.getLast(),
+            AMOUNT_OF_CDPS
+        );
+        assertEq(_cdpCountOf, AMOUNT_OF_CDPS);
+        assertEq(_cdpCountOfByMaxNode, AMOUNT_OF_CDPS);
+        assertEq(_cdpCountOfByStartNode, AMOUNT_OF_CDPS);
     }
 
     // Make sure if user didn't open CDP, cdps array is empty

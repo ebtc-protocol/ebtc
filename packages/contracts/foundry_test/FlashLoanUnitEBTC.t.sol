@@ -51,16 +51,16 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     /// @dev Basic happy path test
     /// @notice We cap to uint128 avoid multiplication overflow
     function testBasicLoanEBTC(uint128 loanAmount) public {
-        vm.assume(loanAmount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
+        // Funny enough 0 reverts because of deal not
         require(address(ebtcReceiver) != address(0));
 
-        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
-
-        // Funny enough 0 reverts because of deal not
-        vm.assume(loanAmount > 0);
-
+        loanAmount = uint128(
+            bound(loanAmount, 1, borrowerOperations.maxFlashLoan(address(eBTCToken)))
+        );
         // No cheecky overflow
-        vm.assume(loanAmount + fee <= type(uint256).max);
+        loanAmount = uint128(bound(loanAmount, 1, type(uint128).max));
+
+        uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
 
         // Cannot deal if not enough
         vm.assume(fee > 1800e18);
@@ -119,7 +119,9 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
 
     /// @dev Do nothing (no fee), check that it reverts
     function testEBTCRevertsIfUnpaid(uint128 loanAmount) public {
-        vm.assume(loanAmount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
+        loanAmount = uint128(
+            bound(loanAmount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)))
+        );
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), loanAmount);
         // Ensure fee is not rounded down
         vm.assume(fee > 1);
@@ -140,10 +142,9 @@ contract FlashLoanUnitEBTC is eBTCBaseFixture {
     ///   Using a custom receiver to ensure state and balances follow the spec
     /// @notice Based on the spec: https://eips.ethereum.org/EIPS/eip-3156
     function testEBTCSpec(uint128 amount, address randomToken, uint256 flashFee) public {
-        vm.assume(amount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
         vm.assume(randomToken != address(eBTCToken));
-        vm.assume(amount > 0);
-        vm.assume(flashFee <= borrowerOperations.MAX_FEE_BPS());
+        amount = uint128(bound(amount, 1, borrowerOperations.maxFlashLoan(address(eBTCToken))));
+        flashFee = bound(flashFee, 0, borrowerOperations.MAX_FEE_BPS());
 
         vm.prank(defaultGovernance);
         borrowerOperations.setFeeBps(flashFee);
