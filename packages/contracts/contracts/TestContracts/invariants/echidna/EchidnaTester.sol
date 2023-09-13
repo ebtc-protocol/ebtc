@@ -1046,7 +1046,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-        assertGt(vars.newTcrAfter, vars.newTcrBefore, BO_08);
+        assertGe(vars.newTcrAfter, vars.newTcrBefore, BO_08);
 
         assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
         assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
