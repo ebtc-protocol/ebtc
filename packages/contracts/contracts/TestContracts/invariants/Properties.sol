@@ -102,7 +102,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             vars.collSurplusPoolBefore) * vars.priceBefore) /
             1e18 -
             vars.cdpDebtBefore;
-            
+
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
