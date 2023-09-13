@@ -41,6 +41,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     bytes32 public constant ZERO_ID = bytes32(0);
 
     uint256 internal constant MAX_BPS = 10000;
+    uint256 private ICR_COMPARE_TOLERANCE = 1000000; //in the scale of 1e18
 
     enum CapabilityFlag {
         None,
@@ -422,6 +423,20 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         return _cdpId;
     }
 
+    /// @dev Automatically adds liquidator gas stipend to the Cdp in addition to specified coll
+    function _openTestCdpAtICR(
+        address _usr,
+        uint256 _coll,
+        uint256 _icr
+    ) internal returns (address, bytes32) {
+        uint256 _price = priceFeedMock.fetchPrice();
+        uint256 _debt = (_coll * _price) / _icr;
+        bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
+        uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
+        _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
+        return (_usr, _cdpId);
+    }
+
     /// @dev Increase index on collateral, storing real before, after, and what is stored in the CdpManager global index
     function _increaseCollateralIndex()
         internal
@@ -469,6 +484,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
         console.log("stEthGlobalIndex   :", cdpManager.stEthIndex());
         console.log("price              :", price);
+        console.log("");
     }
 
     function _getICR(bytes32 cdpId) internal returns (uint256) {
@@ -497,6 +513,20 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
             node = sortedCdps.getPrev(node);
             borrower = sortedCdps.getOwnerAddress(node);
         }
+    }
+
+    function _printSortedCdpsList() internal {
+        bytes32 _currentCdpId = sortedCdps.getLast();
+        uint counter = 0;
+
+        while (_currentCdpId != sortedCdps.dummyId()) {
+            uint NICR = cdpManager.getNominalICR(_currentCdpId);
+            console.log(counter, bytes32ToString(_currentCdpId));
+            console.log(NICR);
+            _currentCdpId = sortedCdps.getPrev(_currentCdpId);
+            counter += 1;
+        }
+        console.log("");
     }
 
     /// @dev Ensure a given CdpId is not in the Sorted Cdps LL.
