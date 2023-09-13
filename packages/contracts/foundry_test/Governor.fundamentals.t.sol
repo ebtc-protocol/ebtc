@@ -48,7 +48,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
     // Test: getUsersByRole should return the expected list of addresses for each role
 
     function test_GetUsersByRoleReturnsExpected(uint256 usersWithRole) public {
-        vm.assume(usersWithRole < 100);
+        usersWithRole = bound(usersWithRole, 0, 100);
         uint8 testRole = 50;
 
         // create users
@@ -75,7 +75,7 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
     function test_GetUsersByRoleReturnsExpectedAfterAddingAndRemovingUsers(
         uint256 usersWithRole
     ) public {
-        // vm.assume(usersWithRole < 100);
+        // usersWithRole = bound(0, usersWithRole, 100);
         // uint8 testRole = 50;
         // // create users
         // address payable[] memory expectedUsers = _utils.createUsers(usersWithRole);

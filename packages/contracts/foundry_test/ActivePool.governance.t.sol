@@ -20,10 +20,8 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         uint256 amountInActivePool,
         uint256 amountToSweep
     ) public {
-        vm.assume(amountInActivePool > 0);
-        vm.assume(amountInActivePool <= type(uint96).max);
-
-        vm.assume(amountToSweep <= amountInActivePool);
+        amountInActivePool = bound(amountInActivePool, 1, type(uint96).max);
+        amountToSweep = bound(amountToSweep, 0, amountInActivePool);
 
         // Send a mock token for sweeping
         vm.prank(address(activePool));
@@ -51,10 +49,8 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         uint256 amountInActivePool,
         uint256 amountToSweep
     ) public {
-        vm.assume(amountInActivePool > 0);
-        vm.assume(amountInActivePool <= type(uint96).max);
-
-        vm.assume(amountToSweep <= amountInActivePool);
+        amountInActivePool = bound(amountInActivePool, 1, type(uint96).max);
+        amountToSweep = bound(amountToSweep, 0, amountInActivePool);
 
         // Send a mock token for sweeping
         vm.prank(address(activePool));
@@ -77,7 +73,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
 
     function test_AuthorizedUserCannotSweepCollateral(uint256 amountToSweep) public {
         uint256 activePoolCollateralBefore = collateral.balanceOf(address(activePool));
-        vm.assume(amountToSweep >= activePoolCollateralBefore);
+        amountToSweep = bound(amountToSweep, activePoolCollateralBefore, collateral.totalSupply());
 
         // grant random user role
         address user = _utils.getNextUserAddress();
@@ -95,7 +91,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
 
     function test_UnauthorizedUserCannotSweepCollateral(uint256 amountToSweep) public {
         uint256 activePoolCollateralBefore = collateral.balanceOf(address(activePool));
-        vm.assume(amountToSweep >= activePoolCollateralBefore);
+        amountToSweep = bound(amountToSweep, activePoolCollateralBefore, collateral.totalSupply());
 
         // random user cannot sweep collateral
         address user = _utils.getNextUserAddress();
@@ -110,8 +106,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
     function test_AuthorizedUserCanClaimOutstandingFeesToFeeRecipient(
         uint256 outstandingFees
     ) public {
-        vm.assume(outstandingFees > 0);
-        vm.assume(outstandingFees <= type(uint64).max);
+        outstandingFees = bound(outstandingFees, 1, type(uint64).max);
         address feeRecipientAddress = activePool.feeRecipientAddress();
 
         _sendCollateralToActivePoolAndAllocateAsClaimableFee(outstandingFees);
@@ -150,8 +145,7 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
     function test_UnauthorizedUserCannotClaimOutstandingFeesToFeeRecipient(
         uint256 outstandingFees
     ) public {
-        vm.assume(outstandingFees > 0);
-        vm.assume(outstandingFees <= type(uint64).max);
+        outstandingFees = bound(outstandingFees, 1, type(uint64).max);
         address feeRecipientAddress = activePool.feeRecipientAddress();
 
         _sendCollateralToActivePoolAndAllocateAsClaimableFee(outstandingFees);

@@ -159,7 +159,7 @@ contract PositionManagerPermitTest is eBTCBaseInvariants {
     ///@dev PositionManager should be valid until deadline
     function test_statusFuzzWithValidPermit(uint _approval) public {
         (address user, address positionManager) = _testPreconditions();
-        vm.assume(_approval <= 2);
+        _approval = bound(_approval, 0, 2);
 
         uint _deadline = (block.timestamp + deadline);
         uint _originalStatus = uint(

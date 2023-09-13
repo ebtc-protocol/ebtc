@@ -236,8 +236,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         - redemptions
     */
     function test_GracePeriodViaValidAction(uint8 priceDecreaseAction, uint8 action) public {
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(action <= 3);
         priceDecreaseAction = priceDecreaseAction % 2;
         action = action % 4;
 
@@ -267,8 +265,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 action
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(action <= 3);
         priceDecreaseAction = priceDecreaseAction % 2;
         action = action % 4;
 
@@ -297,8 +293,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 priceIncreaseAction
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(priceIncreaseAction <= 1);
         priceDecreaseAction = priceDecreaseAction % 2;
         priceIncreaseAction = priceIncreaseAction % 2;
 
@@ -329,8 +323,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 action
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(action <= 3);
         priceDecreaseAction = priceDecreaseAction % 2;
         action = action % 2;
 

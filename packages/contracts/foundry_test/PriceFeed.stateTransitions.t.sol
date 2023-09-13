@@ -87,9 +87,8 @@ contract PriceFeedTest is eBTCBaseFixture {
     }
 
     function testRandomPriceFeedActions(int256 _actions, int128 _rnd) public {
-        vm.assume(_actions > 0);
-        vm.assume(_actions <= 5);
-        vm.assume(_rnd > 0);
+        _actions = int128(bound(_actions, 1, 5));
+        _rnd = int128(bound(_rnd, 1, type(int128).max));
 
         IPriceFeed.Status startStatus = priceFeedTester.status();
 
