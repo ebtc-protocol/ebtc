@@ -589,7 +589,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId,
         uint256 _systemStEthFeePerUnitIndex
     ) public view returns (uint256, uint256) {
-        uint256 _stFeePerUnitIndex = stFeePerUnitIndex[_cdpId];
+        uint256 _stFeePerUnitIndex = stFeePerUnitIndex[_cdpId]; /// @audit isn't this 0 since we're in view?
         uint256 _cdpCol = Cdps[_cdpId].coll;
 
         if (
@@ -601,7 +601,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
-            (_systemStEthFeePerUnitIndex - _stFeePerUnitIndex);
+            (_systemStEthFeePerUnitIndex - _stFeePerUnitIndex); /// @audit What happens in slashing?
 
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
