@@ -235,7 +235,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGe(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             assertWithMsg(
@@ -320,7 +320,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGe(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             assertWithMsg(
@@ -414,7 +414,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
                 vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGe(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
             }
 
             if (
@@ -1046,7 +1046,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-        assertGe(vars.newTcrAfter, vars.newTcrBefore, BO_08);
+        assertGte(vars.newTcrAfter, vars.newTcrBefore, BO_08);
 
         assertEq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
         assertEq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
