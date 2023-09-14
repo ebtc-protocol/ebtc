@@ -54,7 +54,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
 
-        _syncStEthIndex();
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        _syncStEthIndex(_oldIndex, _newIndex);
         systemStEthFeePerUnitIndex = DECIMAL_PRECISION;
     }
 
@@ -521,7 +522,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function syncAccounting(bytes32 _cdpId) external override {
-        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
+        _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
         return _syncAccounting(_cdpId);
     }
 
