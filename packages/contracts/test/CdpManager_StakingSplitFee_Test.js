@@ -604,10 +604,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob}), "BorrowerOps: An operation that would result in TCR < CCR is not permitted");
   })  
   
-  it.only("Test Invariants BO-03 (Medusa): Adding collateral improves Nominal ICR", async() => {
+  it("Test Invariants BO-03 (Medusa): Adding collateral improves Nominal ICR", async() => {
       let _errorTolerance = toBN("2000000");//compared to 1e18
       	  
-      // slashing: decreaseCollateralRate(1)	  	  
+      // slashing a bit	  	  
       await ethers.provider.send("evm_increaseTime", [43924]);
       await ethers.provider.send("evm_mine");
       let _newIndex = toBN("909090909090909202");
@@ -625,6 +625,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _cdpSplitIdxStart = await cdpManager.stFeePerUnitIndex(_cdpId); 
       console.log('startNICR:' + _nicrStart + ', _cdpSplitIdxStart=' + _cdpSplitIdxStart);	  
 	  
+      // now there is staking reward to split
       let _newIndex2 = toBN("1000000000000000000");
       await collToken.setEthPerShare(_newIndex2);
 	  
