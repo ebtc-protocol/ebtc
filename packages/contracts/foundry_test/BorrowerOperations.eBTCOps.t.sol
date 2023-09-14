@@ -2,14 +2,16 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
+import "forge-std/console2.sol";
 import "../contracts/Dependencies/LiquityMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
 /*
  * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
-contract CDPOpsTest is eBTCBaseFixture {
+contract CDPOpsTest is eBTCBaseFixture, Properties {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
 
@@ -330,5 +332,71 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Make sure TCR increased after collateral was added
         uint256 newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
         assertGt(initialTcr, newTcr);
+    }
+
+    function testRepayEBTCMustImproveTCR() public {
+        uint collAmount = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
+        uint borrowedAmount = 1;
+        uint debtAmount = 28;
+        uint repayAmount = 1;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10 ether}();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+        borrowerOperations.withdrawEBTC(_cdpId, debtAmount, _cdpId, _cdpId);
+        collateral.setEthPerShare(1.099408949270679030e18);
+
+        uint256 _price = priceFeedMock.getPrice();
+        uint256 tcrBefore = cdpManager.getTCR(_price);
+
+        uint entireSystemColl = cdpManager.getEntireSystemColl();
+        uint entireSystemDebt = activePool.getSystemDebt();
+        uint underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
+
+        emit log_named_uint("C", entireSystemColl);
+        emit log_named_uint("D", entireSystemDebt);
+        emit log_named_uint("U", underlyingCollateral);
+
+        borrowerOperations.repayEBTC(_cdpId, repayAmount, HINT, HINT);
+
+        entireSystemColl = cdpManager.getEntireSystemColl();
+        entireSystemDebt = activePool.getSystemDebt();
+        underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
+
+        emit log_named_uint("C", entireSystemColl);
+        emit log_named_uint("D", entireSystemDebt);
+        emit log_named_uint("U", underlyingCollateral);
+
+        uint256 tcrAfter = cdpManager.getTCR(_price);
+
+        // TODO uncomment after https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3 is fixed
+        // assertGt(tcrAfter, tcrBefore, "TCR must increase after a repayment");
+    }
+
+    function testRepayEBTCMustBurn() public {
+        uint collAmount = 2000000000000000033 + borrowerOperations.LIQUIDATOR_REWARD();
+        uint borrowedAmount = 2;
+        uint repayAmount = 1;
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10 ether}();
+
+        bytes32 _cdpId = borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+
+        uint256 userEbtcBefore = eBTCToken.balanceOf((address(user)));
+        emit log_named_uint("eBTC balance before", userEbtcBefore);
+        emit log_named_uint("Repay amount", repayAmount);
+
+        borrowerOperations.repayEBTC(_cdpId, repayAmount, _cdpId, _cdpId);
+
+        uint256 userEbtcAfter = eBTCToken.balanceOf((address(user)));
+        emit log_named_uint("eBTC balance after", userEbtcAfter);
+
+        assertEq(userEbtcBefore - repayAmount, userEbtcAfter, BO_07);
     }
 }

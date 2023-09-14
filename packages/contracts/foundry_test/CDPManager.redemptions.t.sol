@@ -417,4 +417,82 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             "coll surplus not zero after partial redemption!!!"
         );
     }
+
+    function _getFirstCdpWithIcrGteMcr() internal returns (bytes32) {
+        bytes32 _cId = sortedCdps.getLast();
+        address currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        // Find the first cdp with ICR >= MCR
+        while (
+            currentBorrower != address(0) &&
+            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+        ) {
+            _cId = sortedCdps.getPrev(_cId);
+            currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        }
+        return _cId;
+    }
+
+    function test_RedemptionMustSatisfyAccountingEquation() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+
+        //   openCdp 2200000000000000067 4
+        //   openCdp 2293234842987251430 136273187309674429
+        //   setEthPerShare 909090909090909090
+        //   redeemCollateral 77233452000714940 137 302083018134466905 1
+
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        uint256 funds = type(uint96).max;
+        vm.deal(user, funds);
+        collateral.approve(address(borrowerOperations), funds);
+        collateral.deposit{value: funds}();
+
+        bytes32 _cdpId1 = borrowerOperations.openCdp(4, bytes32(0), bytes32(0), 2200000000000000067);
+
+        bytes32 _cdpId2 = borrowerOperations.openCdp(
+            136273187309674429,
+            bytes32(0),
+            bytes32(0),
+            2293234842987251430
+        );
+
+        collateral.setEthPerShare(909090909090909090);
+
+        bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
+
+        _before(_cdpId);
+
+        cdpManager.redeemCollateral(
+            77233452000714940,
+            bytes32(0),
+            bytes32(0),
+            bytes32(0),
+            137,
+            1,
+            302083018134466905
+        );
+
+        _after(_cdpId);
+        console.log(_diff());
+
+        uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);
+        uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
+        uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
+
+        uint256 beforeValue = ((vars.activePoolCollBefore +
+            vars.liquidatorRewardSharesBefore +
+            vars.collSurplusPoolBefore) * vars.priceBefore) /
+            1e18 -
+            vars.cdpDebtBefore;
+        uint256 afterValue = ((vars.activePoolCollAfter +
+            vars.liquidatorRewardSharesAfter +
+            vars.collSurplusPoolAfter +
+            fee) * vars.priceAfter) /
+            1e18 -
+            vars.cdpDebtAfter;
+
+        console2.log("value", beforeValue, afterValue);
+
+        assertTrue(invariant_CDPM_04(vars), CDPM_04);
+    }
 }
