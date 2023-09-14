@@ -70,7 +70,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         if (_ICR >= MCR) {
             // We must be in RM
             require(
-                _TCR < CCR && _ICR <= _TCR, /// @audit Look for edge cases, _ICR == _TCR also _ICR < CCR as to encourage Delayed Sniping
+                _TCR < CCR && _ICR <= _TCR, /// @audit is <= more dangerous? Should we use _ICR <= CCR to allow any risky CDP being liquidated?
                 "CdpManager: ICR is not below liquidation threshold in current mode"
             );
 
@@ -414,7 +414,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _debtAndColl.entireDebt,
                 _debtAndColl.entireColl
             );
-            uint _debtToColl = (_partialDebt * 1e18) / _partialState._price;
+            uint _debtToColl = (_partialDebt * 1e18) / _partialState.price;
             uint _cappedColl = collateral.getPooledEthByShares(_partialColl);
             emit CdpPartiallyLiquidated(
                 _cdpId,
@@ -446,7 +446,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // get count of liquidatable CDPs
             uint256 _cnt;
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
-                uint256 _icr = getICR(_cdpId, _price);
+                uint256 _icr = getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
                 if (_liquidatable && Cdps[_cdpId].status == Status.active) {
                     _cnt += 1;

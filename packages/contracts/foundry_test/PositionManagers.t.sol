@@ -197,7 +197,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         collToWithdraw = bound(
             collToWithdraw,
             1,
-            cdpManager.getCdpStEthBalance(userCdpId) - cdpManager.MIN_NET_COLL() - 1
+            _getCdpStEthBalance(userCdpId) - cdpManager.MIN_NET_COLL() - 1
         );
 
         uint price = priceFeedMock.fetchPrice();
