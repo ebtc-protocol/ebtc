@@ -602,6 +602,55 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _idxBefore = await cdpManager.stEthIndex();
       assert.isTrue(_idxBefore.eq(_oldIndex));
       await assertRevert(borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt, {from: bob}), "BorrowerOps: An operation that would result in TCR < CCR is not permitted");
+  })  
+  
+  it.only("Test Invariants BO-03 (Medusa): Adding collateral improves Nominal ICR", async() => {
+      let _errorTolerance = toBN("2000000");//compared to 1e18
+      	  
+      // slashing: decreaseCollateralRate(1)	  	  
+      await ethers.provider.send("evm_increaseTime", [43924]);
+      await ethers.provider.send("evm_mine");
+      let _newIndex = toBN("909090909090909202");
+      await collToken.setEthPerShare(_newIndex);
+	  
+      // open CDP
+      let _collAmt = toBN("2200000000000107717");
+      let _ebtcAmt = toBN("6401");
+      await collToken.deposit({from: owner, value: _collAmt});
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+      let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+      let _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
+      let _nicrStart = await cdpManager.getNominalICR(_cdpId);
+      let _cdpSplitIdxStart = await cdpManager.stFeePerUnitIndex(_cdpId); 
+      console.log('startNICR:' + _nicrStart + ', _cdpSplitIdxStart=' + _cdpSplitIdxStart);	  
+	  
+      let _newIndex2 = toBN("1000000000000000000");
+      await collToken.setEthPerShare(_newIndex2);
+	  
+      // check split fee to be applied
+      let _totalFee = await cdpManager.calcFeeUponStakingReward(_newIndex2, _newIndex);
+      let _deltaIdxPerUnit = _totalFee[1];
+      let _expectedNewIdxPerUnit = _cdpSplitIdxStart.add(_deltaIdxPerUnit);
+      let _expectedFeeApplied = await cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _expectedNewIdxPerUnit);	
+      let _expectedFeeAppliedToCdp = _expectedFeeApplied[0].div(mv._1e18BN);
+      console.log('_expectedNewIdxPerUnit:' + _expectedNewIdxPerUnit + ', _expectedFeeApplied:' + _expectedFeeAppliedToCdp);  
+      let _expectedLeftColl = _cdpDebtColl[1].sub(_expectedFeeAppliedToCdp);
+	  
+      let _addedColl = toBN("20");
+      assert.isTrue(_expectedFeeApplied[0].gt(_addedColl));// split fee take more collateral than added so NICR could decrease
+      await collToken.deposit({from: owner, value: _addedColl});
+      await borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 20, { from: owner, value: 0 })
+      let _cdpSplitIdxAfter = await cdpManager.stFeePerUnitIndex(_cdpId); 
+      assert.isTrue(_cdpSplitIdxAfter.eq(_expectedNewIdxPerUnit));
+	  
+      let _nicrAfter = await cdpManager.getNominalICR(_cdpId);
+      console.log('_nicrAfter:' + _nicrAfter + ', _cdpSplitIdxAfter=' + _cdpSplitIdxAfter);	
+      assert.isTrue(_nicrAfter.lt(_nicrStart));
+	  
+      let _cdpCollAfter = await cdpManager.getCdpCollShares(_cdpId);
+      console.log('_expectedLeftColl=' + _expectedLeftColl + ', _cdpCollAfter=' + _cdpCollAfter);
+      th.assertIsApproximatelyEqual(_cdpCollAfter, _expectedLeftColl, _errorTolerance.toNumber());
   })
   
   
