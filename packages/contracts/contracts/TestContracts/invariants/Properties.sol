@@ -290,7 +290,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
     }
 
-    function invariant_GENERAL_99(
+    function invariant_GENERAL_12(
         CdpManager cdpManager,
         PriceFeedTestnet priceFeedTestnet,
         CRLens crLens
@@ -299,7 +299,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
     }
 
-    function invariant_GENERAL_98(
+    function invariant_GENERAL_13(
         CRLens crLens,
         CdpManager cdpManager,
         PriceFeedTestnet priceFeedTestnet,
