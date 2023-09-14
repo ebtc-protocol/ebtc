@@ -290,6 +290,40 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
     }
 
+    function invariant_GENERAL_99(
+       CdpManager cdpManager,
+       PriceFeedTestnet priceFeedTestnet,
+       CRLens crLens
+    ) internal returns (bool) {
+        uint256 curentPrice = priceFeedTestnet.getPrice();
+        return  crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
+    }
+
+    function invariant_GENERAL_98(
+        CRLens crLens,
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedTestnet,
+        SortedCdps sortedCdps
+    ) internal returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 _price = priceFeedMock.getPrice();
+        uint256 newIcrPrevious = type(uint256).max;
+
+        // Compare synched with quote for all Cdps
+        while (currentCdp != bytes32(0)) {
+            uint256 newIcr = crLens.quoteRealICR(currentCdp);
+            uint256 synchedICR = cdpManager.getSyncedICR(currentCdp, _price);
+            
+            if(newIcr != synchedICR) {
+                return false;
+            }
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        return true;
+    }
+
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
     }
