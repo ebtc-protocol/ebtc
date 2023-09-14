@@ -15,6 +15,7 @@
   "scripts": {
     "hardhat": "hardhat",
     "prepare": "run-s prepare:*",
+    "prepare:clean-compile": "hardhat clean && hardhat compile",
     "prepare:compile": "hardhat compile",
     "prepare:set-version": "node scripts/set-version.js",
     "test": "hardhat test --show-stack-traces",
@@ -26,7 +27,8 @@
     "local-fork": "hardhat --config hardhat.config.mainnet-fork.js node --network hardhat --show-stack-traces",
     "local-fork-deployment": "hardhat run mainnetDeployment/mainnetLocalForkDeployment.js --network localhost",
     "testnet-fork-deployment": "hardhat run mainnetDeployment/testnetLocalForkDeployment.js --network localhost",
-    "deploy-testnet": "hardhat run mainnetDeployment/eBTCDeployScript.js --network localhost"
+    "deploy-local": "hardhat run mainnetDeployment/eBTCDeployScript.js --network localhost",
+    "deploy-testnet": "hardhat run mainnetDeployment/eBTCDeployScript.js --network sepolia"
   },
   "keywords": [],
   "author": "",
@@ -43,9 +45,9 @@
   },
   "devDependencies": {
     "@crytic/properties": "https://github.com/crytic/properties.git",
-    "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@nomiclabs/hardhat-etherscan": "^2.1.2",
-    "@nomiclabs/hardhat-truffle5": "^2.0.0",
+    "@nomiclabs/hardhat-ethers": "^2.2.3",
+    "@nomiclabs/hardhat-etherscan": "^3.1.7",
+    "@nomiclabs/hardhat-truffle5": "^2.0.7",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "^3.3.0",
     "@openzeppelin/test-helpers": "^0.5.10",

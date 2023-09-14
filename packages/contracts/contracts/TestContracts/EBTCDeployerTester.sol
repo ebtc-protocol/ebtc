@@ -42,20 +42,4 @@ contract EBTCDeployerTester is EBTCDeployer {
     bytes public priceFeedTestnet_creationCode = type(PriceFeedTestnet).creationCode;
     bytes public activePoolTester_creationCode = type(ActivePoolTester).creationCode;
     bytes public ebtcTokenTester_creationCode = type(EBTCTokenTester).creationCode;
-
-    function deployWithCreationCodeAndConstructorArgs(
-        string memory _saltString,
-        bytes memory creationCode,
-        bytes memory constructionArgs
-    ) external returns (address) {
-        bytes memory _data = abi.encodePacked(creationCode, constructionArgs);
-        return super.deploy(_saltString, _data);
-    }
-
-    function deployWithCreationCode(
-        string memory _saltString,
-        bytes memory creationCode
-    ) external returns (address) {
-        return super.deploy(_saltString, creationCode);
-    }
 }

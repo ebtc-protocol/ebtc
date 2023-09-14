@@ -284,4 +284,79 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _ensureSystemInvariants_RebasingUp(_var);
         }
     }
+
+    function test_ZeroPecentStakingSplitFee_CdpOperations(uint256 debtAmt) public {
+        debtAmt = bound(debtAmt, 1e18, 10000e18);
+
+        uint256 price = priceFeedMock.getPrice();
+        uint256 stEthBalance = _utils.calculateCollAmount(debtAmt, price, 297e16);
+
+        bytes32 cdpId1 = _openTestCDP(users[0], stEthBalance, debtAmt);
+
+        // Set staking split fee to 0%
+        vm.prank(defaultGovernance);
+        cdpManager.setStakingRewardSplit(0);
+
+        // rebase
+        uint256 stEthIndex0 = collateral.getPooledEthByShares(1e18);
+        collateral.setEthPerShare(stEthIndex0 * 1.1e18);
+        uint256 stEthIndex1 = collateral.getPooledEthByShares(1e18);
+
+        uint256 expectedUserCdpStEthBalance1 = _getCdpStEthBalance(cdpId1);
+        uint256 expectedFeeRecipientBalance1 = 0;
+
+        // accrue
+        vm.startPrank(users[0]);
+        cdpManager.syncAccounting(cdpId1);
+
+        // fee recipient balance should remain unchanged
+        // entirety of rebase value increase should accrue to user cdp
+        assertEq(_getCdpStEthBalance(cdpId1), expectedUserCdpStEthBalance1);
+        assertEq(collateral.balanceOf(address(feeRecipient)), expectedUserCdpStEthBalance1);
+
+        vm.stopPrank();
+    }
+
+    function test_OneHundredPercentStakingSplitFee_CdpOperations() public {
+        // Open Cdp
+
+        // Set staking split fee to 100%
+        vm.prank(defaultGovernance);
+        cdpManager.setStakingRewardSplit(10000);
+
+        // rebase + adjust operations
+
+        // close
+    }
+
+    function test_StaggeredCdpAccuralWithMultipleRebases() public {
+        /**
+            open identical Cdp 1+2
+            rebase
+            accure 1, but not 2
+
+            verify state:
+              - check expected virtual status of both via lens and synced values before
+              - do accrual of 1
+              - check expected virtual status of both via lens and synced values after
+              - confirm real values are as expected (1 is same as virtual, 2 is as before the operation)
+
+            rebase
+            accrue both
+            should be identical
+         */
+    }
+
+    function test_StaggeredCdpAccuralWithMultipleRebases_WithStakingSplitFeeChanges() public {
+        /**
+            open identical Cdp 1+2
+            set staking split fee to 50%
+            rebase
+            accure 1, but not 2
+            set staking split fee to 0%
+            rebase
+            accrue both
+            should be identical
+         */
+    }
 }

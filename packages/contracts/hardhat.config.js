@@ -29,6 +29,10 @@ const alchemyUrlGoerli = () => {
   return `https://eth-goerli.g.alchemy.com/v2/${getSecret("alchemyAPIKeyGoerli")}`;
 };
 
+const alchemyUrlSepolia = () => {
+  return `https://eth-sepolia.g.alchemy.com/v2/${getSecret("alchemyAPIKeySepolia")}`;
+};
+
 module.exports = {
   paths: {
     // contracts: "./contracts",
@@ -67,12 +71,7 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      accounts: accountsList,
-      gas: 150000000, // tx gas limit
-      blockGasLimit: 150000000,
-      gasPrice: 20000000000,
-      initialBaseFeePerGas: 0,
-      allowUnlimitedContractSize: true
+      accounts: accountsList
     },
     mainnet: {
       url: alchemyUrl(),
@@ -93,7 +92,17 @@ module.exports = {
       gas: 10000000, // tx gas limit
       accounts: [
         getSecret(
-          "GOERLI_DEPLOYER_PRIVATEKEY",
+          "DEPLOYER_PRIVATEKEY",
+          "0x60ddfe7f579ab6867cbe7a2dc03853dc141d7a4ab6dbefc0dae2d2b1bd4e487f"
+        )
+      ]
+    },
+    sepolia: {
+      url: alchemyUrlSepolia(),
+      gas: 10000000, // tx gas limit
+      accounts: [
+        getSecret(
+          "DEPLOYER_PRIVATEKEY",
           "0x60ddfe7f579ab6867cbe7a2dc03853dc141d7a4ab6dbefc0dae2d2b1bd4e487f"
         )
       ]

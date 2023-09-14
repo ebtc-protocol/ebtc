@@ -1,4 +1,5 @@
 const DeploymentHelper = require('../utils/deploymentHelpers.js')
+const configParamsSepolia = require("./eBTCDeploymentParams.sepolia.js")
 const configParamsGoerli = require("./eBTCDeploymentParams.goerli.js")
 const configParamsMainnet = require("./eBTCDeploymentParams.mainnet.js")
 const configParamsLocal = require("./eBTCDeploymentParams.local.js")
@@ -266,6 +267,7 @@ class EBTCDeployerScript {
     }
 
     async verifyContractsViaPlugin(mainnetDeploymentHelper, name, deploymentState, constructorArgs) {
+        console.log(this.configParams)
         if (!this.configParams.VERIFY_ETHERSCAN) {
             console.log('Verification disabled by config\n')
         } else {
@@ -290,11 +292,11 @@ class EBTCDeployerScript {
 async function main() {
     // Flag if useMockCollateral and useMockPriceFeed 
     // also specify which parameter config file to use
-    let useMockCollateral = false;
-    let useMockPriceFeed = false;
+    let useMockCollateral = true;
+    let useMockPriceFeed = true;
 
-    let configParams = configParamsLocal;
-//    let configParams = configParamsGoerli;
+    // let configParams = configParamsLocal;
+   let configParams = configParamsSepolia;
 //    let configParams = configParamsMainnet;
 
     // flag override: always use mock price feed on local as no feed will exist
