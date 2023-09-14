@@ -68,7 +68,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         if (_ICR >= MCR) {
             // We must be in RM
             require(
-                _TCR < CCR && _ICR <= _TCR, /// @audit Look for edge cases, _ICR == _TCR also _ICR < CCR as to encourage Delayed Sniping
+                _TCR < CCR && _ICR <= _TCR, /// @audit is <= more dangerous? Should we use _ICR <= CCR to allow any risky CDP being liquidated?
                 "CdpManager: ICR is not below liquidation threshold in current mode"
             );
 
