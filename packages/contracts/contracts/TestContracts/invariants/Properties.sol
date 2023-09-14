@@ -291,12 +291,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     }
 
     function invariant_GENERAL_99(
-       CdpManager cdpManager,
-       PriceFeedTestnet priceFeedTestnet,
-       CRLens crLens
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedTestnet,
+        CRLens crLens
     ) internal returns (bool) {
         uint256 curentPrice = priceFeedTestnet.getPrice();
-        return  crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
+        return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
     }
 
     function invariant_GENERAL_98(
@@ -314,8 +314,8 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         while (currentCdp != bytes32(0)) {
             uint256 newIcr = crLens.quoteRealICR(currentCdp);
             uint256 synchedICR = cdpManager.getSyncedICR(currentCdp, _price);
-            
-            if(newIcr != synchedICR) {
+
+            if (newIcr != synchedICR) {
                 return false;
             }
 
