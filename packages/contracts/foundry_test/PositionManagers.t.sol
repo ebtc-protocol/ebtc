@@ -209,7 +209,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
 
         vm.assume(newICR >= borrowerOperations.MCR());
 
-        // FIXME? collateral withdrawn to positionManager instead CDP owner?    
+        // FIXME? collateral withdrawn to positionManager instead CDP owner?
         uint _balBefore = collateral.balanceOf(positionManager);
         vm.prank(positionManager);
         borrowerOperations.withdrawColl(userCdpId, collToWithdraw, bytes32(0), bytes32(0));

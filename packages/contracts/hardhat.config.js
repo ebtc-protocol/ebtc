@@ -63,7 +63,7 @@ module.exports = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 100
+            runs: 200
           }
         }
       }
@@ -71,7 +71,8 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      accounts: accountsList
+      accounts: accountsList,
+      allowUnlimitedContractSize: true
     },
     mainnet: {
       url: alchemyUrl(),

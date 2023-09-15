@@ -12,6 +12,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     mapping(bytes32 => uint256) private _targetCdpPrevColls;
     mapping(bytes32 => uint256) private _targetCdpPrevFeeApplied;
 
+    // used to compare two values, in 1e18 scale
+    uint private _compareTolerance = 1000000;
+
     struct LocalFeeSplitVar {
         uint256 _prevSystemStEthFeePerUnitIndex;
         uint256 _prevTotalCollUnderlying;
@@ -303,33 +306,64 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 stEthIndex1 = collateral.getPooledEthByShares(1e18);
 
         uint256 expectedUserCdpStEthBalance1 = _getCdpStEthBalance(cdpId1);
-        uint256 expectedFeeRecipientBalance1 = 0;
+        uint256 expectedFeeRecipientBalance1 = activePool.getFeeRecipientClaimableCollShares();
 
         // accrue
         vm.startPrank(users[0]);
         cdpManager.syncAccounting(cdpId1);
 
-        // fee recipient balance should remain unchanged
+        // fee recipient claimable balance should remain unchanged
         // entirety of rebase value increase should accrue to user cdp
         assertEq(_getCdpStEthBalance(cdpId1), expectedUserCdpStEthBalance1);
-        assertEq(collateral.balanceOf(address(feeRecipient)), expectedUserCdpStEthBalance1);
+        assertEq(activePool.getFeeRecipientClaimableCollShares(), expectedFeeRecipientBalance1);
 
         vm.stopPrank();
     }
 
-    function test_OneHundredPercentStakingSplitFee_CdpOperations() public {
+    function test_OneHundredPercentStakingSplitFee_CdpOperations(uint256 debtAmt) public {
         // Open Cdp
+        debtAmt = bound(debtAmt, 1e18, 10000e18);
+
+        uint256 price = priceFeedMock.getPrice();
+        uint256 stEthBalance = _utils.calculateCollAmount(debtAmt, price, 297e16);
+
+        bytes32 cdpId1 = _openTestCDP(users[0], stEthBalance, debtAmt);
 
         // Set staking split fee to 100%
+        uint256 _maxSplit = cdpManager.MAX_REWARD_SPLIT();
         vm.prank(defaultGovernance);
-        cdpManager.setStakingRewardSplit(10000);
+        cdpManager.setStakingRewardSplit(_maxSplit);
 
-        // rebase + adjust operations
+        // rebase
+        uint256 stEthIndex0 = collateral.getPooledEthByShares(1e18);
+        collateral.setEthPerShare((stEthIndex0 * 15e17) / 1e18);
+        uint256 stEthIndex1 = collateral.getPooledEthByShares(1e18);
 
-        // close
+        (uint256 _expectedSplitFee, , ) = cdpManager.calcFeeUponStakingReward(
+            stEthIndex1,
+            stEthIndex0
+        );
+        uint256 _beforeUserCdpCollShare1 = cdpManager.getCdpCollShares(cdpId1);
+        uint256 _beforeFeeRecipientShare1 = activePool.getFeeRecipientClaimableCollShares();
+
+        // accrue
+        vm.startPrank(users[0]);
+        cdpManager.syncAccounting(cdpId1);
+
+        // entirety of rebase value increase should go to fee recipient claimable balance
+        _utils.assertApproximateEq(
+            cdpManager.getCdpCollShares(cdpId1),
+            _beforeUserCdpCollShare1 - _expectedSplitFee,
+            _compareTolerance
+        );
+        _utils.assertApproximateEq(
+            activePool.getFeeRecipientClaimableCollShares(),
+            _beforeFeeRecipientShare1 + _expectedSplitFee,
+            _compareTolerance
+        );
     }
 
-    function test_StaggeredCdpAccuralWithMultipleRebases() public {
+    function test_StaggeredCdpAccuralWithMultipleRebases(uint256 debtAmt) public {
         /**
             open identical Cdp 1+2
             rebase
@@ -345,18 +379,126 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             accrue both
             should be identical
          */
+        (bytes32 cdpId1, bytes32 cdpId2) = _createTwoIdenticalCDPs(debtAmt);
+
+        // first rebase and only sync one CDP
+        uint256 stEthIndex1 = _rebaseAndCheckSplitFee(
+            collateral.getPooledEthByShares(1e18),
+            125e16,
+            true,
+            cdpId1,
+            cdpId2
+        );
+
+        // second rebase and sync both CDPs
+        _rebaseAndCheckSplitFee(stEthIndex1, 125e16, false, cdpId1, cdpId2);
     }
 
-    function test_StaggeredCdpAccuralWithMultipleRebases_WithStakingSplitFeeChanges() public {
+    function test_StaggeredCdpAccuralWithMultipleRebases_WithStakingSplitFeeChanges(
+        uint256 debtAmt
+    ) public {
         /**
             open identical Cdp 1+2
-            set staking split fee to 50%
+            set staking split fee to 80%
             rebase
             accure 1, but not 2
-            set staking split fee to 0%
+            set staking split fee to 10%
             rebase
             accrue both
             should be identical
          */
+        (bytes32 cdpId1, bytes32 cdpId2) = _createTwoIdenticalCDPs(debtAmt);
+
+        // first rebase and only sync one CDP
+        vm.prank(defaultGovernance);
+        cdpManager.setStakingRewardSplit(8_000);
+        uint256 stEthIndex1 = _rebaseAndCheckSplitFee(
+            collateral.getPooledEthByShares(1e18),
+            125e16,
+            true,
+            cdpId1,
+            cdpId2
+        );
+
+        // second rebase and sync both CDPs
+        vm.prank(defaultGovernance);
+        cdpManager.setStakingRewardSplit(1_000);
+        _rebaseAndCheckSplitFee(stEthIndex1, 125e16, false, cdpId1, cdpId2);
+    }
+
+    function _createTwoIdenticalCDPs(uint256 debtAmt) internal returns (bytes32, bytes32) {
+        debtAmt = bound(debtAmt, 1e18, 10000e18);
+        uint256 stEthBalance = _utils.calculateCollAmount(debtAmt, priceFeedMock.getPrice(), 297e16);
+
+        bytes32 cdpId1 = _openTestCDP(users[0], stEthBalance, debtAmt);
+        bytes32 cdpId2 = _openTestCDP(users[1], stEthBalance, debtAmt);
+        return (cdpId1, cdpId2);
+    }
+
+    function _syncIndividualCdp(bytes32 _cdpId) internal {
+        vm.prank(users[2]);
+        cdpManager.syncAccounting(_cdpId);
+    }
+
+    function _checkCollShareAfterSplitFee(
+        bytes32 _cdpId,
+        uint256 _expectedCollShare,
+        uint256 _expectedPerUnit
+    ) internal {
+        (uint256 _scaledFee, ) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _expectedPerUnit);
+        uint256 _appliedFee = _scaledFee / 1e18;
+
+        // sync given CDP
+        uint256 _beforeCdpCollShare = cdpManager.getCdpCollShares(_cdpId);
+        _syncIndividualCdp(_cdpId);
+        uint256 _afterCdpCollShare = cdpManager.getCdpCollShares(_cdpId);
+
+        // check collateral share after split fee applied against Lens or Synced view result
+        assertEq(_expectedCollShare, _afterCdpCollShare);
+        _utils.assertApproximateEq(
+            _beforeCdpCollShare - _appliedFee,
+            _afterCdpCollShare,
+            _compareTolerance
+        );
+    }
+
+    function _rebaseAndCheckSplitFee(
+        uint256 _startStETHIndex,
+        uint256 _rebaseIncrease,
+        bool _syncOnlyOneCdp,
+        bytes32 cdpId1,
+        bytes32 cdpId2
+    ) internal returns (uint256) {
+        // rebase to get staking reward
+        collateral.setEthPerShare((_startStETHIndex * _rebaseIncrease) / 1e18);
+
+        // calculate expected split fee and delta value for perUnit index
+        (uint256 _expectedSplitFee, uint256 _deltaPerUnit, ) = cdpManager.calcFeeUponStakingReward(
+            collateral.getPooledEthByShares(1e18),
+            _startStETHIndex
+        );
+        uint256 _expectedPerUnit = cdpManager.systemStEthFeePerUnitIndex() + _deltaPerUnit;
+        uint256 _expectedCdp1CollShare = crLens.quoteRealCollShares(cdpId1);
+        uint256 _expectedCdp2CollShare = crLens.quoteRealCollShares(cdpId2);
+        uint256 _beforeFeeRecipientShare = activePool.getFeeRecipientClaimableCollShares();
+
+        // sync CDP and check
+        {
+            _checkCollShareAfterSplitFee(cdpId1, _expectedCdp1CollShare, _expectedPerUnit);
+            if (!_syncOnlyOneCdp) {
+                _checkCollShareAfterSplitFee(cdpId2, _expectedCdp2CollShare, _expectedPerUnit);
+            }
+
+            // ONLY holds if two identical CDP
+            _utils.assertApproximateEq(_expectedCdp1CollShare, _expectedCdp2CollShare, 123);
+
+            // check fee receipient claimable balance
+            _utils.assertApproximateEq(
+                activePool.getFeeRecipientClaimableCollShares(),
+                _beforeFeeRecipientShare + _expectedSplitFee,
+                _compareTolerance
+            );
+        }
+        return collateral.getPooledEthByShares(1e18);
     }
 }
