@@ -73,6 +73,9 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR | High Level | ✅ |
 | GENERAL-10 | All CDPs should maintain a minimum collateral size | High Level | ✅ |
 | GENERAL-11 | The TCR pre-computed (TCRNotified) is the same as the one after all calls | High Level | ✅ |
+| GENERAL-12 | The synchedTCR matches the TCR after accrual (as returned by CrLens) | High Level | ✅ |
+| GENERAL-13 | The SynchedICR of every CDP in the Linked List Matches the ICR the CDPs will have the call (as returned by CrLens)  | High Level | ✅ |
+
 
 ## Redemptions
 

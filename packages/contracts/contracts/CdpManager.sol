@@ -54,7 +54,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Emit initial value for analytics
         emit StakingRewardSplitSet(stakingRewardSplit);
 
-        _syncStEthIndex();
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        _syncStEthIndex(_oldIndex, _newIndex);
         systemStEthFeePerUnitIndex = DECIMAL_PRECISION;
     }
 

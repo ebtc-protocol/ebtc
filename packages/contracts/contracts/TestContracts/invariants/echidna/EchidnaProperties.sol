@@ -76,4 +76,13 @@ abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
     function echidna_GENERAL_06() public returns (bool) {
         return invariant_GENERAL_06(eBTCToken, cdpManager, sortedCdps);
     }
+
+    // TODO: Categorize
+    function echidna_GENERAL_13() public returns (bool) {
+        return invariant_GENERAL_13(crLens, cdpManager, priceFeedMock, sortedCdps);
+    }
+
+    function echidna_GENERAL_12() public returns (bool) {
+        return invariant_GENERAL_12(cdpManager, priceFeedMock, crLens);
+    }
 }

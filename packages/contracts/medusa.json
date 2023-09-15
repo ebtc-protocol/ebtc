@@ -34,7 +34,7 @@
 			"testAllContracts": false,
 			"traceAll": false,
 			"assertionTesting": {
-				"enabled": true,
+				"enabled": false,
 				"testViewMethods": false,
 				"panicCodeConfig": {
 					"failOnCompilerInsertedPanic": false,
@@ -50,7 +50,7 @@
 				}
 			},
 			"propertyTesting": {
-				"enabled": false,
+				"enabled": true,
 				"testPrefixes": [
 					"echidna_"
 				]
