@@ -121,7 +121,6 @@ class DeploymentHelper {
         let _arg = web3.eth.abi.encodeParameters(_argTypes, _argValues);
         _deployTx = await ebtcDeployer.deployWithCreationCodeAndConstructorArgs(_salt, _code, _arg);
     } else {
-        const gasLimit = await Artifact.new.estimateGas();
         _deployTx = await ebtcDeployer.deployWithCreationCode(_salt, _code);
     }
 	
