@@ -542,6 +542,39 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _firstICR = await cdpManager.getICR(_firstId, _price);
       let _tcr = await cdpManager.getTCR(_price);
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
+	  	  
+      // get a CDP to be liquidated with bad debt
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } });
+      let _liqId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _liqDebt = await cdpManager.getCdpDebt(_liqId);
+      _price = toBN("58000000000000000");
+      await priceFeed.setPrice(_price);
+      let _toLiqICR = await cdpManager.getICR(_liqId, _price);
+      assert.isTrue(_toLiqICR.lt(LICR));
+      await debtToken.transfer(owner, _liqDebt, {from: alice});
+      await cdpManager.liquidate(_liqId, {from: owner});
+      let _pendingDebt = await cdpManager.getPendingRedistributedDebt(_firstId);
+      assert.isTrue(_pendingDebt.gt(toBN("0")));
+	  
+      // check synced state before change applied
+      let _syncedColl = await cdpManager.getSyncedCdpCollShares(_firstId);
+      let _syncedDebt = await cdpManager.getSyncedCdpDebt(_firstId);
+      let _syncedICR = await cdpManager.getSyncedICR(_firstId, _price);
+      let _syncedTCR = await cdpManager.getSyncedTCR(_price);
+	  
+      // apply CDP sync with staking split fee
+      await borrowerOperations.withdrawEBTC(_firstId, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32);
+      await borrowerOperations.repayEBTC(_firstId, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32);
+      let _newIdxCached = await cdpManager.stEthIndex();
+      assert.isTrue(_newIdxCached.eq(_newIndex));
+      let _cdpCollAfter = await cdpManager.getCdpCollShares(_firstId);
+      let _cdpDebtAfter = await cdpManager.getCdpDebt(_firstId);
+      let _cdpIcrAfter = await cdpManager.getICR(_firstId, _price);
+      let _tcrAfter = await cdpManager.getTCR(_price);
+      assert.isTrue(_cdpCollAfter.eq(_syncedColl));
+      assert.isTrue(_cdpDebtAfter.eq(_syncedDebt));
+      assert.isTrue(_cdpIcrAfter.eq(_syncedICR));
+      assert.isTrue(_tcrAfter.eq(_syncedTCR));
   })  
 
   it("Malicious Recovery Mode triggering should fail within Borrower Operations: openCDP() due to sync-up of staking index", async() => {	  
