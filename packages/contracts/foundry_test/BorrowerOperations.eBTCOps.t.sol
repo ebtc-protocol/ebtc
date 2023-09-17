@@ -252,9 +252,9 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             priceFeedMock.fetchPrice()
         );
         // Calculate projected TCR change with new debt added on top
-        uint256 projectedSystemDebt = cdpManager.getEntireSystemDebt() + withdrawAmnt;
+        uint256 projectedSystemDebt = cdpManager.getSystemDebt() + withdrawAmnt;
         uint256 projectedTcr = LiquityMath._computeCR(
-            borrowerOperations.getEntireSystemColl(),
+            borrowerOperations.getSystemCollShares(),
             projectedSystemDebt,
             priceFeedMock.fetchPrice()
         );
@@ -352,7 +352,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 _price = priceFeedMock.getPrice();
         uint256 tcrBefore = cdpManager.getTCR(_price);
 
-        uint entireSystemColl = cdpManager.getEntireSystemColl();
+        uint entireSystemColl = cdpManager.getSystemCollShares();
         uint entireSystemDebt = activePool.getSystemDebt();
         uint underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
 
@@ -362,7 +362,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         borrowerOperations.repayEBTC(_cdpId, repayAmount, HINT, HINT);
 
-        entireSystemColl = cdpManager.getEntireSystemColl();
+        entireSystemColl = cdpManager.getSystemCollShares();
         entireSystemDebt = activePool.getSystemDebt();
         underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
 

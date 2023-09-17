@@ -405,7 +405,7 @@ contract BorrowerOperations is
         _requireAtLeastMinNetStEthBalance(vars.netColl);
 
         // Update global pending index before any operations
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         vars.price = priceFeed.fetchPrice();
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
@@ -457,6 +457,10 @@ contract BorrowerOperations is
 
         // Set the cdp struct's properties
         bytes32 _cdpId = sortedCdps.insert(_borrower, vars.NICR, _upperHint, _lowerHint);
+
+        // Collision check: collisions should never occur
+        // Explicitly prevent it by checking for `nonExistent`
+        _requireCdpIsNonExistent(_cdpId);
 
         // Collateral is stored in shares form for normalization
         cdpManager.initializeCdp(
@@ -760,7 +764,12 @@ contract BorrowerOperations is
         require(status == 1, "BorrowerOperations: Cdp does not exist or is closed");
     }
 
-    function _requireNonZeroDebtChange(uint256 _EBTCChange) internal pure {
+    function _requireCdpIsNonExistent(bytes32 _cdpId) internal view {
+        uint status = cdpManager.getCdpStatus(_cdpId);
+        require(status == 0, "BorrowerOperations: Cdp is active or has been previously closed");
+    }
+
+    function _requireNonZeroDebtChange(uint _EBTCChange) internal pure {
         require(_EBTCChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
     }
 
@@ -981,9 +990,9 @@ contract BorrowerOperations is
         bool _isDebtIncrease,
         uint256 _price
     ) internal view returns (uint256) {
-        uint256 _shareColl = getEntireSystemColl();
+        uint256 _shareColl = getSystemCollShares();
         uint256 totalColl = collateral.getPooledEthByShares(_shareColl);
-        uint256 totalDebt = _getEntireSystemDebt();
+        uint256 totalDebt = _getSystemDebt();
 
         totalColl = _isCollIncrease ? totalColl + _collChange : totalColl - _collChange;
         totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;
@@ -1054,7 +1063,7 @@ contract BorrowerOperations is
             "BorrowerOperations: Cannot set feeRecipient to zero address"
         );
 
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         feeRecipientAddress = _feeRecipientAddress;
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
@@ -1063,7 +1072,7 @@ contract BorrowerOperations is
     function setFeeBps(uint256 _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         // set new flash fee
         uint256 _oldFee = feeBps;
@@ -1072,7 +1081,7 @@ contract BorrowerOperations is
     }
 
     function setFlashLoansPaused(bool _paused) external requiresAuth {
-        cdpManager.applyPendingGlobalState();
+        cdpManager.syncGlobalAccounting();
 
         flashLoansPaused = _paused;
         emit FlashLoansPaused(msg.sender, _paused);

@@ -66,8 +66,8 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     function _getValue() internal returns (uint256) {
         uint256 currentPrice = priceFeedMock.getPrice();
 
-        uint256 totalColl = cdpManager.getEntireSystemColl();
-        uint256 totalDebt = cdpManager.getEntireSystemDebt();
+        uint256 totalColl = cdpManager.getSystemCollShares();
+        uint256 totalDebt = cdpManager.getSystemDebt();
         uint256 totalCollFeeRecipient = activePool.getFeeRecipientClaimableCollShares();
 
         uint256 surplusColl = collSurplusPool.getTotalSurplusCollShares();
@@ -569,7 +569,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
         uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
         uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
-        uint256 _col = clampBetween(value, 1, cdpManager.getEntireSystemColl() / 2);
+        uint256 _col = clampBetween(value, 1, cdpManager.getSystemCollShares() / 2);
         uint256 _n = clampBetween(value, 1, cdpManager.getActiveCdpsCount());
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(user));

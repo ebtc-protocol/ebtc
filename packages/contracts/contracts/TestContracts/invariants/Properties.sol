@@ -63,7 +63,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             (uint256 _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _debt;
         }
-        return isApproximateEq(_sum, cdpManager.getEntireSystemDebt(), diff_tolerance);
+        return isApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance);
     }
 
     function invariant_CDPM_01(
@@ -86,7 +86,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (systemStEthFeePerUnitIndex < cdpManager.stFeePerUnitIndex(cdpManager.CdpIds(i))) {
+            if (systemStEthFeePerUnitIndex < cdpManager.stEthFeePerUnitIndex(cdpManager.CdpIds(i))) {
                 return false;
             }
         }
@@ -234,9 +234,9 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         // TODO how do we take into account underlying/shares into this calculation?
         return
             cdpManager.getTCR(priceFeedTestnet.getPrice()) > collateral.getPooledEthByShares(1e18)
-                ? (cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice()) / 1e18 >=
+                ? (cdpManager.getSystemCollShares() * priceFeedTestnet.getPrice()) / 1e18 >=
                     eBTCToken.totalSupply()
-                : (cdpManager.getEntireSystemColl() * priceFeedTestnet.getPrice()) / 1e18 <
+                : (cdpManager.getSystemCollShares() * priceFeedTestnet.getPrice()) / 1e18 <
                     eBTCToken.totalSupply();
     }
 

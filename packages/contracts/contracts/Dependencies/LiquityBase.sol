@@ -62,7 +62,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
         @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
         @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
      */
-    function getEntireSystemColl() public view returns (uint256 entireSystemColl) {
+    function getSystemCollShares() public view returns (uint256 entireSystemColl) {
         return (activePool.getSystemCollShares());
     }
 
@@ -70,19 +70,19 @@ contract LiquityBase is BaseMath, ILiquityBase {
         @notice Get the entire system debt
         @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
      */
-    function _getEntireSystemDebt() internal view returns (uint256 entireSystemDebt) {
+    function _getSystemDebt() internal view returns (uint256 entireSystemDebt) {
         return (activePool.getSystemDebt());
     }
 
     function _getTCR(uint256 _price) internal view returns (uint256 TCR) {
-        (TCR, , ) = _getTCRWithTotalCollAndDebt(_price);
+        (TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
     }
 
-    function _getTCRWithTotalCollAndDebt(
+    function _getTCRWithSystemDebtAndCollShares(
         uint256 _price
     ) internal view returns (uint256 TCR, uint256 _coll, uint256 _debt) {
-        uint256 entireSystemColl = getEntireSystemColl();
-        uint256 entireSystemDebt = _getEntireSystemDebt();
+        uint256 entireSystemColl = getSystemCollShares();
+        uint256 entireSystemDebt = _getSystemDebt();
 
         uint256 _underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
         TCR = LiquityMath._computeCR(_underlyingCollateral, entireSystemDebt, _price);

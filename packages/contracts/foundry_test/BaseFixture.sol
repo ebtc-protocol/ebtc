@@ -468,7 +468,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         assertTrue(_status == expectedStatus);
 
         assertTrue(cdpManager.debtRedistributionIndex(cdpId) == 0);
-        assertTrue(cdpManager.stFeePerUnitIndex(cdpId) == 0);
+        assertTrue(cdpManager.stEthFeePerUnitIndex(cdpId) == 0);
     }
 
     function _printSystemState() internal {
@@ -548,5 +548,10 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     function _waitUntilRMColldown() internal {
         cdpManager.syncGracePeriod();
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+    }
+
+    function _getCdpStEthBalance(bytes32 _cdpId) public view returns (uint) {
+        uint collShares = cdpManager.getCdpCollShares(_cdpId);
+        return collateral.getPooledEthByShares(collShares);
     }
 }

@@ -200,7 +200,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override systemStEthFeePerUnitIndexError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
-    mapping(bytes32 => uint256) public stFeePerUnitIndex;
+    mapping(bytes32 => uint256) public stEthFeePerUnitIndex;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
@@ -274,7 +274,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
         debtRedistributionIndex[_cdpId] = 0;
-        stFeePerUnitIndex[_cdpId] = 0;
+        stEthFeePerUnitIndex[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
@@ -463,12 +463,12 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Claim split fee if there is staking-reward coming
     // and update global index & fee-per-unit variables
     /// @dev BO can call this without trigggering a
-    function applyPendingGlobalState() external {
+    function syncGlobalAccounting() external {
         _requireCallerIsBorrowerOperations();
-        _applyPendingGlobalState();
+        _syncGlobalAccounting();
     }
 
-    function _applyPendingGlobalState() internal {
+    function _syncGlobalAccounting() internal {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         _syncStEthIndex(_oldIndex, _newIndex);
         if (_newIndex > _oldIndex && totalStakes > 0) {
@@ -485,7 +485,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Claim Fee Split, toggles Grace Period accordingly
     /// @notice Call this if you want to accrue feeSplit
     function syncGlobalAccountingAndGracePeriod() public {
-        _applyPendingGlobalState(); // Apply // Could trigger RM
+        _syncGlobalAccounting(); // Apply // Could trigger RM
         syncGracePeriod(); // Synch Grace Period
     }
 
@@ -517,7 +517,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 deltaIndexFees = (deltaIndex * stakingRewardSplit) / MAX_REWARD_SPLIT;
 
         // we take the fee for all CDPs immediately which is scaled by index precision
-        uint256 _deltaFeeSplit = deltaIndexFees * getEntireSystemColl();
+        uint256 _deltaFeeSplit = deltaIndexFees * getSystemCollShares();
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
@@ -555,9 +555,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
-        _applyPendingGlobalState();
+        _syncGlobalAccounting();
 
-        uint256 _oldPerUnitCdp = stFeePerUnitIndex[_cdpId];
+        uint256 _oldPerUnitCdp = stEthFeePerUnitIndex[_cdpId];
         uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
         (
@@ -582,7 +582,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         // sync per stake index for given CDP
         if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
-            stFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
+            stEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
         }
 
         return (_newColl, _newDebt, _feeSplitDistributed, _pendingDebt);
@@ -593,19 +593,19 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId,
         uint256 _systemStEthFeePerUnitIndex
     ) public view returns (uint256, uint256) {
-        uint256 _stFeePerUnitIndex = stFeePerUnitIndex[_cdpId];
+        uint256 _stEthFeePerUnitIndex = stEthFeePerUnitIndex[_cdpId];
         uint256 _cdpCol = Cdps[_cdpId].coll;
 
         if (
-            _stFeePerUnitIndex == 0 ||
+            _stEthFeePerUnitIndex == 0 ||
             _cdpCol == 0 ||
-            _stFeePerUnitIndex == _systemStEthFeePerUnitIndex
+            _stEthFeePerUnitIndex == _systemStEthFeePerUnitIndex
         ) {
             return (0, _cdpCol);
         }
 
         uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
-            (_systemStEthFeePerUnitIndex - _stFeePerUnitIndex);
+            (_systemStEthFeePerUnitIndex - _stEthFeePerUnitIndex);
 
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
@@ -683,11 +683,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the Cdps entire debt and coll struct
     function _getDebtAndCollShares(
         bytes32 _cdpId
-    ) internal view returns (LocalVar_CdpDebtColl memory) {
+    ) internal view returns (CdpDebtAndCollShares memory) {
         (uint256 entireDebt, uint256 entireColl, uint256 pendingDebtReward) = getDebtAndCollShares(
             _cdpId
         );
-        return LocalVar_CdpDebtColl(entireDebt, entireColl, pendingDebtReward);
+        return CdpDebtAndCollShares(entireDebt, entireColl, pendingDebtReward);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
@@ -697,7 +697,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     ) public view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) {
         (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
             _cdpId,
-            stFeePerUnitIndex[_cdpId],
+            stEthFeePerUnitIndex[_cdpId],
             systemStEthFeePerUnitIndex
         );
         coll = _newColl;
@@ -783,7 +783,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, , , ) = _calcSyncedAccounting(
             _cdpId,
-            stFeePerUnitIndex[_cdpId],
+            stEthFeePerUnitIndex[_cdpId],
             _newGlobalSplitIdx
         );
         return _newColl;

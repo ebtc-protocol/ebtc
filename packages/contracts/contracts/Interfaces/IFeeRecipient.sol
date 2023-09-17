@@ -13,5 +13,5 @@ interface IFeeRecipient {
 
     function receiveEbtcFee(uint256 _EBTCFee) external;
 
-    function applyPendingGlobalState() external;
+    function syncGlobalAccounting() external;
 }

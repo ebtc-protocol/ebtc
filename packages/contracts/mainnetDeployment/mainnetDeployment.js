@@ -473,8 +473,8 @@ async function mainnetDeploy(configParams) {
   console.log(`Cdp list size: ${listSize} `)
 
   // Total system debt and coll
-  const entireSystemDebt = await ebtcCore.cdpManager.getEntireSystemDebt()
-  const entireSystemColl = await ebtcCore.cdpManager.getEntireSystemColl()
+  const entireSystemDebt = await ebtcCore.cdpManager.getSystemDebt()
+  const entireSystemColl = await ebtcCore.cdpManager.getSystemCollShares()
   th.logBN("Entire system debt", entireSystemDebt)
   th.logBN("Entire system coll", entireSystemColl)
   

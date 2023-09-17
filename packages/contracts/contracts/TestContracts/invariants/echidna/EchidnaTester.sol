@@ -96,7 +96,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
     function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
         uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
         uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
-        uint256 _col = clampBetween(value, 1, cdpManager.getEntireSystemColl() / 2);
+        uint256 _col = clampBetween(value, 1, cdpManager.getSystemCollShares() / 2);
         uint256 _n = clampBetween(value, 1, cdpManager.getActiveCdpsCount());
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
