@@ -343,25 +343,22 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
     function _syncAccounting(bytes32 _cdpId) internal {
-        _applyAccumulatedFeeSplit(_cdpId);
+        (, uint _newDebt, , uint _pendingDebt) = _applyAccumulatedFeeSplit(_cdpId);
 
-        // Compute pending rewards
-        uint256 pendingEBTCDebtReward = _getPendingRedistributedDebt(_cdpId);
-        if (pendingEBTCDebtReward > 0) {
+        // Update pending debts
+        if (_pendingDebt > 0) {
             Cdp storage _cdp = Cdps[_cdpId];
             uint256 prevDebt = _cdp.debt;
             uint256 prevColl = _cdp.coll;
 
             // Apply pending rewards to cdp's state
-            uint256 _newDebt = prevDebt + pendingEBTCDebtReward;
             _cdp.debt = _newDebt;
 
             _updateRedistributedDebtSnapshot(_cdpId);
 
-            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_cdpId);
             emit CdpUpdated(
                 _cdpId,
-                _borrower,
+                ISortedCdps(sortedCdps).getOwnerAddress(_cdpId),
                 prevDebt,
                 prevColl,
                 _newDebt,
@@ -472,14 +469,15 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     }
 
     function _syncGlobalAccounting() internal {
-        (uint256 _oldIndex, uint256 _newIndex) = _syncStEthIndex();
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        _syncStEthIndex(_oldIndex, _newIndex);
         if (_newIndex > _oldIndex && totalStakes > 0) {
             (
                 uint256 _feeTaken,
-                uint256 _deltaFeePerUnit,
+                uint256 _newFeePerUnit,
                 uint256 _perUnitError
-            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
-            _takeSplitAndUpdateFeePerUnit(_feeTaken, _deltaFeePerUnit, _perUnitError);
+            ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+            _takeSplitAndUpdateFeePerUnit(_feeTaken, _newFeePerUnit, _perUnitError);
             _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
@@ -491,16 +489,19 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         syncGracePeriod(); // Synch Grace Period
     }
 
+    /// @return existing(old) local stETH index AND
+    /// @return current(new) stETH index from collateral token
+    function _readStEthIndex() internal view returns (uint256, uint256) {
+        return (stEthIndex, collateral.getPooledEthByShares(DECIMAL_PRECISION));
+    }
+
     // Update the global index via collateral token
-    function _syncStEthIndex() internal returns (uint256, uint256) {
-        uint256 _oldIndex = stEthIndex;
-        uint256 _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
+    function _syncStEthIndex(uint256 _oldIndex, uint256 _newIndex) internal {
         if (_newIndex != _oldIndex) {
             stEthIndex = _newIndex;
             lastIndexTimestamp = block.timestamp;
             emit StEthIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
-        return (_oldIndex, _newIndex);
     }
 
     // Calculate fee for given pair of collateral indexes, following are returned values:
@@ -531,11 +532,10 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // and update global fee-per-unit accumulator
     function _takeSplitAndUpdateFeePerUnit(
         uint256 _feeTaken,
-        uint256 _deltaPerUnit,
+        uint256 _newPerUnit,
         uint256 _newErrorPerUnit
     ) internal {
         uint256 _oldPerUnit = systemStEthFeePerUnitIndex;
-        uint256 _newPerUnit = _oldPerUnit + _deltaPerUnit;
 
         systemStEthFeePerUnitIndex = _newPerUnit;
         systemStEthFeePerUnitIndexError = _newErrorPerUnit;
@@ -548,7 +548,9 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Apply accumulated fee split distributed to the CDP
     // and update its accumulator tracker accordingly
-    function _applyAccumulatedFeeSplit(bytes32 _cdpId) internal {
+    function _applyAccumulatedFeeSplit(
+        bytes32 _cdpId
+    ) internal returns (uint256, uint256, uint256, uint256) {
         // TODO Ensure global states like systemStEthFeePerUnitIndex get timely updated
         // whenever there is a CDP modification operation,
         // such as opening, closing, adding collateral, repaying debt, or liquidating
@@ -558,30 +560,32 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _oldPerUnitCdp = stEthFeePerUnitIndex[_cdpId];
         uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
-        if (_oldPerUnitCdp == _systemStEthFeePerUnitIndex) {
-            // this case is much more frequent, so can be handled first
-            return;
+        (
+            uint256 _newColl,
+            uint256 _newDebt,
+            uint256 _feeSplitDistributed,
+            uint _pendingDebt
+        ) = _calcSyncedAccounting(_cdpId, _oldPerUnitCdp, _systemStEthFeePerUnitIndex);
+
+        // apply split fee to given CDP
+        if (_feeSplitDistributed > 0) {
+            Cdps[_cdpId].coll = _newColl;
+
+            emit CdpFeeSplitApplied(
+                _cdpId,
+                _oldPerUnitCdp,
+                _systemStEthFeePerUnitIndex,
+                _feeSplitDistributed,
+                _newColl
+            );
         }
 
-        if (_oldPerUnitCdp == 0) {
+        // sync per stake index for given CDP
+        if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
             stEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
-            return;
         }
 
-        (uint256 _feeSplitDistributed, uint256 _newColl) = getAccumulatedFeeSplitApplied(
-            _cdpId,
-            _systemStEthFeePerUnitIndex
-        );
-        Cdps[_cdpId].coll = _newColl;
-        stEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
-
-        emit CdpFeeSplitApplied(
-            _cdpId,
-            _oldPerUnitCdp,
-            _systemStEthFeePerUnitIndex,
-            _feeSplitDistributed,
-            _newColl
-        );
+        return (_newColl, _newDebt, _feeSplitDistributed, _pendingDebt);
     }
 
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
@@ -650,10 +654,17 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentETH, ) = getDebtAndCollShares(_cdpId);
-
-        uint256 _underlyingCollateral = collateral.getPooledEthByShares(currentETH);
-        uint256 ICR = LiquityMath._computeCR(_underlyingCollateral, currentEBTCDebt, _price);
+        uint256 ICR = _calculateCR(currentETH, currentEBTCDebt, _price);
         return ICR;
+    }
+
+    function _calculateCR(
+        uint256 currentCollShare,
+        uint256 currentDebt,
+        uint256 _price
+    ) internal view returns (uint256) {
+        uint256 _underlyingCollateral = collateral.getPooledEthByShares(currentCollShare);
+        return LiquityMath._computeCR(_underlyingCollateral, currentDebt, _price);
     }
 
     /**
@@ -684,12 +695,117 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function getDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) {
-        debt = Cdps[_cdpId].debt;
-        (, uint256 _newColl) = getAccumulatedFeeSplitApplied(_cdpId, systemStEthFeePerUnitIndex);
+        (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
+            _cdpId,
+            stEthFeePerUnitIndex[_cdpId],
+            systemStEthFeePerUnitIndex
+        );
         coll = _newColl;
+        debt = _newDebt;
+        pendingEBTCDebtReward = _pendingDebt;
+    }
 
-        pendingEBTCDebtReward = getPendingRedistributedDebt(_cdpId);
+    /// @dev calculate pending global state change to be applied:
+    /// @return split fee taken (if any) AND
+    /// @return new split index per stake unit AND
+    /// @return new split index error
+    function _calcSyncedGlobalAccounting(
+        uint256 _newIndex,
+        uint256 _oldIndex
+    ) internal view returns (uint256, uint256, uint256) {
+        if (_newIndex > _oldIndex && totalStakes > 0) {
+            (
+                uint256 _feeTaken,
+                uint256 _deltaFeePerUnit,
+                uint256 _perUnitError
+            ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
 
-        debt = debt + pendingEBTCDebtReward;
+            // calculate new split per stake unit
+            uint256 _newPerUnit = systemStEthFeePerUnitIndex + _deltaFeePerUnit;
+            return (_feeTaken, _newPerUnit, _perUnitError);
+        } else {
+            return (0, systemStEthFeePerUnitIndex, systemStEthFeePerUnitIndexError);
+        }
+    }
+
+    /// @dev calculate pending state change to be applied for given CDP and global split index(typically already synced):
+    /// @return new CDP collateral share after pending change applied
+    /// @return new CDP debt after pending change applied
+    /// @return split fee applied to given CDP
+    /// @return redistributed debt applied to given CDP
+    function _calcSyncedAccounting(
+        bytes32 _cdpId,
+        uint256 _cdpPerUnitIdx,
+        uint256 _systemStEthFeePerUnitIndex
+    ) internal view returns (uint256, uint256, uint256, uint256) {
+        uint256 _feeSplitApplied;
+        uint256 _newCollShare = Cdps[_cdpId].coll;
+
+        // processing split fee to be applied
+        if (_cdpPerUnitIdx != _systemStEthFeePerUnitIndex && _cdpPerUnitIdx > 0) {
+            (
+                uint256 _feeSplitDistributed,
+                uint256 _newCollShareAfter
+            ) = getAccumulatedFeeSplitApplied(_cdpId, _systemStEthFeePerUnitIndex);
+            _feeSplitApplied = _feeSplitDistributed;
+            _newCollShare = _newCollShareAfter;
+        }
+
+        // processing redistributed debt to be applied
+        (uint256 _newDebt, uint256 pendingDebtRedistributed) = _getSyncedCdpDebtAndRedistribution(
+            _cdpId
+        );
+
+        return (_newCollShare, _newDebt, _feeSplitApplied, pendingDebtRedistributed);
+    }
+
+    /// @return CDP debt and pending redistribution from liquidation applied
+    function _getSyncedCdpDebtAndRedistribution(
+        bytes32 _cdpId
+    ) internal view returns (uint256, uint256) {
+        uint256 pendingDebtRedistributed = _getPendingRedistributedDebt(_cdpId);
+        uint256 _newDebt = Cdps[_cdpId].debt;
+        if (pendingDebtRedistributed > 0) {
+            _newDebt = _newDebt + pendingDebtRedistributed;
+        }
+        return (_newDebt, pendingDebtRedistributed);
+    }
+
+    /// @return CDP debt with pending redistribution from liquidation applied
+    function getSyncedCdpDebt(bytes32 _cdpId) public view returns (uint256) {
+        (uint256 _newDebt, ) = _getSyncedCdpDebtAndRedistribution(_cdpId);
+        return _newDebt;
+    }
+
+    /// @return CDP collateral with pending split fee applied
+    function getSyncedCdpCollShares(bytes32 _cdpId) public view returns (uint256) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+        (uint256 _newColl, , , ) = _calcSyncedAccounting(
+            _cdpId,
+            stEthFeePerUnitIndex[_cdpId],
+            _newGlobalSplitIdx
+        );
+        return _newColl;
+    }
+
+    /// @return CDP ICR with pending collateral and debt change applied
+    function getSyncedICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
+        uint256 _debt = getSyncedCdpDebt(_cdpId);
+        uint256 _collShare = getSyncedCdpCollShares(_cdpId);
+        return _calculateCR(_collShare, _debt, _price);
+    }
+
+    /// @return TCR with pending collateral and debt change applied
+    function getSyncedTCR(uint256 _price) public view returns (uint256) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (uint256 _feeTaken, , ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+
+        uint256 _systemCollShare = activePool.getSystemCollShares();
+        if (_feeTaken > 0) {
+            _systemCollShare = _systemCollShare - _feeTaken;
+        }
+        uint256 _systemDebt = activePool.getSystemDebt();
+        return _calculateCR(_systemCollShare, _systemDebt, _price);
     }
 }
