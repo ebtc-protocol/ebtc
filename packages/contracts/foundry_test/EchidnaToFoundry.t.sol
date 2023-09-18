@@ -151,7 +151,6 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         // );
     }
 
-
     /**
         1) EchidnaTester.setEthPerShare(31656099540918703381915350012813182642308405422272958668865762453755205317560) (block=3966, time=264453, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
         2) EchidnaTester.openCdp(60831556551619617237480607135123444879160274018218144781759469227986909022036, 48) (block=8500, time=427094, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
@@ -160,8 +159,13 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
      */
 
     function testBo03() public {
-        setEthPerShare(31656099540918703381915350012813182642308405422272958668865762453755205317560);
-        bytes32 firstCdp = openCdp(60831556551619617237480607135123444879160274018218144781759469227986909022036, 48);
+        setEthPerShare(
+            31656099540918703381915350012813182642308405422272958668865762453755205317560
+        );
+        bytes32 firstCdp = openCdp(
+            60831556551619617237480607135123444879160274018218144781759469227986909022036,
+            48
+        );
         setEthPerShare(1000000000000000000);
         // NO longer needs accrual here cause we check internal value
         // cdpManager.syncGlobalAccountingAndGracePeriod();
@@ -169,8 +173,6 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         addColl(16, 115792089237316195423570985008687907853269984665640564039457584007913129508864);
         _after(firstCdp);
         assertGt(vars.nicrAfter, vars.nicrBefore, "GT");
-
-
     }
 
     function testAccounting() public {

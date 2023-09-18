@@ -107,6 +107,7 @@ contract CRLens {
             return parseRevertReason(reason);
         }
     }
+
     /// @notice Returns the NICR of the system after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
