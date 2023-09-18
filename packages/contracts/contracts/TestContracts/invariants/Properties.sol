@@ -13,7 +13,6 @@ import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
-import "forge-std/console2.sol";
 
 abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     function invariant_AP_01(
@@ -102,13 +101,6 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
             vars.activePoolDebtBefore;
-
-        console2.log("beforeValue", beforeValue);
-        console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
-        console2.log("vars.liquidatorRewardSharesBefore", vars.liquidatorRewardSharesBefore);
-        console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
-        console2.log("vars.feeRecipientTotalCollBefore", vars.feeRecipientTotalCollBefore);
-        console2.log("vars.priceBefore", vars.priceBefore);
 
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
