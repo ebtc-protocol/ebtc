@@ -15,7 +15,6 @@ import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
 import "forge-std/console2.sol";
 
-
 abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     function invariant_AP_01(
         ICollateralToken collateral,
@@ -97,14 +96,13 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     /** TODO: See EchidnaToFoundry._getValue */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
-            vars.collSurplusPoolBefore + 
+            vars.collSurplusPoolBefore +
             vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
             vars.activePoolDebtBefore;
-        
+
         console2.log("beforeValue", beforeValue);
         console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
         console2.log("vars.liquidatorRewardSharesBefore", vars.liquidatorRewardSharesBefore);
@@ -118,7 +116,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
-        
+
         return afterValue >= beforeValue || isApproximateEq(afterValue, beforeValue, 0.01e18);
     }
 
