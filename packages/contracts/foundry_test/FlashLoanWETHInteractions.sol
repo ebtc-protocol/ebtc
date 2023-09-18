@@ -95,7 +95,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
             bound(amountToDepositInCDP, 100 ether + 1, type(uint128).max)
         );
         // Avoid over borrowing
-        amount = uint128(bound(amount, 0, amountToDepositInCDP - 1));
+        amount = uint128(bound(amount, 1, amountToDepositInCDP - 1));
 
         FlashWithDeposit macroContract = new FlashWithDeposit(
             IERC20(address(collateral)),
