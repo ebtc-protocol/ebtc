@@ -93,7 +93,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         uint256 feeRecipientBalanceBefore = collateral.balanceOf(activePool.feeRecipientAddress()) +
             activePool.getFeeRecipientClaimableCollShares();
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), 0);
-        // cdpManager.applyPendingGlobalState();
+        // cdpManager.syncGlobalAccounting();
 
         liquidateCdps(0);
         uint256 tcrAfter = cdpManager.getTCR(_price);
@@ -192,6 +192,57 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
             cdpManager.getICR(sortedCdps.getFirst(), _price),
             cdpManager.getCdpDebt(_cdpId)
         );
+    }
+
+    /**
+        TODO: 
+        1) EchidnaTester.openCdp(5, 9) (block=21034, time=230044, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        2) EchidnaTester.openCdp(84262773986715970128580444052678471626722414870282791794979066159115554213330, 1030000000000000000) (block=24528, time=400319, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        3) EchidnaTester.setPrice(62851218183508081866601323998844678683340852927274212763025381189284030175116) (block=36605, time=452175, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        4) EchidnaTester.setEthPerShare(106776231264650488527396238935264109957201160064867503889176542731952275025143) (block=36605, time=452175, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        5) EchidnaTester.openCdp(76780224446527678697820911257670310585293087149232760248922738678857400527227, 7428) (block=50619, time=633086, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        6) EchidnaTester.setEthPerShare(115792089237316195423570985008687907853269984665640564039457584007913129639917) (block=50619, time=633086, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        7) EchidnaTester.liquidateCdps(2) (block=74280, time=1191523, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        8) EchidnaTester.redeemCollateral(46569391515833093424627317458962525217707765577058029473090855375431272918988, 0, 14229479364104465894069837803513832929478804353344870192956752971009762732884, 84531756315918705342020165315694316831239657177696340854927806097286510294339) (block=130886, time=1730710, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+    
+     */
+
+     function testCdpm04() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        bytes32 firstCdp = openCdp(1999999999998000000, 900);
+        setEthPerShare(1250000000000000000);
+        openCdp(8000000000000000000, 2000000000000000000);
+        openCdp(9, 24);
+        setEthPerShare(115792089237316195423570985008687907853269984665640564039457494007913129639936);
+        setEthPerShare(49955707469362902507454157297736832118868343942642399513960811609542965143241);
+        setEthPerShare(196608);
+        uint256 valueBeforeLiq = _getValue();
+        liquidateCdps(23427001867620538865025159276465004083966829863592832258101893764170212492148);
+        uint256 valueBeforeRedeem = _getValue();
+
+        // AP + Etc...
+        uint256 count = sortedCdps.cdpCountOf(address(this));
+        _before(firstCdp);
+        redeemCollateral(
+            115792089237316195423570985008687907853269984665640564039457584007913129639934,
+            135941972438511685695082801964033710960734498785361969386688073429943393822,
+            115792089237316195423570985008687907853269984665640564039457584007913129638361,
+            23850712709987925641283238546894891155169667596125834416480726033458037299273
+        );
+        _after(firstCdp);
+        uint256 countAfter = sortedCdps.cdpCountOf(address(this));
+        uint256 endValue = _getValue();
+
+        console2.log("count", count);
+        console2.log("countAfter", countAfter);
+
+        // Log values
+        console2.log("valueBeforeLiq", valueBeforeLiq);
+        console2.log("valueBeforeRedeem", valueBeforeRedeem);
+        console2.log("endValue", endValue);
+
+        assertGe(endValue, valueBeforeRedeem, "Value");
+        assertTrue(invariant_CDPM_04(vars), "Cdp-04");
     }
 
     function testNewTcr() public {

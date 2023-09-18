@@ -46,6 +46,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 ethPerShareAfter;
         uint256 activePoolCollBefore;
         uint256 activePoolCollAfter;
+        uint256 activePoolDebtBefore;
+        uint256 activePoolDebtAfter;
         uint256 collSurplusPoolBefore;
         uint256 collSurplusPoolAfter;
         uint256 priceBefore;
@@ -98,6 +100,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.tcrBefore = cdpManager.getTCR(vars.priceBefore);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
         vars.ethPerShareBefore = collateral.getEthPerShare();
+        vars.activePoolDebtBefore = activePool.getSystemDebt();
         vars.activePoolCollBefore = activePool.getSystemCollShares();
         vars.collSurplusPoolBefore = collSurplusPool.getTotalSurplusCollShares();
         vars.lastGracePeriodStartTimestampBefore = cdpManager.lastGracePeriodStartTimestamp();
@@ -143,6 +146,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.tcrAfter = cdpManager.getTCR(vars.priceAfter);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
         vars.ethPerShareAfter = collateral.getEthPerShare();
+        vars.activePoolDebtAfter = activePool.getSystemDebt();
         vars.activePoolCollAfter = activePool.getSystemCollShares();
         vars.collSurplusPoolAfter = collSurplusPool.getTotalSurplusCollShares();
         vars.lastGracePeriodStartTimestampAfter = cdpManager.lastGracePeriodStartTimestamp();

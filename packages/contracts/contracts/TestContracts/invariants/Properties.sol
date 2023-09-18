@@ -13,6 +13,8 @@ import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
+import "forge-std/console2.sol";
+
 
 abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     function invariant_AP_01(
@@ -95,20 +97,28 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     /** TODO: See EchidnaToFoundry._getValue */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-        uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
 
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
-            vars.collSurplusPoolBefore) * vars.priceBefore) /
+            vars.collSurplusPoolBefore + 
+            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
-            vars.cdpDebtBefore;
+            vars.activePoolDebtBefore;
+        
+        console2.log("beforeValue", beforeValue);
+        console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
+        console2.log("vars.liquidatorRewardSharesBefore", vars.liquidatorRewardSharesBefore);
+        console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
+        console2.log("vars.feeRecipientTotalCollBefore", vars.feeRecipientTotalCollBefore);
+        console2.log("vars.priceBefore", vars.priceBefore);
 
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
-            fee) * vars.priceAfter) /
+            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
             1e18 -
-            vars.cdpDebtAfter;
+            vars.activePoolDebtAfter;
+        
         return afterValue >= beforeValue || isApproximateEq(afterValue, beforeValue, 0.01e18);
     }
 
