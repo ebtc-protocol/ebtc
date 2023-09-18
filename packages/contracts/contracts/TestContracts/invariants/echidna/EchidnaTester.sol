@@ -108,8 +108,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         address[] memory _targets = new address[](_actions);
         bytes[] memory _calldatas = new bytes[](_actions);
 
-        address[] memory _allTargets = new address[](7);
-        bytes[] memory _allCalldatas = new bytes[](7);
+        address[] memory _allTargets = new address[](6);
+        bytes[] memory _allCalldatas = new bytes[](6);
 
         _allTargets[0] = address(borrowerOperations);
         _allCalldatas[0] = abi.encodeWithSelector(
@@ -158,9 +158,6 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             _cdpId,
             _cdpId
         );
-
-        _allTargets[6] = address(cdpManager);
-        _allCalldatas[6] = abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n);
 
         for (uint256 _j = 0; _j < _actions; ++_j) {
             _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;
@@ -380,9 +377,11 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         _before(bytes32(0));
 
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiq(_n);
+
         (success, returnData) = actor.proxy(
             address(cdpManager),
-            abi.encodeWithSelector(CdpManager.liquidateCdps.selector, _n)
+            abi.encodeWithSelector(CdpManager.batchLiquidateCdps.selector, batch)
         );
 
         _after(bytes32(0));

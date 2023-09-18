@@ -261,7 +261,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         vm.prank(_liquidator);
         if (_n > 0) {
-            cdpManager.liquidateCdps(_n);
+            _liquidateCdps(_n);
         } else {
             cdpManager.batchLiquidateCdps(_cdps);
         }
@@ -421,7 +421,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[1]);
 
         vm.prank(_liquidator);
-        cdpManager.liquidateCdps(4);
+        _liquidateCdps(4);
         assertTrue(sortedCdps.contains(cdpIds[0]) == false);
         assertTrue(sortedCdps.contains(cdpIds[1]) == false);
         assertTrue(sortedCdps.contains(cdpIds[2]) == true);

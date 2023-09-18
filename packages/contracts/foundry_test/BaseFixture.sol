@@ -8,6 +8,7 @@ import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTest
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
+import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/FeeRecipient.sol";
@@ -290,7 +291,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
                 ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
             );
 
-            // Fee Recipieint
+            // Fee Recipient
             creationCode = type(FeeRecipient).creationCode;
             args = abi.encode(defaultGovernance, addr.authorityAddress);
 
@@ -370,6 +371,13 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         authority.setUserRole(defaultGovernance, 6, true);
 
         crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+        liquidationSequencer = new LiquidationSequencer(
+            address(cdpManager),
+            address(sortedCdps),
+            address(priceFeedMock),
+            address(activePool),
+            address(collateral)
+        );
 
         vm.stopPrank();
     }
@@ -553,5 +561,10 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     function _getCdpStEthBalance(bytes32 _cdpId) public view returns (uint) {
         uint collShares = cdpManager.getCdpCollShares(_cdpId);
         return collateral.getPooledEthByShares(collShares);
+    }
+
+    function _liquidateCdps(uint256 _n) internal {
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiq(_n);
+        cdpManager.batchLiquidateCdps(batch);
     }
 }

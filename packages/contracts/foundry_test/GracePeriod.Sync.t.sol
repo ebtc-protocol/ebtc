@@ -177,7 +177,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             liquidationSnapshotId = vm.snapshot();
 
             // Try liquidating a cdp via the list (1)
-            cdpManager.liquidateCdps(1);
+            _liquidateCdps(1);
             uint256 EXPECTED_TCR_THIRD_LIQ_TCR = cdpManager.getTCR(price);
             vm.revertTo(liquidationSnapshotId);
             // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
@@ -186,7 +186,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             // Verify it worked
             vm.expectEmit(false, false, false, true);
             emit TCRNotified(EXPECTED_TCR_THIRD_LIQ_TCR);
-            cdpManager.liquidateCdps(1);
+            _liquidateCdps(1);
         }
 
         // == Liquidate 4 == //

@@ -527,7 +527,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Try liquidating a cdp via the list (1)
         vm.expectRevert();
-        cdpManager.liquidateCdps(1);
+        _liquidateCdps(1);
 
         // Try liquidating a cdp via the list (2)
         bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
@@ -560,7 +560,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         vm.revertTo(snapshotId2);
 
         // Try liquidating a cdp via the list (1)
-        cdpManager.liquidateCdps(1);
+        _liquidateCdps(1);
         vm.revertTo(snapshotId1);
 
         console2.log("About to batchLiquidateCdps", uint256(cdp));
@@ -584,7 +584,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         vm.revertTo(snapshotId);
 
         // Try liquidating a cdp via the list (1)
-        cdpManager.liquidateCdps(1);
+        _liquidateCdps(1);
         vm.revertTo(snapshotId);
 
         // Try liquidating a cdp via the list (2)

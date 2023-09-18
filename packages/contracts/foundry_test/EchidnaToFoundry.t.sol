@@ -592,7 +592,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         _n = clampBetween(_n, 1, cdpManager.getActiveCdpsCount());
 
         console2.log("liquidateCdps", _n);
-        cdpManager.liquidateCdps(_n);
+        _liquidateCdps(_n);
     }
 
     function partialLiquidate(uint _i, uint _partialAmount) internal returns (bytes32 _cdpId) {
@@ -712,7 +712,8 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         );
 
         _allTargets[6] = address(cdpManager);
-        _allCalldatas[6] = abi.encodeWithSelector(cdpManager.liquidateCdps.selector, _n);
+        bytes32[] memory _batch = liquidationSequencer.sequenceLiqToBatchLiq(_n);
+        _allCalldatas[6] = abi.encodeWithSelector(cdpManager.batchLiquidateCdps.selector, _batch);
 
         for (uint256 _j = 0; _j < _actions; ++_j) {
             _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;

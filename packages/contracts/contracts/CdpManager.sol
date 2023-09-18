@@ -123,15 +123,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Batch/Sequence liquidation functions ---
 
-    /// @notice Liquidate a sequence of cdps.
-    /// @notice Closes a maximum number of n cdps with their CR < MCR in normla mode, or CR < TCR in recovery mode, starting from the one with the lowest collateral ratio in the system, and moving upwards.
-    /// @notice Callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint256 n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
-    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-    /// @param _n Maximum number of CDPs to liquidate.
-    function liquidateCdps(uint256 _n) external override {
-        _delegate(liquidationLibrary);
-    }
-
     /// @notice Attempt to liquidate a custom list of CDPs provided by the caller
     /// @notice Callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
     /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
