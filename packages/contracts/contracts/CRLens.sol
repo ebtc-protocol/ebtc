@@ -57,6 +57,24 @@ contract CRLens {
         return icr;
     }
 
+    /// @notice Return the ICR of a CDP after the fee split
+    /// @dev Call this from offChain with `eth_call` to avoid paying for gas
+    function getRealNICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
+        cdpManager.syncAccounting(cdpId);
+        uint price = priceFeed.fetchPrice();
+        uint256 icr = cdpManager.getNominalICR(cdpId);
+
+        if (revertValue) {
+            assembly {
+                let ptr := mload(0x40)
+                mstore(ptr, icr)
+                revert(ptr, 32)
+            }
+        }
+
+        return icr;
+    }
+
     // == REVERT LOGIC == //
     // Thanks to: https://github.com/Uniswap/v3-periphery/blob/main/contracts/lens/Quoter.sol
     // NOTE: You should never use these in prod, these are just for testing //
@@ -81,11 +99,19 @@ contract CRLens {
         }
     }
 
-    /// @notice Returns the TCR of the system after the fee split
+    /// @notice Returns the ICR of the system after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
     function quoteRealICR(bytes32 cdpId) external returns (uint256) {
         try this.getRealICR(cdpId, true) {} catch (bytes memory reason) {
+            return parseRevertReason(reason);
+        }
+    }
+    /// @notice Returns the NICR of the system after the fee split
+    /// @dev Call this from offChain with `eth_call` to avoid paying for gas
+    ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
+    function quoteRealNICR(bytes32 cdpId) external returns (uint256) {
+        try this.getRealNICR(cdpId, true) {} catch (bytes memory reason) {
             return parseRevertReason(reason);
         }
     }

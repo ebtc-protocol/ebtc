@@ -819,8 +819,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             );
 
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-            assertWithMsg(
-                vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18,
+            assertWithMsg( /// @audit TODO: Prob just >=
+                vars.nicrAfter > vars.nicrBefore || collateral.getEthPerShare() != 1e18, /// @audit TODO: Hunch is that this breaks because it's non-view accrued, instead this is just the before NICR
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
