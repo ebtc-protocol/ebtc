@@ -78,3 +78,26 @@ ENV PATH="$PATH:$HOME/.foundry/bin"
 RUN PATH="$PATH:$HOME/.foundry/bin" foundryup 
 
 RUN echo "[$(date)] Finish setup"
+
+
+## TODO: MEDUSA
+```
+# ## INSTALL MEDUSA
+
+# ## GO
+# RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
+# RUN export PATH="$PATH:/usr/local/go/bin"
+# ENV PATH="$PATH:/usr/local/go/bin"
+
+# ## MEDUSA:  h/t: https://github.com/Deivitto/auditor-docker/blob/main/scripts/medusa_fuzzer.sh
+# RUN echo "Downloading and building Medusa..."
+# RUN git clone https://github.com/crytic/medusa && cd medusa && git pull origin dev/merge-assertion-and-property-mode && git pull origin dev/no-multi-abi && go build
+
+# # Move the Binary to /usr/local/bin/
+# RUN echo "Moving Medusa binary to /usr/local/bin/"
+# RUN mv medusa /usr/local/bin/
+
+# # Make the Binary Executable
+# RUN echo "Making Medusa executable..."
+# RUN chmod +x /usr/local/bin/medusa
+# ```
