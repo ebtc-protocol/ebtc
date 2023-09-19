@@ -94,6 +94,22 @@ contract EBTCDeployer is Ownable {
         emit ContractDeployed(deployedAddress, _saltString, _salt);
     }
 
+    function deployWithCreationCodeAndConstructorArgs(
+        string memory _saltString,
+        bytes memory creationCode,
+        bytes memory constructionArgs
+    ) external returns (address) {
+        bytes memory _data = abi.encodePacked(creationCode, constructionArgs);
+        return deploy(_saltString, _data);
+    }
+
+    function deployWithCreationCode(
+        string memory _saltString,
+        bytes memory creationCode
+    ) external returns (address) {
+        return deploy(_saltString, creationCode);
+    }
+
     function addressOf(string memory _saltString) external view returns (address) {
         bytes32 _salt = keccak256(abi.encodePacked(_saltString));
         return Create3.addressOf(_salt);

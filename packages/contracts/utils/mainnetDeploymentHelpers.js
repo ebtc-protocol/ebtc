@@ -340,6 +340,7 @@ class MainnetDeploymentHelper {
     }
 
     try {
+      console.log(constructorArguments)
       await this.hre.run("verify:verify", {
         address: deploymentState[name].address,
         constructorArguments,
@@ -354,6 +355,7 @@ class MainnetDeploymentHelper {
       ) {
         console.error(`Error stop verifying: ${error.name}`)
         console.error(error)
+        console.log(constructorArguments)
         return
       }
     }
