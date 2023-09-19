@@ -29,15 +29,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         IERC20(eBTCToken).approve(address(borrowerOperations), type(uint256).max);
     }
 
-    function testGetGasRefund() public {
-        // TODO convert to foundry test
-        setEthPerShare(166472971329298343907410417081817146937181310074112353288);
-        openCdp(0, 1);
-        addColl(120719409312262194023192469707599498, 169959741405433799125898596825763);
-        openCdp(0, 1);
-        closeCdp(0);
-    }
-
+    /// @dev Example of test for invariant
     function testBO05() public {
         openCdp(0, 1);
         setEthPerShare(0);
@@ -62,7 +54,6 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         );
     }
 
-    //
     function _getValue() internal returns (uint256) {
         uint256 currentPrice = priceFeedMock.getPrice();
 
@@ -79,76 +70,33 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         return totalValue;
     }
 
-    function testDebugLiquidateZero() public {
-        openCdp(0, 1);
-        openCdp(
-            89987264111579281160927512855035343800112805104904539378532907880159583883,
-            1106532110377617551
+    function testBrokenImprovementofNICR() public {
+        setEthPerShare(112);
+        bytes32 cdpId = openCdp(
+            115792089237316195423570985008687907853269984665640564039456534007913129639919,
+            6401
         );
-        setEthPerShare(0);
-        setEthPerShare(0);
-        setEthPerShare(0);
-        uint256 _price = priceFeedMock.getPrice();
-        uint256 tcrBefore = cdpManager.getTCR(_price);
-        uint256 feeRecipientBalanceBefore = collateral.balanceOf(activePool.feeRecipientAddress()) +
-            activePool.getFeeRecipientClaimableCollShares();
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), 0);
-        // cdpManager.syncGlobalAccounting();
+        console2.log("Fee index", cdpManager.stEthFeePerUnitIndex(cdpId));
+        uint256 startNICR = cdpManager.getNominalICR(cdpId);
+        setEthPerShare(1000000000000000000);
 
-        liquidateCdps(0);
-        uint256 tcrAfter = cdpManager.getTCR(_price);
-        uint256 feeRecipientBalanceAfter = collateral.balanceOf(activePool.feeRecipientAddress()) +
-            activePool.getFeeRecipientClaimableCollShares();
-        console.log("\ttcr %s %s %s", tcrBefore, tcrAfter, cdpManager.getICR(_cdpId, _price));
-        console.log("\tfee %s %s", feeRecipientBalanceBefore, feeRecipientBalanceAfter);
-        console.log("\tLICR", cdpManager.LICR(), collateral.getSharesByPooledEth(cdpManager.LICR()));
-        // assertGt(tcrAfter, tcrBefore, L_12);
-    }
+        // B0-03 FIX
+        // 1) Accrue global
+        cdpManager.syncGlobalAccountingAndGracePeriod(); // This fixes it
+        // 2) Read NICR with latest global stETH Index
+        uint256 afterStETHPerSharesNICR = cdpManager.getNominalICR(cdpId);
 
-    function testCloseCdpGasCompensationBrokenDueToFeeSplit() public {
-        bytes32 _cdpId = openCdp(0, 1);
-        addColl(
-            1136306260966836966416254910600741013785759825099592986674110980406214,
-            547292987167112192731837925341417026323903943248170797463056655103524
-        );
-        setEthPerShare(254118524);
-        addColl(
-            12597227859793617205474425017915022562745818181943317312554948512,
-            9719570706362477321866756827913315445905565055267406059909916475
-        );
-        setEthPerShare(427559125359927817315385493025244950085348258422237142673507024064172809185);
-        openCdp(3571529399317342246939748969305228181926514889773271968455159558869, 9858);
-        setEthPerShare(3643538871032775039067393294322983338235379072440222187277243527);
-        vars.actorCollBefore = collateral.balanceOf(address(user));
-        vars.cdpCollBefore = cdpManager.getCdpCollShares(_cdpId);
-        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
-        closeCdp(0);
-        vars.actorCollAfter = collateral.balanceOf(address(user));
-        console.log(
-            "\tcloseCdpGasCompensation",
-            vars.actorCollBefore,
-            vars.actorCollAfter,
-            vars.actorCollAfter - vars.actorCollBefore
-        );
-        console.log(
-            "\tcloseCdpGasCompensation",
-            vars.cdpCollBefore,
-            vars.liquidatorRewardSharesBefore,
-            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-        );
+        // In handler, solved by using crLens
 
-        // assertTrue(
-        //     isApproximateEq(
-        //         vars.actorCollBefore +
-        //             // ActivePool transfer SHARES not ETH directly
-        //             collateral.getPooledEthByShares(
-        //                 vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-        //             ),
-        //         vars.actorCollAfter,
-        //         0.01e18
-        //     ),
-        //     BO_05
-        // );
+        console2.log("Fee index", cdpManager.stEthFeePerUnitIndex(cdpId));
+        addColl(20, 36);
+        uint256 afterRepayNICR = cdpManager.getNominalICR(cdpId);
+        console2.log("Fee index", cdpManager.stEthFeePerUnitIndex(cdpId));
+
+        console2.log("startNICR", startNICR);
+        console2.log("afterStETHPerSharesNICR", afterStETHPerSharesNICR);
+        console2.log("afterRepayNICR", afterRepayNICR);
+        assertGt(afterRepayNICR, afterStETHPerSharesNICR, "BO-03: Must increase NICR");
     }
 
     /**
@@ -175,51 +123,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertGt(vars.nicrAfter, vars.nicrBefore, "GT");
     }
 
-    function testAccounting() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-        openCdp(14283920679645409126067658383553831605025404601557326036784405280196, 4);
-        openCdp(
-            28037307094182468557519507616376042229331618596506818074618240860648827,
-            136273187309674429
-        );
-        setEthPerShare(0);
-        redeemCollateral(
-            8402145404511027771805111552760206033423228691148011063798302,
-            137,
-            703575859822394334003574748436913705980785025153047568680582173,
-            25153565759357869369782279459011382105415748831514828992943646331765
-        );
-    }
-
-    function testIcrAboveThresholds() public {
-        bytes32 _cdpId = openCdp(19688822766013999646450751621063422027850672888, 1);
-        addColl(
-            8702575408528755242379334958854353780140793255186322495592959566377201720321,
-            173068267
-        );
-        withdrawEBTC(
-            992457735204281874,
-            529683446718475933667566514872459861798391718976380365152122970137656211672
-        );
-        setEthPerShare(652766360785374473453018027512189970372374737774796411704924262);
-        uint256 _price = priceFeedMock.getPrice();
-        console2.log(
-            "CDP1",
-            uint256(sortedCdps.getFirst()),
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCdpDebt(_cdpId)
-        );
-        repayEBTC(1, 0);
-        console2.log(
-            "CDP1",
-            uint256(sortedCdps.getFirst()),
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCdpDebt(_cdpId)
-        );
-    }
-
     /**
-        TODO: 
         1) EchidnaTester.openCdp(5, 9) (block=21034, time=230044, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
         2) EchidnaTester.openCdp(84262773986715970128580444052678471626722414870282791794979066159115554213330, 1030000000000000000) (block=24528, time=400319, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
         3) EchidnaTester.setPrice(62851218183508081866601323998844678683340852927274212763025381189284030175116) (block=36605, time=452175, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
