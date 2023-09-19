@@ -36,7 +36,10 @@ contract LiquidationSequencer is LiquityBase {
     }
 
     /// @dev Get first N batch of liquidatable Cdps at specified price
-    function sequenceLiqToBatchLiq(uint256 _n, uint256 _price) external view returns (bytes32[] memory _array) {
+    function sequenceLiqToBatchLiq(
+        uint256 _n,
+        uint256 _price
+    ) external view returns (bytes32[] memory _array) {
         (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
 
@@ -77,7 +80,8 @@ contract LiquidationSequencer is LiquityBase {
                 uint256 _icr = cdpManager.getICR(_cdpId, _price);
                 uint256 _cdpStatus = cdpManager.getCdpStatus(_cdpId);
                 bool _liquidatable = _canLiquidateInCurrentMode(_recoveryModeAtStart, _icr, _TCR);
-                if (_liquidatable && _cdpStatus == 1) { // 1 = ICdpManagerData.Status.active
+                if (_liquidatable && _cdpStatus == 1) {
+                    // 1 = ICdpManagerData.Status.active
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
                 }

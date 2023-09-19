@@ -836,10 +836,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _n,
         uint256 _price
     ) public view returns (bytes32[] memory _array) {
-
-        (uint256 _TCR,,) = _getTCRWithSystemDebtAndCollShares(
-            _price
-        );
+        (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
         bool _recovery = _TCR < CCR ? true : false;
 
         if (_n > 0) {
@@ -854,7 +851,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
                 uint256 _icr = getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
                 bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) { // 1 = ICdpManagerData.Status.active
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    // 1 = ICdpManagerData.Status.active
                     _cnt += 1;
                 }
                 _cdpId = sortedCdps.getPrev(_cdpId);
