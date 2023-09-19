@@ -93,9 +93,14 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         setPrice(200);
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        bytes32 randomCdp = openCdp(15271506168544636618683946165347184908672584999956201311530805028234774281247, 525600000);
+        bytes32 randomCdp = openCdp(
+            15271506168544636618683946165347184908672584999956201311530805028234774281247,
+            525600000
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        setEthPerShare(34490286643335581993866445125615501807464041659106654042251963443032165120461);
+        setEthPerShare(
+            34490286643335581993866445125615501807464041659106654042251963443032165120461
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         setPrice(72100039377333553285200231852034304471788766724978643708968246258805481443120);
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
@@ -103,21 +108,36 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         setPrice(53613208255846312190970113690532613198662175001504036140235273976036627984403);
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        setEthPerShare(53885036727293763953039497818137962919540408473654007727202467955943039934842);
+        setEthPerShare(
+            53885036727293763953039497818137962919540408473654007727202467955943039934842
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        withdrawColl(64613413140793438003392705322981884782961011222878036826703269533463170986176, 9999999999744);
+        withdrawColl(
+            64613413140793438003392705322981884782961011222878036826703269533463170986176,
+            9999999999744
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        setEthPerShare(38654105012746982034204530442925091332196750429568734891400199507115192250853);
+        setEthPerShare(
+            38654105012746982034204530442925091332196750429568734891400199507115192250853
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        partialLiquidate(51745835282927565687010251523416875790034155913406312339604760725754223914917, 19);
+        partialLiquidate(
+            51745835282927565687010251523416875790034155913406312339604760725754223914917,
+            19
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
-        setEthPerShare(79832022615203712424393490440177025697015516400034287083326403000335384151815);
+        setEthPerShare(
+            79832022615203712424393490440177025697015516400034287083326403000335384151815
+        );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         bytes32 cdpToTrack = _getRandomCdp(257);
         // Accrue here (will trigger recovery mode due to index change)
         // cdpManager.syncGlobalAccountingAndGracePeriod(); /// @audit: Issue with invariants is we need this to change
         _before(cdpToTrack);
-        partialLiquidate(257, 71149553722330727595372666179561318863321173766102370975927893395343749396843);
+        partialLiquidate(
+            257,
+            71149553722330727595372666179561318863321173766102370975927893395343749396843
+        );
         _after(cdpToTrack);
 
         console2.log("vars.newIcrBefore", vars.newIcrBefore);
@@ -129,10 +149,11 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
         assertTrue(
             vars.newIcrBefore < cdpManager.MCR() ||
-                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
-                    "Mcr, ccr"
+                (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            "Mcr, ccr"
         );
     }
+
     function testBrokenImprovementofNICR() public {
         bytes32 cdpId = openCdp(36, 1);
         setEthPerShare(

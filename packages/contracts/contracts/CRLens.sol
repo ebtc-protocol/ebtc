@@ -136,6 +136,7 @@ contract CRLens {
             return parseRevertReason(reason);
         }
     }
+
     /// @notice Returns whether the system is in RM after taking fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
