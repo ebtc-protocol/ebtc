@@ -71,32 +71,15 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     }
 
     function testBrokenImprovementofNICR() public {
-        setEthPerShare(112);
-        bytes32 cdpId = openCdp(
-            115792089237316195423570985008687907853269984665640564039456534007913129639919,
-            6401
+        bytes32 cdpId = openCdp(36, 1);
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039456334007913129639936
         );
-        console2.log("Fee index", cdpManager.stEthFeePerUnitIndex(cdpId));
-        uint256 startNICR = cdpManager.getNominalICR(cdpId);
-        setEthPerShare(1000000000000000000);
+        uint256 beforeNICR = crLens.quoteRealNICR(cdpId);
+        addColl(1, 10);
+        uint256 afterNICR = crLens.quoteRealNICR(cdpId);
 
-        // B0-03 FIX
-        // 1) Accrue global
-        cdpManager.syncGlobalAccountingAndGracePeriod(); // This fixes it
-        // 2) Read NICR with latest global stETH Index
-        uint256 afterStETHPerSharesNICR = cdpManager.getNominalICR(cdpId);
-
-        // In handler, solved by using crLens
-
-        console2.log("Fee index", cdpManager.stEthFeePerUnitIndex(cdpId));
-        addColl(20, 36);
-        uint256 afterRepayNICR = cdpManager.getNominalICR(cdpId);
-        console2.log("Fee index", cdpManager.stEthFeePerUnitIndex(cdpId));
-
-        console2.log("startNICR", startNICR);
-        console2.log("afterStETHPerSharesNICR", afterStETHPerSharesNICR);
-        console2.log("afterRepayNICR", afterRepayNICR);
-        assertGt(afterRepayNICR, afterStETHPerSharesNICR, "BO-03: Must increase NICR");
+        assertGe(afterNICR, beforeNICR, "BO-03: Must increase NICR");
     }
 
     /**

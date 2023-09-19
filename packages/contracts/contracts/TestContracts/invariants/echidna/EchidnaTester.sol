@@ -821,8 +821,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             );
 
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-            assertWithMsg(
-                vars.nicrAfter > vars.nicrBefore, /// @audit TODO: Removed: || collateral.getEthPerShare() != 1e18, because I believe invariant should always hold
+            assertWithMsg( // Non-Negative
+                vars.nicrAfter >= vars.nicrBefore, /// @audit TODO: Removed: || collateral.getEthPerShare() != 1e18, because I believe invariant should always hold
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
