@@ -280,6 +280,14 @@ abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants
             authority.transferOwnership(defaultGovernance);
 
             crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+
+            liquidationSequencer = new LiquidationSequencer(
+                address(cdpManager),
+                address(cdpManager.sortedCdps()),
+                address(priceFeedMock),
+                address(activePool),
+                address(collateral)
+            );
         }
     }
 

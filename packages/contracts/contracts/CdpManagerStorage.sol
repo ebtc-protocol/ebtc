@@ -808,4 +808,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _systemDebt = activePool.getSystemDebt();
         return _calculateCR(_systemCollShare, _systemDebt, _price);
     }
+
+    // Can liquidate in RM if ICR < TCR AND Enough time has passed
+    function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
+        // ICR < TCR and we have waited enough
+        uint128 cachedLastGracePeriodStartTimestamp = lastGracePeriodStartTimestamp;
+        return
+            icr < tcr &&
+            cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
+            block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod;
+    }
 }

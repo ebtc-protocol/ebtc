@@ -59,12 +59,6 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
 
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
 
-        // No cheecky overflow
-        vm.assume(loanAmount + fee <= type(uint256).max);
-
-        // Cannot deal if not enough
-        vm.assume(fee > 1800e18);
-
         dealCollateral(address(stethReceiver), fee);
 
         uint256 initialBalanceOfPool = collateral.balanceOf(address(activePool)); // B4 gift

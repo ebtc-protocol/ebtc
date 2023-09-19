@@ -1088,7 +1088,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(D)).toString()).sub(toBN(_repayAmt)), {from: D});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(E)).toString()).sub(toBN(_repayAmt)), {from: E});
 	
-    const liqTxBC = await cdpManager.liquidateCdps(2, {from: owner})
+    const liqTxBC = await th.liquidateCdps(2, price, contracts, {extraParams: {from: owner}})
     assert.isTrue(liqTxBC.receipt.status)
     assert.isFalse(await sortedCdps.contains(_bCdpId))
     assert.isFalse(await sortedCdps.contains(_ownerCdpId))
@@ -1123,7 +1123,7 @@ contract('CdpManager', async accounts => {
     // Try to liquidate C again. 
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(D)).toString()), {from: D});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(E)).toString()), {from: E});
-    const liqTx2 = await cdpManager.liquidateCdps(2, {from: owner})
+    const liqTx2 = await th.liquidateCdps(2, dec(2500, 13), contracts, {extraParams: {from: owner}})
     assert.isTrue(liqTx2.receipt.status)
     assert.isTrue(await sortedCdps.contains(_cCdpId))
     assert.isFalse(await sortedCdps.contains(_dCdpId))
@@ -1187,7 +1187,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(5, {from: owner});
+    await th.liquidateCdps(5, price, contracts, {extraParams: {from: owner}});
 
     // Confirm cdps A-E have been removed from the system
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -1235,7 +1235,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});		
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(3)
+    await th.liquidateCdps(3, dec(3714, 13), contracts, {extraParams: {from: owner}})
 
     const CdpOwnersArrayLength = await cdpManager.getActiveCdpsCount()
     assert.equal(CdpOwnersArrayLength, '3')
@@ -1304,7 +1304,7 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Attempt liqudation sequence
-    await assertRevert(cdpManager.liquidateCdps(10), "CdpManager: nothing to liquidate")
+    await assertRevert(th.liquidateCdps(10, dec(3714, 13), contracts, {extraParams: {from: owner}}), "CdpManager: nothing to liquidate")
 
     // Check all cdps remain active
     assert.isTrue((await sortedCdps.contains(_whaleCdpId)))
@@ -1386,7 +1386,7 @@ contract('CdpManager', async accounts => {
 
     //liquidate A, B, C
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Check A stays active, B and C get liquidated
     assert.isTrue(await sortedCdps.contains(_aliceCdpId))
@@ -1426,7 +1426,7 @@ contract('CdpManager', async accounts => {
     assert.isFalse(await th.checkRecoveryMode(contracts));
 
     // Liquidation with n = 0
-    await assertRevert(cdpManager.liquidateCdps(0), "CdpManager: nothing to liquidate")
+    await assertRevert(th.liquidateCdps(0, price, contracts, {extraParams: {from: owner}}), "CdpManager: nothing to liquidate")
 
     // Check all cdps are still in the system
     assert.isTrue(await sortedCdps.contains(_whaleCdpId))
@@ -1495,7 +1495,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(flyn)).toString()), {from: flyn});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // check list size reduced to 4
     assert.equal((await sortedCdps.getSize()).toString(), '4')
@@ -1543,7 +1543,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});		
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, dec(3714, 13), contracts, {extraParams: {from: owner}})
 
     // check list size reduced to 1
     assert.equal((await sortedCdps.getSize()).toString(), '1')
@@ -1600,7 +1600,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_3)).toString()), {from: defaulter_3});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_4)).toString()), {from: defaulter_4});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, dec(3714, 13), contracts, {extraParams: {from: owner}})
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedCdps.contains(_defaulter1CdpId)))
@@ -1666,7 +1666,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_3)).toString()), {from: defaulter_3});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_4)).toString()), {from: defaulter_4});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 	totalDebtNonDefaulter = totalDebtNonDefaulter.add(totalDebtDefaulter.sub(totalCollDefaulters.mul(toBN(price)).div(LICR)));
 
     // Check all defaulters have been liquidated
@@ -1719,7 +1719,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});		
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, dec(3714, 13), contracts, {extraParams: {from: owner}})
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedCdps.contains(_aliceCdpId)))
@@ -1782,7 +1782,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_1)).toString()), {from: defaulter_1});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_2)).toString()), {from: defaulter_2});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(2)
+    await th.liquidateCdps(2, price, contracts, {extraParams: {from: owner}})
     assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
     assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
   })
@@ -1813,7 +1813,7 @@ contract('CdpManager', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(whale)), {from: whale});
     await debtToken.transfer(owner, (await debtToken.balanceOf(defaulter_1)), {from: defaulter_1});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_2)).toString()), {from: defaulter_2});
-    await cdpManager.liquidateCdps(2)
+    await th.liquidateCdps(2, price, contracts, {extraParams: {from: owner}})
     assert.isFalse(await sortedCdps.contains(_defaulter1CdpId))
     assert.isFalse(await sortedCdps.contains(_defaulter2CdpId))
   })
@@ -1863,7 +1863,7 @@ contract('CdpManager', async accounts => {
     // Attempt to liquidate B and C, which skips C in the liquidation since it is immune
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(B)).toString()), {from: B});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(C)).toString()), {from: C});
-    const liqTxBC = await cdpManager.liquidateCdps(2)
+    const liqTxBC = await th.liquidateCdps(2, price, contracts, {extraParams: {from: owner}})
     assert.isTrue(liqTxBC.receipt.status)
     assert.isFalse(await sortedCdps.contains(_bCdpId))
     assert.isTrue(await sortedCdps.contains(_cCdpId))

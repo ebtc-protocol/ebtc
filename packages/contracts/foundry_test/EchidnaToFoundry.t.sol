@@ -29,15 +29,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         IERC20(eBTCToken).approve(address(borrowerOperations), type(uint256).max);
     }
 
-    function testGetGasRefund() public {
-        // TODO convert to foundry test
-        setEthPerShare(166472971329298343907410417081817146937181310074112353288);
-        openCdp(0, 1);
-        addColl(120719409312262194023192469707599498, 169959741405433799125898596825763);
-        openCdp(0, 1);
-        closeCdp(0);
-    }
-
+    /// @dev Example of test for invariant
     function testBO05() public {
         openCdp(0, 1);
         setEthPerShare(0);
@@ -62,7 +54,6 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         );
     }
 
-    //
     function _getValue() internal returns (uint256) {
         uint256 currentPrice = priceFeedMock.getPrice();
 
@@ -79,119 +70,307 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         return totalValue;
     }
 
-    function testDebugLiquidateZero() public {
-        openCdp(0, 1);
-        openCdp(
-            89987264111579281160927512855035343800112805104904539378532907880159583883,
-            1106532110377617551
-        );
-        setEthPerShare(0);
-        setEthPerShare(0);
-        setEthPerShare(0);
-        uint256 _price = priceFeedMock.getPrice();
-        uint256 tcrBefore = cdpManager.getTCR(_price);
-        uint256 feeRecipientBalanceBefore = collateral.balanceOf(activePool.feeRecipientAddress()) +
-            activePool.getFeeRecipientClaimableCollShares();
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), 0);
-        // cdpManager.applyPendingGlobalState();
+    /**
+        1) EchidnaTester.setEthPerShare(645326474426547203313410069153905908525362434357) (block=10, time=17, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        2) EchidnaTester.setPrice(200) (block=43, time=58, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        3) EchidnaTester.openCdp(15271506168544636618683946165347184908672584999956201311530805028234774281247, 525600000) (block=53316, time=581135, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        4) EchidnaTester.setEthPerShare(34490286643335581993866445125615501807464041659106654042251963443032165120461) (block=53319, time=581142, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        5) EchidnaTester.setPrice(72100039377333553285200231852034304471788766724978643708968246258805481443120) (block=53351, time=1118043, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        6) EchidnaTester.openCdp(2, 999999999999999999) (block=77228, time=1142454, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        7) EchidnaTester.setPrice(53613208255846312190970113690532613198662175001504036140235273976036627984403) (block=108595, time=1214284, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        8) EchidnaTester.setEthPerShare(53885036727293763953039497818137962919540408473654007727202467955943039934842) (block=135098, time=1414579, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        9) EchidnaTester.withdrawColl(64613413140793438003392705322981884782961011222878036826703269533463170986176, 9999999999744) (block=194809, time=1611187, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        10) EchidnaTester.setEthPerShare(38654105012746982034204530442925091332196750429568734891400199507115192250853) (block=196570, time=1788109, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        11) EchidnaTester.partialLiquidate(51745835282927565687010251523416875790034155913406312339604760725754223914917, 19) (block=228509, time=1844314, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        12) EchidnaTester.setEthPerShare(79832022615203712424393490440177025697015516400034287083326403000335384151815) (block=232929, time=2127507, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        13) EchidnaTester.partialLiquidate(257, 71149553722330727595372666179561318863321173766102370975927893395343749396843) (block=276132, time=2338894, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
 
-        liquidateCdps(0);
-        uint256 tcrAfter = cdpManager.getTCR(_price);
-        uint256 feeRecipientBalanceAfter = collateral.balanceOf(activePool.feeRecipientAddress()) +
-            activePool.getFeeRecipientClaimableCollShares();
-        console.log("\ttcr %s %s %s", tcrBefore, tcrAfter, cdpManager.getICR(_cdpId, _price));
-        console.log("\tfee %s %s", feeRecipientBalanceBefore, feeRecipientBalanceAfter);
-        console.log("\tLICR", cdpManager.LICR(), collateral.getSharesByPooledEth(cdpManager.LICR()));
-        // assertGt(tcrAfter, tcrBefore, L_12);
-    }
-
-    function testCloseCdpGasCompensationBrokenDueToFeeSplit() public {
-        bytes32 _cdpId = openCdp(0, 1);
-        addColl(
-            1136306260966836966416254910600741013785759825099592986674110980406214,
-            547292987167112192731837925341417026323903943248170797463056655103524
-        );
-        setEthPerShare(254118524);
-        addColl(
-            12597227859793617205474425017915022562745818181943317312554948512,
-            9719570706362477321866756827913315445905565055267406059909916475
-        );
-        setEthPerShare(427559125359927817315385493025244950085348258422237142673507024064172809185);
-        openCdp(3571529399317342246939748969305228181926514889773271968455159558869, 9858);
-        setEthPerShare(3643538871032775039067393294322983338235379072440222187277243527);
-        vars.actorCollBefore = collateral.balanceOf(address(user));
-        vars.cdpCollBefore = cdpManager.getCdpCollShares(_cdpId);
-        vars.liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
-        closeCdp(0);
-        vars.actorCollAfter = collateral.balanceOf(address(user));
-        console.log(
-            "\tcloseCdpGasCompensation",
-            vars.actorCollBefore,
-            vars.actorCollAfter,
-            vars.actorCollAfter - vars.actorCollBefore
-        );
-        console.log(
-            "\tcloseCdpGasCompensation",
-            vars.cdpCollBefore,
-            vars.liquidatorRewardSharesBefore,
-            vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-        );
-
-        // assertTrue(
-        //     isApproximateEq(
-        //         vars.actorCollBefore +
-        //             // ActivePool transfer SHARES not ETH directly
-        //             collateral.getPooledEthByShares(
-        //                 vars.cdpCollBefore + vars.liquidatorRewardSharesBefore
-        //             ),
-        //         vars.actorCollAfter,
-        //         0.01e18
-        //     ),
-        //     BO_05
-        // );
-    }
-
-    function testAccounting() public {
+    
+     */
+    function testBrokenLiquidationLoc() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-        openCdp(14283920679645409126067658383553831605025404601557326036784405280196, 4);
-        openCdp(
-            28037307094182468557519507616376042229331618596506818074618240860648827,
-            136273187309674429
+        setEthPerShare(645326474426547203313410069153905908525362434357);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setPrice(200);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        bytes32 randomCdp = openCdp(
+            15271506168544636618683946165347184908672584999956201311530805028234774281247,
+            525600000
         );
-        setEthPerShare(0);
-        redeemCollateral(
-            8402145404511027771805111552760206033423228691148011063798302,
-            137,
-            703575859822394334003574748436913705980785025153047568680582173,
-            25153565759357869369782279459011382105415748831514828992943646331765
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setEthPerShare(
+            34490286643335581993866445125615501807464041659106654042251963443032165120461
+        );
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setPrice(72100039377333553285200231852034304471788766724978643708968246258805481443120);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        openCdp(2, 999999999999999999);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setPrice(53613208255846312190970113690532613198662175001504036140235273976036627984403);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setEthPerShare(
+            53885036727293763953039497818137962919540408473654007727202467955943039934842
+        );
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        withdrawColl(
+            64613413140793438003392705322981884782961011222878036826703269533463170986176,
+            9999999999744
+        );
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setEthPerShare(
+            38654105012746982034204530442925091332196750429568734891400199507115192250853
+        );
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        partialLiquidate(
+            51745835282927565687010251523416875790034155913406312339604760725754223914917,
+            19
+        );
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        setEthPerShare(
+            79832022615203712424393490440177025697015516400034287083326403000335384151815
+        );
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        bytes32 cdpToTrack = _getRandomCdp(257);
+        // Accrue here (will trigger recovery mode due to index change)
+        // cdpManager.syncGlobalAccountingAndGracePeriod(); /// @audit: Issue with invariants is we need this to change
+        _before(cdpToTrack);
+        partialLiquidate(
+            257,
+            71149553722330727595372666179561318863321173766102370975927893395343749396843
+        );
+        _after(cdpToTrack);
+
+        console2.log("vars.newIcrBefore", vars.newIcrBefore);
+        console2.log("cdpManager.MCR()", cdpManager.MCR());
+
+        console2.log("vars.newIcrBefore", vars.newIcrBefore);
+        console2.log("cdpManager.CCR()", cdpManager.CCR());
+        console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
+
+        assertTrue(
+            vars.newIcrBefore < cdpManager.MCR() ||
+                (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+            "Mcr, ccr"
         );
     }
 
-    function testIcrAboveThresholds() public {
-        bytes32 _cdpId = openCdp(19688822766013999646450751621063422027850672888, 1);
-        addColl(
-            8702575408528755242379334958854353780140793255186322495592959566377201720321,
-            173068267
+    function testBrokenImprovementofNICR() public {
+        bytes32 cdpId = openCdp(36, 1);
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039456334007913129639936
         );
-        withdrawEBTC(
-            992457735204281874,
-            529683446718475933667566514872459861798391718976380365152122970137656211672
+        uint256 beforeNICR = crLens.quoteRealNICR(cdpId);
+        addColl(1, 10);
+        uint256 afterNICR = crLens.quoteRealNICR(cdpId);
+
+        assertGe(afterNICR, beforeNICR, "BO-03: Must increase NICR");
+    }
+
+    /**
+        1) EchidnaTester.setEthPerShare(31656099540918703381915350012813182642308405422272958668865762453755205317560) (block=3966, time=264453, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        2) EchidnaTester.openCdp(60831556551619617237480607135123444879160274018218144781759469227986909022036, 48) (block=8500, time=427094, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        3) EchidnaTester.setEthPerShare(1000000000000000000) (block=28684, time=979712, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        4) EchidnaTester.addColl(16, 115792089237316195423570985008687907853269984665640564039457584007913129508864) (block=54621, ti
+     */
+
+    function testBo03() public {
+        setEthPerShare(
+            31656099540918703381915350012813182642308405422272958668865762453755205317560
         );
-        setEthPerShare(652766360785374473453018027512189970372374737774796411704924262);
-        uint256 _price = priceFeedMock.getPrice();
-        console2.log(
-            "CDP1",
-            uint256(sortedCdps.getFirst()),
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCdpDebt(_cdpId)
+        bytes32 firstCdp = openCdp(
+            60831556551619617237480607135123444879160274018218144781759469227986909022036,
+            48
         );
-        repayEBTC(1, 0);
-        console2.log(
-            "CDP1",
-            uint256(sortedCdps.getFirst()),
-            cdpManager.getICR(sortedCdps.getFirst(), _price),
-            cdpManager.getCdpDebt(_cdpId)
+        setEthPerShare(1000000000000000000);
+        // NO longer needs accrual here cause we check internal value
+        // cdpManager.syncGlobalAccountingAndGracePeriod();
+        _before(firstCdp);
+        addColl(16, 115792089237316195423570985008687907853269984665640564039457584007913129508864);
+        _after(firstCdp);
+        assertGt(vars.nicrAfter, vars.nicrBefore, "GT");
+    }
+
+    /**
+        1) EchidnaTester.openCdp(5, 9) (block=21034, time=230044, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        2) EchidnaTester.openCdp(84262773986715970128580444052678471626722414870282791794979066159115554213330, 1030000000000000000) (block=24528, time=400319, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        3) EchidnaTester.setPrice(62851218183508081866601323998844678683340852927274212763025381189284030175116) (block=36605, time=452175, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        4) EchidnaTester.setEthPerShare(106776231264650488527396238935264109957201160064867503889176542731952275025143) (block=36605, time=452175, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        5) EchidnaTester.openCdp(76780224446527678697820911257670310585293087149232760248922738678857400527227, 7428) (block=50619, time=633086, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        6) EchidnaTester.setEthPerShare(115792089237316195423570985008687907853269984665640564039457584007913129639917) (block=50619, time=633086, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        7) EchidnaTester.liquidateCdps(2) (block=74280, time=1191523, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        8) EchidnaTester.redeemCollateral(46569391515833093424627317458962525217707765577058029473090855375431272918988, 0, 14229479364104465894069837803513832929478804353344870192956752971009762732884, 84531756315918705342020165315694316831239657177696340854927806097286510294339) (block=130886, time=1730710, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+    
+     */
+
+    function testCdpm04() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        bytes32 firstCdp = openCdp(1999999999998000000, 900);
+        setEthPerShare(1250000000000000000);
+        openCdp(8000000000000000000, 2000000000000000000);
+        openCdp(9, 24);
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039457494007913129639936
         );
+        setEthPerShare(
+            49955707469362902507454157297736832118868343942642399513960811609542965143241
+        );
+        setEthPerShare(196608);
+        uint256 valueBeforeLiq = _getValue();
+        liquidateCdps(23427001867620538865025159276465004083966829863592832258101893764170212492148);
+        uint256 valueBeforeRedeem = _getValue();
+
+        // AP + Etc...
+        uint256 count = sortedCdps.cdpCountOf(address(this));
+        _before(firstCdp);
+        redeemCollateral(
+            115792089237316195423570985008687907853269984665640564039457584007913129639934,
+            135941972438511685695082801964033710960734498785361969386688073429943393822,
+            115792089237316195423570985008687907853269984665640564039457584007913129638361,
+            23850712709987925641283238546894891155169667596125834416480726033458037299273
+        );
+        _after(firstCdp);
+        uint256 countAfter = sortedCdps.cdpCountOf(address(this));
+        uint256 endValue = _getValue();
+
+        console2.log("count", count);
+        console2.log("countAfter", countAfter);
+
+        // Log values
+        console2.log("valueBeforeLiq", valueBeforeLiq);
+        console2.log("valueBeforeRedeem", valueBeforeRedeem);
+        console2.log("endValue", endValue);
+
+        assertGe(endValue, valueBeforeRedeem, "Value");
+        assertTrue(invariant_CDPM_04(vars), "Cdp-04");
+    }
+
+    /**
+        1) EchidnaTester.openCdp(61352334913724331844673735825348778692790231616991642409891756431271008690910, 3) (block=58171, time=241669, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        2) EchidnaTester.setPrice(53242692202139136259844779411728414198979339870792811349285416325947018641415) (block=94549, time=628711, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        3) EchidnaTester.setEthPerShare(19) (block=133367, time=1152871, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        4) EchidnaTester.setEthPerShare(1) (block=175121, time=1582898, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        5) EchidnaTester.setEthPerShare(3) (block=194749, time=1969716, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        6) EchidnaTester.openCdp(63481775631040330868488838440380883887548553786606511443800351945466791372972, 12) (block=206558, time=2073883, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        7) EchidnaTester.openCdp(115275689634636763471407553554696230511651534645337120528720836289775559173670, 3400000000000000000) (block=224043, time=2279568, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        8) EchidnaTester.setPrice(49955707469362902507454157297736832118868343942642399513960811609542965143241) (block=224080, time=2279608, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        9) EchidnaTester.setPrice(300) (block=245965, time=2827818, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        10) EchidnaTester.setPrice(115792089237316195423570985008687907853269984665640564039455484007913129639937) (block=245965, time=2827818, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        11) EchidnaTester.openCdp(115221720474780537866491969647886078644641607235938297017113192275671201037351, 13) (block=246061, time=3119917, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        12) EchidnaTester.setEthPerShare(10) (block=279881, time=3480526, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        13) EchidnaTester.liquidateCdps(81474231948216353665336502151292255308693665505215124358133307261506484044001) (block=318699, time=3552356, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+14) EchidnaTester.redeemCollateral(100000000000000000000, 44528197469369619828452631535878582533537470583240950950026051403192050331017, 102238259035789227257399501220130095402144821045197998782718521293354458806802, 109921003103601632895059323246440408018934276513278813998597458827588043910345
+     */
+    function testCdpm04NewBroken() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+
+        bytes32 firstCdp = openCdp(
+            61352334913724331844673735825348778692790231616991642409891756431271008690910,
+            3
+        );
+        setPrice(53242692202139136259844779411728414198979339870792811349285416325947018641415);
+        setEthPerShare(19);
+        setEthPerShare(1);
+        setEthPerShare(3);
+        openCdp(63481775631040330868488838440380883887548553786606511443800351945466791372972, 12);
+        openCdp(
+            115275689634636763471407553554696230511651534645337120528720836289775559173670,
+            3400000000000000000
+        );
+        setPrice(49955707469362902507454157297736832118868343942642399513960811609542965143241);
+        setPrice(300);
+        setPrice(115792089237316195423570985008687907853269984665640564039455484007913129639937);
+        openCdp(115221720474780537866491969647886078644641607235938297017113192275671201037351, 13);
+        setEthPerShare(10);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        liquidateCdps(81474231948216353665336502151292255308693665505215124358133307261506484044001);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        uint256 valueBeforeRedeem = _getValue();
+        _before(firstCdp);
+        redeemCollateral(
+            100000000000000000000,
+            44528197469369619828452631535878582533537470583240950950026051403192050331017,
+            102238259035789227257399501220130095402144821045197998782718521293354458806802,
+            109921003103601632895059323246440408018934276513278813998597458827588043910345
+        );
+        _after(firstCdp);
+        uint256 endValue = _getValue();
+
+        // Log values
+        console2.log("valueBeforeRedeem", valueBeforeRedeem);
+        console2.log("endValue", endValue);
+
+        assertGe(endValue, valueBeforeRedeem, "Value");
+        assertTrue(invariant_CDPM_04(vars), "Cdp-04");
+    }
+
+    /**
+        1) EchidnaTester.setEthPerShare(86688896451552136001225523381455512999487671226724657278887281953146484774479) (block=32358, time=34290, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        2) EchidnaTester.setEthPerShare(2) (block=33152, time=35290, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        3) EchidnaTester.setPrice(53242692202139136259844779411728414198979339870792811349285416325947018641415) (block=69530, time=422332, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        4) EchidnaTester.setEthPerShare(19) (block=108348, time=946492, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        5) EchidnaTester.setEthPerShare(3) (block=127976, time=1333310, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        6) EchidnaTester.openCdp(63481775631040330868488838440380883887548553786606511443800351945466791372972, 12) (block=139785, time=1437477, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        7) EchidnaTester.openCdp(115275689634636763471407553554696230511651534645337120528720836289775559173670, 3400000000000000000) (block=157270, time=1643162, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        8) EchidnaTester.setPrice(49955707469362902507454157297736832118868343942642399513960811609542965143241) (block=157307, time=1643202, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
+        9) EchidnaTester.setEthPerShare(115792089237316195423570985008687907853269984665640564039457584007913129639935) (block=181185, time=1975696, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        10) EchidnaTester.setPrice(115792089237316195423570985008687907853269984665640564039456584970154295856934) (block=181410, time=2328893, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        11) EchidnaTester.setEthPerShare(2) (block=205279, time=2387142, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        12) EchidnaTester.liquidateCdps(15271506168544636618683946165347184908672584999956201311530805028234774281247) (block=205385, time=2672544, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+        13) EchidnaTester.openCdp(110953018886617049369109243176193885383860427032951825314358709007138889273943, 4) (block=205390, time=2672554, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
+        14) EchidnaTester.closeCdp(57413278564244504453191656087298467315431246439675010725238485654181166168124) (block=228276, time=3033171, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
+     */
+
+    function testBrokenInvariantFive() external {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        setEthPerShare(
+            86688896451552136001225523381455512999487671226724657278887281953146484774479
+        );
+        setEthPerShare(2);
+        setPrice(53242692202139136259844779411728414198979339870792811349285416325947018641415);
+        setEthPerShare(19);
+        setEthPerShare(3);
+        openCdp(63481775631040330868488838440380883887548553786606511443800351945466791372972, 12);
+        openCdp(
+            115275689634636763471407553554696230511651534645337120528720836289775559173670,
+            3400000000000000000
+        );
+        setPrice(49955707469362902507454157297736832118868343942642399513960811609542965143241);
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039457584007913129639935
+        );
+        setPrice(115792089237316195423570985008687907853269984665640564039456584970154295856934);
+        setEthPerShare(2);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        console.log("B4 Liquidation");
+        console.log("B4 Liquidation");
+        console.log("B4 Liquidation");
+        console.log("B4 Liquidation");
+        console.log("B4 Liquidation");
+        console.log("B4 Liquidation");
+        liquidateCdps(15271506168544636618683946165347184908672584999956201311530805028234774281247); // Redistribution here
+        console.log("After Liquidation");
+        console.log("After Liquidation");
+        console.log("After Liquidation");
+        console.log("After Liquidation");
+        console.log("After Liquidation");
+        console.log("After Liquidation");
+        openCdp(110953018886617049369109243176193885383860427032951825314358709007138889273943, 4); // After this open you have 2 CDPs
+        console.log("Before Close");
+        console.log("Before Close");
+        console.log("Before Close");
+        console.log("Before Close");
+        console.log("Before Close");
+        closeCdp(57413278564244504453191656087298467315431246439675010725238485654181166168124); // After this you only have 1 CDP left
+        console.log("After Close");
+
+        // Accrue all cdps
+        for (uint256 i; i < sortedCdps.cdpCountOf(address(user)); i++) {
+            cdpManager.syncAccounting(_getRandomCdp(i));
+        }
+
+        console.log("lastEBTCDebtErrorRedistribution", cdpManager.lastEBTCDebtErrorRedistribution());
+        // 0.000000000002e18 = diff_tollerance
+        assertTrue(invariant_AP_05(cdpManager, 1e10), "5");
     }
 
     function testNewTcr() public {
@@ -513,7 +692,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         _n = clampBetween(_n, 1, cdpManager.getActiveCdpsCount());
 
         console2.log("liquidateCdps", _n);
-        cdpManager.liquidateCdps(_n);
+        _liquidateCdps(_n);
     }
 
     function partialLiquidate(uint _i, uint _partialAmount) internal returns (bytes32 _cdpId) {
@@ -633,7 +812,11 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         );
 
         _allTargets[6] = address(cdpManager);
-        _allCalldatas[6] = abi.encodeWithSelector(cdpManager.liquidateCdps.selector, _n);
+        bytes32[] memory _batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            _n,
+            priceFeedMock.getPrice()
+        );
+        _allCalldatas[6] = abi.encodeWithSelector(cdpManager.batchLiquidateCdps.selector, _batch);
 
         for (uint256 _j = 0; _j < _actions; ++_j) {
             _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;

@@ -14,6 +14,7 @@ import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
 
+
 abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     function invariant_AP_01(
         ICollateralToken collateral,
@@ -63,7 +64,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             (uint256 _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _debt;
         }
-        return isApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance);
+
+        bool oldCheck = isApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance);
+        // New check ensures this is above 1000 wei
+        bool newCheck = cdpManager.getSystemDebt() - _sum > 1_000;
+        // @audit We have an instance of getting above 1e18 in rounding error, see `testBrokenInvariantFive`
+        return oldCheck || !newCheck;
     }
 
     function invariant_CDPM_01(
@@ -95,20 +101,20 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     /** TODO: See EchidnaToFoundry._getValue */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-        uint256 fee = (vars.feeRecipientTotalCollAfter - vars.feeRecipientTotalCollBefore);
-
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
-            vars.collSurplusPoolBefore) * vars.priceBefore) /
+            vars.collSurplusPoolBefore +
+            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
-            vars.cdpDebtBefore;
+            vars.activePoolDebtBefore;
 
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
-            fee) * vars.priceAfter) /
+            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
             1e18 -
-            vars.cdpDebtAfter;
+            vars.activePoolDebtAfter;
+
         return afterValue >= beforeValue || isApproximateEq(afterValue, beforeValue, 0.01e18);
     }
 

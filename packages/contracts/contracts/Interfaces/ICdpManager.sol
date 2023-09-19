@@ -21,8 +21,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
         bytes32 _lowerPartialHint
     ) external;
 
-    function liquidateCdps(uint256 _n) external;
-
     function batchLiquidateCdps(bytes32[] calldata _cdpArray) external;
 
     function redeemCollateral(

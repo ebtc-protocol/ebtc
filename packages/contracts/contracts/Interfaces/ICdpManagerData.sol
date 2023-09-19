@@ -244,6 +244,14 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function getICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
 
+    function getSyncedCdpDebt(bytes32 _cdpId) external view returns (uint256);
+
+    function getSyncedCdpCollShares(bytes32 _cdpId) external view returns (uint256);
+
+    function getSyncedICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
+
+    function getSyncedTCR(uint256 _price) external view returns (uint256);
+
     function getPendingRedistributedDebt(bytes32 _cdpId) external view returns (uint256);
 
     function hasPendingRedistributedDebt(bytes32 _cdpId) external view returns (bool);
@@ -251,4 +259,6 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     function getDebtAndCollShares(
         bytes32 _cdpId
     ) external view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward);
+
+    function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
 }

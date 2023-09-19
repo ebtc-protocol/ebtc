@@ -23,6 +23,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
   let sortedCdps
   let collSurplusPool;
   let _MCR;
+  let _CCR;
   let collToken;
 
   const openCdp = async (params) => th.openCdp(contracts, params)
@@ -43,10 +44,12 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     liqReward = await contracts.cdpManager.LIQUIDATOR_REWARD();	
     _MCR = await cdpManager.MCR();
     LICR = await cdpManager.LICR();
+    _CCR = await cdpManager.CCR();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
     liqStipend = await cdpManager.LIQUIDATOR_REWARD()
+    liquidationSequencer = contracts.liquidationSequencer;
 
     await deploymentHelper.connectCoreContracts(contracts, LQTYContracts)
   })
@@ -543,7 +546,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // get some redistributed debts for remaining CDP
       let _ownerDebt = await cdpManager.getCdpDebt(_ownerCdpId);
       await debtToken.transfer(owner, toBN(_ownerDebt.toString()).sub(toBN((await debtToken.balanceOf(owner)).toString())), {from: alice});	
-      await cdpManager.liquidateCdps(1, {from: owner});
+      await th.liquidateCdps(1, _newPrice, contracts, {extraParams: {from: owner}});
       assert.isFalse(await sortedCdps.contains(_ownerCdpId));
       let _rewardEBTCDebt = await cdpManager.getPendingRedistributedDebt(_aliceCdpId);
       assert.isTrue(toBN(_rewardEBTCDebt.toString()).gt(toBN('0')));	
@@ -593,7 +596,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 
       // check CdpUpdated event
       const troveUpdatedEvents = th.getAllEventsByName(tx, 'CdpUpdated')
-      assert.equal(troveUpdatedEvents.length, 2, '!CdpUpdated event') // the first CdpUpdated event is for syncAccounting()
+      assert.equal(troveUpdatedEvents.length, 2, '!CdpUpdated event') // first CdpUpdated event for syncAccounting()
       assert.equal(troveUpdatedEvents[1].args[0], _aliceCdpId, '!partially liquidated CDP ID');
       assert.equal(troveUpdatedEvents[1].args[1], alice, '!partially liquidated CDP owner');
       assert.equal(troveUpdatedEvents[1].args[4].toString(), _debtRemaining.toString(), '!partially liquidated CDP remaining debt');
@@ -778,7 +781,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await debtToken.unprotectedMint(owner, _systemDebt);
       let _totalSupplyBefore = await debtToken.totalSupply();
       let _balBefore = await collToken.balanceOf(owner);
-      let tx = await cdpManager.liquidateCdps(_n, {from: owner});
+      let tx = await th.liquidateCdps(_n, _newPrice, contracts, {extraParams: {from: owner}});
       let _balAfter = await collToken.balanceOf(owner);
       let _totalSupplyDiff = _totalSupplyBefore.sub(await debtToken.totalSupply());
       if (_totalSupplyDiff.lt(_systemDebt)) {
@@ -863,7 +866,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await debtToken.transfer(alice, toBN((await debtToken.balanceOf(owner)).toString()), {from: owner});
       let _debtBefore = await debtToken.balanceOf(alice);
       let _balBefore = await collToken.balanceOf(alice);
-      let tx = await cdpManager.liquidateCdps(1, {from: alice});
+      let tx = await th.liquidateCdps(1, _newPrice, contracts, {extraParams: {from: alice}});
       let _debtAfter = await debtToken.balanceOf(alice);
       let _balAfter = await collToken.balanceOf(alice);
 	  
@@ -906,7 +909,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       let _debtBefore = await debtToken.balanceOf(owner);
       let _balBefore = await collToken.balanceOf(owner);
-      let tx = await cdpManager.liquidateCdps(2, {from: owner});
+      let tx = await th.liquidateCdps(2, _newPrice, contracts, {extraParams: {from: owner}});
       let _debtAfter = await debtToken.balanceOf(owner);
       let _balAfter = await collToken.balanceOf(owner);
 	  
@@ -927,6 +930,81 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _liqPremium = _liqPremium1
       let _debtToColl = _liquidatedDebt.mul(mv._1e18BN).div(toBN(_newPrice));
       assert.isTrue(_liqPremium.eq(_balAfter.sub(_balBefore).sub(_debtToColl)));
+  })
+  
+  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
+      // Cdps undercollateralized under minimum liq premium [<3% ICR]
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      // Cdps undercollateralized [3% < ICR < 100%]
+      await openCdp({ ICR: toBN(dec(500, 16)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      // Cdps overcollateralized but liquidatable [100% <= ICR < MCR]
+      await openCdp({ ICR: toBN(dec(4500, 16)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      // Cdps overcollateralized but liquidatable in recovery mode [MCR <= ICR < TCR]
+      await openCdp({ ICR: toBN(dec(4800, 16)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+      // Cdps overcollateralized and unliquidatable [ICR >= TCR]
+      await openCdp({ ICR: toBN(dec(5400, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(3)), extraParams: { from: owner } })
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+
+      // price slump to Recovery Mode
+      let _newPrice = dec(175, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcr = await cdpManager.getTCR(_newPrice);
+      assert.isTrue(_tcr.gt(await cdpManager.getICR(_dennisCdpId, _newPrice)));
+      assert.isTrue(_tcr.lt(_CCR));
+
+      // check sequenceLiqToBatchLiq() results
+      // riskiest CDP at last
+      let _batch1 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(1, _newPrice);
+      assert.isTrue(_batch1[0] == _aliceCdpId);
+      let _batch2 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(2, _newPrice);
+      assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
+      let _batch3 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(3, _newPrice);
+      assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
+      let _batch4 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(4, _newPrice);
+      assert.isTrue(_batch4.length == 4 && _batch4[3] == _aliceCdpId && _batch4[2] == _bobCdpId && _batch4[1] == _carolCdpId && _batch4[0] == _dennisCdpId);
+      let _batch5 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(5, _newPrice);
+      assert.isTrue(_batch5.length == 4 && _batch5[3] == _aliceCdpId && _batch5[2] == _bobCdpId && _batch5[1] == _carolCdpId && _batch5[0] == _dennisCdpId);	  
+  })
+
+  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Normal Mode", async () => {
+      // Cdps undercollateralized under minimum liq premium [<3% ICR]
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      // Cdps undercollateralized [3% < ICR < 100%]
+      await openCdp({ ICR: toBN(dec(500, 16)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      // Cdps overcollateralized but liquidatable [100% <= ICR < MCR]
+      await openCdp({ ICR: toBN(dec(4500, 16)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      // Cdps overcollateralized but liquidatable in recovery mode [MCR <= ICR < TCR]
+      await openCdp({ ICR: toBN(dec(4800, 16)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+      // Cdps overcollateralized and unliquidatable [ICR >= TCR]
+      await openCdp({ ICR: toBN(dec(5800, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(4)), extraParams: { from: owner } })
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+
+      // price keep system in Normal Mode
+      let _newPrice = dec(175, 13);
+      await priceFeed.setPrice(_newPrice);
+      let _tcr = await cdpManager.getTCR(_newPrice);
+      assert.isTrue(_tcr.gt(_CCR));
+
+      // check sequenceLiqToBatchLiq() results
+      // riskiest CDP at last
+      let _batch1 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(1, _newPrice);
+      assert.isTrue(_batch1[0] == _aliceCdpId);
+      let _batch2 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(2, _newPrice);
+      assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
+      let _batch3 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(3, _newPrice);
+      assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
+      let _batch4 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(4, _newPrice);
+      assert.isTrue(_batch4.length == 3 && _batch4[2] == _aliceCdpId && _batch4[1] == _bobCdpId && _batch4[0] == _carolCdpId);
+      let _batch5 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(5, _newPrice);
+      assert.isTrue(_batch5.length == 3 && _batch5[2] == _aliceCdpId && _batch5[1] == _bobCdpId && _batch5[0] == _carolCdpId);	  
   })
   
 })

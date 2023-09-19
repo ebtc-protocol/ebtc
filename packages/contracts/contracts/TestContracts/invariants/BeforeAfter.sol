@@ -46,6 +46,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 ethPerShareAfter;
         uint256 activePoolCollBefore;
         uint256 activePoolCollAfter;
+        uint256 activePoolDebtBefore;
+        uint256 activePoolDebtAfter;
         uint256 collSurplusPoolBefore;
         uint256 collSurplusPoolAfter;
         uint256 priceBefore;
@@ -71,7 +73,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _before(bytes32 _cdpId) internal {
         vars.priceBefore = priceFeedMock.fetchPrice();
 
-        vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
+        vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceBefore) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
@@ -80,7 +82,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             : 0;
         vars.cdpStatusBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
 
-        vars.isRecoveryModeBefore = cdpManager.checkRecoveryMode(vars.priceBefore);
+        vars.isRecoveryModeBefore = crLens.quoteCheckRecoveryMode() == 1; /// @audit crLens
         (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
             cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
@@ -98,6 +100,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.tcrBefore = cdpManager.getTCR(vars.priceBefore);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
         vars.ethPerShareBefore = collateral.getEthPerShare();
+        vars.activePoolDebtBefore = activePool.getSystemDebt();
         vars.activePoolCollBefore = activePool.getSystemCollShares();
         vars.collSurplusPoolBefore = collSurplusPool.getTotalSurplusCollShares();
         vars.lastGracePeriodStartTimestampBefore = cdpManager.lastGracePeriodStartTimestamp();
@@ -116,7 +119,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _after(bytes32 _cdpId) internal {
         vars.priceAfter = priceFeedMock.fetchPrice();
 
-        vars.nicrAfter = _cdpId != bytes32(0) ? cdpManager.getNominalICR(_cdpId) : 0;
+        vars.nicrAfter = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceAfter) : 0;
         vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
@@ -125,7 +128,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             : 0;
         vars.cdpStatusAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
 
-        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
+        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter); /// @audit This is fine as is because after the system is synched
         (vars.feeSplitAfter, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
             cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
@@ -143,6 +146,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.tcrAfter = cdpManager.getTCR(vars.priceAfter);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
         vars.ethPerShareAfter = collateral.getEthPerShare();
+        vars.activePoolDebtAfter = activePool.getSystemDebt();
         vars.activePoolCollAfter = activePool.getSystemCollShares();
         vars.collSurplusPoolAfter = collSurplusPool.getTotalSurplusCollShares();
         vars.lastGracePeriodStartTimestampAfter = cdpManager.lastGracePeriodStartTimestamp();

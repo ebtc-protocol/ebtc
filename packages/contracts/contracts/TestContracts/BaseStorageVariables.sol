@@ -7,6 +7,7 @@ import {PriceFeedTestnet} from "./testnet/PriceFeedTestnet.sol";
 import {SortedCdps} from "../SortedCdps.sol";
 import {CdpManager} from "../CdpManager.sol";
 import {LiquidationLibrary} from "../LiquidationLibrary.sol";
+import {LiquidationSequencer} from "../LiquidationSequencer.sol";
 import {ActivePool} from "../ActivePool.sol";
 import {HintHelpers} from "../HintHelpers.sol";
 import {FeeRecipient} from "../FeeRecipient.sol";
@@ -33,6 +34,7 @@ abstract contract BaseStorageVariables {
     CollateralTokenTester internal collateral;
     Governor internal authority;
     LiquidationLibrary internal liqudationLibrary;
+    LiquidationSequencer internal liquidationSequencer;
     EBTCDeployer internal ebtcDeployer;
     address internal defaultGovernance;
 

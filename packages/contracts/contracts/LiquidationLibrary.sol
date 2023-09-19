@@ -429,48 +429,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         return (_partialDebt, _partialColl);
     }
 
-    // return CdpId array (in NICR-decreasing order same as SortedCdps)
-    // including the last N CDPs in sortedCdps for batch liquidation
-    function _sequenceLiqToBatchLiq(
-        uint256 _n,
-        bool _recovery,
-        uint256 _price
-    ) internal view returns (bytes32[] memory _array) {
-        if (_n > 0) {
-            bytes32 _last = sortedCdps.getLast();
-            bytes32 _first = sortedCdps.getFirst();
-            bytes32 _cdpId = _last;
-
-            uint256 _TCR = _getTCR(_price);
-
-            // get count of liquidatable CDPs
-            uint256 _cnt;
-            for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
-                uint256 _icr = getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
-                bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
-                    _cnt += 1;
-                }
-                _cdpId = sortedCdps.getPrev(_cdpId);
-            }
-
-            // retrieve liquidatable CDPs
-            _array = new bytes32[](_cnt);
-            _cdpId = _last;
-            uint256 _j;
-            for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
-                uint256 _icr = getICR(_cdpId, _price);
-                bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
-                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
-                    _array[_cnt - _j - 1] = _cdpId;
-                    _j += 1;
-                }
-                _cdpId = sortedCdps.getPrev(_cdpId);
-            }
-            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
-        }
-    }
-
     function _partiallyReduceCdpDebt(
         bytes32 _cdpId,
         uint256 _partialDebt,
@@ -599,67 +557,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         collSurplus = (cappedColPortion == _totalColToSend) ? 0 : _totalColToSend - cappedColPortion;
     }
 
-    // --- Batch/Sequence liquidation functions ---
-
-    /*
-     * Liquidate a sequence of cdps. Closes a maximum number of n cdps with their CR < MCR or CR < TCR in reocvery mode,
-     * starting from the one with the lowest collateral ratio in the system, and moving upwards
-
-     callable by anyone, checks for under-collateralized Cdps below MCR and liquidates up to `n`, starting from the Cdp with the lowest collateralization ratio; subject to gas constraints and the actual number of under-collateralized Cdps. The gas costs of `liquidateCdps(uint256 n)` mainly depend on the number of Cdps that are liquidated, and whether the Cdps are offset against the Stability Pool or redistributed. For n=1, the gas costs per liquidated Cdp are roughly between 215K-400K, for n=5 between 80K-115K, for n=10 between 70K-82K, and for n=50 between 60K-65K.
-     */
-    function liquidateCdps(uint256 _n) external nonReentrantSelfAndBOps {
-        require(_n > 0, "LiquidationLibrary: can't liquidate zero CDP in sequence");
-
-        LocalVariables_OuterLiquidationFunction memory vars;
-
-        LiquidationTotals memory totals;
-
-        // taking fee to avoid accounted for the calculation of the TCR
-        _syncGlobalAccounting();
-
-        vars.price = priceFeed.fetchPrice();
-        (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
-            vars.price
-        );
-        vars.recoveryModeAtStart = _TCR < CCR ? true : false;
-
-        // Perform the appropriate liquidation sequence - tally the values, and obtain their totals
-        bytes32[] memory _batchedCdps;
-        if (vars.recoveryModeAtStart) {
-            _batchedCdps = _sequenceLiqToBatchLiq(_n, true, vars.price);
-            require(_batchedCdps.length > 0, "LiquidationLibrary: nothing to liquidate");
-            totals = _getTotalFromBatchLiquidate_RecoveryMode(
-                vars.price,
-                systemColl,
-                systemDebt,
-                _batchedCdps,
-                true
-            );
-        } else {
-            // if !vars.recoveryModeAtStart
-            _batchedCdps = _sequenceLiqToBatchLiq(_n, false, vars.price);
-            require(_batchedCdps.length > 0, "LiquidationLibrary: nothing to liquidate");
-            totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _batchedCdps, true);
-        }
-
-        require(totals.totalDebtInSequence > 0, "LiquidationLibrary: nothing to liquidate");
-
-        // housekeeping leftover collateral for liquidated CDPs
-        if (totals.totalCollSurplus > 0) {
-            activePool.transferSystemCollShares(address(collSurplusPool), totals.totalCollSurplus);
-        }
-
-        _finalizeLiquidation(
-            totals.totalDebtToOffset,
-            totals.totalCollToSendToLiquidator,
-            totals.totalDebtToRedistribute,
-            totals.totalCollReward,
-            totals.totalCollSurplus,
-            systemColl,
-            systemDebt,
-            vars.price
-        );
-    }
+    // --- Batch liquidation functions ---
 
     function _getLiquidationValuesNormalMode(
         uint256 _price,
@@ -1038,27 +936,5 @@ contract LiquidationLibrary is CdpManagerStorage {
             _entireColl >= MIN_NET_COLL,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"
         );
-    }
-
-    // Can liquidate in RM if ICR < TCR AND Enough time has passed
-    function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
-        // ICR < TCR and we have waited enough
-        uint128 cachedLastGracePeriodStartTimestamp = lastGracePeriodStartTimestamp;
-        return
-            icr < tcr &&
-            cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
-            block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod;
-    }
-
-    function _canLiquidateInCurrentMode(
-        bool _recovery,
-        uint256 _icr,
-        uint256 _TCR
-    ) internal view returns (bool) {
-        bool _liquidatable = _recovery
-            ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
-            : _icr < MCR;
-
-        return _liquidatable;
     }
 }

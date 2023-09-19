@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "../CdpManager.sol";
 import "../BorrowerOperations.sol";
 import "../ActivePool.sol";
+import "../LiquidationSequencer.sol";
 import "./CollateralTokenTester.sol";
 import "./testnet/PriceFeedTestnet.sol";
 import "./EBTCTokenTester.sol";
@@ -18,6 +19,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     CollateralTokenTester collateral;
     ActivePool activePool;
     PriceFeedTestnet priceFeed;
+    LiquidationSequencer liquidationSequencer;
 
     constructor(
         CdpManager _cdpManager,
@@ -33,6 +35,14 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         collateral = _collateral;
         activePool = _activePool;
         priceFeed = _priceFeed;
+
+        liquidationSequencer = new LiquidationSequencer(
+            address(cdpManager),
+            address(cdpManager.sortedCdps()),
+            address(priceFeed),
+            address(activePool),
+            address(collateral)
+        );
 
         collateral.approve(address(borrowerOperations), type(uint256).max);
     }
@@ -78,7 +88,9 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     }
 
     function liquidateCdpsPrx(uint256 _n) external {
-        cdpManager.liquidateCdps(_n);
+        uint256 _price = priceFeed.fetchPrice();
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(_n, _price);
+        cdpManager.batchLiquidateCdps(batch);
     }
 
     function batchLiquidateCdpsPrx(bytes32[] calldata _cdpIdArray) external {

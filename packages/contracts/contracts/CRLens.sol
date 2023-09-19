@@ -57,21 +57,42 @@ contract CRLens {
         return icr;
     }
 
-    /// @notice Return the collateral share of a CDP after the fee split
+    /// @notice Return the ICR of a CDP after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
-    function getRealCollShares(bytes32 cdpId, bool revertValue) external returns (uint256) {
+    function getRealNICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
         cdpManager.syncAccounting(cdpId);
-        uint256 _collShare = cdpManager.getCdpCollShares(cdpId);
+        uint price = priceFeed.fetchPrice();
+        uint256 icr = cdpManager.getNominalICR(cdpId);
 
         if (revertValue) {
             assembly {
                 let ptr := mload(0x40)
-                mstore(ptr, _collShare)
+                mstore(ptr, icr)
                 revert(ptr, 32)
             }
         }
 
-        return _collShare;
+        return icr;
+    }
+
+    /// @dev Returns 1 if we're in RM
+    function getCheckRecoveryMode(bool revertValue) external returns (uint256) {
+        // Synch State
+        cdpManager.syncGlobalAccountingAndGracePeriod();
+
+        // Return latest
+        uint price = priceFeed.fetchPrice();
+        uint256 isRm = cdpManager.checkRecoveryMode(price) == true ? 1 : 0;
+
+        if (revertValue) {
+            assembly {
+                let ptr := mload(0x40)
+                mstore(ptr, isRm)
+                revert(ptr, 32)
+            }
+        }
+
+        return isRm;
     }
 
     // == REVERT LOGIC == //
@@ -98,7 +119,7 @@ contract CRLens {
         }
     }
 
-    /// @notice Returns the ICR of the CDP after the fee split
+    /// @notice Returns the ICR of the system after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
     function quoteRealICR(bytes32 cdpId) external returns (uint256) {
@@ -107,11 +128,20 @@ contract CRLens {
         }
     }
 
-    /// @notice Returns the collateral share of CDP after the fee split
+    /// @notice Returns the NICR of the system after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
-    function quoteRealCollShares(bytes32 cdpId) external returns (uint256) {
-        try this.getRealCollShares(cdpId, true) {} catch (bytes memory reason) {
+    function quoteRealNICR(bytes32 cdpId) external returns (uint256) {
+        try this.getRealNICR(cdpId, true) {} catch (bytes memory reason) {
+            return parseRevertReason(reason);
+        }
+    }
+
+    /// @notice Returns whether the system is in RM after taking fee split
+    /// @dev Call this from offChain with `eth_call` to avoid paying for gas
+    ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
+    function quoteCheckRecoveryMode() external returns (uint256) {
+        try this.getCheckRecoveryMode(true) {} catch (bytes memory reason) {
             return parseRevertReason(reason);
         }
     }
