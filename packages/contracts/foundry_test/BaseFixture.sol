@@ -568,7 +568,9 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         console.log(batch.length);
         _printCdpArray(batch);
 
-        cdpManager.batchLiquidateCdps(batch);
+        if (batch.length > 0) {
+            cdpManager.batchLiquidateCdps(batch);
+        }
     }
 
     function _sequenceLiqToBatchLiqWithPrice(uint256 _n) internal returns (bytes32[] memory) {
