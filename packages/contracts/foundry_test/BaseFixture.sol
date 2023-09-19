@@ -571,6 +571,13 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         _printCdpArray(batch);
         console.log(batch2.length);
         _printCdpArray(batch2);
+
+        // Early exit for 0 array size, would not revert on liquidateCdps(n) but does revert on batchLiquidateCdps()
+        if (batch2.length == 0) {
+            console.log("Catch: Cannot batch liquidate 0 Cdps");
+            return;
+        }
+
         cdpManager.batchLiquidateCdps(batch2);
     }
 
