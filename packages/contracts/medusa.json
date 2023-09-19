@@ -32,10 +32,10 @@
 			"stopOnFailedContractMatching": false,
 			"stopOnNoTests": true,
 			"testAllContracts": false,
-			"traceAll": false,
+			"traceAll": false,	
 			"assertionTesting": {
-				"enabled": false,
-				"testViewMethods": false,
+				"enabled": true,
+				"testViewMethods": true,
 				"panicCodeConfig": {
 					"failOnCompilerInsertedPanic": false,
 					"failOnAssertion": true,
