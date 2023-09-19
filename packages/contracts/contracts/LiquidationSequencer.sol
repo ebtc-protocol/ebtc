@@ -8,8 +8,7 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManagerData.sol";
 import "./Dependencies/LiquityBase.sol";
 
-/// @notice The contract allows to check real CR of CDPs
-///   Acknowledgement: https://github.com/Uniswap/v3-periphery/blob/main/contracts/lens/Quoter.sol
+/// @notice Helper to turn a sequence into CDP id array for batch liquidation
 contract LiquidationSequencer is LiquityBase {
     ICdpManager public immutable cdpManager;
     ISortedCdps public immutable sortedCdps;
@@ -29,21 +28,17 @@ contract LiquidationSequencer is LiquityBase {
     /// @dev Non-view function that updates and returns live price at execution time
     function sequenceLiqToBatchLiq(uint256 _n) external returns (bytes32[] memory _array) {
         uint256 _price = priceFeed.fetchPrice();
-        (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
-        bool _recoveryModeAtStart = _TCR < CCR ? true : false;
-
-        _sequenceLiqToBatchLiq(_n, _recoveryModeAtStart, _price);
+        return sequenceLiqToBatchLiqWithPrice(_n, _price);
     }
 
     /// @dev Get first N batch of liquidatable Cdps at specified price
-    function sequenceLiqToBatchLiq(
+    function sequenceLiqToBatchLiqWithPrice(
         uint256 _n,
         uint256 _price
-    ) external view returns (bytes32[] memory _array) {
+    ) public view returns (bytes32[] memory _array) {
         (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
-
-        _sequenceLiqToBatchLiq(_n, _recoveryModeAtStart, _price);
+        return _sequenceLiqToBatchLiq(_n, _recoveryModeAtStart, _price);
     }
 
     // return CdpId array (in NICR-decreasing order same as SortedCdps)
@@ -96,9 +91,7 @@ contract LiquidationSequencer is LiquityBase {
         uint256 _icr,
         uint256 _TCR
     ) internal view returns (bool) {
-        bool _liquidatable = _recovery
-            ? (_icr < MCR || cdpManager.canLiquidateRecoveryMode(_icr, _TCR))
-            : _icr < MCR;
+        bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
 
         return _liquidatable;
     }

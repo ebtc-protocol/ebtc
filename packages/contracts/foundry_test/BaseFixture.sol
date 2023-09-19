@@ -564,21 +564,17 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     }
 
     function _liquidateCdps(uint256 _n) internal {
-        uint256 price = priceFeedMock.fetchPrice();
-        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiq(_n, price);
-        bytes32[] memory batch2 = cdpManager.sequenceLiqToBatchLiq(_n, price);
+        bytes32[] memory batch = _sequenceLiqToBatchLiqWithPrice(_n);
         console.log(batch.length);
         _printCdpArray(batch);
-        console.log(batch2.length);
-        _printCdpArray(batch2);
 
-        // Early exit for 0 array size, would not revert on liquidateCdps(n) but does revert on batchLiquidateCdps()
-        if (batch2.length == 0) {
-            console.log("Catch: Cannot batch liquidate 0 Cdps");
-            return;
-        }
+        cdpManager.batchLiquidateCdps(batch);
+    }
 
-        cdpManager.batchLiquidateCdps(batch2);
+    function _sequenceLiqToBatchLiqWithPrice(uint256 _n) internal returns (bytes32[] memory) {
+        uint256 price = priceFeedMock.fetchPrice();
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(_n, price);
+        return batch;
     }
 
     function _printCdpArray(bytes32[] memory _cdpArray) internal {

@@ -184,9 +184,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             liquidationSnapshotId = vm.snapshot();
 
             // Verify it worked
+            bytes32[] memory batch = _sequenceLiqToBatchLiqWithPrice(1);
             vm.expectEmit(false, false, false, true);
             emit TCRNotified(EXPECTED_TCR_THIRD_LIQ_TCR);
-            _liquidateCdps(1);
+            cdpManager.batchLiquidateCdps(batch);
         }
 
         // == Liquidate 4 == //

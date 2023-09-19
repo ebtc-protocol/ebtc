@@ -787,7 +787,6 @@ class TestHelper {
         if (DEBUG) console.log('transfer ' + _finalColl + 'coll to proxy=' + extraParams.usrProxy);	
     }
     const tx = await contracts.borrowerOperations.openCdp(ebtcAmount, upperHint, lowerHint, _finalColl, extraParams)
-	
     return {
       ebtcAmount,
       netDebt,
@@ -796,6 +795,13 @@ class TestHelper {
       collateral: _collAmt,
       tx
     }
+  }
+  
+  static async liquidateCdps(_n, _price, contracts, {extraParams}) {
+    let _batchArray = await contracts.liquidationSequencer.sequenceLiqToBatchLiqWithPrice(_n, _price);
+    //console.log("coverting " + _n + " sequential liquidation to batch liquidation:" + JSON.stringify(_batchArray));
+    const tx = await contracts.cdpManager.batchLiquidateCdps(_batchArray, {from: extraParams.from});
+    return tx;
   }
 
   static async withdrawEBTC(contracts, {

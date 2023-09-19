@@ -239,7 +239,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
     }
 
     it('First cdp only doesn’t get out of Recovery Mode', async () => {
-      await setup()		  
+      let _setups = await setup()		  
 	  	  
       // trigger cooldown and pass the liq wait
       await cdpManager.syncGracePeriod();
@@ -248,7 +248,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
 		
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
-      const tx = await cdpManager.liquidateCdps(1)
+      const tx = await th.liquidateCdps(1, _setups['price'], contracts, {extraParams: {from: owner}})
 
       const TCR = await th.getTCR(contracts)
       assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -268,7 +268,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
       let _balBefore = await collateral.balanceOf(owner);
-      const tx = await cdpManager.liquidateCdps(10)
+      const tx = await th.liquidateCdps(10, _setups['price'], contracts, {extraParams: {from: owner}})
       let _balAfter = await collateral.balanceOf(owner);
 
       const liquidationEvents = th.getAllEventsByName(tx, 'CdpLiquidated')

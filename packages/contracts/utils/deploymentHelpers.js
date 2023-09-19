@@ -13,6 +13,7 @@ const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 const HintHelpers = artifacts.require("./HintHelpers.sol")
 const Governor = artifacts.require("./Governor.sol")
 const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
+const LiquidationSequencer = artifacts.require("./LiquidationSequencer.sol")
 
 const MultiCdpGetter = artifacts.require("./MultiCdpGetter.sol")
 
@@ -474,6 +475,8 @@ class DeploymentHelper {
     const hintHelpers = await DeploymentHelper.deployHintHelper(ebtcDeployer, _expectedAddr, collateral.address);
     
     const feeRecipient = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, accounts[0])
+	
+    const liquidationSequencer = await LiquidationSequencer.new(cdpManager.address, sortedCdps.address, priceFeedTestnet.address, activePool.address, collateral.address);
 
     // truffle migrations
     EBTCToken.setAsDeployed(ebtcToken)
@@ -510,7 +513,8 @@ class DeploymentHelper {
       authority,
       liquidationLibrary,
       feeRecipient,
-      collateral
+      collateral,
+      liquidationSequencer
     }
 
     await this.configureGovernor(accounts[0], coreContracts)
@@ -573,7 +577,13 @@ class DeploymentHelper {
     testerContracts.sortedCdps = await DeploymentHelper.deploySortedCdps(ebtcDeployer, _expectedAddr);
     testerContracts.hintHelpers = await DeploymentHelper.deployHintHelper(ebtcDeployer, _expectedAddr, collateral.address);
     
-    testerContracts.feeRecipient = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, accounts[0]);
+    testerContracts.feeRecipient = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, accounts[0]);	
+	
+    testerContracts.liquidationSequencer = await LiquidationSequencer.new(testerContracts.cdpManager.address,
+                                                                          testerContracts.sortedCdps.address, 
+                                                                          testerContracts.priceFeedTestnet.address, 
+                                                                          testerContracts.activePool.address, 
+                                                                          collateral.address);
 
     return testerContracts
   }

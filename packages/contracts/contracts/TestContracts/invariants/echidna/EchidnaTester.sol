@@ -377,7 +377,10 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         _before(bytes32(0));
 
-        bytes32[] memory batch = cdpManager.sequenceLiqToBatchLiq(_n, vars.priceBefore);
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            _n,
+            vars.priceBefore
+        );
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
