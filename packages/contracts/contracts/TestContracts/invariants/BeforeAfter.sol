@@ -82,7 +82,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             : 0;
         vars.cdpStatusBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
 
-        vars.isRecoveryModeBefore = cdpManager.checkRecoveryMode(vars.priceBefore);
+        vars.isRecoveryModeBefore = crLens.quoteCheckRecoveryMode() == 1; /// @audit crLens
         (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
             cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
@@ -128,7 +128,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             : 0;
         vars.cdpStatusAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
 
-        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
+        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter); /// @audit This is fine as is because after the system is synched
         (vars.feeSplitAfter, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
             cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
