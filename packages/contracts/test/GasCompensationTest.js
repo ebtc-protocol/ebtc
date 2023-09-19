@@ -786,7 +786,7 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const GAS_Used_Liquidator = th.gasUsed(await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE }))
+    const GAS_Used_Liquidator = th.gasUsed(await th.liquidateCdps(4, price, contracts, {extraParams: { from: liquidator, gasPrice: GAS_PRICE }}))
     const liquidatorBalance_after = web3.utils.toBN(await collToken.balanceOf(liquidator))
 
     // Check liquidator's balance has increased by the expected compensation amount
@@ -947,7 +947,7 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxData = await th.liquidateCdps(4, price, contracts, {extraParams: { from: liquidator, gasPrice: GAS_PRICE }})
 
     // Get data from the liquidation event logs
     const [loggedDebt, loggedColl] = th.getEmittedLiquidationValues(liquidationTxData)
@@ -1022,7 +1022,7 @@ contract('Gas compensation tests', async accounts => {
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});	
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(liquidator, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const liquidationTxData = await cdpManager.liquidateCdps(4, { from: liquidator, gasPrice: GAS_PRICE })
+    const liquidationTxData = await th.liquidateCdps(4, price, contracts, {extraParams: { from: liquidator, gasPrice: GAS_PRICE }})
 
     // Get data from the liquidation event logs
     const [loggedDebt, loggedColl] = th.getEmittedLiquidationValues(liquidationTxData)

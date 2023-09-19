@@ -259,12 +259,21 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         _waitUntilRMColldown();
 
-        vm.prank(_liquidator);
+        vm.startPrank(_liquidator);
         if (_n > 0) {
-            cdpManager.liquidateCdps(_n);
+            console.log("liquidateCdps(n)");
+            console.log("n:", _n);
+            console.log("cdps:", _cdps.length);
+            _printCdpArray(_cdps);
+            _liquidateCdps(_n);
         } else {
+            console.log("batchLiquidateCdps(_cdps)");
+            console.log(_n);
+            console.log(_cdps.length);
+            _printCdpArray(_cdps);
             cdpManager.batchLiquidateCdps(_cdps);
         }
+        vm.stopPrank();
 
         uint256 _debtLiquidatorAfter = eBTCToken.balanceOf(_liquidator);
         uint256 _debtSystemAfter = cdpManager.getSystemDebt();
@@ -420,12 +429,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
                 _newPrice) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[1]);
 
-        vm.prank(_liquidator);
-        cdpManager.liquidateCdps(4);
+        vm.startPrank(_liquidator);
+        _liquidateCdps(4);
         assertTrue(sortedCdps.contains(cdpIds[0]) == false);
         assertTrue(sortedCdps.contains(cdpIds[1]) == false);
         assertTrue(sortedCdps.contains(cdpIds[2]) == true);
         assertTrue(sortedCdps.contains(cdpIds[3]) == true);
+        vm.stopPrank();
 
         // ensure RM is exited
         assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
@@ -751,6 +761,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // Trigger Price Change Which causes Victim to be liquidatable
         priceFeedMock.setPrice(newPrice);
+
+        // Go through Grace Period
+        _waitUntilRMColldown();
 
         vm.startPrank(users[0]);
         // Liquidate the Whale

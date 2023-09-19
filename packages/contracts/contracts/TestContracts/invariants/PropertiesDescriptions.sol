@@ -54,7 +54,7 @@ abstract contract PropertiesDescriptions {
 
     string constant BO_01 = "BO-01: Users can only open CDPs with healthy ICR";
     string constant BO_02 = "BO-02: Users must repay all debt to close a CDP";
-    string constant BO_03 = "BO-03: Adding collateral improves Nominal ICR";
+    string constant BO_03 = "BO-03: Adding collateral doesn't reduce Nominal ICR";
     string constant BO_04 = "BO-04: Removing collateral does not increase the Nominal ICR";
     string constant BO_05 =
         "BO-05: When a borrower closes their active CDP, the gas compensation is refunded to the user";

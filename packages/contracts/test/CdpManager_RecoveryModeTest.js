@@ -64,6 +64,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   })
 
   beforeEach(async () => {
+    await deploymentHelper.setDeployGasPrice(1000000000);
     contracts = await deploymentHelper.deployTesterContractsHardhat()
     let LQTYContracts = {}
     LQTYContracts.feeRecipient = contracts.feeRecipient;
@@ -1909,7 +1910,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(freddy)).toString()), {from: freddy});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(greta)).toString()), {from: greta});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(harry)).toString()), {from: harry});
-    await cdpManager.liquidateCdps(10);
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}});
 
     // check system is no longer in Recovery Mode
     const recoveryMode_After = await th.checkRecoveryMode(contracts)
@@ -2016,7 +2017,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(freddy)).toString()), {from: freddy});
-    await cdpManager.liquidateCdps(6);
+    await th.liquidateCdps(6, price, contracts, {extraParams: {from: owner}});
 
     // check system is no longer in Recovery Mode
     const recoveryMode_After = await th.checkRecoveryMode(contracts)
@@ -2081,7 +2082,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
-    await cdpManager.liquidateCdps(3)
+    await th.liquidateCdps(3, dec(3714, 13), contracts, {extraParams: {from: owner}})
 
     // Check system still in Recovery Mode after liquidation tx
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -2147,7 +2148,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
     // Liquidation with n = 0
-    await assertRevert(cdpManager.liquidateCdps(0), "CdpManager: nothing to liquidate")
+    await assertRevert(th.liquidateCdps(0, price, contracts, {extraParams: {from: owner}}), "CdpManager: nothing to liquidate")
 
     // Check all cdps are still in the system
     assert.isTrue(await sortedCdps.contains(_aliceCdpId))
@@ -2202,7 +2203,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(freddy)).toString()), {from: freddy});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(5);
+    await th.liquidateCdps(5, price, contracts, {extraParams: {from: owner}});
 
     // Confirm cdps A-E have been removed from the system
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -2265,7 +2266,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_3)).toString()), {from: defaulter_3});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_4)).toString()), {from: defaulter_4});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(8)
+    await th.liquidateCdps(8, price, contracts, {extraParams: {from: owner}})
 
     // assert.isFalse((await sortedCdps.contains(defaulter_1)))
     // assert.isFalse((await sortedCdps.contains(defaulter_2)))
@@ -2325,7 +2326,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_3)).toString()), {from: defaulter_3});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(defaulter_4)).toString()), {from: defaulter_4});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(8)
+    await th.liquidateCdps(8, price, contracts, {extraParams: {from: owner}})
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedCdps.contains(_defaulter1CdpId)))
@@ -2405,7 +2406,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, (await debtToken.balanceOf(bob)), {from : bob});
     await debtToken.transfer(owner, (await debtToken.balanceOf(carol)), {from : carol});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from : alice});
-    await cdpManager.liquidateCdps(10, {from: owner})
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     /*  Since there is 0 EBTC in the liquidator, A, with ICR >110%, should stay active.
    Check Alice stays active, Carol gets liquidated, and Bob gets liquidated 
@@ -2452,7 +2453,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Check all cdps remain active
     assert.isFalse((await sortedCdps.contains(_aliceCdpId)))
@@ -2511,7 +2512,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(greta)).toString()), {from: greta});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(freddy)).toString()), {from: freddy});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const liquidationTx = await cdpManager.liquidateCdps(10)
+    const liquidationTx = await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
     const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
     // Check F and G were liquidated
@@ -2585,7 +2586,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(greta)).toString()), {from: greta});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(freddy)).toString()), {from: freddy});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const liquidationTx = await cdpManager.liquidateCdps(10)
+    const liquidationTx = await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
     const [liquidatedDebt, liquidatedColl, gasComp] = th.getEmittedLiquidationValues(liquidationTx)
 
     // Check F and G were liquidated
@@ -2656,7 +2657,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(freddy)).toString()), {from: freddy});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, newPrice, contracts, {extraParams: {from: owner}})
 
     // Check Whale remains in the system
     assert.isTrue(await sortedCdps.contains(_whaleCdpId))
@@ -2704,7 +2705,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedCdps.contains(_aliceCdpId)))
@@ -2747,7 +2748,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(carol)).toString()), {from: carol});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Check all defaulters have been liquidated
     assert.isFalse((await sortedCdps.contains(_aliceCdpId)))
@@ -2797,7 +2798,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Check A and B closed
     assert.isFalse(await sortedCdps.contains(_aliceCdpId))
@@ -2853,7 +2854,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Check C is in Cdp owners array
     const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
@@ -2929,7 +2930,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const tx = await cdpManager.liquidateCdps(10)
+    const tx = await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
     console.log('gasUsed: ', tx.receipt.gasUsed)
 
     // Check A, B and D are closed
@@ -2999,7 +3000,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const tx = await cdpManager.liquidateCdps(10)
+    const tx = await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
     console.log('gasUsed: ', tx.receipt.gasUsed)
 
     // Check A, B and D are closed
@@ -3061,7 +3062,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const tx = await cdpManager.liquidateCdps(10)
+    const tx = await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     // Expect system debt reduced by 203 EBTC and system coll 2.3 ETH
     const entireSystemCollAfter = await cdpManager.getSystemCollShares()
@@ -3113,7 +3114,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    const liquidationTx = await cdpManager.liquidateCdps(10)
+    const liquidationTx = await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
     const [liquidatedDebt, liquidatedColl] = th.getEmittedLiquidationValues(liquidationTx)
 
@@ -3178,7 +3179,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(dennis)).toString()), {from: dennis});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(erin)).toString()), {from: erin});
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(whale)).toString()), {from: whale});
-    await cdpManager.liquidateCdps(10)
+    await th.liquidateCdps(10, price, contracts, {extraParams: {from: owner}})
 
 //    const ICR_C_After = await cdpManager.getICR(_carolCdpId, price)
 //    assert.equal(ICR_C_Before.toString(), ICR_C_After)
