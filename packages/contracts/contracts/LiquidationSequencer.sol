@@ -25,8 +25,18 @@ contract LiquidationSequencer is LiquityBase {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
     }
 
+    /// @dev Get first N batch of liquidatable Cdps at current price
+    /// @dev Non-view function that updates and returns live price at execution time
     function sequenceLiqToBatchLiq(uint256 _n) external returns (bytes32[] memory _array) {
         uint256 _price = priceFeed.fetchPrice();
+        (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
+        bool _recoveryModeAtStart = _TCR < CCR ? true : false;
+
+        _sequenceLiqToBatchLiq(_n, _recoveryModeAtStart, _price);
+    }
+
+    /// @dev Get first N batch of liquidatable Cdps at specified price
+    function sequenceLiqToBatchLiq(uint256 _n, uint256 _price) external view returns (bytes32[] memory _array) {
         (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
 
@@ -45,15 +55,15 @@ contract LiquidationSequencer is LiquityBase {
             bytes32 _first = sortedCdps.getFirst();
             bytes32 _cdpId = _last;
 
-            uint256 _TCR = cdpManager.getSyncedTCR(_price);
+            uint256 _TCR = cdpManager.getTCR(_price);
 
             // get count of liquidatable CDPs
             uint256 _cnt;
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
-                uint256 _icr = cdpManager.getSyncedICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
+                uint256 _icr = cdpManager.getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
                 uint256 _cdpStatus = cdpManager.getCdpStatus(_cdpId);
                 bool _liquidatable = _canLiquidateInCurrentMode(_recoveryModeAtStart, _icr, _TCR);
-                if (_liquidatable && _cdpStatus == uint256(ICdpManagerData.Status.active)) {
+                if (_liquidatable && _cdpStatus == 1) {
                     _cnt += 1;
                 }
                 _cdpId = sortedCdps.getPrev(_cdpId);
@@ -64,10 +74,10 @@ contract LiquidationSequencer is LiquityBase {
             _cdpId = _last;
             uint256 _j;
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
-                uint256 _icr = cdpManager.getSyncedICR(_cdpId, _price);
+                uint256 _icr = cdpManager.getICR(_cdpId, _price);
                 uint256 _cdpStatus = cdpManager.getCdpStatus(_cdpId);
                 bool _liquidatable = _canLiquidateInCurrentMode(_recoveryModeAtStart, _icr, _TCR);
-                if (_liquidatable && _cdpStatus == uint256(ICdpManagerData.Status.active)) {
+                if (_liquidatable && _cdpStatus == 1) { // 1 = ICdpManagerData.Status.active
                     _array[_cnt - _j - 1] = _cdpId;
                     _j += 1;
                 }

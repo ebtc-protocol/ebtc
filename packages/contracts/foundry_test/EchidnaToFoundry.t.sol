@@ -712,7 +712,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         );
 
         _allTargets[6] = address(cdpManager);
-        bytes32[] memory _batch = liquidationSequencer.sequenceLiqToBatchLiq(_n);
+        bytes32[] memory _batch = cdpManager.sequenceLiqToBatchLiq(_n, priceFeedMock.getPrice());
         _allCalldatas[6] = abi.encodeWithSelector(cdpManager.batchLiquidateCdps.selector, _batch);
 
         for (uint256 _j = 0; _j < _actions; ++_j) {

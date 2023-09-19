@@ -88,7 +88,8 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     }
 
     function liquidateCdpsPrx(uint256 _n) external {
-        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiq(_n);
+        uint256 _price = priceFeed.fetchPrice();
+        bytes32[] memory batch = cdpManager.sequenceLiqToBatchLiq(_n, _price);
         cdpManager.batchLiquidateCdps(batch);
     }
 

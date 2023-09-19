@@ -261,8 +261,16 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         vm.prank(_liquidator);
         if (_n > 0) {
+            console.log("liquidateCdps(n)");
+            console.log("n:", _n);
+            console.log("cdps:", _cdps.length);
+            _printCdpArray(_cdps);
             _liquidateCdps(_n);
         } else {
+            console.log("batchLiquidateCdps(_cdps)");
+            console.log(_n);
+            console.log(_cdps.length);
+            _printCdpArray(_cdps);
             cdpManager.batchLiquidateCdps(_cdps);
         }
 

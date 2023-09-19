@@ -818,4 +818,62 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
             block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod;
     }
+
+    function _canLiquidateInCurrentMode(
+        bool _recovery,
+        uint256 _icr,
+        uint256 _TCR
+    ) internal view returns (bool) {
+        bool _liquidatable = _recovery
+            ? (_icr < MCR || canLiquidateRecoveryMode(_icr, _TCR))
+            : _icr < MCR;
+        return _liquidatable;
+    }
+
+    // return CdpId array (in NICR-decreasing order same as SortedCdps)
+    // including the last N CDPs in sortedCdps for batch liquidation
+    function sequenceLiqToBatchLiq(
+        uint256 _n,
+        uint256 _price
+    ) public view returns (bytes32[] memory _array) {
+
+        (uint256 _TCR,,) = _getTCRWithSystemDebtAndCollShares(
+            _price
+        );
+        bool _recovery = _TCR < CCR ? true : false;
+
+        if (_n > 0) {
+            bytes32 _last = sortedCdps.getLast();
+            bytes32 _first = sortedCdps.getFirst();
+            bytes32 _cdpId = _last;
+
+            uint256 _TCR = _getTCR(_price);
+
+            // get count of liquidatable CDPs
+            uint256 _cnt;
+            for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
+                uint256 _icr = getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
+                bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) { // 1 = ICdpManagerData.Status.active
+                    _cnt += 1;
+                }
+                _cdpId = sortedCdps.getPrev(_cdpId);
+            }
+
+            // retrieve liquidatable CDPs
+            _array = new bytes32[](_cnt);
+            _cdpId = _last;
+            uint256 _j;
+            for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
+                uint256 _icr = getICR(_cdpId, _price);
+                bool _liquidatable = _canLiquidateInCurrentMode(_recovery, _icr, _TCR);
+                if (_liquidatable && Cdps[_cdpId].status == Status.active) {
+                    _array[_cnt - _j - 1] = _cdpId;
+                    _j += 1;
+                }
+                _cdpId = sortedCdps.getPrev(_cdpId);
+            }
+            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
+        }
+    }
 }
