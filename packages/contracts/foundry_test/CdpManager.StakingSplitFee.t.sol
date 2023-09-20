@@ -478,8 +478,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _startStETHIndex
         );
         uint256 _expectedPerUnit = cdpManager.systemStEthFeePerUnitIndex() + _deltaPerUnit;
-        uint256 _expectedCdp1CollShare = crLens.quoteRealCollShares(cdpId1);
-        uint256 _expectedCdp2CollShare = crLens.quoteRealCollShares(cdpId2);
+        uint256 _expectedCdp1CollShare = cdpManager.getSyncedCdpCollShares(cdpId1);
+        uint256 _expectedCdp2CollShare = cdpManager.getSyncedCdpCollShares(cdpId2);
         uint256 _beforeFeeRecipientShare = activePool.getFeeRecipientClaimableCollShares();
 
         // sync CDP and check
