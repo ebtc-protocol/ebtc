@@ -11,6 +11,7 @@ The redemption and liquidation mechanisms help ensure that stability is maintain
 
 ## eBTC Audit - What's in scope
 The following contracts in `/packages/contracts/contracts` (base contracts directory)
+
 `/packages/contracts/contracts/Dependencies/ActivePool.sol`
 `/packages/contracts/contracts/Dependencies/BorrowerOperations.sol`
 `/packages/contracts/contracts/CdpManager.sol`
@@ -23,6 +24,7 @@ The following contracts in `/packages/contracts/contracts` (base contracts direc
 `/packages/contracts/contracts/SortedCdps.sol`
 
 Most of the `/Dependency` files are copy-pastes, but the following are custom or modified and are worthy of review:
+
 `/packages/contracts/contracts/Dependencies/Auth.sol`
 `/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
 `/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
