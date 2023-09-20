@@ -10,9 +10,19 @@ After locking up stETH as collateral in a smart contract and creating an individ
 The redemption and liquidation mechanisms help ensure that stability is maintained through economically-driven user interactions and arbitrage, rather than through active governance or monetary interventions.
 
 ## eBTC Audit - What's in scope
-`/packages/contracts/contracts` (all files in the base directory)
+The following contracts in `/packages/contracts/contracts` (base contracts directory)
+`/packages/contracts/contracts/Dependencies/ActivePool.sol`
+`/packages/contracts/contracts/Dependencies/BorrowerOperations.sol`
+`/packages/contracts/contracts/CdpManager.sol`
+`/packages/contracts/contracts/CdpManagerStorage.sol`
+`/packages/contracts/contracts/CollSurplusPool.sol`
+`/packages/contracts/contracts/EBTCToken.sol`
+`/packages/contracts/contracts/Governor.sol`
+`/packages/contracts/contracts/LiquidationLibrary.sol`
+`/packages/contracts/contracts/PriceFeed.sol`
+`/packages/contracts/contracts/SortedCdps.sol`
 
-Most of the `/Dependency` files are copy-pastes, but some are custom or modified and are worthy of review:
+Most of the `/Dependency` files are copy-pastes, but the following are custom or modified and are worthy of review:
 `/packages/contracts/contracts/Dependencies/Auth.sol`
 `/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
 `/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
