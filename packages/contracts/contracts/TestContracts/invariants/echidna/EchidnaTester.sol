@@ -229,7 +229,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         if (success) {
             if (
-                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+                vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
@@ -314,7 +314,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             );
 
             if (
-                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+                vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
@@ -413,7 +413,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             // }
 
             if (
-                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+                vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);

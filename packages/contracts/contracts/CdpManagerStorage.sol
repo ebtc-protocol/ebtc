@@ -569,6 +569,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         // apply split fee to given CDP
         if (_feeSplitDistributed > 0) {
+            /// @audit the view like function is changing storage for Coll, but not for the rest, why?
             Cdps[_cdpId].coll = _newColl;
 
             emit CdpFeeSplitApplied(
@@ -714,6 +715,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _oldIndex
     ) internal view returns (uint256, uint256, uint256) {
         if (_newIndex > _oldIndex && totalStakes > 0) {
+            /// @audit-ok We don't take the fee if we had a negative rebase
             (
                 uint256 _feeTaken,
                 uint256 _deltaFeePerUnit,
