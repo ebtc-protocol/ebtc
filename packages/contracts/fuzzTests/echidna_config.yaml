@@ -33,6 +33,9 @@ testMaxGas: 1000000000
 # by default, blacklist methods in filterFunctions
 #filterBlacklist: false
 
+#stopOnFail makes echidna terminate as soon as any property fails and has been shrunk
+stopOnFail: true
+
 #coverage controls coverage guided testing
 coverage: true
 
