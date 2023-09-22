@@ -362,7 +362,6 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/5414c08a-742e-49c1-8ca4-40e53b0a339c/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20230922%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230922T151344Z&X-Amz-Expires=3600&X-Amz-Signature=ec081f6d369188a914e2fad9bf9d5c505b7a7596b16fe18690fe711bed9da22d&X-Amz-SignedHeaders=host&x-id=GetObject
     function testCdpAgain() public {
         vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-
         setEthPerShare(1000);
         openCdp(4524377229654262,1);
         setEthPerShare(590);
@@ -378,9 +377,17 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         closeCdp(26877208931871548936656503713107409645415224744284780026010032151217117725615);
         setEthPerShare(60);
         liquidate(4);
-        _before(bytes32(0));
+        _before(_getRandomCdp(4));
+        uint256 startValue = _getValue();
         redeemCollateral(2494964906324939450636487309639740620040425748472758226468879113711198275036,43,704006032010148001431895171996,22212171859233866095593919364911988290126468271901060749390510031300370298087);
-        _after(bytes32(0));
+        uint256 endValue = _getValue();
+        _after(_getRandomCdp(4));
+
+        console2.log("");
+        console2.log("");
+        console2.log("");
+        console2.log("startValue", startValue);
+        console2.log("endValue", endValue);
         assertTrue(invariant_CDPM_04(vars), "Cdp-04");
     }
 
