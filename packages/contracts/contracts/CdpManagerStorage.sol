@@ -569,7 +569,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         // apply split fee to given CDP
         if (_feeSplitDistributed > 0) {
-            
             Cdps[_cdpId].coll = _newColl;
 
             emit CdpFeeSplitApplied(
