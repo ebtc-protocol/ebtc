@@ -890,7 +890,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].status = Status.active;
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
 
-        _applyAccumulatedFeeSplit(_cdpId);
+        _applyAccumulatedFeeSplit(_cdpId); /// @audit Are we sure this is ok? This function returns the new value, should we check they are in line with the above?
         _updateRedistributedDebtSnapshot(_cdpId);
         uint256 stake = _updateStakeAndTotalStakes(_cdpId);
         uint256 index = _addCdpIdToArray(_cdpId);
