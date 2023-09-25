@@ -797,9 +797,16 @@ class TestHelper {
     }
   }
   
-  static async liquidateCdps(_n, _price, contracts, {extraParams}) {
-    let _batchArray = await contracts.liquidationSequencer.sequenceLiqToBatchLiqWithPrice(_n, _price);
+  static async liqSequencerCallWithPrice(_n, _price, contracts, {extraParams}){
+    const sequenceLiqToBatchLiqWithPriceFuncABI = '[{"inputs":[{"internalType":"uint256","name":"_n","type":"uint256"},{"internalType":"uint256","name":"_price","type":"uint256"}],"name":"sequenceLiqToBatchLiqWithPrice","outputs":[{"internalType":"bytes32[]","name":"_array","type":"bytes32[]"}],"stateMutability":"nonpayable","type":"function"}]';
+    const liqSequencerContract = new ethers.Contract(contracts.liquidationSequencer.address, sequenceLiqToBatchLiqWithPriceFuncABI, (await ethers.provider.getSigner(extraParams.from)));
+    let _batchArray = await liqSequencerContract.callStatic.sequenceLiqToBatchLiqWithPrice(_n, _price);
     //console.log("coverting " + _n + " sequential liquidation to batch liquidation:" + JSON.stringify(_batchArray));
+    return _batchArray
+  }
+  
+  static async liquidateCdps(_n, _price, contracts, {extraParams}) {
+    let _batchArray = await this.liqSequencerCallWithPrice(_n, _price.toString(), contracts, {extraParams});
     const tx = await contracts.cdpManager.batchLiquidateCdps(_batchArray, {from: extraParams.from});
     return tx;
   }

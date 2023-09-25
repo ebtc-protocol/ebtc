@@ -26,16 +26,20 @@ contract LiquidationSequencer is LiquityBase {
 
     /// @dev Get first N batch of liquidatable Cdps at current price
     /// @dev Non-view function that updates and returns live price at execution time
+    /// @dev could use callStatic offline to save gas
     function sequenceLiqToBatchLiq(uint256 _n) external returns (bytes32[] memory _array) {
         uint256 _price = priceFeed.fetchPrice();
         return sequenceLiqToBatchLiqWithPrice(_n, _price);
     }
 
     /// @dev Get first N batch of liquidatable Cdps at specified price
+    /// @dev Non-view function that will sync global state
+    /// @dev could use callStatic offline to save gas
     function sequenceLiqToBatchLiqWithPrice(
         uint256 _n,
         uint256 _price
-    ) public view returns (bytes32[] memory _array) {
+    ) public returns (bytes32[] memory _array) {
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         (uint256 _TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
         bool _recoveryModeAtStart = _TCR < CCR ? true : false;
         return _sequenceLiqToBatchLiq(_n, _recoveryModeAtStart, _price);
