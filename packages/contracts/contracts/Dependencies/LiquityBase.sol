@@ -116,4 +116,27 @@ contract LiquityBase is BaseMath, ILiquityBase {
     ) internal pure returns (uint256) {
         return (_debt * _price) / DECIMAL_PRECISION;
     }
+
+    /// @dev return true if given ICR is qualified for liquidation compared to configured threshold
+    /// @dev this function ONLY checks numbers not check grace period switch for Recovery Mode
+    function _checkICRAgainstLiqThreshold(uint256 _icr, uint _tcr) internal view returns (bool) {
+        bool _rm = _checkRecoveryModeForTCR(_tcr);
+        return
+            (_rm)
+                ? (_checkICRAgainstMCR(_icr) || _checkICRAgainstTCR(_icr, _tcr))
+                : _checkICRAgainstMCR(_icr);
+    }
+
+    /// @dev return true if given ICR is qualified for liquidation compared to MCR
+    function _checkICRAgainstMCR(uint256 _icr) internal view returns (bool) {
+        return _icr < MCR;
+    }
+
+    /// @dev return true if given ICR is qualified for liquidation compared to TCR
+    /// @dev typically used in Recovery Mode
+    function _checkICRAgainstTCR(uint256 _icr, uint _tcr) internal view returns (bool) {
+        /// @audit is _icr < _tcr more dangerous for overal system safety?
+        /// @audit Should we use _icr < CCR to allow any risky CDP being liquidated?
+        return _icr < _tcr;
+    }
 }

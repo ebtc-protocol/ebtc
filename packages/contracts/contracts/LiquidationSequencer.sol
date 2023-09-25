@@ -60,7 +60,7 @@ contract LiquidationSequencer is LiquityBase {
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
                 uint256 _icr = cdpManager.getICR(_cdpId, _price); /// @audit This is view ICR and not real ICR
                 uint256 _cdpStatus = cdpManager.getCdpStatus(_cdpId);
-                bool _liquidatable = _canLiquidateInCurrentMode(_recoveryModeAtStart, _icr, _TCR);
+                bool _liquidatable = _checkICRAgainstLiqThreshold(_icr, _TCR);
                 if (_liquidatable && _cdpStatus == 1) {
                     _cnt += 1;
                 }
@@ -74,7 +74,7 @@ contract LiquidationSequencer is LiquityBase {
             for (uint256 i = 0; i < _n && _cdpId != _first; ++i) {
                 uint256 _icr = cdpManager.getICR(_cdpId, _price);
                 uint256 _cdpStatus = cdpManager.getCdpStatus(_cdpId);
-                bool _liquidatable = _canLiquidateInCurrentMode(_recoveryModeAtStart, _icr, _TCR);
+                bool _liquidatable = _checkICRAgainstLiqThreshold(_icr, _TCR);
                 if (_liquidatable && _cdpStatus == 1) {
                     // 1 = ICdpManagerData.Status.active
                     _array[_cnt - _j - 1] = _cdpId;
@@ -84,15 +84,5 @@ contract LiquidationSequencer is LiquityBase {
             }
             require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
         }
-    }
-
-    function _canLiquidateInCurrentMode(
-        bool _recovery,
-        uint256 _icr,
-        uint256 _TCR
-    ) internal view returns (bool) {
-        bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
-
-        return _liquidatable;
     }
 }
