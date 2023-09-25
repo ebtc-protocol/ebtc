@@ -513,7 +513,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         setEthPerShare(4);
         setEthPerShare(5);
         setEthPerShare(5);
-        bytes32 cdpId = _getRandomCdp(0);
+        bytes32 cdpId = _getRandomCdp(1);
         _before(cdpId);
         liquidateCdps(1209600);
         _after(cdpId);
