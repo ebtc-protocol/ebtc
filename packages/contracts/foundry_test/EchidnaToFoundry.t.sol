@@ -853,7 +853,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         console2.log("valueBeforeLiq", valueBeforeLiq);
         console2.log("valueAfterLiq", valueAfterLiq);
         assertGt(valueAfterLiq, valueBeforeLiq, "Value rises");
-        // assertTrue(invariant_CDPM_04(vars), CDPM_04);
+        assertTrue(invariant_CDPM_04(vars), CDPM_04);
     }
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15

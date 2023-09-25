@@ -101,14 +101,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     /** TODO: See EchidnaToFoundry._getValue */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
         uint256 beforeValue = ((vars.activePoolCollBefore +
-            vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore +
             vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
             vars.activePoolDebtBefore;
 
         uint256 afterValue = ((vars.activePoolCollAfter +
-            vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
             vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
             1e18 -
