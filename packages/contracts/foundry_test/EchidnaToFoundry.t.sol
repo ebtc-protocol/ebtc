@@ -737,6 +737,50 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         repayEBTC(1, 509846657665200610349434642309205663062);
     }
 
+    function testCDPM04Again() public {
+        skip(255508);
+        openCdp(0, 1);
+        skip(448552);
+        setPrice(167381130243608416929425501779011646220066545286939311441885146324);
+        openCdp(
+            4980718136141618313160385753170286089323593151999767814947781318659447486,
+            234907954466222134
+        );
+        setEthPerShare(0);
+        skip(315973);
+        openCdp(
+            1473100926471622789265820750888494507940889343982425262601996032509121429131,
+            25122460264649447
+        );
+        setEthPerShare(0);
+        skip(195123);
+        bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
+        _before(_cdpId);
+        redeemCollateral(
+            2836130018220487240424649660515350581035271781043904753321251,
+            1303662118734886403439420394944695180633540216476340,
+            718387314243405812531259987954424393104777196278117421089,
+            1
+        );
+        _after(_cdpId);
+        uint256 beforeValue = ((vars.activePoolCollBefore +
+            vars.liquidatorRewardSharesBefore +
+            vars.collSurplusPoolBefore +
+            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
+            1e18 -
+            vars.activePoolDebtBefore;
+
+        uint256 afterValue = ((vars.activePoolCollAfter +
+            vars.liquidatorRewardSharesAfter +
+            vars.collSurplusPoolAfter +
+            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
+            1e18 -
+            vars.activePoolDebtAfter;
+        console2.log(_diff());
+        console2.log(beforeValue, afterValue);
+        assertTrue(invariant_CDPM_04(vars), CDPM_04);
+    }
+
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
     // function testPropertySL05() public {
     //     setEthPerShare(
@@ -1195,5 +1239,19 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         }
 
         revert Simulate(returnData);
+    }
+
+    function _getFirstCdpWithIcrGteMcr() internal returns (bytes32) {
+        bytes32 _cId = sortedCdps.getLast();
+        address currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        // Find the first cdp with ICR >= MCR
+        while (
+            currentBorrower != address(0) &&
+            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+        ) {
+            _cId = sortedCdps.getPrev(_cId);
+            currentBorrower = sortedCdps.getOwnerAddress(_cId);
+        }
+        return _cId;
     }
 }
