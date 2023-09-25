@@ -714,6 +714,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _oldIndex
     ) internal view returns (uint256, uint256, uint256) {
         if (_newIndex > _oldIndex && totalStakes > 0) {
+            /// @audit-ok We don't take the fee if we had a negative rebase
             (
                 uint256 _feeTaken,
                 uint256 _deltaFeePerUnit,
