@@ -503,6 +503,30 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertTrue(invariant_AP_05(cdpManager, 1e10), "5");
     }
 
+    function test_12_third() public {
+        openCdp(115792089237316195423570985008687907853269984665640564039457584007913129443328, 96);
+        setEthPerShare(4);
+        openCdp(
+            33368919118782005608721287363227282769956823662243832624194025284013169799183,
+            1000000000000000000
+        );
+        setEthPerShare(4);
+        setEthPerShare(5);
+        setEthPerShare(5);
+        bytes32 cdpId = _getRandomCdp(0);
+        _before(cdpId);
+        liquidateCdps(1209600);
+        _after(cdpId);
+
+        // Fails if done with 0
+        // Passes if done with 1
+        if (
+            vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt | // This fixes the check
+        ) {
+            assertGe(vars.newTcrAfter, vars.newTcrBefore, "l_12_expected"); // This invariant should break (because it's underwater)
+        }
+    }
+
     function test_12_echidna() public {
         openCdp(377643985018801171895083631724856447701596730093, 1);
         openCdp(91089814, 691043319023089930);
