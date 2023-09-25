@@ -539,6 +539,33 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         }
     }
 
+    function test_12_another() public {
+        setEthPerShare(
+            88579253913579105526224682439871956245251055820069560960533630083319393319956
+        );
+        openCdp(0, 1);
+        setEthPerShare(0);
+        setEthPerShare(284895597005704535247502731285036474904903416448491451905968026529048971064);
+        openCdp(0, 1222182215362783394);
+        setEthPerShare(8638659756498750496833243577353157099794911949450027267768114415513163468546);
+        setEthPerShare(145549758451909858);
+        setEthPerShare(1817115128564573399596756316693876822239412011203157237758517879834095793);
+        bytes32 targetCdpId = _getRandomCdp(1);
+
+        _before(targetCdpId);
+        // // Trigger RM
+        // cdpManager.syncGlobalAccountingAndGracePeriod();
+        // vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        partialLiquidate(1, 77);
+        _after(targetCdpId);
+
+        if (
+            vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt | // This fixes the check
+        ) {
+            assertGe(vars.newTcrAfter, vars.newTcrBefore, "l_12_expected"); // This invariant should break (because it's underwater)
+        }
+    }
+
     function testCdpm05() public {
         // Solved
         /**
@@ -653,6 +680,49 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         bytes32 cdpId = get_cdp(48);
         _before(cdpId);
         repayEBTC(9999999999993599, 48);
+        _after(cdpId);
+
+        console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
+        console2.log("vars.cdpDebtBefore", vars.cdpDebtBefore);
+        console2.log("vars.cdpDebtAfter", vars.cdpDebtAfter);
+        console2.log("vars.icrAfter", vars.icrAfter); // 0.88
+
+        assertTrue(invariant_GENERAL_09(cdpManager, vars), "G-09");
+    }
+
+    function testGeneral09AnotherEchidna() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        setEthPerShare(422969885005186853460329118216965939317476978914332751313210691257388459660);
+        setPrice(32722689803297159564660);
+        setEthPerShare(2295800715889050428049394301540389611305203770840759558107023063707478756137);
+        setEthPerShare(9430658084342478621110343879440481693664256397237066590580775256327894933237);
+        openCdp(0, 56974);
+        setEthPerShare(3658003803251865466884416677564469755415415764957710330089017560191195285885);
+        openCdp(
+            47178713746231187329670492904587548046295133576157509226996599744760046768080,
+            1025940393747833117
+        );
+        setEthPerShare(1826419048);
+        setEthPerShare(463853255);
+        setEthPerShare(61234613524967728149213013066788335278812480284234739607096758628686182151);
+        setEthPerShare(7954433823584281635390873055824344390954190101728441881267963183032688165561);
+        openCdp(0, 65411);
+        redeemCollateral(
+            1411218970824529683653579944659199592374110441414703777589990697024796931545,
+            28682412223937313107683354748345742208210734296344230354578406624067099566210,
+            8026017604617149994705335113890034223124268667295240133106044134145840327608,
+            24510602
+        );
+        openCdp(
+            421639041749029036961420610791321146216723974031398276432264313125580738407,
+            1398999
+        );
+        liquidateCdps(10337462962424082567470147037678370917064894195736595735492531568803797071);
+
+        bytes32 cdpId = get_cdp(1);
+
+        _before(cdpId);
+        repayEBTC(1, 3664654876686139248533669277245093923727466555308247984199766471982047307);
         _after(cdpId);
 
         console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
