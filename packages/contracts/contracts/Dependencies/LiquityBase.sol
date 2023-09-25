@@ -135,8 +135,8 @@ contract LiquityBase is BaseMath, ILiquityBase {
     /// @dev return true if given ICR is qualified for liquidation compared to TCR
     /// @dev typically used in Recovery Mode
     function _checkICRAgainstTCR(uint256 _icr, uint _tcr) internal view returns (bool) {
-        /// @audit is _icr < _tcr more dangerous for overal system safety?
+        /// @audit is _icr <= _tcr more dangerous for overal system safety?
         /// @audit Should we use _icr < CCR to allow any risky CDP being liquidated?
-        return _icr < _tcr;
+        return _icr <= _tcr;
     }
 }

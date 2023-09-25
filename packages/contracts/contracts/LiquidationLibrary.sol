@@ -749,7 +749,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     vars.backToNormalMode = _TCR < CCR ? false : true;
                     _liqFlags[vars.i] = true;
                     _liqCnt += 1;
-                } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                } else if (vars.backToNormalMode && _checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(
                         _price,
@@ -821,7 +821,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
                 vars.ICR = getICR(vars.cdpId, _price);
 
-                if (vars.ICR < MCR) {
+                if (_checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(
                         _price,
