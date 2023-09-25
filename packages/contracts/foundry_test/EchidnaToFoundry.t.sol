@@ -826,29 +826,34 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         skip(195123);
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
         _before(_cdpId);
+        uint256 valueBeforeLiq = _getValue();
         redeemCollateral(
             2836130018220487240424649660515350581035271781043904753321251,
             1303662118734886403439420394944695180633540216476340,
             718387314243405812531259987954424393104777196278117421089,
             1
         );
+        uint256 valueAfterLiq = _getValue();
         _after(_cdpId);
         uint256 beforeValue = ((vars.activePoolCollBefore +
-            vars.liquidatorRewardSharesBefore +
+            // vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore +
             vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
             vars.activePoolDebtBefore;
 
         uint256 afterValue = ((vars.activePoolCollAfter +
-            vars.liquidatorRewardSharesAfter +
+            // vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
             vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
         console2.log(_diff());
         console2.log(beforeValue, afterValue);
-        assertTrue(invariant_CDPM_04(vars), CDPM_04);
+        console2.log("valueBeforeLiq", valueBeforeLiq);
+        console2.log("valueAfterLiq", valueAfterLiq);
+        assertGt(valueAfterLiq, valueBeforeLiq, "Value rises");
+        // assertTrue(invariant_CDPM_04(vars), CDPM_04);
     }
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
