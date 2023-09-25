@@ -390,6 +390,27 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         console2.log("endValue", endValue);
         assertTrue(invariant_CDPM_04(vars), "Cdp-04");
     }
+    // https://app.fuzzy.fyi/dashboard/jobs/0d22a32b-5612-4b73-bad2-824dffb6549d
+    function testCdpM04ThirdTimesTheCharm() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        openCdp(0,1);
+        setPrice(167381130243608416929425501779011646220066545286939311441885146324);
+        openCdp(4980718136141618313160385753170286089323593151999767814947781318659447486,234907954466222134);
+        setEthPerShare(0);
+        openCdp(1473100926471622789265820750888494507940889343982425262601996032509121429131,25122460264649447);
+        _before(_getRandomCdp(4));
+        uint256 startValue = _getValue();
+        redeemCollateral(2836130018220487240424649660515350581035271781043904753321251,1303662118734886403439420394944695180633540216476340,718387314243405812531259987954424393104777196278117421089,1);
+        uint256 endValue = _getValue();
+        _after(_getRandomCdp(4));
+
+        console2.log("");
+        console2.log("");
+        console2.log("");
+        console2.log("startValue", startValue);
+        console2.log("endValue", endValue);
+        assertTrue(invariant_CDPM_04(vars), "Cdp-04");
+    }
 
     /**
      * 1) EchidnaTester.setEthPerShare(86688896451552136001225523381455512999487671226724657278887281953146484774479) (block=32358, time=34290, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
