@@ -27,8 +27,16 @@ import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariab
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
 import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
+import {FoundryAsserts} from "../contracts/TestContracts/invariants/FoundryAsserts.sol";
 
-contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeReader, LogUtils {
+contract eBTCBaseFixture is
+    Test,
+    BaseStorageVariables,
+    BeforeAfter,
+    FoundryAsserts,
+    BytecodeReader,
+    LogUtils
+{
     uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint256 public constant CCR = 125e16; // 125%

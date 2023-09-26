@@ -197,7 +197,7 @@ abstract contract TargetFunctions is Properties {
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) external {
+    function liquidate(uint _i) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -267,7 +267,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) external {
+    function partialLiquidate(uint _i, uint _partialAmount) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -349,7 +349,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function liquidateCdps(uint _n) external {
+    function liquidateCdps(uint _n) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -436,7 +436,7 @@ abstract contract TargetFunctions is Properties {
         uint _partialRedemptionHintNICR,
         uint _maxFeePercentage,
         uint _maxIterations
-    ) external {
+    ) public {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
             "CdpManager: Redemptions are not allowed during bootstrap phase"
@@ -648,7 +648,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) external {
+    function openCdp(uint256 _col, uint256 _EBTCAmount) public returns (bytes32 _cdpId) {
         actor = actors[msg.sender];
 
         bool success;
@@ -689,7 +689,7 @@ abstract contract TargetFunctions is Properties {
         );
 
         if (success) {
-            bytes32 _cdpId = abi.decode(returnData, (bytes32));
+            _cdpId = abi.decode(returnData, (bytes32));
             _after(_cdpId);
 
             t(invariant_GENERAL_01(vars), GENERAL_01);
@@ -738,7 +738,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function addColl(uint _coll, uint256 _i) external {
+    function addColl(uint _coll, uint256 _i) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -847,7 +847,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawColl(uint _amount, uint256 _i) external {
+    function withdrawColl(uint _amount, uint256 _i) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -923,7 +923,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawEBTC(uint _amount, uint256 _i) external {
+    function withdrawEBTC(uint _amount, uint256 _i) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -996,7 +996,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) external {
+    function repayEBTC(uint _amount, uint256 _i) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -1070,7 +1070,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function closeCdp(uint _i) external {
+    function closeCdp(uint _i) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -1159,7 +1159,7 @@ abstract contract TargetFunctions is Properties {
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) external {
+    ) public {
         actor = actors[msg.sender];
 
         bool success;
@@ -1240,7 +1240,7 @@ abstract contract TargetFunctions is Properties {
     // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
-    function setEthPerShare(uint256 _newEthPerShare) external {
+    function setEthPerShare(uint256 _newEthPerShare) public {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = between(
             _newEthPerShare,
@@ -1254,7 +1254,7 @@ abstract contract TargetFunctions is Properties {
     // PriceFeed
     ///////////////////////////////////////////////////////
 
-    function setPrice(uint256 _newPrice) external {
+    function setPrice(uint256 _newPrice) public {
         uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = between(
             _newPrice,
