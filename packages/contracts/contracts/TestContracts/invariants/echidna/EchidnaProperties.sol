@@ -1,9 +1,9 @@
 pragma solidity 0.8.17;
 
-import {EchidnaBaseTester} from "./EchidnaBaseTester.sol";
+import {TargetContractSetup} from "../TargetContractSetup.sol";
 import {Properties} from "../Properties.sol";
 
-abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
+abstract contract EchidnaProperties is TargetContractSetup, Properties {
     function echidna_price() public returns (bool) {
         return invariant_DUMMY_01(priceFeedMock);
     }
@@ -45,11 +45,11 @@ abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
     }
 
     function echidna_sorted_list_invariant_1() public returns (bool) {
-        return invariant_SL_01(cdpManager, sortedCdps, diff_tolerance);
+        return invariant_SL_01(cdpManager, sortedCdps);
     }
 
     function echidna_sorted_list_invariant_2() public returns (bool) {
-        return invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, diff_tolerance);
+        return invariant_SL_02(cdpManager, sortedCdps, priceFeedMock);
     }
 
     function echidna_sorted_list_invariant_3() public returns (bool) {

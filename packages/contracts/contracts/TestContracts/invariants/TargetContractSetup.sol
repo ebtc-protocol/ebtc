@@ -2,41 +2,33 @@ pragma solidity 0.8.17;
 
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 
-import "../../../Interfaces/ICdpManagerData.sol";
-import "../../../Dependencies/SafeMath.sol";
-import "../../../CdpManager.sol";
-import "../../../LiquidationLibrary.sol";
-import "../../../BorrowerOperations.sol";
-import "../../../ActivePool.sol";
-import "../../../CollSurplusPool.sol";
-import "../../../SortedCdps.sol";
-import "../../../HintHelpers.sol";
-import "../../../FeeRecipient.sol";
-import "../../testnet/PriceFeedTestnet.sol";
-import "../../CollateralTokenTester.sol";
-import "../../EBTCTokenTester.sol";
-import "../../../Governor.sol";
-import "../../../EBTCDeployer.sol";
+import "../../Interfaces/ICdpManagerData.sol";
+import "../../Dependencies/SafeMath.sol";
+import "../../CdpManager.sol";
+import "../../LiquidationLibrary.sol";
+import "../../BorrowerOperations.sol";
+import "../../ActivePool.sol";
+import "../../CollSurplusPool.sol";
+import "../../SortedCdps.sol";
+import "../../HintHelpers.sol";
+import "../../FeeRecipient.sol";
+import "../testnet/PriceFeedTestnet.sol";
+import "../CollateralTokenTester.sol";
+import "../EBTCTokenTester.sol";
+import "../../Governor.sol";
+import "../../EBTCDeployer.sol";
 
-import "../IHevm.sol";
-import "../Properties.sol";
-import "../Actor.sol";
-import "../../BaseStorageVariables.sol";
+import "./IHevm.sol";
+import "./Properties.sol";
+import "./Actor.sol";
+import "../BaseStorageVariables.sol";
 
-abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants {
+abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstants {
     using SafeMath for uint;
-
-    uint internal constant NUMBER_OF_ACTORS = 3;
-    uint internal constant INITIAL_ETH_BALANCE = 1e24;
-    uint internal constant INITIAL_COLL_BALANCE = 1e21;
 
     uint internal numberOfCdps;
 
     IHevm internal constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-    uint internal constant diff_tolerance = 0.000000000002e18; //compared to 1e18
-    uint internal constant MAX_PRICE_CHANGE_PERCENT = 1.05e18; //compared to 1e18
-    uint internal constant MAX_REBASE_PERCENT = 1.1e18; //compared to 1e18
-    uint internal constant MAX_FLASHLOAN_ACTIONS = 4;
 
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
