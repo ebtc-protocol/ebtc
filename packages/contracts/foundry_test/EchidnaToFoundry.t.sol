@@ -3,30 +3,33 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrower.sol";
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
+import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
+import {FoundryAsserts} from "../contracts/TestContracts/invariants/FoundryAsserts.sol";
 
 /*
  * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
  * The objective is to go from random values to hardcoded values that can be analyzed more easily
  */
-contract EToFoundry is eBTCBaseFixture, TargetFunctions, IERC3156FlashBorrower {
-    address user;
+contract EToFoundry is
+    Test,
+    TargetContractSetup,
+    FoundryAsserts,
+    TargetFunctions,
+    IERC3156FlashBorrower
+{
+    modifier setup() override {
+        _;
+    }
 
-    function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
-        user = address(this);
-        vm.startPrank(address(this));
-        vm.deal(user, INITIAL_COLL_BALANCE);
-        collateral.deposit{value: INITIAL_COLL_BALANCE}();
-
-        IERC20(collateral).approve(address(activePool), type(uint256).max);
-        IERC20(eBTCToken).approve(address(borrowerOperations), type(uint256).max);
+    function setUp() public {
+        _setUp();
+        _setUpActors();
+        actor = actors[USER1];
+        vm.startPrank(address(actor));
     }
 
     /// @dev Example of test for invariant
@@ -493,7 +496,7 @@ contract EToFoundry is eBTCBaseFixture, TargetFunctions, IERC3156FlashBorrower {
         console.log("After Close");
 
         // Accrue all cdps
-        for (uint256 i; i < sortedCdps.cdpCountOf(address(user)); i++) {
+        for (uint256 i; i < sortedCdps.cdpCountOf(address(actor)); i++) {
             cdpManager.syncAccounting(_getRandomCdp(i));
         }
 
@@ -894,10 +897,10 @@ contract EToFoundry is eBTCBaseFixture, TargetFunctions, IERC3156FlashBorrower {
     }
 
     function get_cdp(uint256 _i) internal returns (bytes32) {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
 
         _i = between(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
 
         return _cdpId;
     }

@@ -27,6 +27,11 @@ import "./Asserts.sol";
 import "../BaseStorageVariables.sol";
 
 abstract contract TargetFunctions is Properties {
+    modifier setup() virtual {
+        actor = actors[msg.sender];
+        _;
+    }
+
     ///////////////////////////////////////////////////////
     // Helper functions
     ///////////////////////////////////////////////////////
@@ -197,9 +202,7 @@ abstract contract TargetFunctions is Properties {
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) public {
-        actor = actors[msg.sender];
-
+    function liquidate(uint _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -267,9 +270,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) public {
-        actor = actors[msg.sender];
-
+    function partialLiquidate(uint _i, uint _partialAmount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -349,9 +350,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function liquidateCdps(uint _n) public {
-        actor = actors[msg.sender];
-
+    function liquidateCdps(uint _n) public setup {
         bool success;
         bytes memory returnData;
 
@@ -436,13 +435,11 @@ abstract contract TargetFunctions is Properties {
         uint _partialRedemptionHintNICR,
         uint _maxFeePercentage,
         uint _maxIterations
-    ) public {
+    ) public setup {
         require(
             block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
             "CdpManager: Redemptions are not allowed during bootstrap phase"
         );
-
-        actor = actors[msg.sender];
 
         bool success;
         bytes memory returnData;
@@ -529,9 +526,7 @@ abstract contract TargetFunctions is Properties {
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal {
-        actor = actors[msg.sender];
-
+    function flashLoanColl(uint _amount) internal setup {
         bool success;
         bytes memory returnData;
 
@@ -590,9 +585,7 @@ abstract contract TargetFunctions is Properties {
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) internal {
-        actor = actors[msg.sender];
-
+    function flashLoanEBTC(uint _amount) internal setup {
         bool success;
         bytes memory returnData;
 
@@ -648,9 +641,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function openCdp(uint256 _col, uint256 _EBTCAmount) public returns (bytes32 _cdpId) {
-        actor = actors[msg.sender];
-
+    function openCdp(uint256 _col, uint256 _EBTCAmount) public setup returns (bytes32 _cdpId) {
         bool success;
         bytes memory returnData;
 
@@ -738,9 +729,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function addColl(uint _coll, uint256 _i) public {
-        actor = actors[msg.sender];
-
+    function addColl(uint _coll, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -847,9 +836,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawColl(uint _amount, uint256 _i) public {
-        actor = actors[msg.sender];
-
+    function withdrawColl(uint _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -923,9 +910,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawEBTC(uint _amount, uint256 _i) public {
-        actor = actors[msg.sender];
-
+    function withdrawEBTC(uint _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -996,9 +981,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) public {
-        actor = actors[msg.sender];
-
+    function repayEBTC(uint _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -1070,9 +1053,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function closeCdp(uint _i) public {
-        actor = actors[msg.sender];
-
+    function closeCdp(uint _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -1159,9 +1140,7 @@ abstract contract TargetFunctions is Properties {
         uint _collWithdrawal,
         uint _EBTCChange,
         bool _isDebtIncrease
-    ) public {
-        actor = actors[msg.sender];
-
+    ) public setup {
         bool success;
         bytes memory returnData;
 
