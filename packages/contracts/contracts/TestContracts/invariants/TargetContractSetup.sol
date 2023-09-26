@@ -283,6 +283,71 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         }
     }
 
+    event Log(string);
+
+    function _setUpFork() internal {
+        defaultGovernance = msg.sender;
+        ebtcDeployer = EBTCDeployer(0xe90f99c08F286c48db4D1AfdAE6C122de69B7219);
+        collateral = CollateralTokenTester(payable(0xf8017430A0efE03577f6aF88069a21900448A373));
+        {
+            authority = Governor(0x4945Fc25282b1bC103d2C62C251Cd022138c1de9);
+            liqudationLibrary = LiquidationLibrary(0xE8943a17363DE9A6e0d4A5d48d5Ab45283199F77);
+            cdpManager = CdpManager(0x0c5C2B93b96C9B3aD7fb9915952BD7BA256C4f04);
+            borrowerOperations = BorrowerOperations(0xA178BFBc42E3D886d540CDDcf4562c53a8Fc02c1);
+            priceFeedMock = PriceFeedTestnet(0x5C819E5D61EFCfBd7e4635f1112f3bF94663999b);
+            sortedCdps = SortedCdps(0xDeFF25eC3cd3041BC8B9A464F9BEc12EB8247Be6);
+            activePool = ActivePool(0x55abdfb760dd032627D531f7cF3DAa72549CEbA2);
+            collSurplusPool = CollSurplusPool(0x7b4D951D7b8090f62bD009b371abd7Fe04aB7e1A);
+            hintHelpers = HintHelpers(0xCaBdBc4218dd4b9E3fB9842232aD0aFc7c431693);
+            eBTCToken = EBTCTokenTester(0x9Aa69Db8c53E504EF22615390EE9Eb72cb8bE498);
+            feeRecipient = FeeRecipient(0x40FF68eaE525233950B63C2BCEa39770efDE52A4);
+
+            // Configure authority
+            // authority.setRoleName(0, "Admin");
+            // authority.setRoleName(1, "eBTCToken: mint");
+            // authority.setRoleName(2, "eBTCToken: burn");
+            // authority.setRoleName(3, "CDPManager: all");
+            // authority.setRoleName(4, "PriceFeed: setTellorCaller");
+            // authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
+
+            // authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+
+            // authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+
+            // authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
+            // authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
+            // authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
+            // authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
+
+            // authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
+
+            // authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
+            // authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
+
+            // authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
+            // authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
+
+            // authority.setUserRole(defaultGovernance, 0, true);
+            // authority.setUserRole(defaultGovernance, 1, true);
+            // authority.setUserRole(defaultGovernance, 2, true);
+            // authority.setUserRole(defaultGovernance, 3, true);
+            // authority.setUserRole(defaultGovernance, 4, true);
+            // authority.setUserRole(defaultGovernance, 5, true);
+
+            // authority.transferOwnership(defaultGovernance);
+
+            crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+
+            liquidationSequencer = new LiquidationSequencer(
+                address(cdpManager),
+                address(cdpManager.sortedCdps()),
+                address(priceFeedMock),
+                address(activePool),
+                address(collateral)
+            );
+        }
+    }
+
     function _setUpActors() internal {
         bool success;
         address[] memory tokens = new address[](2);
