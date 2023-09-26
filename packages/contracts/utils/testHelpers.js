@@ -793,7 +793,8 @@ class TestHelper {
       totalDebt,
       ICR,
       collateral: _collAmt,
-      tx
+      tx,
+      _finalColl 	
     }
   }
   

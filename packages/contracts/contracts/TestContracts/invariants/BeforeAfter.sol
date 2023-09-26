@@ -73,10 +73,12 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _before(bytes32 _cdpId) internal {
         vars.priceBefore = priceFeedMock.fetchPrice();
 
+        (uint256 debtBefore, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+
         vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceBefore) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
-        vars.cdpDebtBefore = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
+        vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
