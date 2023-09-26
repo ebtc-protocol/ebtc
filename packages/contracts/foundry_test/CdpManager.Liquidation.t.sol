@@ -835,13 +835,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         }
 
         vm.prank(_liquidator);
-        // if (_liqICR % 2 == 0) {
-        //     cdpManager.liquidate(userCdpid);
-        // } else {
-        //     bytes32[] memory _cids = new bytes32[](1);
-        //     _cids[0] = userCdpid;
-        //     cdpManager.batchLiquidateCdps(_cids);
-        // }
+        if (_liqICR % 2 == 0) {
+            cdpManager.liquidate(userCdpid);
+        } else {
+            bytes32[] memory _cids = new bytes32[](1);
+            _cids[0] = userCdpid;
+            cdpManager.batchLiquidateCdps(_cids);
+        }
         assertTrue(sortedCdps.contains(userCdpid) == false);
         uint256 _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         _utils.assertApproximateEq(
