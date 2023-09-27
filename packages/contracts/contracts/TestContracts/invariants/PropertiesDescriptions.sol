@@ -28,6 +28,7 @@ abstract contract PropertiesDescriptions {
     string constant CDPM_04 =
         "CDPM-04: The total system Assets - Liabilities does not decrease during redemptions";
     string constant CDPM_05 = "CDPM-05: Redemptions do not increase the total system debt";
+    string constant CDPM_06 = "CDPM-06: Redemptions do not increase the total system debt";
 
     ///////////////////////////////////////////////////////
     // Collateral Surplus Pool

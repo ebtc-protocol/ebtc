@@ -27,6 +27,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | CDPM-03 | The `systemStEthFeePerUnitIndex` tracker for individual CDP is equal to or less than the global variable | High Level | ✅ |
 | CDPM-04 | The total system Assets - Liabilities does not decrease constant during redemptions | Unit Tests | ✅ |
 | CDPM-05 | Redemptions do not increase the total system debt | Unit Tests | ✅ |
+| CDPM-06 | Redemptions do not increase a CDPs debt | Unit Tests | ✅ |
 
 ## Borrower Operations
 

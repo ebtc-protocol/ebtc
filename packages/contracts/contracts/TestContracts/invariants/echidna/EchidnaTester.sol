@@ -495,8 +495,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
         if (_maxIterations == 1) {
-            assertGte(vars.activePoolDebtBefore, vars.activePoolDebtAfter, "CDPM_05_GLOBAL"); /// @audit Global debt should not increase under any cirmunstance
-            assertGte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_05); /// @audit This should not break after the fix as we check for redistributed bad debt in `cdpDebtBefore`
+            assertGte(vars.activePoolDebtBefore, vars.activePoolDebtAfter, CDPM_05);
+            assertGte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_06); /// @audit This should not break after the fix as we check for redistributed bad debt in `cdpDebtBefore`
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
             // if (!_atLeastOneCdpIsLiquidatableBefore) {
             //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
