@@ -75,7 +75,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     // Keep amntOfCdps reasonable, as it will eat all the memory
     // Change to fuzzed uint16 with caution, as it can consume > 10Gb of Memory
     function testGetCdpsOfUserFuzz(uint8 amntOfCdps) public {
-        address user = _openSomeCDPs(AMOUNT_OF_CDPS);
+        address user = _openSomeCDPs(amntOfCdps);
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
         // And check that amount of CDPs as expected
         assertEq(amntOfCdps, cdps.length);
