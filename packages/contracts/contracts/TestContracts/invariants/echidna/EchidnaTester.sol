@@ -412,14 +412,6 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             // );
             // }
 
-            // @audit TODO: This breaks because of before after: https://discord.com/channels/1011322803414388897/1134226009953153053/1155906824118214786
-            // if (
-            //     vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
-            // ) {
-            //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-            //     assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
-            // }
-
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
                 vars.isRecoveryModeBefore &&
