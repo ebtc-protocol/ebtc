@@ -117,6 +117,18 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 // If Liquidation Success -> `FeeRecipientColl`
 // Claim `FeeRecipientColl` -> goes to 0 -> balance increases to feeRecipient
 
+FeeeRebase
+
+-> Redemptions -> Allocates Shares
+-> FlashLoans -> Transfer Directly
+-> Increase FeeRecipient Balance
+?
+
+-> Claiming Pending stETH Index
+-> Increases the Value
+
+Claiming reduces the value to 0 and increase the balance
+
 ## eBTC
 
 | Property | Description | Category | Tested |
