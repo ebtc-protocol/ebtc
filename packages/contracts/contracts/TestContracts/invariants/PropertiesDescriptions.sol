@@ -80,6 +80,12 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
     string constant GENERAL_11 =
         "GENERAL-11: The TCR pre-computed (TCRNotified) is the same as the one after all calls";
+    string constant GENERAL_12 =
+        "GENERAL-12: The synchedTCR matches the TCR after accrual (as returned by CrLens)";
+    string constant GENERAL_13 =
+        "GENERAL-13: The SynchedICR of every CDP in the Linked List Matches the ICR the CDPs will have the call (as returned by CrLens)";
+    string constant GENERAL_14 =
+        "GENERAL-14: The NominalICR from `getNominalICR` matches `quoteRealNICR` (as returned by CrLens)";
 
     ///////////////////////////////////////////////////////
     // Redemptions

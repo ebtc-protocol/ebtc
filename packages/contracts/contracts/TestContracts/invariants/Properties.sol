@@ -333,6 +333,29 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return true;
     }
 
+    function invariant_GENERAL_14(
+        CRLens crLens,
+        CdpManager cdpManager,
+        SortedCdps sortedCdps
+    ) internal returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 newIcrPrevious = type(uint256).max;
+
+        // Compare synched with quote for all Cdps
+        while (currentCdp != bytes32(0)) {
+            uint256 newNICR = crLens.quoteRealNICR(currentCdp);
+            uint256 synchedNICR = cdpManager.getNominalICR(currentCdp);
+
+            if (newNICR != synchedNICR) {
+                return false;
+            }
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        return true;
+    }
+
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
     }
