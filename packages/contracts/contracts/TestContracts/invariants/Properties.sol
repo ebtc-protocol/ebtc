@@ -200,7 +200,8 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
         return true;
     }
-
+    
+    uint256 NICR_ERROR_THRESHOLD = 1e8;
     function invariant_SL_05(
         CRLens crLens,
         CdpManager cdpManager,
@@ -215,7 +216,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         while (currentCdp != bytes32(0)) {
             uint256 newIcr = crLens.quoteRealICR(currentCdp);
             if (newIcr > newIcrPrevious) {
-                return false;
+                /// @audit Precision Threshold to flag very scary scenarios
+                /// Innoquous scenario illustrated here: https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
+                if(newIcr - NICR_ERROR_THRESHOLD > newIcrPrevious) {
+                    return false;
+                }
+                
             }
             newIcrPrevious = newIcr;
 
