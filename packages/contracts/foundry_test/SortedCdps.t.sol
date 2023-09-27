@@ -13,23 +13,22 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         eBTCBaseFixture.connectLQTYContractsToCore();
     }
 
-    function testGetCdpsOfUser() public {
-        uint256 collAmount = 30 ether;
-        address user = _utils.getNextUserAddress();
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        uint256 borrowedAmount = _utils.calculateBorrowAmount(
-            collAmount,
-            priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
-        );
-        // Open X amount of CDPs
-        for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
-            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+    function test_Fuzz_cdpCountOf(uint256 _cdpCount, uint256 _maxNodes) public {
+        _cdpCount = bound(_cdpCount, AMOUNT_OF_CDPS, 20);
+        _maxNodes = bound(_maxNodes, 1, type(uint256).max);
+        address user = _openSomeCDPs(_cdpCount);
+        uint _cdpCountOfReturned = sortedCdps.cdpCountOf(user, sortedCdps.dummyId(), _maxNodes);
+        // result should be capped by given maxNodes
+        assertTrue(_cdpCountOfReturned <= _maxNodes);
+        if (_maxNodes >= _cdpCount) {
+            assertTrue(_cdpCountOfReturned == _cdpCount);
+        } else {
+            assertTrue(_cdpCountOfReturned == _maxNodes);
         }
-        vm.stopPrank();
+    }
+
+    function testGetCdpsOfUser() public {
+        address user = _openSomeCDPs(AMOUNT_OF_CDPS);
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
         bytes32[] memory cdpsByMaxNode = sortedCdps.getCdpsOf(
             user,
@@ -76,22 +75,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     // Keep amntOfCdps reasonable, as it will eat all the memory
     // Change to fuzzed uint16 with caution, as it can consume > 10Gb of Memory
     function testGetCdpsOfUserFuzz(uint8 amntOfCdps) public {
-        uint256 collAmount = 30 ether;
-        address user = _utils.getNextUserAddress();
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        uint256 borrowedAmount = _utils.calculateBorrowAmount(
-            collAmount,
-            priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
-        );
-        // Open X amount of CDPs
-        for (uint256 cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
-            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
-        }
-        vm.stopPrank();
+        address user = _openSomeCDPs(AMOUNT_OF_CDPS);
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
         // And check that amount of CDPs as expected
         assertEq(amntOfCdps, cdps.length);
@@ -158,5 +142,24 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
         assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), "SL-02");
+    }
+
+    function _openSomeCDPs(uint256 _cdpCount) internal returns (address user) {
+        uint256 collAmount = 30 ether;
+        user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO
+        );
+        // Open X amount of CDPs
+        for (uint256 cdpIx = 0; cdpIx < _cdpCount; cdpIx++) {
+            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+        }
+        vm.stopPrank();
     }
 }

@@ -244,9 +244,7 @@ contract SortedCdps is ISortedCdps {
         }
 
         // Two-pass strategy, halving the amount of Cdps we can process before relying on pagination or off-chain methods
-        bytes32[] memory userCdps = new bytes32[](
-            (maxNodes > 0 && maxNodes < maxArraySize) ? maxNodes : maxArraySize
-        );
+        bytes32[] memory userCdps = new bytes32[](maxArraySize);
         uint i = 0;
         uint _cdpRetrieved;
 
@@ -269,16 +267,6 @@ contract SortedCdps is ISortedCdps {
             if (maxNodes > 0 && i >= maxNodes) {
                 break;
             }
-        }
-
-        // if CDP number retrieved not equal to expected then we make a new copy
-        if (_cdpRetrieved > 0 && _cdpRetrieved != userCdps.length) {
-            bytes32[] memory _copyUserCdps = new bytes32[](_cdpRetrieved);
-            for (uint i = 0; i < _cdpRetrieved; ++i) {
-                require(userCdps[i] != dummyId, "SortedCdps: invalid CDP retrieved by getCdpsOf()");
-                _copyUserCdps[i] = userCdps[i];
-            }
-            userCdps = _copyUserCdps;
         }
 
         return userCdps;
