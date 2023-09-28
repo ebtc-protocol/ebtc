@@ -2415,9 +2415,6 @@ contract('CdpManager', async accounts => {
       _dennisCdpId
     )
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
     const redemptionTx = await cdpManager.redeemCollateral(
@@ -2509,9 +2506,6 @@ contract('CdpManager', async accounts => {
       _dennisCdpId
     )
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
     const redemptionTx = await cdpManager.redeemCollateral(
@@ -2593,8 +2587,7 @@ contract('CdpManager', async accounts => {
       _dennisCdpId
     )
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
@@ -2684,8 +2677,7 @@ contract('CdpManager', async accounts => {
       _dennisCdpId
     )
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Dennis redeems 20 EBTC
     // Don't pay for gas, as it makes it easier to calculate the received Ether
@@ -2755,8 +2747,7 @@ contract('CdpManager', async accounts => {
     const { ebtcAmount: F_ebtcAmount } = await openCdp({ ICR: toBN(dec(200, 18)), extraEBTCAmount: redemptionAmount.mul(toBN(2)), extraParams: { from: flyn } })
     let _flynCdpId = await sortedCdps.cdpOfOwnerByIndex(flyn, 0);
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Flyn redeems collateral
     await cdpManager.redeemCollateral(redemptionAmount, _aliceCdpId, _aliceCdpId, _aliceCdpId, 0, 0, th._100pct, { from: flyn })
@@ -2816,8 +2807,7 @@ contract('CdpManager', async accounts => {
     let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Flyn redeems collateral with only two iterations
     await cdpManager.redeemCollateral(attemptedRedemptionAmount, _aliceCdpId, _aliceCdpId, _aliceCdpId, 0, 2, th._100pct, { from: flyn })
@@ -2865,8 +2855,7 @@ contract('CdpManager', async accounts => {
     
     await cdpManager.setBaseRate(0) 
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const EBTCRedemption = dec(5, 18)
     await th.redeemCollateralAndGetTxObject(B, contracts, EBTCRedemption, GAS_PRICE, th._100pct)
@@ -2900,8 +2889,7 @@ contract('CdpManager', async accounts => {
 
     await cdpManager.setBaseRate(0) 
 
-    // Skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const EBTCRedemption = dec(10, 18)
     await th.redeemCollateralAndGetTxObject(B, contracts, EBTCRedemption, GAS_PRICE, th._100pct)
@@ -2961,9 +2949,6 @@ contract('CdpManager', async accounts => {
         _dennisCdpId,
         _dennisCdpId
       )
-
-      // skip bootstrapping phase
-      await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
       // Alice redeems 1 EBTC from Carol's Cdp
       await cdpManager.redeemCollateral(
@@ -3036,8 +3021,7 @@ contract('CdpManager', async accounts => {
 
     const carol_ETHBalance_Before = toBN(await web3.eth.getBalance(carol))
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const redemptionTx = await cdpManager.redeemCollateral(
       amount,
@@ -3083,8 +3067,7 @@ contract('CdpManager', async accounts => {
 
     // --- TEST --- 
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     await cdpManager.redeemCollateral(
       A_debt,
@@ -3135,8 +3118,7 @@ contract('CdpManager', async accounts => {
 
     await openCdp({ ICR: toBN(dec(100, 18)), extraEBTCAmount: dec(10, 18), extraParams: { from: whale } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const tx = await cdpManager.redeemCollateral(
       redemptionAmount,
@@ -3178,8 +3160,7 @@ contract('CdpManager', async accounts => {
     const TCR = (await th.getTCR(contracts))
     assert.isTrue(TCR.lt(toBN('1100000000000000000')))
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     await assertRevert(th.redeemCollateral(carol, contracts, 1, GAS_PRICE, dec(270, 18)), "CdpManager: Cannot redeem when TCR < MCR")
   });
@@ -3196,8 +3177,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: carol } })
     await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: dennis } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Erin attempts to redeem with _amount = 0
     const redemptionTxPromise = cdpManager.redeemCollateral(0, th.DUMMY_BYTES32, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 0, 0, th._100pct, { from: erin })
@@ -3214,8 +3194,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(30, 18), extraParams: { from: C } })
     await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(40, 18), extraParams: { from: D } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, dec(10, 18), GAS_PRICE ,dec(2, 18)), "Max fee percentage must be between 0.5% and 100%")
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, dec(10, 18), GAS_PRICE, '1000000000000000001'), "Max fee percentage must be between 0.5% and 100%")
@@ -3231,8 +3210,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(30, 18), extraParams: { from: C } })
     await openCdp({ ICR: toBN(dec(400, 16)), extraEBTCAmount: dec(40, 18), extraParams: { from: D } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, 1, GAS_PRICE, dec(10, 18), 0), "Max fee percentage must be between 0.5% and 100%")
     await assertRevert(th.redeemCollateralAndGetTxObject(A, contracts, 1, GAS_PRICE, dec(10, 18), 1), "Max fee percentage must be between 0.5% and 100%")
@@ -3255,8 +3233,7 @@ contract('CdpManager', async accounts => {
 
     await cdpManager.setBaseRate(0) 
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // EBTC redemption is 27 USD: a redemption that incurs a fee of 27/(270 * 2) = 5%
     const attemptedEBTCRedemption = expectedTotalSupply.div(toBN(10))
@@ -3293,8 +3270,7 @@ contract('CdpManager', async accounts => {
 
     await cdpManager.setBaseRate(0) 
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // EBTC redemption fee with 10% of the supply will be 0.5% + 1/(10*2)
     const attemptedEBTCRedemption = expectedTotalSupply.div(toBN(10))
@@ -3377,8 +3353,7 @@ contract('CdpManager', async accounts => {
     // Price bounces back, bringing B, C, D back above MCR
     await priceFeed.setPrice(dec(7428, 13))
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Erin redeems EBTC
     await th.redeemCollateral(erin, contracts, redemptionAmount, GAS_PRICE, th._100pct)
@@ -3422,8 +3397,7 @@ contract('CdpManager', async accounts => {
 
     const price = await priceFeed.getPrice()
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Erin attempts to redeem 400 EBTC
     const {
@@ -3490,8 +3464,7 @@ contract('CdpManager', async accounts => {
     let firstRedemptionHint
     let partialRedemptionHintNICR
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Erin tries to redeem 1000 EBTC
     try {
@@ -3648,8 +3621,7 @@ contract('CdpManager', async accounts => {
       th.DUMMY_BYTES32
     )
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const redemption_1 = await cdpManager.redeemCollateral(
       _120_EBTC,
@@ -3790,8 +3762,7 @@ contract('CdpManager', async accounts => {
       th.DUMMY_BYTES32
     )
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // Bob attempts to redeem his ill-gotten 101 EBTC, from a system that has 100 EBTC outstanding debt
     try {
@@ -3823,8 +3794,7 @@ contract('CdpManager', async accounts => {
     // Check baseRate == 0
     assert.equal(await cdpManager.baseRate(), '0')
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
 
@@ -3895,8 +3865,7 @@ contract('CdpManager', async accounts => {
     await openCdp({ ICR: toBN(dec(190, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: B } })
     await openCdp({ ICR: toBN(dec(180, 16)), extraEBTCAmount: dec(100, 18), extraParams: { from: C } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
 
@@ -4299,8 +4268,7 @@ contract('CdpManager', async accounts => {
     const partialAmount = toBN(dec(15, 18))
     const redemptionAmount = A_netDebt.add(B_netDebt).add(C_netDebt).add(partialAmount)
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // whale redeems EBTC.  Expect this to fully redeem A, B, C, and partially redeem 15 EBTC from D.
     const redemptionTx = await th.redeemCollateralAndGetTxObject(whale, contracts, redemptionAmount, GAS_PRICE, th._100pct)
@@ -4429,8 +4397,7 @@ contract('CdpManager', async accounts => {
 
     // --- TEST ---
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
+
 
     // keep redeeming until we get the base rate to the ceiling of 100%
     // With zero borrowing fee, [total supply of EBTC] is reduced since no more minting of fee to staking

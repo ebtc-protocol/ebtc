@@ -301,8 +301,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);  
 	  
       // redeem alice CDP
-      // skip bootstrapping phase	  
-      await ethers.provider.send("evm_increaseTime", [86400 * 15]);
       await ethers.provider.send("evm_mine");
 	  
       let _redeemDebt = _partialDebtRepaid.mul(toBN("9"));
