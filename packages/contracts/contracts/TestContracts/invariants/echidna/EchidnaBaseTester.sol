@@ -288,6 +288,13 @@ abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants
                 address(activePool),
                 address(collateral)
             );
+            syncedLiquidationSequencer = new SyncedLiquidationSequencer(
+                address(cdpManager),
+                address(cdpManager.sortedCdps()),
+                address(priceFeedMock),
+                address(activePool),
+                address(collateral)
+            );
         }
     }
 

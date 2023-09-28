@@ -79,6 +79,12 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | GENERAL-14 | The NominalICR from getNominalICR matches quoteRealNICR (as returned by CrLens)  | High Level | ✅ |
 
 
+TODO: SyncedLiquidationSequencer
+https://gist.github.com/GalloDaSballo/4c2ea6abdf49d8e3e4d332e44499ae6b
+
+| --- | --- | --- | --- |
+| LS-01 | The Liquidation Sequencer produces the same output as the SyncedLiquidationSequencer | Unit Tests |  |
+
 ## Redemptions
 
 | Property | Description | Category | Tested |
@@ -138,6 +144,8 @@ Claiming reduces the value to 0 and increase the balance
 | EBTC-01 | Anyone with an Ethereum address can send or receive eBTC tokens, whether they have an open CDP or not | Unit Tests |  |
 | EBTC-02 | Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR | High Level | |
 | EBTC-03 | The eBTC token contract implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers | Unit Tests | |
+
+
 
 ## Governance
 

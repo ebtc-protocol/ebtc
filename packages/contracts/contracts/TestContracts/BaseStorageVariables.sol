@@ -8,6 +8,7 @@ import {SortedCdps} from "../SortedCdps.sol";
 import {CdpManager} from "../CdpManager.sol";
 import {LiquidationLibrary} from "../LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../LiquidationSequencer.sol";
+import {SyncedLiquidationSequencer} from "../SyncedLiquidationSequencer.sol";
 import {ActivePool} from "../ActivePool.sol";
 import {HintHelpers} from "../HintHelpers.sol";
 import {FeeRecipient} from "../FeeRecipient.sol";
@@ -35,6 +36,7 @@ abstract contract BaseStorageVariables {
     Governor internal authority;
     LiquidationLibrary internal liqudationLibrary;
     LiquidationSequencer internal liquidationSequencer;
+    SyncedLiquidationSequencer internal syncedLiquidationSequencer;
     EBTCDeployer internal ebtcDeployer;
     address internal defaultGovernance;
 
