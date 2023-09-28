@@ -387,9 +387,9 @@ contract('BorrowerOperations', async accounts => {
       const systemDebtRedistributionIndex = await cdpManager.systemDebtRedistributionIndex()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Cdps
-      const alice_EBTCDebtRewardSnapshot_Before = await cdpManager.debtRedistributionIndex(aliceIndex)
+      const alice_EBTCDebtRewardSnapshot_Before = await cdpManager.cdpDebtRedistributionIndex(aliceIndex)
 
-      const bob_EBTCDebtRewardSnapshot_Before = await cdpManager.debtRedistributionIndex(bobIndex)
+      const bob_EBTCDebtRewardSnapshot_Before = await cdpManager.cdpDebtRedistributionIndex(bobIndex)
 
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
@@ -420,9 +420,9 @@ contract('BorrowerOperations', async accounts => {
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_STETHColl and systemDebtRedistributionIndex */
-      const alice_EBTCDebtRewardSnapshot_After = await cdpManager.debtRedistributionIndex(aliceIndex)
+      const alice_EBTCDebtRewardSnapshot_After = await cdpManager.cdpDebtRedistributionIndex(aliceIndex)
 
-      const bob_EBTCDebtRewardSnapshot_After = await cdpManager.debtRedistributionIndex(bobIndex)
+      const bob_EBTCDebtRewardSnapshot_After = await cdpManager.cdpDebtRedistributionIndex(bobIndex)
 
       assert.isAtMost(th.getDifference(alice_EBTCDebtRewardSnapshot_After, systemDebtRedistributionIndex), 100)
       assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot_After, systemDebtRedistributionIndex), 100)
@@ -817,9 +817,9 @@ contract('BorrowerOperations', async accounts => {
       const systemDebtRedistributionIndex = await cdpManager.systemDebtRedistributionIndex()
 
       // check Alice and Bob's reward snapshots are zero before they alter their Cdps
-      const alice_EBTCDebtRewardSnapshot_Before = await cdpManager.debtRedistributionIndex(aliceIndex)
+      const alice_EBTCDebtRewardSnapshot_Before = await cdpManager.cdpDebtRedistributionIndex(aliceIndex)
 
-      const bob_EBTCDebtRewardSnapshot_Before = await cdpManager.debtRedistributionIndex(bobIndex)
+      const bob_EBTCDebtRewardSnapshot_Before = await cdpManager.cdpDebtRedistributionIndex(bobIndex)
 
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
@@ -852,9 +852,9 @@ contract('BorrowerOperations', async accounts => {
 
       /* After top up, both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_STETHColl and systemDebtRedistributionIndex */
-      const alice_EBTCDebtRewardSnapshot_After = await cdpManager.debtRedistributionIndex(aliceIndex)
+      const alice_EBTCDebtRewardSnapshot_After = await cdpManager.cdpDebtRedistributionIndex(aliceIndex)
 
-      const bob_EBTCDebtRewardSnapshot_After = await cdpManager.debtRedistributionIndex(bobIndex)
+      const bob_EBTCDebtRewardSnapshot_After = await cdpManager.cdpDebtRedistributionIndex(bobIndex)
 
       assert.isAtMost(th.getDifference(alice_EBTCDebtRewardSnapshot_After, systemDebtRedistributionIndex), 100)
       assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot_After, systemDebtRedistributionIndex), 100)
@@ -2341,7 +2341,7 @@ contract('BorrowerOperations', async accounts => {
       await priceFeed.setPrice(dec(3000, 13))
 
       // Get Alice's pending reward snapshots 
-      const L_EBTCDebt_A_Snapshot = (await cdpManager.debtRedistributionIndex(aliceIndex))
+      const L_EBTCDebt_A_Snapshot = (await cdpManager.cdpDebtRedistributionIndex(aliceIndex))
       assert.isTrue(L_EBTCDebt_A_Snapshot.gt(toBN('0')))
 
       // Liquidate Carol
@@ -2349,7 +2349,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isFalse(await sortedCdps.contains(carolIndex))
 
       // Get Alice's pending reward snapshots after Carol's liquidation. Check above 0
-      const L_EBTCDebt_Snapshot_A_AfterLiquidation = (await cdpManager.debtRedistributionIndex(aliceIndex))
+      const L_EBTCDebt_Snapshot_A_AfterLiquidation = (await cdpManager.cdpDebtRedistributionIndex(aliceIndex))
 
       assert.isTrue(L_EBTCDebt_Snapshot_A_AfterLiquidation.gt(toBN('0')))
 
@@ -2362,7 +2362,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.closeCdp(aliceIndex, { from: alice })
 
       // Check Alice's pending reward snapshots are zero
-      const L_EBTCDebt_Snapshot_A_afterAliceCloses = (await cdpManager.debtRedistributionIndex(aliceIndex))
+      const L_EBTCDebt_Snapshot_A_afterAliceCloses = (await cdpManager.cdpDebtRedistributionIndex(aliceIndex))
 
       assert.equal(L_EBTCDebt_Snapshot_A_afterAliceCloses, '0')
     })
@@ -2591,9 +2591,9 @@ contract('BorrowerOperations', async accounts => {
       assert.notEqual(carolIndex, carolIndex2);
 
       // check Alice and Bob's reward snapshots are zero before they alter their Cdps
-      const alice_EBTCDebtRewardSnapshot_Before = await cdpManager.debtRedistributionIndex(aliceIndex)
+      const alice_EBTCDebtRewardSnapshot_Before = await cdpManager.cdpDebtRedistributionIndex(aliceIndex)
 
-      const bob_EBTCDebtRewardSnapshot_Before = await cdpManager.debtRedistributionIndex(bobIndex)
+      const bob_EBTCDebtRewardSnapshot_Before = await cdpManager.cdpDebtRedistributionIndex(bobIndex)
 
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
@@ -3539,7 +3539,7 @@ contract('BorrowerOperations', async accounts => {
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
       // Check Bob's snapshots of L_STETHColl and L_EBTC equal the respective current values
-      const bob_EBTCDebtRewardSnapshot = await cdpManager.debtRedistributionIndex(bobIndex)
+      const bob_EBTCDebtRewardSnapshot = await cdpManager.cdpDebtRedistributionIndex(bobIndex)
 
       assert.isAtMost(th.getDifference(bob_EBTCDebtRewardSnapshot, L_EBTC), 1000)
     })

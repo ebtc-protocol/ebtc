@@ -625,7 +625,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _bobId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 	  
       // check synced state after CDP initialization
-      let _bobDebtIndex = await cdpManager.debtRedistributionIndex(_bobId);
+      let _bobDebtIndex = await cdpManager.cdpDebtRedistributionIndex(_bobId);
       let _globalDebtIndex = await cdpManager.systemDebtRedistributionIndex();
       assert.isTrue(_globalDebtIndex.eq(_bobDebtIndex));
       let _bobFeeIndex = await cdpManager.cdpStEthFeePerUnitIndex(_bobId);

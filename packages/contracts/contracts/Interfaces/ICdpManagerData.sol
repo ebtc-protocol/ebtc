@@ -61,7 +61,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     event TotalStakesUpdated(uint256 _newTotalStakes);
     event SystemSnapshotsUpdated(uint256 _totalStakesSnapshot, uint256 _totalCollateralSnapshot);
     event SystemDebtRedistributionIndexUpdated(uint256 _systemDebtRedistributionIndex);
-    event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint256 _debtRedistributionIndex);
+    event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint256 _cdpDebtRedistributionIndex);
     event CdpArrayIndexUpdated(bytes32 _cdpId, uint256 _newIndex);
     event StEthIndexUpdated(uint256 _oldIndex, uint256 _newIndex, uint256 _updTimestamp);
     event CollateralFeePerUnitUpdated(uint256 _oldPerUnit, uint256 _newPerUnit, uint256 _feeTaken);

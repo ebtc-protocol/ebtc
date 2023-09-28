@@ -204,7 +204,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
-    mapping(bytes32 => uint256) public debtRedistributionIndex;
+    mapping(bytes32 => uint256) public cdpDebtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
@@ -272,7 +272,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].debt = 0;
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
-        debtRedistributionIndex[_cdpId] = 0;
+        cdpDebtRedistributionIndex[_cdpId] = 0;
         cdpStEthFeePerUnitIndex[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
@@ -312,7 +312,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         uint256 rewardPerUnitStaked = systemDebtRedistributionIndex -
-            debtRedistributionIndex[_cdpId];
+            cdpDebtRedistributionIndex[_cdpId];
 
         if (rewardPerUnitStaked > 0) {
             pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
@@ -330,13 +330,13 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
 
         // Returns true if there have been any redemptions
-        return (debtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
+        return (cdpDebtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
     function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
         uint256 _L_EBTCDebt = systemDebtRedistributionIndex;
 
-        debtRedistributionIndex[_cdpId] = _L_EBTCDebt;
+        cdpDebtRedistributionIndex[_cdpId] = _L_EBTCDebt;
         emit CdpDebtRedistributionIndexUpdated(_cdpId, _L_EBTCDebt);
     }
 

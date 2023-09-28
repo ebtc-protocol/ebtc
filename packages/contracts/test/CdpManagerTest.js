@@ -4514,7 +4514,7 @@ contract('CdpManager', async accounts => {
     const current_L_EBTCDebt = await cdpManager.systemDebtRedistributionIndex()
     assert.isTrue(current_L_EBTCDebt.gt(toBN('0')))
 
-    const carolSnapshot_L_EBTCDebt = (await cdpManager.debtRedistributionIndex(_carolCdpId))
+    const carolSnapshot_L_EBTCDebt = (await cdpManager.cdpDebtRedistributionIndex(_carolCdpId))
     assert.equal(carolSnapshot_L_EBTCDebt, 0)
 
     const carol_PendingEBTCDebtReward = (await cdpManager.getPendingRedistributedDebt(_carolCdpId))
