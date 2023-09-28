@@ -1,7 +1,7 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "./Asserts.sol";
+import "../../contracts/TestContracts/invariants/Asserts.sol";
 
 abstract contract FoundryAsserts is Test, Asserts {
     function gt(uint256 a, uint256 b, string memory message) internal override {

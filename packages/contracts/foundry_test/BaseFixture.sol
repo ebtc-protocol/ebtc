@@ -27,7 +27,7 @@ import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariab
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
 import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
-import {FoundryAsserts} from "../contracts/TestContracts/invariants/FoundryAsserts.sol";
+import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 
 contract eBTCBaseFixture is
     Test,

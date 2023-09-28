@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
-import {FoundryAsserts} from "../contracts/TestContracts/invariants/FoundryAsserts.sol";
 
 contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
     uint256 public _tolerance = 2000000; //compared to 1e18

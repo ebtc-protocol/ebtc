@@ -8,7 +8,7 @@ import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrower.sol";
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
 import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
-import {FoundryAsserts} from "../contracts/TestContracts/invariants/FoundryAsserts.sol";
+import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 
 /*
  * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
