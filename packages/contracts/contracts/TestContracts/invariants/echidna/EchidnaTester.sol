@@ -456,11 +456,6 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         uint _maxFeePercentage,
         uint _maxIterations
     ) external {
-        require(
-            block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
-
         actor = actors[msg.sender];
 
         bool success;
