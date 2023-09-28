@@ -89,9 +89,9 @@ library LiquityMath {
         return (_a >= _b) ? (_a - _b) : (_b - _a);
     }
 
-    function _computeNominalCR(uint256 _coll, uint256 _debt) internal pure returns (uint256) {
+    function _computeNominalCR(uint256 _collShares, uint256 _debt) internal pure returns (uint256) {
         if (_debt > 0) {
-            return (_coll * NICR_PRECISION) / _debt;
+            return (_collShares * NICR_PRECISION) / _debt;
         }
         // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
         else {
