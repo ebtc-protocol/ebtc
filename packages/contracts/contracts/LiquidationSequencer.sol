@@ -92,17 +92,22 @@ contract LiquidationSequencer is LiquityBase {
         bytes32 _first = sortedCdps.getFirst();
         bytes32 _cdpId = _last;
 
-        for (uint256 i = 0; i < (_realCount > 0 ? _realCount : _n) && _cdpId != _first; ++i) {
+        for (uint256 i = 0; i < (_realCount > 0 ? _realCount : _n) && _cdpId != _first; ) {
             bool _liquidatable = _checkCdpLiquidability(_cdpId, _TCR, _price, _recoveryMode);
             if (_liquidatable) {
                 if (_realCount > 0) {
                     _array[_realCount - _cnt - 1] = _cdpId;
                 }
-                _cnt += 1;
+                unchecked {
+                    ++_cnt;
+                }
                 _cdpId = sortedCdps.getPrev(_cdpId);
             } else {
                 // breaking loop early if not liquidatable due to sorted (descending) list of CDPs
                 break;
+            }
+            unchecked {
+                ++i;
             }
         }
     }
