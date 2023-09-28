@@ -100,13 +100,14 @@ library LiquityMath {
         }
     }
 
+    /// @dev Compute collateralization ratio, given stETH balance, price, and debt balance
     function _computeCR(
-        uint256 _coll,
+        uint256 _stEthBalance,
         uint256 _debt,
         uint256 _price
     ) internal pure returns (uint256) {
         if (_debt > 0) {
-            uint256 newCollRatio = (_coll * _price) / _debt;
+            uint256 newCollRatio = (_stEthBalance * _price) / _debt;
 
             return newCollRatio;
         }
