@@ -644,17 +644,17 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint256) {
-        (uint256 currentEBTCDebt, uint256 currentETH, ) = getDebtAndCollShares(_cdpId);
+        (uint256 currentEBTCDebt, uint256 currentCollShares, ) = getDebtAndCollShares(_cdpId);
 
-        uint256 NICR = LiquityMath._computeNominalCR(currentETH, currentEBTCDebt);
+        uint256 NICR = LiquityMath._computeNominalCR(currentCollShares, currentEBTCDebt);
         return NICR;
     }
 
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
-        (uint256 currentEBTCDebt, uint256 currentETH, ) = getDebtAndCollShares(_cdpId);
-        uint256 ICR = _calculateCR(currentETH, currentEBTCDebt, _price);
+        (uint256 currentEBTCDebt, uint256 currentCollShares, ) = getDebtAndCollShares(_cdpId);
+        uint256 ICR = _calculateCR(currentCollShares, currentEBTCDebt, _price);
         return ICR;
     }
 
