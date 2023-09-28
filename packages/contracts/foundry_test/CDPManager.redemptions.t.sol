@@ -433,7 +433,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     }
 
     function test_RedemptionMustSatisfyAccountingEquation() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
         //   openCdp 2200000000000000067 4
         //   openCdp 2293234842987251430 136273187309674429

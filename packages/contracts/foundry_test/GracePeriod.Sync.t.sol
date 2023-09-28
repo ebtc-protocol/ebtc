@@ -266,10 +266,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
-
-        // Move past bootstrap phase to allow redemptions
-        vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
-
+        
         return cdps;
     }
 
