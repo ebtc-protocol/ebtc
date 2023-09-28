@@ -264,8 +264,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
             "CdpManagerStorage: close non-exist or non-active CDP!"
         );
 
-        uint256 CdpIdsArrayLength = CdpIds.length;
-        _requireMoreThanOneCdpInSystem(CdpIdsArrayLength);
+        uint256 cdpIdsArrayLength = CdpIds.length;
+        _requireMoreThanOneCdpInSystem(cdpIdsArrayLength);
 
         Cdps[_cdpId].status = closedStatus;
         Cdps[_cdpId].coll = 0;
@@ -275,7 +275,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         cdpDebtRedistributionIndex[_cdpId] = 0;
         cdpStEthFeePerUnitIndex[_cdpId] = 0;
 
-        _removeCdp(_cdpId, CdpIdsArrayLength);
+        _removeCdp(_cdpId, cdpIdsArrayLength);
     }
 
     /*
@@ -422,7 +422,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
      * Remove a Cdp owner from the CdpOwners array, not preserving array order. Removing owner 'B' does the following:
      * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
      */
-    function _removeCdp(bytes32 _cdpId, uint256 CdpIdsArrayLength) internal {
+    function _removeCdp(bytes32 _cdpId, uint256 cdpIdsArrayLength) internal {
         Status cdpStatus = Cdps[_cdpId].status;
         // It’s set in caller function `_closeCdp`
         require(
@@ -431,7 +431,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         );
 
         uint128 index = Cdps[_cdpId].arrayIndex;
-        uint256 length = CdpIdsArrayLength;
+        uint256 length = cdpIdsArrayLength;
         uint256 idxLast = length - 1;
 
         require(index <= idxLast, "CdpManagerStorage: CDP indexing overflow!");
