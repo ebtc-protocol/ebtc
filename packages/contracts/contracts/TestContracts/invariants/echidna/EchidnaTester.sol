@@ -288,8 +288,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
-        // forcing partial liquidation, otherwise passing upper and lower bounds would be equivalent to `liquidate(uint _i)` and we would have to rewrite the invariants
-        _partialAmount = clampBetween(_partialAmount, 1, entireDebt - 1);
+        _partialAmount = clampBetween(_partialAmount, 0, entireDebt);
 
         _before(_cdpId);
 
@@ -327,11 +326,14 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            assertGte(
-                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
-            );
+            if(vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
+                // CDP was not fully liquidated
+                assertGte(
+                    collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
+                    borrowerOperations.MIN_NET_COLL(),
+                    GENERAL_10
+                );
+            }
 
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
