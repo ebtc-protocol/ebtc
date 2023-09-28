@@ -266,7 +266,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
-        
+
         return cdps;
     }
 
