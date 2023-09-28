@@ -1,15 +1,19 @@
 ## This Dockerfile is here to help you make Echidna work if you have issues with the installation of it or slither
 
-## Built with docker build -t my/fuzzy:latest .
+## Built with 
+## docker build -t my/fuzzy:latest .
 
 ## Run image with
 ## docker run -it --rm -v $PWD:/code my/fuzzy
 
-## Run with (if you have already ran tests and compilation)
+## Run ECHIDNA with (if you have already ran tests and compilation)
 ## cd code && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
 
+## Run MEDUSA with (if you have already ran tests and compilation)
+## cd code && solc-select use 0.8.17 && cd packages/contracts/ && medusa fuzz
+
 ## If you've never built the repo
-## Run with
+## Run ECHIDNA with
 ## yarn && git submodule init && git submodule update && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
 
 FROM ubuntu:20.04
@@ -81,23 +85,28 @@ RUN echo "[$(date)] Finish setup"
 
 
 ## TODO: MEDUSA
-```
-# ## INSTALL MEDUSA
+## INSTALL MEDUSA
 
-# ## GO
-# RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
-# RUN export PATH="$PATH:/usr/local/go/bin"
-# ENV PATH="$PATH:/usr/local/go/bin"
+## GO
+RUN apt install glibc-source -y
+RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
+RUN export PATH="$PATH:/usr/local/go/bin"
+ENV PATH="$PATH:/usr/local/go/bin"
 
-# ## MEDUSA:  h/t: https://github.com/Deivitto/auditor-docker/blob/main/scripts/medusa_fuzzer.sh
-# RUN echo "Downloading and building Medusa..."
-# RUN git clone https://github.com/crytic/medusa && cd medusa && git pull origin dev/merge-assertion-and-property-mode && git pull origin dev/no-multi-abi && go build
+RUN git config --global user.email "you@example.com"
+RUN git config --global user.name "Your Name"
 
-# # Move the Binary to /usr/local/bin/
-# RUN echo "Moving Medusa binary to /usr/local/bin/"
-# RUN mv medusa /usr/local/bin/
+RUN echo "Downloading and building Medusa..."
+RUN git clone https://github.com/crytic/medusa
 
-# # Make the Binary Executable
-# RUN echo "Making Medusa executable..."
-# RUN chmod +x /usr/local/bin/medusa
-# ```
+RUN cd medusa && GOOS=linux GOARCH=386 go build &&  mv medusa /usr/local/bin/ && chmod +x /usr/local/bin/medusa
+
+# Move the Binary to /usr/local/bin/
+RUN echo "Moving Medusa binary to /usr/local/bin/"
+RUN mv medusa /usr/local/bin/
+
+# Make the Binary Executable
+RUN echo "Making Medusa executable..."
+RUN chmod +x /usr/local/bin/medusa
+
+RUN export PATH="$PATH:/usr/local/bin/medusa"
