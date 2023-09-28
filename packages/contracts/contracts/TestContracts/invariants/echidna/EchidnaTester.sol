@@ -229,7 +229,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         if (success) {
             if (
-                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+                vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
@@ -314,7 +314,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             );
 
             if (
-                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
+                vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
@@ -412,12 +412,13 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             // );
             // }
 
-            if (
-                vars.systemDebtRedistributionIndexAfter == vars.systemDebtRedistributionIndexBefore
-            ) {
-                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
-            }
+            // @audit TODO: This breaks because of before after: https://discord.com/channels/1011322803414388897/1134226009953153053/1155906824118214786
+            // if (
+            //     vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
+            // ) {
+            //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            //     assertGte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+            // }
 
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -502,7 +503,8 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         assertGt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
         if (_maxIterations == 1) {
-            assertGte(vars.cdpDebtBefore, vars.cdpCollAfter, CDPM_05);
+            assertGte(vars.activePoolDebtBefore, vars.activePoolDebtAfter, "CDPM_05_GLOBAL"); /// @audit Global debt should not increase under any cirmunstance
+            assertGte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_05); /// @audit This should not break after the fix as we check for redistributed bad debt in `cdpDebtBefore`
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
             // if (!_atLeastOneCdpIsLiquidatableBefore) {
             //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10

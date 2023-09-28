@@ -575,6 +575,74 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_cdpDebtAfter.eq(_syncedDebt));
       assert.isTrue(_cdpIcrAfter.eq(_syncedICR));
       assert.isTrue(_tcrAfter.eq(_syncedTCR));
+  })    
+  
+  it("Test new CDP won't have split fee & redistributed debt if there is staking reward and bad-debt liquidation before its initialization", async() => {
+      let _errorTolerance = toBN("10000000000000");//1e13 compared to 1e18
+	  
+      // open several CDPs
+      let _collAmt = toBN("1000000000000000000000");
+      let _ebtcAmt = toBN("6400");
+      await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
+      await collToken.deposit({from: owner, value: _collAmt});
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+      await collToken.deposit({from: owner, value: _collAmt});
+      await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
+	  
+      // rewarding: increaseCollateralRate(1022581370615858762)	  	  
+      await ethers.provider.send("evm_increaseTime", [44823]);
+      await ethers.provider.send("evm_mine");  
+      let _newIndex = toBN("1022581370615858762");
+      await collToken.setEthPerShare(_newIndex); 
+	  
+      // final check
+      let _price = await priceFeed.getPrice();
+      let _firstId = await sortedCdps.getFirst();
+      let _firstICR = await cdpManager.getICR(_firstId, _price);
+      let _tcr = await cdpManager.getTCR(_price);
+      th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
+	  	  
+      // get a CDP to be liquidated with bad debt
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } });
+      let _liqId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _liqDebt = await cdpManager.getCdpDebt(_liqId);
+      _price = toBN("58000000000000000");
+      await priceFeed.setPrice(_price);
+      let _toLiqICR = await cdpManager.getICR(_liqId, _price);
+      assert.isTrue(_toLiqICR.lt(LICR));
+      await debtToken.transfer(owner, _liqDebt, {from: alice});
+      await cdpManager.liquidate(_liqId, {from: owner});
+      let _pendingDebt = await cdpManager.getPendingRedistributedDebt(_firstId);
+      assert.isTrue(_pendingDebt.gt(toBN("0")));
+	  
+      // create a new CDP at this moment 
+      // when system got some debt redistribution and some split fee to charge	  	  
+      await ethers.provider.send("evm_increaseTime", [44823]);
+      await ethers.provider.send("evm_mine");  
+      let _newIndex2 = _newIndex.add(toBN("12345678901234567"));
+      await collToken.setEthPerShare(_newIndex2); 
+      let { tx: opBobTx, _finalColl: bob_coll, totalDebt: bob_totalDebt } = await openCdp({ ICR: toBN(dec(196, 16)), extraParams: { from: bob } });
+      let _bobId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+	  
+      // check synced state after CDP initialization
+      let _bobDebtIndex = await cdpManager.debtRedistributionIndex(_bobId);
+      let _globalDebtIndex = await cdpManager.systemDebtRedistributionIndex();
+      assert.isTrue(_globalDebtIndex.eq(_bobDebtIndex));
+      let _bobFeeIndex = await cdpManager.stEthFeePerUnitIndex(_bobId);
+      let _globalFeeIndex = await cdpManager.systemStEthFeePerUnitIndex();
+      assert.isTrue(_globalFeeIndex.eq(_bobFeeIndex));
+	  
+      // check CDP coll & debt after initialization
+      let _bobDebt = await cdpManager.getCdpDebt(_bobId);
+      let _bobColl = await cdpManager.getCdpCollShares(_bobId);
+      let _emittedDebt = await th.getEventArgByName(opBobTx, "CdpUpdated", "_debt");
+      let _emittedColl = await th.getEventArgByName(opBobTx, "CdpUpdated", "_coll");
+      let bob_collShare = bob_coll.sub(liq_stipend).mul(mv._1e18BN).div(_newIndex2);
+	  
+      assert.isTrue(toBN(_emittedDebt).eq(_bobDebt));
+      assert.isTrue(toBN(_emittedDebt).eq(bob_totalDebt));
+      assert.isTrue(toBN(_emittedColl).eq(_bobColl));
+      th.assertIsApproximatelyEqual(toBN(_emittedColl), bob_collShare, _errorTolerance.toNumber());
   })  
 
   it("Malicious Recovery Mode triggering should fail within Borrower Operations: openCDP() due to sync-up of staking index", async() => {	  
