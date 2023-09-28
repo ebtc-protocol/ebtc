@@ -200,7 +200,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /* Global Fee accumulator calculation error due to integer division, similar to redistribution calculation */
     uint256 public override systemStEthFeePerUnitIndexError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
-    mapping(bytes32 => uint256) public stEthFeePerUnitIndex;
+    mapping(bytes32 => uint256) public cdpStEthFeePerUnitIndex;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
     // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
@@ -210,7 +210,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     bytes32[] public CdpIds;
 
     // Error trackers for the cdp redistribution calculation
-    uint256 public lastETHError_Redistribution;
     uint256 public lastEBTCDebtErrorRedistribution;
 
     constructor(
@@ -274,7 +273,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         Cdps[_cdpId].liquidatorRewardShares = 0;
 
         debtRedistributionIndex[_cdpId] = 0;
-        stEthFeePerUnitIndex[_cdpId] = 0;
+        cdpStEthFeePerUnitIndex[_cdpId] = 0;
 
         _removeCdp(_cdpId, CdpIdsArrayLength);
     }
@@ -557,7 +556,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
         _syncGlobalAccounting();
 
-        uint256 _oldPerUnitCdp = stEthFeePerUnitIndex[_cdpId];
+        uint256 _oldPerUnitCdp = cdpStEthFeePerUnitIndex[_cdpId];
         uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
         (
@@ -582,7 +581,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         // sync per stake index for given CDP
         if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
-            stEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
+            cdpStEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
         }
 
         return (_newColl, _newDebt, _feeSplitDistributed, _pendingDebt);
@@ -593,19 +592,19 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         bytes32 _cdpId,
         uint256 _systemStEthFeePerUnitIndex
     ) public view returns (uint256, uint256) {
-        uint256 _stEthFeePerUnitIndex = stEthFeePerUnitIndex[_cdpId];
+        uint256 _cdpStEthFeePerUnitIndex = cdpStEthFeePerUnitIndex[_cdpId];
         uint256 _cdpCol = Cdps[_cdpId].coll;
 
         if (
-            _stEthFeePerUnitIndex == 0 ||
+            _cdpStEthFeePerUnitIndex == 0 ||
             _cdpCol == 0 ||
-            _stEthFeePerUnitIndex == _systemStEthFeePerUnitIndex
+            _cdpStEthFeePerUnitIndex == _systemStEthFeePerUnitIndex
         ) {
             return (0, _cdpCol);
         }
 
         uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
-            (_systemStEthFeePerUnitIndex - _stEthFeePerUnitIndex);
+            (_systemStEthFeePerUnitIndex - _cdpStEthFeePerUnitIndex);
 
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
@@ -697,7 +696,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     ) public view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) {
         (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
             _cdpId,
-            stEthFeePerUnitIndex[_cdpId],
+            cdpStEthFeePerUnitIndex[_cdpId],
             systemStEthFeePerUnitIndex
         );
         coll = _newColl;
@@ -784,7 +783,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, , , ) = _calcSyncedAccounting(
             _cdpId,
-            stEthFeePerUnitIndex[_cdpId],
+            cdpStEthFeePerUnitIndex[_cdpId],
             _newGlobalSplitIdx
         );
         return _newColl;

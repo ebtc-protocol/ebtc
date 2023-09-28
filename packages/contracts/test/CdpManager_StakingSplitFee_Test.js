@@ -628,7 +628,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _bobDebtIndex = await cdpManager.debtRedistributionIndex(_bobId);
       let _globalDebtIndex = await cdpManager.systemDebtRedistributionIndex();
       assert.isTrue(_globalDebtIndex.eq(_bobDebtIndex));
-      let _bobFeeIndex = await cdpManager.stEthFeePerUnitIndex(_bobId);
+      let _bobFeeIndex = await cdpManager.cdpStEthFeePerUnitIndex(_bobId);
       let _globalFeeIndex = await cdpManager.systemStEthFeePerUnitIndex();
       assert.isTrue(_globalFeeIndex.eq(_bobFeeIndex));
 	  
@@ -723,7 +723,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
       let _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
       let _nicrStart = await cdpManager.getNominalICR(_cdpId);
-      let _cdpSplitIdxStart = await cdpManager.stEthFeePerUnitIndex(_cdpId); 
+      let _cdpSplitIdxStart = await cdpManager.cdpStEthFeePerUnitIndex(_cdpId); 
       console.log('startNICR:' + _nicrStart + ', _cdpSplitIdxStart=' + _cdpSplitIdxStart);	  
 	  
       // now there is staking reward to split
@@ -743,7 +743,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_expectedFeeApplied[0].gt(_addedColl));// split fee take more collateral than added so NICR could decrease
       await collToken.deposit({from: owner, value: _addedColl});
       await borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 20, { from: owner, value: 0 })
-      let _cdpSplitIdxAfter = await cdpManager.stEthFeePerUnitIndex(_cdpId); 
+      let _cdpSplitIdxAfter = await cdpManager.cdpStEthFeePerUnitIndex(_cdpId); 
       assert.isTrue(_cdpSplitIdxAfter.eq(_expectedNewIdxPerUnit));
 	  
       let _nicrAfter = await cdpManager.getNominalICR(_cdpId);

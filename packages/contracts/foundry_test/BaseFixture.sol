@@ -476,7 +476,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         assertTrue(_status == expectedStatus);
 
         assertTrue(cdpManager.debtRedistributionIndex(cdpId) == 0);
-        assertTrue(cdpManager.stEthFeePerUnitIndex(cdpId) == 0);
+        assertTrue(cdpManager.cdpStEthFeePerUnitIndex(cdpId) == 0);
     }
 
     function _printSystemState() internal {
