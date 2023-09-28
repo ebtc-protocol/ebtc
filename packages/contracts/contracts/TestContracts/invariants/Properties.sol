@@ -1,6 +1,7 @@
 pragma solidity 0.8.17;
 
 import {ICollateralToken} from "../../Dependencies/ICollateralToken.sol";
+import {LiquityMath} from "../../Dependencies/LiquityMath.sol";
 import {ActivePool} from "../../ActivePool.sol";
 import {EBTCToken} from "../../EBTCToken.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
@@ -264,9 +265,33 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_05(
         ActivePool activePool,
+        CdpManager cdpManager,
         ICollateralToken collateral
     ) internal view returns (bool) {
-        return collateral.sharesOf(address(activePool)) >= activePool.getSystemCollShares();
+        uint256 totalStipendShares;
+
+        // Iterate over CDPs add the stipendShares
+        bytes32 currentCdp = sortedCdps.getFirst();
+        while (currentCdp != bytes32(0)) {
+
+            totalStipendShares += cdpManager.getCdpLiquidatorRewardShares(currentCdp);
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        return collateral.sharesOf(address(activePool)) >= (
+            activePool.getSystemCollShares() +
+            activePool.getFeeRecipientClaimableCollShares() +
+            totalStipendShares
+        );
+    }
+    function invariant_GENERAL_05_B(
+        CollSurplusPool surplusPool,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        return collateral.sharesOf(address(surplusPool)) >= (
+            surplusPool.getTotalSurplusCollShares()
+        );
     }
 
     function invariant_GENERAL_06(
@@ -285,6 +310,33 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
 
         return totalSupply >= cdpsBalance;
+    }
+
+    function invariant_GENERAL_08(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        uint256 curentPrice = priceFeedTestnet.getPrice();
+
+        bytes32 currentCdp = sortedCdps.getFirst();
+        
+        uint256 sumOfColl;
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireDebt = cdpManager.getCdpDebt(currentCdp);
+            uint256 entireColl = cdpManager.getCdpCollShares(currentCdp);
+            sumOfColl += entireColl;
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+
+        uint256 tcrFromSystem = cdpManager.getTCR(curentPrice);
+        uint256 tcrFromSums = LiquityMath._computeCR(collateral.getPooledEthByShares(sumOfColl), sumOfDebt, curentPrice);
+
+        return tcrFromSystem == tcrFromSums;
     }
 
     function invariant_GENERAL_09(
@@ -345,7 +397,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
             uint256 newNICR = crLens.quoteRealNICR(currentCdp);
-            uint256 synchedNICR = cdpManager.getNominalICR(currentCdp);
+            uint256 synchedNICR = cdpManager.getNominalICR(currentCdp); // Uses cached stETH index -> It's not the "real NICR"
 
             if (newNICR != synchedNICR) {
                 return false;

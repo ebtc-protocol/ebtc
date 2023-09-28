@@ -70,11 +70,18 @@ abstract contract EchidnaProperties is EchidnaBaseTester, Properties {
     }
 
     function echidna_GENERAL_05() public returns (bool) {
-        return invariant_GENERAL_05(activePool, collateral);
+        return invariant_GENERAL_05(activePool, cdpManager, collateral);
+    }
+    function echidna_GENERAL_05_B() public returns (bool) {
+        return invariant_GENERAL_05_B(collSurplusPool, collateral);
     }
 
     function echidna_GENERAL_06() public returns (bool) {
         return invariant_GENERAL_06(eBTCToken, cdpManager, sortedCdps);
+    }
+
+    function echidna_GENERAL_08() public returns (bool) {
+        return invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral);
     }
 
     function echidna_GENERAL_12() public returns (bool) {

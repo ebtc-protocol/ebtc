@@ -698,7 +698,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
             _cdpId,
             stEthFeePerUnitIndex[_cdpId],
-            systemStEthFeePerUnitIndex
+            systemStEthFeePerUnitIndex /// @audit This is not necessarily latest
         );
         coll = _newColl;
         debt = _newDebt;

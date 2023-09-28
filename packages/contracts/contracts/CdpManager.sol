@@ -143,7 +143,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // capped by the entire debt of the Cdp minus the liquidation reserve
         singleRedemption.eBtcToRedeem = LiquityMath._min(
             _redeemColFromCdp.maxEBTCamount,
-            Cdps[_redeemColFromCdp.cdpId].debt
+            Cdps[_redeemColFromCdp.cdpId].debt /// @audit Redeem everything
         );
 
         // Get the stEthToRecieve of equivalent value in USD
@@ -160,7 +160,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
         uint256 newDebt = _oldDebtAndColl.entireDebt - singleRedemption.eBtcToRedeem;
-        uint256 newColl = _oldDebtAndColl.entireColl - singleRedemption.stEthToRecieve;
+        uint256 newColl = _oldDebtAndColl.entireColl - singleRedemption.stEthToRecieve; /// @audit This will revert
 
         if (newDebt == 0) {
             // No debt remains, close CDP
@@ -374,8 +374,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
-                _cId = sortedCdps.getPrev(_cId);
+            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) { /// @audit this is view ICR 
+                _cId = sortedCdps.getPrev(_cId); /// @audit you can still get an incorrectly sorted CDP
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }
         }
@@ -396,7 +396,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-                _syncAccounting(_cId);
+                _syncAccounting(_cId); /// @audit This happens even if the re-insertion doesn't
+                /// @audit If we re-insert it here, then this is synched.
 
                 SingleRedemptionInputs memory _redeemColFromCdp = SingleRedemptionInputs(
                     _cId,
@@ -512,7 +513,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function syncAccounting(bytes32 _cdpId) external override {
-        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
+        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues | TODO: See Stermi Partial Liq
         return _syncAccounting(_cdpId);
     }
 
