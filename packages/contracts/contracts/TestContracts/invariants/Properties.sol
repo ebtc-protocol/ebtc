@@ -14,6 +14,8 @@ import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
+import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
+import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
 
 abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
     function invariant_AP_01(
@@ -410,9 +412,40 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return true;
     }
 
-    // function invariant_LS_01() public {
-    //     // Or just compare max lenght since that's the one with all of them
-    // }
+    function invariant_LS_01(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        LiquidationSequencer ls,
+        SyncedLiquidationSequencer syncedLs,
+        PriceFeedTestnet priceFeedTestnet
+    ) internal returns (bool) {
+        // Or just compare max lenght since that's the one with all of them
+        uint256 n = cdpManager.getActiveCdpsCount();
+
+        // Get 
+        uint256 price = priceFeedTestnet.getPrice();
+
+
+        // Get lists
+        bytes32[] memory cdpsFromCurrent = ls.sequenceLiqToBatchLiqWithPrice(n, price);
+        bytes32[] memory cdpsSynced = syncedLs.sequenceLiqToBatchLiqWithPrice(n, price);
+
+        uint256 length = cdpsFromCurrent.length;
+        if(length != cdpsSynced.length) {
+            return false;
+        }
+
+        // Compare Lists
+        for(uint256 i; i < length; i++) {
+            // Find difference = broken
+            if(cdpsFromCurrent[i] != cdpsSynced[i]) {
+                return false;
+            }
+        }
+
+        // Implies we're good
+        return true;
+    }
 
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
