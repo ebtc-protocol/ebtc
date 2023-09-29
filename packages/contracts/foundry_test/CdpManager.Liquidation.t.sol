@@ -663,9 +663,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
 
         // Go through Grace Period
-        cdpManager.syncGracePeriod();
-
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        _waitUntilRMColldown();
         vm.startPrank(users[0]);
 
         // Show it cannot be liquidated
@@ -710,9 +708,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.assume(_recoveryMode);
 
         // Go through Grace Period
-        cdpManager.syncGracePeriod();
-
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        _waitUntilRMColldown();
         vm.startPrank(users[0]);
 
         // Show it cannot be liquidated

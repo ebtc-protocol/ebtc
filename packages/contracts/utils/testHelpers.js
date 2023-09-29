@@ -297,6 +297,13 @@ class TestHelper {
     const price = await contracts.priceFeedTestnet.getPrice()
     return contracts.cdpManager.getTCR(price)
   }
+  
+  static async syncGlobalStateAndGracePeriod(contracts, provider){	  
+    await contracts.cdpManager.syncGlobalAccountingAndGracePeriod();
+    let _gracePeriod = await contracts.cdpManager.recoveryModeGracePeriod();
+    await provider.send("evm_increaseTime", [_gracePeriod.add(web3.utils.toBN('1')).toNumber()]);
+    await provider.send("evm_mine");
+  }
 
   // --- Gas compensation calculation functions ---
 

@@ -554,7 +554,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
 
     // Grace Period, check never reverts so it's safe to use
     function _waitUntilRMColldown() internal {
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
     }
 

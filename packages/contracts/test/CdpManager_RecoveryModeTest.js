@@ -3589,9 +3589,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.syncGracePeriod();
-    await ethers.provider.send("evm_increaseTime", [901]);
-    await ethers.provider.send("evm_mine");
+    await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3920,9 +3918,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.syncGracePeriod();
-    await ethers.provider.send("evm_increaseTime", [901]);
-    await ethers.provider.send("evm_mine");
+    await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	

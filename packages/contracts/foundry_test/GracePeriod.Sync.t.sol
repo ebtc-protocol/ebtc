@@ -118,8 +118,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Trigger Liquidations via Split (so price is constant)
         _triggerRMViaSplit();
-        cdpManager.syncGracePeriod();
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        _waitUntilRMColldown();
         vm.stopPrank();
 
         // Liquidate 4x
