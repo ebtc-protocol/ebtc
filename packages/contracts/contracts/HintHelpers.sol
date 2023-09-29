@@ -126,7 +126,7 @@ contract HintHelpers is LiquityBase {
      * @param vars The local variables of the getRedemptionHints function.
      * @param currentCdpDebt The net eBTC debt of the CDP.
      * @param _price The current price of the asset.
-     * @return newColl The new collateral amount after partial redemption.
+     * @return newCollShare The new collateral share amount after partial redemption.
      * @return newNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
      */
     function _calculateCdpStateAfterPartialRedemption(
@@ -137,25 +137,29 @@ contract HintHelpers is LiquityBase {
         // maxReemable = min(remainingToRedeem, currentDebt)
         uint256 maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
-        uint256 newColl;
+        uint256 newCollShare;
         uint256 _oldIndex = cdpManager.stEthIndex();
         uint256 _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
 
         if (_oldIndex < _newIndex) {
-            newColl = _getCollateralWithSplitFeeApplied(vars.currentCdpId, _newIndex, _oldIndex);
+            newCollShare = _getCollateralWithSplitFeeApplied(
+                vars.currentCdpId,
+                _newIndex,
+                _oldIndex
+            );
         } else {
-            (, newColl, ) = cdpManager.getDebtAndCollShares(vars.currentCdpId);
+            (, newCollShare, ) = cdpManager.getDebtAndCollShares(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
-        uint256 collToReceive = collateral.getSharesByPooledEth(
+        uint256 collShareToReceive = collateral.getSharesByPooledEth(
             (maxRedeemableEBTC * DECIMAL_PRECISION) / _price
         );
 
-        uint256 _newCollAfter = newColl - collToReceive;
+        uint256 _newCollShareAfter = newCollShare - collShareToReceive;
         return (
-            _newCollAfter,
-            LiquityMath._computeNominalCR(_newCollAfter, currentCdpDebt - maxRedeemableEBTC)
+            _newCollShareAfter,
+            LiquityMath._computeNominalCR(_newCollShareAfter, currentCdpDebt - maxRedeemableEBTC)
         );
     }
 
@@ -165,7 +169,7 @@ contract HintHelpers is LiquityBase {
      * @param _cdpId The identifier of the CDP.
      * @param _newIndex The new index after the split fee is applied.
      * @param _oldIndex The old index before the split fee is applied.
-     * @return newColl The new collateral amount after applying split fee.
+     * @return newCollShare The new collateral share amount of the CDP after applying split fee.
      */
     function _getCollateralWithSplitFeeApplied(
         bytes32 _cdpId,
@@ -182,8 +186,11 @@ contract HintHelpers is LiquityBase {
             _oldIndex
         );
         _newStFeePerUnit = _deltaFeePerUnit + cdpManager.systemStEthFeePerUnitIndex();
-        (, uint256 newColl) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _newStFeePerUnit);
-        return newColl;
+        (, uint256 newCollShare) = cdpManager.getAccumulatedFeeSplitApplied(
+            _cdpId,
+            _newStFeePerUnit
+        );
+        return newCollShare;
     }
 
     /* getApproxHint() - return address of a Cdp that is, on average, (length / numTrials) positions away in the 

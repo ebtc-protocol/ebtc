@@ -175,7 +175,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     struct LiquidationValues {
         uint256 entireCdpDebt;
-        uint256 debtToOffset;
+        uint256 debtToBurn;
         uint256 totalCollToSendToLiquidator;
         uint256 debtToRedistribute;
         uint256 collSurplus;
@@ -184,7 +184,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     struct LiquidationTotals {
         uint256 totalDebtInSequence;
-        uint256 totalDebtToOffset;
+        uint256 totalDebtToBurn;
         uint256 totalCollToSendToLiquidator;
         uint256 totalDebtToRedistribute;
         uint256 totalCollSurplus;

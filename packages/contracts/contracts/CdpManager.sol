@@ -335,6 +335,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) external override nonReentrantSelfAndBOps {
         RedemptionTotals memory totals;
 
+        // early check to ensure redemption is not paused
+        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
+
         _requireValidMaxFeePercentage(_maxFeePercentage);
         _requireAfterBootstrapPeriod();
 
@@ -354,8 +357,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         _requireTCRoverMCR(totals.price, totals.tcrAtStart);
         _requireAmountGreaterThanZero(_EBTCamount);
-
-        require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
 
         _requireEBTCBalanceCoversRedemptionAndWithinSupply(
             ebtcToken,

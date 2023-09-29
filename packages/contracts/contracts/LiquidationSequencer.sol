@@ -82,7 +82,7 @@ contract LiquidationSequencer is LiquityBase {
                 }
                 _cdpId = sortedCdps.getPrev(_cdpId);
             }
-            require(_j == _cnt, "LiquidationLibrary: wrong sequence conversion!");
+            require(_j == _cnt, "LiquidationSequencer: wrong sequence conversion!");
         }
     }
 

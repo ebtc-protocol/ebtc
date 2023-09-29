@@ -21,7 +21,7 @@ contract MultiCdpGetter {
     /// @notice Creates a new MultiCdpGetter contract
     /// @param _cdpManager The CdpManager contract
     /// @param _sortedCdps The ISortedCdps contract
-    constructor(CdpManager _cdpManager, ISortedCdps _sortedCdps) public {
+    constructor(CdpManager _cdpManager, ISortedCdps _sortedCdps) {
         cdpManager = _cdpManager;
         sortedCdps = _sortedCdps;
     }

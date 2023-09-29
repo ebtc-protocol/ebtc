@@ -316,6 +316,8 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
         if (rewardPerUnitStaked > 0) {
             pendingEBTCDebtReward = (cdp.stake * rewardPerUnitStaked) / DECIMAL_PRECISION;
+        } else {
+            return 0;
         }
     }
 
