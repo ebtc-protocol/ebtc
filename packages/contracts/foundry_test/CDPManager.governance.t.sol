@@ -335,7 +335,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
 
         console.log(1);
 
-        vm.expectRevert("CdpManager: Recovery mode grace period still in effect");
+        vm.expectRevert("LiquidationLibrary: Recovery mode grace period still in effect");
         cdpManager.liquidate(toLiquidateCdpId);
 
         // Attempt between previous duration and new duration, should fail
@@ -344,7 +344,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
 
         console.log(2);
 
-        vm.expectRevert("CdpManager: Recovery mode grace period still in effect");
+        vm.expectRevert("LiquidationLibrary: Recovery mode grace period still in effect");
         cdpManager.liquidate(toLiquidateCdpId);
 
         // Attempt after new duration, should succeed
