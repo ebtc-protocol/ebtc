@@ -410,9 +410,9 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return true;
     }
 
-    function invariant_LS_01() {
-        // Or just compare max lenght since that's the one with all of them
-    }
+    // function invariant_LS_01() public {
+    //     // Or just compare max lenght since that's the one with all of them
+    // }
 
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
