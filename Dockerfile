@@ -99,14 +99,10 @@ RUN git config --global user.name "Your Name"
 RUN echo "Downloading and building Medusa..."
 RUN git clone https://github.com/crytic/medusa
 
-RUN cd medusa && GOOS=linux GOARCH=386 go build &&  mv medusa /usr/local/bin/ && chmod +x /usr/local/bin/medusa
+RUN cd medusa && GOOS=linux GOARCH=386 go build 
 
-# Move the Binary to /usr/local/bin/
-RUN echo "Moving Medusa binary to /usr/local/bin/"
-RUN mv medusa /usr/local/bin/
+RUN cd medusa && mv medusa /usr/local/bin/ 
 
-# Make the Binary Executable
-RUN echo "Making Medusa executable..."
 RUN chmod +x /usr/local/bin/medusa
 
 RUN export PATH="$PATH:/usr/local/bin/medusa"
