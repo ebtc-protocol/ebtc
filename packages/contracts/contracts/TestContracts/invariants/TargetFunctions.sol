@@ -32,7 +32,6 @@ abstract contract TargetFunctions is Properties {
         _;
     }
 
-
     ///////////////////////////////////////////////////////
     // Helper functions
     ///////////////////////////////////////////////////////
@@ -301,11 +300,7 @@ abstract contract TargetFunctions is Properties {
         _after(_cdpId);
 
         if (success) {
-            lt(
-                vars.cdpDebtAfter,
-                vars.cdpDebtBefore,
-                "Partial liquidation must reduce CDP debt"
-            );
+            lt(vars.cdpDebtAfter, vars.cdpDebtBefore, "Partial liquidation must reduce CDP debt");
 
             if (
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
