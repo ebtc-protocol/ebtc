@@ -47,4 +47,13 @@ abstract contract BaseStorageVariables {
     Actor internal actor;
 
     CRLens internal crLens;
+
+    uint internal constant NUMBER_OF_ACTORS = 3;
+    uint internal constant INITIAL_ETH_BALANCE = 1e24;
+    uint internal constant INITIAL_COLL_BALANCE = 1e21;
+
+    uint internal constant diff_tolerance = 0.000000000002e18; //compared to 1e18
+    uint internal constant MAX_PRICE_CHANGE_PERCENT = 1.05e18; //compared to 1e18
+    uint internal constant MAX_REBASE_PERCENT = 1.1e18; //compared to 1e18
+    uint internal constant MAX_FLASHLOAN_ACTIONS = 4;
 }

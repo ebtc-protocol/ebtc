@@ -21,10 +21,10 @@ contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
         assertTrue(invariant_CDPM_03(cdpManager), CDPM_03);
         // CDPM_04 -> VARS
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
-        assertTrue(invariant_SL_01(cdpManager, sortedCdps, 0.01e18), SL_01);
-        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), SL_02);
+        assertTrue(invariant_SL_01(cdpManager, sortedCdps), SL_01);
+        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock), SL_02);
         assertTrue(invariant_SL_03(cdpManager, priceFeedMock, sortedCdps), SL_03);
-        assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
 
         // invariant_GENERAL_01 -> Vars
         assertTrue(invariant_GENERAL_02(cdpManager, priceFeedMock, eBTCToken), GENERAL_02);

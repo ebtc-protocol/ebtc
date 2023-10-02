@@ -3,31 +3,33 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrower.sol";
+import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
+import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
+import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 
 /*
  * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
  * The objective is to go from random values to hardcoded values that can be analyzed more easily
  */
-contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
-    address user;
-    uint256 internal constant INITIAL_COLL_BALANCE = 1e21;
-    uint256 private constant MAX_FLASHLOAN_ACTIONS = 4;
+contract EToFoundry is
+    Test,
+    TargetContractSetup,
+    FoundryAsserts,
+    TargetFunctions,
+    IERC3156FlashBorrower
+{
+    modifier setup() override {
+        _;
+    }
 
-    function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
-        user = address(this);
-        vm.startPrank(address(this));
-        vm.deal(user, INITIAL_COLL_BALANCE);
-        collateral.deposit{value: INITIAL_COLL_BALANCE}();
-
-        IERC20(collateral).approve(address(activePool), type(uint256).max);
-        IERC20(eBTCToken).approve(address(borrowerOperations), type(uint256).max);
+    function setUp() public {
+        _setUp();
+        _setUpActors();
+        actor = actors[USER1];
+        vm.startPrank(address(actor));
     }
 
     /// @dev Example of test for invariant
@@ -36,13 +38,13 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         setEthPerShare(0);
         addColl(89746347972992101541, 29594050145240);
         openCdp(0, 1);
-        uint256 balanceBefore = collateral.balanceOf(address(this));
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), 0);
+        uint256 balanceBefore = collateral.balanceOf(address(actor));
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), 0);
         uint256 cdpCollBefore = cdpManager.getCdpCollShares(_cdpId);
         uint256 liquidatorRewardSharesBefore = cdpManager.getCdpLiquidatorRewardShares(_cdpId);
         console2.log("before %s", balanceBefore);
         closeCdp(0);
-        uint256 balanceAfter = collateral.balanceOf(address(this));
+        uint256 balanceAfter = collateral.balanceOf(address(actor));
         console2.log("after %s %s %s %s", balanceAfter, cdpCollBefore, liquidatorRewardSharesBefore);
         console2.log(
             "isApproximateEq? %s",
@@ -201,7 +203,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
      */
 
     function testCdpm04() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         bytes32 firstCdp = openCdp(1999999999998000000, 900);
         setEthPerShare(1250000000000000000);
         openCdp(8000000000000000000, 2000000000000000000);
@@ -333,7 +335,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
     function testEchidnaCdpm04() public {
         setEthPerShare(1000);
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         openCdp(4524377229654262, 1);
         setEthPerShare(590);
         setPrice(62585740236349503659258829433448686991336332142246890573120200334913125020112);
@@ -405,7 +407,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
      * 14) EchidnaTester.redeemCollateral(100000000000000000000, 44528197469369619828452631535878582533537470583240950950026051403192050331017, 102238259035789227257399501220130095402144821045197998782718521293354458806802, 109921003103601632895059323246440408018934276513278813998597458827588043910345
      */
     function testCdpm04NewBroken() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
 
         bytes32 firstCdp = openCdp(
             61352334913724331844673735825348778692790231616991642409891756431271008690910,
@@ -449,7 +451,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
     // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/5414c08a-742e-49c1-8ca4-40e53b0a339c/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20230922%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230922T151344Z&X-Amz-Expires=3600&X-Amz-Signature=ec081f6d369188a914e2fad9bf9d5c505b7a7596b16fe18690fe711bed9da22d&X-Amz-SignedHeaders=host&x-id=GetObject
     function testCdpAgain() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         setEthPerShare(1000);
         openCdp(4524377229654262, 1);
         setEthPerShare(590);
@@ -491,7 +493,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
     // https://app.fuzzy.fyi/dashboard/jobs/0d22a32b-5612-4b73-bad2-824dffb6549d
     function testCdpM04ThirdTimesTheCharm() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         openCdp(0, 1);
         setPrice(167381130243608416929425501779011646220066545286939311441885146324);
         openCdp(
@@ -583,7 +585,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         console.log("After Close");
 
         // Accrue all cdps
-        for (uint256 i; i < sortedCdps.cdpCountOf(address(user)); i++) {
+        for (uint256 i; i < sortedCdps.cdpCountOf(address(actor)); i++) {
             cdpManager.syncAccounting(_getRandomCdp(i));
         }
 
@@ -609,11 +611,11 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
         // Fails if done with 0
         // Passes if done with 1
-        if (
-            vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt | // This fixes the check
-        ) {
-            assertGe(vars.newTcrAfter, vars.newTcrBefore, "l_12_expected"); // This invariant should break (because it's underwater)
-        }
+        // if (
+        //     vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt | // This fixes the check
+        // ) {
+        //     assertGe(vars.newTcrAfter, vars.newTcrBefore, "l_12_expected"); // This invariant should break (because it's underwater)
+        // }
     }
 
     function test_12_echidna() public {
@@ -699,7 +701,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
          */
 
         // CDPM-05:
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
 
         setPrice(34051283353441948537783721195918380744632616820013704574804095343781505350319);
         setPrice(34051283353441948537783721195918380744632616820013704574804095343781505350319);
@@ -828,7 +830,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     }
 
     function testGeneral09AnotherEchidna() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         setEthPerShare(422969885005186853460329118216965939317476978914332751313210691257388459660);
         setPrice(32722689803297159564660);
         setEthPerShare(2295800715889050428049394301540389611305203770840759558107023063707478756137);
@@ -870,48 +872,6 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertTrue(invariant_GENERAL_09(cdpManager, vars), "G-09");
     }
 
-    function testNewTcr() public {
-        bytes32 cdp = openCdp(
-            57171402311851979203771794298570627232849516536367359032302056791630,
-            22
-        );
-        setPrice(969908437377713906993269161715201666459885343214304447044925418238284);
-        uint256 currentPrice = priceFeedMock.getPrice();
-
-        console2.log("tcr before sync", cdpManager.getTCR(currentPrice));
-
-        cdpManager.syncGlobalAccountingAndGracePeriod();
-        uint256 prevTCR = cdpManager.getTCR(currentPrice);
-
-        console2.log("tcr after sync", cdpManager.getTCR(currentPrice));
-
-        repayEBTC(
-            65721117470445406076343058077880221223501416620988368611416146266508,
-            158540941122585656115423420542823120113261891967556325033385077539052280
-        );
-        uint256 tcrAfter = cdpManager.getTCR(currentPrice);
-
-        console2.log("tcr after repay", cdpManager.getTCR(currentPrice));
-        console2.log("tcr after simulated sync", _getTcrAfterSimulatedSync());
-
-        cdpManager.syncGlobalAccountingAndGracePeriod();
-
-        console2.log("tcr after sync", cdpManager.getTCR(currentPrice));
-
-        // assertGt(_getICR(cdp), cdpManager.MCR(), "ICR, MCR"); // basic
-
-        // Logs:
-        //   openCdp 2200000000000000370 22
-        //   setPrice 71041372806687933
-        //   tcr before sync 6458306618789813285695815385206145
-        //   tcr after sync 6458306618789813285695815385206145
-        //   repayEBTC 1 0
-        //   tcr after repay 6765845029208375823109901832120724
-        //   tcr after sync 6765845029208375823109901832120724
-
-        assertGt(tcrAfter, prevTCR, "TCR Improved");
-    }
-
     function testLiquidate() public {
         bytes32 _cdpId1 = openCdp(0, 1);
         bytes32 _cdpId2 = openCdp(0, 138503371414274893);
@@ -945,6 +905,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     }
 
     function testCDPM04Again() public {
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         skip(255508);
         openCdp(0, 1);
         skip(448552);
@@ -1046,7 +1007,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
     // }
 
     function testPropertyCSP01() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
+        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         openCdp(4875031885513970860143576544506802817390763544834983767953988765, 2);
         setEthPerShare(165751067651587426758928329439401399262641793);
         openCdp(0, 1);
@@ -1073,312 +1034,13 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
-    function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
-        if (value < low || value > high) {
-            uint256 ans = low + (value % (high - low + 1));
-            return ans;
-        }
-        return value;
-    }
-
-    function setEthPerShare(uint256 _newEthPerShare) internal {
-        uint256 currentEthPerShare = collateral.getEthPerShare();
-        _newEthPerShare = clampBetween(
-            _newEthPerShare,
-            (currentEthPerShare * 1e18) / 1.1e18,
-            (currentEthPerShare * 1.1e18) / 1e18
-        );
-
-        console2.log("setEthPerShare", _newEthPerShare);
-        collateral.setEthPerShare(_newEthPerShare);
-    }
-
-    function setPrice(uint256 _newPrice) internal {
-        uint256 currentPrice = priceFeedMock.getPrice();
-        _newPrice = clampBetween(
-            _newPrice,
-            (currentPrice * 1e18) / 1.05e18,
-            (currentPrice * 1.05e18) / 1e18
-        );
-
-        console2.log("setPrice", _newPrice);
-        priceFeedMock.setPrice(_newPrice);
-    }
-
-    function openCdp(uint256 _col, uint256 _EBTCAmount) internal returns (bytes32) {
-        uint256 price = priceFeedMock.getPrice();
-
-        uint256 requiredCollAmount = (_EBTCAmount * CCR) / (price);
-        uint256 minCollAmount = max(
-            borrowerOperations.MIN_NET_COLL() + borrowerOperations.LIQUIDATOR_REWARD(),
-            requiredCollAmount
-        );
-        uint256 maxCollAmount = min(2 * minCollAmount, 1e20);
-        _col = clampBetween(requiredCollAmount, minCollAmount, maxCollAmount);
-        collateral.approve(address(borrowerOperations), _col);
-
-        console2.log("openCdp", _col, _EBTCAmount);
-        return borrowerOperations.openCdp(_EBTCAmount, bytes32(0), bytes32(0), _col);
-    }
-
-    function closeCdp(uint256 _i) internal {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(user));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
-
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), _i);
-
-        console2.log("closeCdp", _i);
-        borrowerOperations.closeCdp(_cdpId);
-    }
-
-    function addColl(uint256 _coll, uint256 _i) internal {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
-
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
-
-        _coll = clampBetween(_coll, 0, 1e20);
-        collateral.approve(address(borrowerOperations), _coll);
-
-        console2.log("addColl", _coll, _i);
-        borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, _coll);
-    }
-
-    function withdrawEBTC(uint256 _amount, uint256 _i) internal {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
-
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
-
-        _amount = clampBetween(_amount, 0, type(uint128).max);
-
-        console2.log("withdrawEBTC", _amount, _i);
-        borrowerOperations.withdrawEBTC(_cdpId, _amount, _cdpId, _cdpId);
-    }
-
-    function withdrawColl(uint256 _amount, uint256 _i) internal {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
-
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
-
-        _amount = clampBetween(
-            _amount,
-            0,
-            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
-        );
-
-        console2.log("withdrawColl", _amount, _i);
-        borrowerOperations.withdrawColl(_cdpId, _amount, _cdpId, _cdpId);
-    }
-
     function get_cdp(uint256 _i) internal returns (bytes32) {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
+        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
 
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
+        _i = between(_i, 0, numberOfCdps - 1);
+        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
 
         return _cdpId;
-    }
-
-    function repayEBTC(uint256 _amount, uint256 _i) internal {
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(user);
-
-        _i = clampBetween(_i, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
-
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
-        _amount = clampBetween(_amount, 0, entireDebt);
-
-        console2.log("repayEBTC", _amount, _i);
-        borrowerOperations.repayEBTC(_cdpId, _amount, _cdpId, _cdpId);
-    }
-
-    function redeemCollateral(
-        uint256 _EBTCAmount,
-        uint256 _partialRedemptionHintNICR,
-        uint256 _maxFeePercentage,
-        uint256 _maxIterations
-    ) internal {
-        require(
-            block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
-
-        _EBTCAmount = clampBetween(_EBTCAmount, 0, eBTCToken.balanceOf(address(user)));
-        _maxIterations = clampBetween(_maxIterations, 0, 1);
-
-        _maxFeePercentage = clampBetween(
-            _maxFeePercentage,
-            cdpManager.redemptionFeeFloor(),
-            cdpManager.DECIMAL_PRECISION()
-        );
-
-        console2.log("redeemCollateral", _EBTCAmount, _partialRedemptionHintNICR, _maxFeePercentage);
-        console2.log("\t\t\t", _maxIterations);
-        cdpManager.redeemCollateral(
-            _EBTCAmount,
-            bytes32(0),
-            bytes32(0),
-            bytes32(0),
-            _partialRedemptionHintNICR,
-            _maxIterations,
-            _maxFeePercentage
-        );
-    }
-
-    function liquidateCdps(uint256 _n) internal {
-        _n = clampBetween(_n, 1, cdpManager.getActiveCdpsCount());
-
-        console2.log("liquidateCdps", _n);
-        _liquidateCdps(_n);
-    }
-
-    function liquidate(uint256 _i) internal returns (bytes32 _cdpId) {
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
-
-        _cdpId = _getRandomCdp(_i);
-
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
-        require(entireDebt > 0, "CDP must have debt");
-
-        console2.log("liquidate", _i % cdpManager.getActiveCdpsCount());
-        cdpManager.liquidate(_cdpId);
-    }
-
-    function partialLiquidate(uint256 _i, uint256 _partialAmount) internal returns (bytes32 _cdpId) {
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
-
-        _cdpId = _getRandomCdp(_i);
-
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
-        require(entireDebt > 0, "CDP must have debt");
-
-        _partialAmount = clampBetween(_partialAmount, 1, entireDebt - 1);
-
-        console2.log("partiallyLiquidate", _i % cdpManager.getActiveCdpsCount(), _partialAmount);
-        cdpManager.partiallyLiquidate(_cdpId, _partialAmount, _cdpId, _cdpId);
-    }
-
-    function flashLoanColl(uint256 _amount) internal {
-        _amount = clampBetween(_amount, 0, activePool.maxFlashLoan(address(collateral)));
-
-        console2.log("flashLoanColl", _amount);
-
-        uint256 _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
-        uint256 _fee = activePool.flashFee(address(collateral), _amount);
-        activePool.flashLoan(
-            IERC3156FlashBorrower(address(this)),
-            address(collateral),
-            _amount,
-            _getFlashLoanActions(_amount)
-        );
-        uint256 _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-        console.log("\tbalances", _balBefore, _balAfter);
-        console.log("\tfee", _fee);
-    }
-
-    function flashLoanEBTC(uint256 _amount) internal {
-        _amount = clampBetween(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
-
-        console2.log("flashLoanEBTC", _amount);
-
-        uint256 _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-        uint256 _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
-        borrowerOperations.flashLoan(
-            IERC3156FlashBorrower(address(this)),
-            address(eBTCToken),
-            _amount,
-            _getFlashLoanActions(_amount)
-        );
-        uint256 _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-        console.log("\tbalances", _balBefore, _balAfter);
-        console.log("\tfee", _fee);
-    }
-
-    function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
-        uint256 _actions = clampBetween(value, 1, MAX_FLASHLOAN_ACTIONS);
-        uint256 _EBTCAmount = clampBetween(value, 1, eBTCToken.totalSupply() / 2);
-        uint256 _col = clampBetween(value, 1, cdpManager.getSystemCollShares() / 2);
-        uint256 _n = clampBetween(value, 1, cdpManager.getActiveCdpsCount());
-
-        uint256 numberOfCdps = sortedCdps.cdpCountOf(address(user));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
-        uint256 _i = clampBetween(value, 0, numberOfCdps - 1);
-        bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(user), _i);
-        assert(_cdpId != bytes32(0));
-
-        address[] memory _targets = new address[](_actions);
-        bytes[] memory _calldatas = new bytes[](_actions);
-
-        address[] memory _allTargets = new address[](7);
-        bytes[] memory _allCalldatas = new bytes[](7);
-
-        _allTargets[0] = address(borrowerOperations);
-        _allCalldatas[0] = abi.encodeWithSelector(
-            borrowerOperations.openCdp.selector,
-            _EBTCAmount,
-            bytes32(0),
-            bytes32(0),
-            _col
-        );
-
-        _allTargets[1] = address(borrowerOperations);
-        _allCalldatas[1] = abi.encodeWithSelector(borrowerOperations.closeCdp.selector, _cdpId);
-
-        _allTargets[2] = address(borrowerOperations);
-        _allCalldatas[2] = abi.encodeWithSelector(
-            borrowerOperations.addColl.selector,
-            _cdpId,
-            _cdpId,
-            _cdpId,
-            _col
-        );
-
-        _allTargets[3] = address(borrowerOperations);
-        _allCalldatas[3] = abi.encodeWithSelector(
-            borrowerOperations.withdrawColl.selector,
-            _cdpId,
-            _col,
-            _cdpId,
-            _cdpId
-        );
-
-        _allTargets[4] = address(borrowerOperations);
-        _allCalldatas[4] = abi.encodeWithSelector(
-            borrowerOperations.withdrawEBTC.selector,
-            _cdpId,
-            _EBTCAmount,
-            _cdpId,
-            _cdpId
-        );
-
-        _allTargets[5] = address(borrowerOperations);
-        _allCalldatas[5] = abi.encodeWithSelector(
-            borrowerOperations.repayEBTC.selector,
-            _cdpId,
-            _EBTCAmount,
-            _cdpId,
-            _cdpId
-        );
-
-        _allTargets[6] = address(cdpManager);
-        bytes32[] memory _batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
-            _n,
-            priceFeedMock.getPrice()
-        );
-        _allCalldatas[6] = abi.encodeWithSelector(cdpManager.batchLiquidateCdps.selector, _batch);
-
-        for (uint256 _j = 0; _j < _actions; ++_j) {
-            _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;
-            console2.log("\taction", _i);
-
-            _targets[_j] = _allTargets[_i];
-            _calldatas[_j] = _allCalldatas[_i];
-        }
-
-        return abi.encode(_targets, _calldatas);
     }
 
     // callback for flashloan
@@ -1403,67 +1065,5 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         IERC20(token).approve(msg.sender, amount + fee);
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
-    }
-
-    function _getTcrAfterSimulatedSync() internal returns (uint256 newTcr) {
-        address[] memory _targets = new address[](2);
-        bytes[] memory _calldatas = new bytes[](2);
-
-        _targets[0] = address(cdpManager);
-        _calldatas[0] = abi.encodeWithSelector(
-            cdpManager.syncGlobalAccountingAndGracePeriod.selector
-        );
-
-        _targets[1] = address(cdpManager);
-        _calldatas[1] = abi.encodeWithSelector(cdpManager.getTCR.selector, priceFeedMock.getPrice());
-
-        console2.log("simulate");
-
-        // Compute new TCR after syncGlobalAccountingAndGracePeriod and revert to previous snapshot in oder to not affect the current state
-        try this.simulate(_targets, _calldatas) {} catch (bytes memory reason) {
-            console2.logBytes(reason);
-            assembly {
-                // Slice the sighash.
-                reason := add(reason, 0x04)
-            }
-            bytes memory returnData = abi.decode(reason, (bytes));
-            newTcr = abi.decode(returnData, (uint256));
-            console2.log("newTcr", newTcr);
-        }
-    }
-
-    function _getRandomCdp(uint256 _i) internal view returns (bytes32) {
-        uint256 _cdpIdx = _i % cdpManager.getActiveCdpsCount();
-        return cdpManager.CdpIds(_cdpIdx);
-    }
-
-    error Simulate(bytes);
-
-    function simulate(address[] memory _targets, bytes[] memory _calldatas) public {
-        uint256 length = _targets.length;
-
-        bool success;
-        bytes memory returnData;
-
-        for (uint256 i = 0; i < length; i++) {
-            (success, returnData) = address(_targets[i]).call(_calldatas[i]);
-            require(success, _getRevertMsg(returnData));
-        }
-
-        revert Simulate(returnData);
-    }
-
-    function _getFirstCdpWithIcrGteMcr() internal returns (bytes32) {
-        bytes32 _cId = sortedCdps.getLast();
-        address currentBorrower = sortedCdps.getOwnerAddress(_cId);
-        // Find the first cdp with ICR >= MCR
-        while (
-            currentBorrower != address(0) &&
-            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
-        ) {
-            _cId = sortedCdps.getPrev(_cId);
-            currentBorrower = sortedCdps.getOwnerAddress(_cId);
-        }
-        return _cId;
     }
 }

@@ -7,7 +7,7 @@ import {EBTCToken} from "../../EBTCToken.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
 import {CdpManager} from "../../CdpManager.sol";
 import {SortedCdps} from "../../SortedCdps.sol";
-import {AssertionHelper} from "./AssertionHelper.sol";
+import {Asserts} from "./Asserts.sol";
 import {CollSurplusPool} from "../../CollSurplusPool.sol";
 import {PriceFeedTestnet} from "../testnet/PriceFeedTestnet.sol";
 import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
@@ -17,7 +17,7 @@ import {CRLens} from "../../CRLens.sol";
 import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
 import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
 
-abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
+abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts {
     function invariant_AP_01(
         ICollateralToken collateral,
         ActivePool activePool
@@ -52,7 +52,6 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
         uint256 _activeColl = activePool.getSystemCollShares();
         uint256 _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
-        uint256 _divisor = _sum > _activeColl ? _sum : _activeColl;
         return (_diff * 1e18 <= diff_tolerance * _activeColl);
     }
 
@@ -129,11 +128,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     event L(string, uint);
 
-    function invariant_SL_01(
-        CdpManager cdpManager,
-        SortedCdps sortedCdps,
-        uint256 diff_tolerance
-    ) internal returns (bool) {
+    function invariant_SL_01(CdpManager cdpManager, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
         bytes32 nextCdp = sortedCdps.getNext(currentCdp);
 
@@ -157,11 +152,10 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     function invariant_SL_02(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
-        PriceFeedTestnet priceFeedTestnet,
-        uint256 diff_tolerance
+        PriceFeedTestnet priceFeedMock
     ) internal view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         uint256 _firstICR = cdpManager.getICR(_first, _price);
         uint256 _TCR = cdpManager.getTCR(_price);
 
@@ -177,12 +171,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_SL_03(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         SortedCdps sortedCdps
     ) internal view returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         if (_price == 0) return true;
 
         while (currentCdp != bytes32(0)) {
@@ -206,15 +200,9 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     uint256 NICR_ERROR_THRESHOLD = 1e8;
 
-    function invariant_SL_05(
-        CRLens crLens,
-        CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
-        SortedCdps sortedCdps
-    ) internal returns (bool) {
+    function invariant_SL_05(CRLens crLens, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.getPrice();
         uint256 newIcrPrevious = type(uint256).max;
 
         while (currentCdp != bytes32(0)) {
@@ -239,16 +227,16 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_02(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         EBTCToken eBTCToken
     ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getTCR(priceFeedTestnet.getPrice()) > collateral.getPooledEthByShares(1e18)
-                ? (cdpManager.getSystemCollShares() * priceFeedTestnet.getPrice()) / 1e18 >=
+            cdpManager.getTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
+                ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
                     eBTCToken.totalSupply()
-                : (cdpManager.getSystemCollShares() * priceFeedTestnet.getPrice()) / 1e18 <
+                : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <
                     eBTCToken.totalSupply();
     }
 
@@ -305,7 +293,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         bytes32 currentCdp = sortedCdps.getFirst();
         uint256 cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(currentCdp);
+            (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(currentCdp);
             cdpsBalance += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -358,23 +346,22 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_12(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         CRLens crLens
     ) internal returns (bool) {
-        uint256 curentPrice = priceFeedTestnet.getPrice();
+        uint256 curentPrice = priceFeedMock.getPrice();
         return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
     }
 
     function invariant_GENERAL_13(
         CRLens crLens,
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         SortedCdps sortedCdps
     ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 _price = priceFeedMock.getPrice();
-        uint256 newIcrPrevious = type(uint256).max;
 
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
