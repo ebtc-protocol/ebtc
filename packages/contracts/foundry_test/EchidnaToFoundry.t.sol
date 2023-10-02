@@ -667,6 +667,21 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
         assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), "G-14");
     }
+    function testGeneral08() public {
+        openCdp(72782931752105455104411619997485041164599478189648810093633428138496255693523, 544);
+        addColl(1100000000000000000000000000000000000000, 115792089237316195423570985008687907853269984665640564039457584007913129639935);
+        setEthPerShare(56373508540503437814647566068284858699061461229979853420083514714791232396417);
+        repayEBTC(8929450416115957309093038580112496615268409790537290379189142570379833892626, 256);
+
+        assertTrue(
+            invariant_GENERAL_08(
+                cdpManager,
+                sortedCdps,
+                priceFeedMock,
+                collateral
+            )
+            , "G-08");
+    }
 
     function testGeneral09() public {
         /**
