@@ -318,7 +318,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         SortedCdps sortedCdps,
         PriceFeedTestnet priceFeedTestnet,
         ICollateralToken collateral
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         uint256 curentPrice = priceFeedTestnet.getPrice();
 
         bytes32 currentCdp = sortedCdps.getFirst();
@@ -326,14 +326,14 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         uint256 sumOfColl;
         uint256 sumOfDebt;
         while (currentCdp != bytes32(0)) {
-            uint256 entireDebt = cdpManager.getCdpDebt(currentCdp);
-            uint256 entireColl = cdpManager.getCdpCollShares(currentCdp);
+            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(currentCdp);
             sumOfColl += entireColl;
             sumOfDebt += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
         uint256 tcrFromSystem = cdpManager.getTCR(curentPrice);
+        
         uint256 tcrFromSums = LiquityMath._computeCR(
             collateral.getPooledEthByShares(sumOfColl),
             sumOfDebt,
