@@ -418,7 +418,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         LiquidationSequencer ls,
         SyncedLiquidationSequencer syncedLs,
         PriceFeedTestnet priceFeedTestnet
-    ) internal returns (bool) {
+    ) internal view returns (bool) {
         // Or just compare max lenght since that's the one with all of them
         uint256 n = cdpManager.getActiveCdpsCount();
 
