@@ -374,7 +374,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) { /// @audit this is view ICR 
+            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
+                /// @audit this is view ICR
                 _cId = sortedCdps.getPrev(_cId); /// @audit you can still get an incorrectly sorted CDP
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }

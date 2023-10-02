@@ -333,7 +333,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
 
         uint256 tcrFromSystem = cdpManager.getTCR(curentPrice);
-        
+
         uint256 tcrFromSums = LiquityMath._computeCR(
             collateral.getPooledEthByShares(sumOfColl),
             sumOfDebt,
@@ -422,23 +422,22 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         // Or just compare max lenght since that's the one with all of them
         uint256 n = cdpManager.getActiveCdpsCount();
 
-        // Get 
+        // Get
         uint256 price = priceFeedTestnet.getPrice();
-
 
         // Get lists
         bytes32[] memory cdpsFromCurrent = ls.sequenceLiqToBatchLiqWithPrice(n, price);
         bytes32[] memory cdpsSynced = syncedLs.sequenceLiqToBatchLiqWithPrice(n, price);
 
         uint256 length = cdpsFromCurrent.length;
-        if(length != cdpsSynced.length) {
+        if (length != cdpsSynced.length) {
             return false;
         }
 
         // Compare Lists
-        for(uint256 i; i < length; i++) {
+        for (uint256 i; i < length; i++) {
             // Find difference = broken
-            if(cdpsFromCurrent[i] != cdpsSynced[i]) {
+            if (cdpsFromCurrent[i] != cdpsSynced[i]) {
                 return false;
             }
         }
