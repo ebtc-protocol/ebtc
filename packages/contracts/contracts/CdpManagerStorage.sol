@@ -654,10 +654,11 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
             _cdpId,
             stEthFeePerUnitIndex[_cdpId],
-            _newIndex /// NOTE: This is latest index
+            _newGlobalSplitIdx /// NOTE: This is latest index
         );
 
         uint256 NICR = LiquityMath._computeNominalCR(_newColl, _newDebt);

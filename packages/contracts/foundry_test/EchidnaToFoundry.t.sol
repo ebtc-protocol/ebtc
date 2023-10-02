@@ -658,6 +658,12 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertGe(vars.activePoolDebtBefore, vars.activePoolDebtAfter, "CDPM_05_GLOBAL");
     }
 
+    function testGeneral14() public {
+        setEthPerShare(12);
+        openCdp(115792089237316195423570985008687907853269984665640564039457584007913129639935, 6383);
+        
+        assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), "G-14");
+    }
     function testGeneral09() public {
         /**
          * 1) EchidnaTester.setEthPerShare(102306107605456699406774569057307260912721427228498938043330144895537147074023) (block=55208, time=360624, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
