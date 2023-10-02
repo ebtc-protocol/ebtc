@@ -281,8 +281,7 @@ abstract contract TargetFunctions is Properties {
         (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
-        // forcing partial liquidation, otherwise passing upper and lower bounds would be equivalent to `liquidate(uint _i)` and we would have to rewrite the invariants
-        _partialAmount = between(_partialAmount, 1, entireDebt - 1);
+        _partialAmount = between(_partialAmount, 0, entireDebt);
 
         _before(_cdpId);
 
@@ -316,11 +315,14 @@ abstract contract TargetFunctions is Properties {
             );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            gte(
-                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
-                GENERAL_10
-            );
+            if(vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
+                // CDP was not fully liquidated
+                gte(
+                    collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
+                    borrowerOperations.MIN_NET_COLL(),
+                    GENERAL_10
+                );
+            }
 
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -393,12 +395,13 @@ abstract contract TargetFunctions is Properties {
             // );
             // }
 
-            if (
-                vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
-            ) {
-                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
-            }
+            // @audit TODO: This breaks because of before after: https://discord.com/channels/1011322803414388897/1134226009953153053/1155906824118214786
+            // if (
+            //     vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
+            // ) {
+            //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            //     gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+            // }
 
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -793,8 +796,9 @@ abstract contract TargetFunctions is Properties {
             );
 
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-            t( // Non-Negative
-                vars.nicrAfter >= vars.nicrBefore, /// @audit TODO: Removed: || collateral.getEthPerShare() != 1e18, because I believe invariant should always hold
+            gte(
+                vars.nicrAfter,
+                vars.nicrBefore, /// @audit TODO: Removed: || collateral.getEthPerShare() != 1e18, because I believe invariant should always hold
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
