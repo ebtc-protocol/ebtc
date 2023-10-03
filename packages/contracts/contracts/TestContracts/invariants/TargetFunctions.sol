@@ -794,7 +794,7 @@ abstract contract TargetFunctions is Properties {
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
             gte(
                 vars.nicrAfter,
-                vars.nicrBefore, /// @audit TODO: Removed: || collateral.getEthPerShare() != 1e18, because I believe invariant should always hold
+                vars.nicrBefore,
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
