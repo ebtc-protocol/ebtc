@@ -930,6 +930,44 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_liqPremium.eq(_balAfter.sub(_balBefore).sub(_debtToColl)));
   })
   
+  it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation after stETH slash", async () => {
+      // Cdps undercollateralized under minimum liq premium [<3% ICR]
+      await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      // Cdps undercollateralized [3% < ICR < 100%]
+      await openCdp({ ICR: toBN(dec(500, 16)), extraParams: { from: bob } })
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      // Cdps overcollateralized but liquidatable [100% <= ICR < MCR]
+      await openCdp({ ICR: toBN(dec(4500, 16)), extraParams: { from: carol } })
+      let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
+      // Cdps overcollateralized but liquidatable in recovery mode [MCR <= ICR < TCR]
+      await openCdp({ ICR: toBN(dec(4800, 16)), extraParams: { from: dennis } })
+      let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
+      // Cdps overcollateralized and unliquidatable [ICR >= TCR]
+      await openCdp({ ICR: toBN(dec(5400, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN(3)), extraParams: { from: owner } })
+      let _ownerCdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
+
+      // stETH got a serious slash
+      let _price = dec(7428, 13);
+      let _newIndex = dec(24, 15);
+      await collToken.setEthPerShare(_newIndex);
+      let _tcr = await cdpManager.getSyncedTCR(_price);
+      assert.isTrue(_tcr.lt(_CCR));
+
+      // check sequenceLiqToBatchLiq() results
+      // riskiest CDP at last
+      let _batch1 = await th.liqSequencerCallWithPrice(1, _price, contracts, {extraParams: { from: owner }});
+      assert.isTrue(_batch1[0] == _aliceCdpId);
+      let _batch2 = await th.liqSequencerCallWithPrice(2, _price, contracts, {extraParams: { from: owner }});
+      assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
+      let _batch3 = await th.liqSequencerCallWithPrice(3, _price, contracts, {extraParams: { from: owner }});
+      assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
+      let _batch4 = await th.liqSequencerCallWithPrice(4, _price, contracts, {extraParams: { from: owner }});
+      assert.isTrue(_batch4.length == 4 && _batch4[3] == _aliceCdpId && _batch4[2] == _bobCdpId && _batch4[1] == _carolCdpId && _batch4[0] == _dennisCdpId);
+      let _batch5 = await th.liqSequencerCallWithPrice(5, _price, contracts, {extraParams: { from: owner }});
+      assert.isTrue(_batch5.length == 4 && _batch5[3] == _aliceCdpId && _batch5[2] == _bobCdpId && _batch5[1] == _carolCdpId && _batch5[0] == _dennisCdpId);	  
+  })
+  
   it("sequenceLiqToBatchLiq(): return [N] CDP candidates for batch liquidation in Recovery Mode", async () => {
       // Cdps undercollateralized under minimum liq premium [<3% ICR]
       await openCdp({ ICR: toBN(dec(126, 16)), extraParams: { from: alice } })	  
@@ -956,15 +994,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 
       // check sequenceLiqToBatchLiq() results
       // riskiest CDP at last
-      let _batch1 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(1, _newPrice);
+      let _batch1 = await th.liqSequencerCallWithPrice(1, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch1[0] == _aliceCdpId);
-      let _batch2 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(2, _newPrice);
+      let _batch2 = await th.liqSequencerCallWithPrice(2, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
-      let _batch3 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(3, _newPrice);
+      let _batch3 = await th.liqSequencerCallWithPrice(3, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
-      let _batch4 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(4, _newPrice);
+      let _batch4 = await th.liqSequencerCallWithPrice(4, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch4.length == 4 && _batch4[3] == _aliceCdpId && _batch4[2] == _bobCdpId && _batch4[1] == _carolCdpId && _batch4[0] == _dennisCdpId);
-      let _batch5 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(5, _newPrice);
+      let _batch5 = await th.liqSequencerCallWithPrice(5, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch5.length == 4 && _batch5[3] == _aliceCdpId && _batch5[2] == _bobCdpId && _batch5[1] == _carolCdpId && _batch5[0] == _dennisCdpId);	  
   })
 
@@ -993,15 +1031,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 
       // check sequenceLiqToBatchLiq() results
       // riskiest CDP at last
-      let _batch1 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(1, _newPrice);
+      let _batch1 = await th.liqSequencerCallWithPrice(1, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch1[0] == _aliceCdpId);
-      let _batch2 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(2, _newPrice);
+      let _batch2 = await th.liqSequencerCallWithPrice(2, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch2.length == 2 && _batch2[1] == _aliceCdpId && _batch2[0] == _bobCdpId);
-      let _batch3 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(3, _newPrice);
+      let _batch3 = await th.liqSequencerCallWithPrice(3, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch3.length == 3 && _batch3[2] == _aliceCdpId && _batch3[1] == _bobCdpId && _batch3[0] == _carolCdpId);
-      let _batch4 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(4, _newPrice);
+      let _batch4 = await th.liqSequencerCallWithPrice(4, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch4.length == 3 && _batch4[2] == _aliceCdpId && _batch4[1] == _bobCdpId && _batch4[0] == _carolCdpId);
-      let _batch5 = await liquidationSequencer.sequenceLiqToBatchLiqWithPrice(5, _newPrice);
+      let _batch5 = await th.liqSequencerCallWithPrice(5, _newPrice, contracts, {extraParams: { from: owner }});
       assert.isTrue(_batch5.length == 3 && _batch5[2] == _aliceCdpId && _batch5[1] == _bobCdpId && _batch5[0] == _carolCdpId);	  
   })
   
