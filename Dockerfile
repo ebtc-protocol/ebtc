@@ -1,6 +1,6 @@
 ## This Dockerfile is here to help you make Echidna work if you have issues with the installation of it or slither
 
-## Built with 
+## Built with
 ## docker build -t my/fuzzy:latest .
 
 ## Run image with
@@ -65,10 +65,11 @@ RUN pip3 install slither-analyzer
 
 
 RUN echo "[$(date)] Install echidna"
-RUN wget https://github.com/crytic/echidna/releases/download/v2.2.0/echidna-2.2.0-Ubuntu-22.04.tar.gz -O echidna.tar.gz
+RUN wget https://github.com/crytic/echidna/releases/download/v2.2.1/echidna-2.2.1-Linux.zip -O echidna.zip
+RUN unzip echidna.zip
 RUN tar -xvkf echidna.tar.gz
 RUN mv echidna /usr/bin/
-RUN rm echidna.tar.gz
+RUN rm echidna.zip echidna.tar.gz
 
 
 RUN echo "[$(date)] Install foundry"
@@ -83,10 +84,6 @@ RUN PATH="$PATH:$HOME/.foundry/bin" foundryup
 
 RUN echo "[$(date)] Finish setup"
 
-
-## TODO: MEDUSA
-## INSTALL MEDUSA
-
 ## GO
 RUN apt install glibc-source -y
 RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
@@ -98,8 +95,8 @@ RUN git config --global user.name "Your Name"
 
 RUN echo "Downloading and building Medusa..."
 RUN git clone https://github.com/crytic/medusa
-
-RUN cd medusa && GOOS=linux GOARCH=386 go build 
+RUN cd medusa && git checkout ac99e78ee38df86a8afefb21f105be9e4eae46ee && git pull origin dev/merge-assertion-and-property-mode && git pull origin dev/no-multi-abi
+RUN cd medusa && GOOS=linux GOARCH=386 go build
 
 RUN cd medusa && mv medusa /usr/local/bin/ 
 
