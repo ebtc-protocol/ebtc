@@ -1,5 +1,7 @@
 pragma solidity 0.8.17;
 
+import "@crytic/properties/contracts/util/PropertiesConstants.sol";
+
 import {ICollateralToken} from "../../Dependencies/ICollateralToken.sol";
 import {LiquityMath} from "../../Dependencies/LiquityMath.sol";
 import {ActivePool} from "../../ActivePool.sol";
@@ -17,7 +19,7 @@ import {CRLens} from "../../CRLens.sol";
 import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
 import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
 
-abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts {
+abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, PropertiesConstants {
     function invariant_AP_01(
         ICollateralToken collateral,
         ActivePool activePool
@@ -124,6 +126,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts {
         return
             collateral.sharesOf(address(collSurplusPool)) >=
             collSurplusPool.getTotalSurplusCollShares();
+    }
+
+    function invariant_CSP_02(
+        CollSurplusPool collSurplusPool
+    ) internal view returns (bool) {            
+        uint256 sum;
+
+        // NOTE: See PropertiesConstants
+        // We only have 3 actors so just set these up
+        sum += collSurplusPool.getSurplusCollShares(address(actors[USER1]));
+        sum += collSurplusPool.getSurplusCollShares(address(actors[USER2]));
+        sum += collSurplusPool.getSurplusCollShares(address(actors[USER3]));
+
+        return sum == collSurplusPool.getTotalSurplusCollShares();
     }
 
     event L(string, uint);

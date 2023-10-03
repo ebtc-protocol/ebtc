@@ -493,6 +493,9 @@ abstract contract TargetFunctions is Properties {
         }
         gt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
 
+        // Verify Fee Recipient Received the Fee
+        gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, "F-02: Redemptions Fee");
+
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
             vars.isRecoveryModeBefore &&
@@ -550,7 +553,7 @@ abstract contract TargetFunctions is Properties {
 
         uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
-        eq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+        eq(_balAfter - _balBefore, _fee, "F-03: Flashloan should send fee to recipient");
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -610,7 +613,7 @@ abstract contract TargetFunctions is Properties {
         _after(bytes32(0));
 
         uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-        eq(_balAfter - _balBefore, _fee, "Flashloan should send fee to recipient");
+        eq(_balAfter - _balBefore, _fee, "F-03: Flashloan should send fee to recipient");
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -791,7 +794,7 @@ abstract contract TargetFunctions is Properties {
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
             gte(
                 vars.nicrAfter,
-                vars.nicrBefore, /// @audit TODO: Removed: || collateral.getEthPerShare() != 1e18, because I believe invariant should always hold
+                vars.nicrBefore,
                 BO_03
             );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
