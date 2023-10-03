@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
@@ -246,14 +246,14 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 initialDebt = cdpManager.getCdpDebt(cdpId);
 
         // Calculate projected ICR change
-        uint256 projectedIcr = LiquityMath._computeCR(
+        uint256 projectedIcr = EbtcMath._computeCR(
             collAmount,
             initialDebt + withdrawAmnt,
             priceFeedMock.fetchPrice()
         );
         // Calculate projected TCR change with new debt added on top
         uint256 projectedSystemDebt = cdpManager.getSystemDebt() + withdrawAmnt;
-        uint256 projectedTcr = LiquityMath._computeCR(
+        uint256 projectedTcr = EbtcMath._computeCR(
             borrowerOperations.getSystemCollShares(),
             projectedSystemDebt,
             priceFeedMock.fetchPrice()

@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-library LiquityMath {
+library EbtcMath {
     uint256 internal constant DECIMAL_PRECISION = 1e18;
     uint256 public constant MAX_TCR = type(uint256).max;
 

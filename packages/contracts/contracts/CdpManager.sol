@@ -141,7 +141,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) internal returns (SingleRedemptionValues memory singleRedemption) {
         // Determine the remaining amount (lot) to be redeemed,
         // capped by the entire debt of the Cdp minus the liquidation reserve
-        singleRedemption.eBtcToRedeem = LiquityMath._min(
+        singleRedemption.eBtcToRedeem = EbtcMath._min(
             _redeemColFromCdp.maxEBTCamount,
             Cdps[_redeemColFromCdp.cdpId].debt
         );
@@ -195,7 +195,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             }
         } else {
             // Debt remains, reinsert CDP
-            uint256 newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
+            uint256 newNICR = EbtcMath._computeNominalCR(newColl, newDebt);
 
             /*
              * If the provided hint is out of date, we bail since trying to reinsert without a good hint will almost
@@ -617,7 +617,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _totalEBTCSupply;
 
         uint256 newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
-        newBaseRate = LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
+        newBaseRate = EbtcMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
         require(newBaseRate > 0, "CdpManager: new baseRate is zero!"); // Base rate is always non-zero after redemption
 
         // Update the baseRate state variable
@@ -639,7 +639,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _calcRedemptionRate(uint256 _baseRate) internal view returns (uint256) {
         return
-            LiquityMath._min(
+            EbtcMath._min(
                 redemptionFeeFloor + _baseRate,
                 DECIMAL_PRECISION // cap at a maximum of 100%
             );
@@ -697,7 +697,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _calcDecayedBaseRate() internal view returns (uint256) {
         uint256 minutesPassed = _minutesPassedSinceLastRedemption();
-        uint256 decayFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
+        uint256 decayFactor = EbtcMath._decPow(minuteDecayFactor, minutesPassed);
 
         return (baseRate * decayFactor) / DECIMAL_PRECISION;
     }

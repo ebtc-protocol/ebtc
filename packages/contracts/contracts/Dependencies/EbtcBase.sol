@@ -3,17 +3,17 @@
 pragma solidity 0.8.17;
 
 import "./BaseMath.sol";
-import "./LiquityMath.sol";
+import "./EbtcMath.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IPriceFeed.sol";
-import "../Interfaces/ILiquityBase.sol";
+import "../Interfaces/IEbtcBase.sol";
 import "../Dependencies/ICollateralToken.sol";
 
 /*
  * Base contract for CdpManager, BorrowerOperations. Contains global system constants and
  * common functions.
  */
-contract LiquityBase is BaseMath, ILiquityBase {
+contract EbtcBase is BaseMath, IEbtcBase {
     // Collateral Ratio applied for Liquidation Incentive
     // i.e., liquidator repay $1 worth of debt to get back $1.03 worth of collateral
     uint256 public constant LICR = 1030000000000000000; // 103%
@@ -85,7 +85,7 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint256 entireSystemDebt = _getSystemDebt();
 
         uint256 _underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
-        TCR = LiquityMath._computeCR(_underlyingCollateral, entireSystemDebt, _price);
+        TCR = EbtcMath._computeCR(_underlyingCollateral, entireSystemDebt, _price);
 
         return (TCR, entireSystemColl, entireSystemDebt);
     }

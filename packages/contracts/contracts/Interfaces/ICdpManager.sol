@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.17;
 
-import "./ILiquityBase.sol";
+import "./IEbtcBase.sol";
 import "./ICdpManagerData.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManager is ILiquityBase, ICdpManagerData {
+interface ICdpManager is IEbtcBase, ICdpManagerData {
     // --- Functions ---
     function getActiveCdpsCount() external view returns (uint256);
 

@@ -497,7 +497,7 @@ TCR: 11.892415157517211309
       ✓ Beneficiary can withdraw from their funded LC, after the unlockTime (97ms)
       ✓ Non-beneficiaries can't withdraw from a beneficiary's funded LC, after the unlockTime (226ms)
 
-  Contract: LiquityMath
+  Contract: EbtcMath
     ✓ max works if a > b
     ✓ max works if a = b
     ✓ max works if a < b

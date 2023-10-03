@@ -21,7 +21,7 @@ const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 const EBTCDeployer = artifacts.require("./EBTCDeployer.sol")
 
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
-const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
+const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
@@ -474,7 +474,7 @@ class DeploymentHelper {
     testerContracts.weth = await WETH9.new()
     testerContracts.functionCaller = await FunctionCaller.new();
     testerContracts.collateral = collateral;
-    testerContracts.math = await LiquityMathTester.new()
+    testerContracts.math = await EbtcMathTester.new()
 
     /**
      struct EbtcAddresses {

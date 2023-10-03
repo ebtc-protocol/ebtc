@@ -6,7 +6,7 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Dependencies/LiquityBase.sol";
+import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
@@ -17,7 +17,7 @@ import "./Dependencies/AuthNoOwner.sol";
     @dev Both must maintain the same storage layout, so shared storage components where placed here
     @dev Shared functions were also added here to de-dup code
  */
-contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
+contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
     // TODO: IMPROVE
     // NOTE: No packing cause it's the last var, no need for u64
     uint128 public constant UNSET_TIMESTAMP = type(uint128).max;
@@ -94,7 +94,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 price
     ) internal {
         // Compute TCR with specified values
-        uint256 newTCR = LiquityMath._computeCR(
+        uint256 newTCR = EbtcMath._computeCR(
             collateral.getPooledEthByShares(systemCollShares),
             systemDebt,
             price
@@ -222,7 +222,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         address _activePool,
         address _priceFeed,
         address _collateral
-    ) LiquityBase(_activePool, _priceFeed, _collateral) {
+    ) EbtcBase(_activePool, _priceFeed, _collateral) {
         // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
@@ -456,7 +456,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _price
     ) internal view returns (uint256) {
         uint256 _totalColl = collateral.getPooledEthByShares(_systemCollShares);
-        return LiquityMath._computeCR(_totalColl, _systemDebt, _price);
+        return EbtcMath._computeCR(_totalColl, _systemDebt, _price);
     }
 
     // --- Staking-Reward Fee split functions ---
@@ -647,7 +647,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     function getNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares, ) = getDebtAndCollShares(_cdpId);
 
-        uint256 NICR = LiquityMath._computeNominalCR(currentCollShares, currentEBTCDebt);
+        uint256 NICR = EbtcMath._computeNominalCR(currentCollShares, currentEBTCDebt);
         return NICR;
     }
 
@@ -665,7 +665,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         uint256 _price
     ) internal view returns (uint256) {
         uint256 _underlyingCollateral = collateral.getPooledEthByShares(currentCollShare);
-        return LiquityMath._computeCR(_underlyingCollateral, currentDebt, _price);
+        return EbtcMath._computeCR(_underlyingCollateral, currentDebt, _price);
     }
 
     /**

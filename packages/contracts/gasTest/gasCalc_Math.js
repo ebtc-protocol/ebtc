@@ -2,7 +2,7 @@ const fs = require('fs')
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
-const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
+const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 const th = testHelpers.TestHelper
 
@@ -23,8 +23,8 @@ contract('Gas costs for math functions', async accounts => {
     cdpManagerTester = await CdpManagerTester.new(liquidationLibrary.address)
     CdpManagerTester.setAsDeployed(cdpManagerTester)
 
-    mathTester = await LiquityMathTester.new()
-    LiquityMathTester.setAsDeployed(mathTester)
+    mathTester = await EbtcMathTester.new()
+    EbtcMathTester.setAsDeployed(mathTester)
   })
 
   beforeEach(async () => {

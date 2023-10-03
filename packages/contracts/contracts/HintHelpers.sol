@@ -4,9 +4,9 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Dependencies/LiquityBase.sol";
+import "./Dependencies/EbtcBase.sol";
 
-contract HintHelpers is LiquityBase {
+contract HintHelpers is EbtcBase {
     string public constant NAME = "HintHelpers";
 
     ISortedCdps public immutable sortedCdps;
@@ -28,7 +28,7 @@ contract HintHelpers is LiquityBase {
         address _collateralAddress,
         address _activePoolAddress,
         address _priceFeedAddress
-    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
+    ) EbtcBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
         cdpManager = ICdpManager(_cdpManagerAddress);
     }
@@ -135,7 +135,7 @@ contract HintHelpers is LiquityBase {
         uint256 _price
     ) internal view returns (uint256, uint256) {
         // maxReemable = min(remainingToRedeem, currentDebt)
-        uint256 maxRedeemableEBTC = LiquityMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
+        uint256 maxRedeemableEBTC = EbtcMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
         uint256 newCollShare;
         uint256 _oldIndex = cdpManager.stEthIndex();
@@ -159,7 +159,7 @@ contract HintHelpers is LiquityBase {
         uint256 _newCollShareAfter = newCollShare - collShareToReceive;
         return (
             _newCollShareAfter,
-            LiquityMath._computeNominalCR(_newCollShareAfter, currentCdpDebt - maxRedeemableEBTC)
+            EbtcMath._computeNominalCR(_newCollShareAfter, currentCdpDebt - maxRedeemableEBTC)
         );
     }
 
@@ -214,7 +214,7 @@ contract HintHelpers is LiquityBase {
         }
 
         hint = sortedCdps.getLast();
-        diff = LiquityMath._getAbsoluteDifference(_CR, cdpManager.getNominalICR(hint));
+        diff = EbtcMath._getAbsoluteDifference(_CR, cdpManager.getNominalICR(hint));
         latestRandomSeed = _inputRandomSeed;
 
         uint256 i = 1;
@@ -227,7 +227,7 @@ contract HintHelpers is LiquityBase {
             uint256 currentNICR = cdpManager.getNominalICR(_cId);
 
             // check if abs(current - CR) > abs(closest - CR), and update closest if current is closer
-            uint256 currentDiff = LiquityMath._getAbsoluteDifference(currentNICR, _CR);
+            uint256 currentDiff = EbtcMath._getAbsoluteDifference(currentNICR, _CR);
 
             if (currentDiff < diff) {
                 diff = currentDiff;
@@ -239,7 +239,7 @@ contract HintHelpers is LiquityBase {
 
     /// @notice Compute nominal CR for a specified collateral and debt amount
     function computeNominalCR(uint256 _coll, uint256 _debt) external pure returns (uint256) {
-        return LiquityMath._computeNominalCR(_coll, _debt);
+        return EbtcMath._computeNominalCR(_coll, _debt);
     }
 
     /// @notice Compute CR for a specified collateral and debt amount
@@ -248,6 +248,6 @@ contract HintHelpers is LiquityBase {
         uint256 _debt,
         uint256 _price
     ) external pure returns (uint256) {
-        return LiquityMath._computeCR(_coll, _debt, _price);
+        return EbtcMath._computeCR(_coll, _debt, _price);
     }
 }

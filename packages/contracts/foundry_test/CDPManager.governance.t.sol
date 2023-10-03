@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 /*

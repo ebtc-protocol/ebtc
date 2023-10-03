@@ -8,14 +8,14 @@ import "./Interfaces/ICdpManagerData.sol";
 import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
-import "./Dependencies/LiquityBase.sol";
+import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 
 contract BorrowerOperations is
-    LiquityBase,
+    EbtcBase,
     ReentrancyGuard,
     IBorrowerOperations,
     ERC3156FlashLender,
@@ -111,7 +111,7 @@ contract BorrowerOperations is
         address _ebtcTokenAddress,
         address _feeRecipientAddress,
         address _collTokenAddress
-    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
+    ) EbtcBase(_activePoolAddress, _priceFeedAddress, _collTokenAddress) {
         // This makes impossible to open a cdp with zero withdrawn EBTC
         // TODO: Re-evaluate this
 
@@ -326,7 +326,7 @@ contract BorrowerOperations is
             _stEthBalanceDecrease <= _cdpStEthBalance,
             "BorrowerOperations: withdraw more collateral than CDP has!"
         );
-        vars.oldICR = LiquityMath._computeCR(_cdpStEthBalance, vars.debt, vars.price);
+        vars.oldICR = EbtcMath._computeCR(_cdpStEthBalance, vars.debt, vars.price);
         vars.newICR = _getNewICRFromCdpChange(
             vars.coll,
             vars.debt,
@@ -419,10 +419,10 @@ contract BorrowerOperations is
         uint256 _liquidatorRewardShares = collateral.getSharesByPooledEth(LIQUIDATOR_REWARD);
 
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
-        vars.ICR = LiquityMath._computeCR(vars.netColl, vars.debt, vars.price);
+        vars.ICR = EbtcMath._computeCR(vars.netColl, vars.debt, vars.price);
 
         // NICR uses shares to normalize NICR across CDPs opened at different pooled ETH / shares ratios
-        vars.NICR = LiquityMath._computeNominalCR(_netCollAsShares, vars.debt);
+        vars.NICR = EbtcMath._computeNominalCR(_netCollAsShares, vars.debt);
 
         /**
             In recovery move, ICR must be greater than CCR
@@ -935,7 +935,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint256 newNICR = LiquityMath._computeNominalCR(newColl, newDebt);
+        uint256 newNICR = EbtcMath._computeNominalCR(newColl, newDebt);
         return newNICR;
     }
 
@@ -958,7 +958,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint256 newICR = LiquityMath._computeCR(
+        uint256 newICR = EbtcMath._computeCR(
             collateral.getPooledEthByShares(newColl),
             newDebt,
             _price
@@ -997,7 +997,7 @@ contract BorrowerOperations is
         totalColl = _isCollIncrease ? totalColl + _collChange : totalColl - _collChange;
         totalDebt = _isDebtIncrease ? totalDebt + _debtChange : totalDebt - _debtChange;
 
-        uint256 newTCR = LiquityMath._computeCR(totalColl, totalDebt, _price);
+        uint256 newTCR = EbtcMath._computeCR(totalColl, totalDebt, _price);
         return newTCR;
     }
 
