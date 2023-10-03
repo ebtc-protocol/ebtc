@@ -73,8 +73,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
     }
 
-    /// TODO: obv optimizations
-    function syncGracePeriod() public {
+    function _syncGracePeriod() internal {
         uint256 price = priceFeed.fetchPrice();
         uint256 tcr = _getTCR(price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
@@ -486,7 +485,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Call this if you want to accrue feeSplit
     function syncGlobalAccountingAndGracePeriod() public {
         _syncGlobalAccounting(); // Apply // Could trigger RM
-        syncGracePeriod(); // Synch Grace Period
+        _syncGracePeriod(); // Synch Grace Period
     }
 
     /// @return existing(old) local stETH index AND
