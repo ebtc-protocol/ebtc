@@ -72,9 +72,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
 
-        // Move past bootstrap phase to allow redemptions
-        vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
-
         return cdps;
     }
 
@@ -86,9 +83,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 debt2 = 2e18;
         uint256 coll2 = _utils.calculateCollAmount(debt2, _curPrice, 1.105e18); // Extremely Risky
         bytes32 cdp = _openTestCDP(users[0], coll2, debt2);
-
-        // Move past bootstrap phase to allow redemptions
-        vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
 
         return cdp;
     }

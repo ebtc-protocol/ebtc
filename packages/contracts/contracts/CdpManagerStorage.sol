@@ -152,9 +152,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint256 public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
     uint256 public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
 
-    // During bootsrap period redemptions are not allowed
-    uint256 public constant BOOTSTRAP_PERIOD = 14 days;
-
     uint256 internal immutable deploymentStartTime;
 
     /*
