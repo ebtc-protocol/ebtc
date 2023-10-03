@@ -478,7 +478,7 @@ abstract contract TargetFunctions is Properties {
         gt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
         if (_maxIterations == 1) {
             gte(vars.activePoolDebtBefore, vars.activePoolDebtAfter, CDPM_05);
-            gte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_06); /// @audit This should not break after the fix as we check for redistributed bad debt in `cdpDebtBefore`
+            gte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_06);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
             // if (!_atLeastOneCdpIsLiquidatableBefore) {
             //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
