@@ -54,6 +54,51 @@ contract PositionManagerPermitTest is eBTCBaseInvariants {
         );
     }
 
+    ///@dev signed permit should be valid until explicitly invalidate
+    function test_PermitValidUntilExplicitlyInvalidate() public {
+        (address user, address positionManager) = _testPreconditions();
+
+        uint _deadline = (block.timestamp + deadline);
+        IPositionManagers.PositionManagerApproval _approval = IPositionManagers
+            .PositionManagerApproval
+            .Persistent;
+
+        // set positionManager via digest sign
+        vm.startPrank(user);
+        bytes32 digest = _generatePermitSignature(user, positionManager, _approval, _deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(userPrivateKey, digest);
+        vm.stopPrank();
+
+        vm.prank(positionManager);
+        borrowerOperations.permitPositionManagerApproval(
+            user,
+            positionManager,
+            _approval,
+            _deadline,
+            v,
+            r,
+            s
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) == _approval
+        );
+
+        // now we invalidate the permit for the user
+        vm.prank(user);
+        borrowerOperations.increasePermitNonce();
+
+        vm.expectRevert("BorrowerOperations: Invalid signature");
+        borrowerOperations.permitPositionManagerApproval(
+            user,
+            positionManager,
+            _approval,
+            _deadline,
+            v,
+            r,
+            s
+        );
+    }
+
     ///@dev PositionManager should be invalid after deadline
     function test_PermitInvalidAfterDeadline() public {
         (address user, address positionManager) = _testPreconditions();
