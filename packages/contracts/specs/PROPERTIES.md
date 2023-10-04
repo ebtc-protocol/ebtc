@@ -149,10 +149,10 @@ TODO: Also do one that shows that it can NEVER revert
 
 | Property | Description | Category | Tested |
 | --- | --- | --- | --- |
-| F-01 | `claimFeeRecipientCollShares` allows to claim at any time (SEE BELOW) | Unit Tests | |
+| F-01 | `claimFeeRecipientCollShares` allows to claim at any time (SEE BELOW) | Unit Tests | TODO |
 
-| F-02 | Fees From Redemptions are added to `claimFeeRecipientCollShares`` | Unit Tests | |
-| F-03 | Fees From FlashLoans are sent to the fee Recipient | Unit Tests | |
+| F-02 | Fees From Redemptions are added to `claimFeeRecipientCollShares` | Unit Tests | IMPL |
+| F-03 | Fees From FlashLoans are sent to the fee Recipient | Unit Tests | IMPL |
 
 
 
@@ -168,13 +168,7 @@ If success -> Check that goes to 0
 
 If fail -> check balance is unchanged
 
-### 
-
-FeeeRebase
-
--> Redemptions -> Allocates Shares -> Something was redeemed -> Increase of `claimFeeRecipientCollShares`
--> FlashLoans -> Transfer Directly -> Flashloan was performed > Increase of balance of recipient - F-02
-
+### FeeeRebase
 -> Claiming Pending stETH Index
 -> Increases the Value
 _before stETHINDEX
@@ -183,6 +177,7 @@ _after stETHINDEX
 -> FeeRecipient changed
 
 Should we write a explicit check that in any other situation it didn't change?
+
 
 
 ## Col Surplus
@@ -204,6 +199,12 @@ RECON
 
 -> Last CDP
 -> Can still reduce to min size
+
+-> Custom "Withdraw All Handler"
+-> Each Actor
+-> All withdraw
+-> Revert if one of them doesn't
+-> Revert with index?
 
 
 
