@@ -61,7 +61,7 @@ abstract contract TargetFunctions is Properties {
         uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
-            ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getICR(currentCdp, _price)});
+            ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getSyncedICR(currentCdp, _price)}); /// @audit NOTE: Synced to ensure it's realistic
 
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -387,14 +387,14 @@ abstract contract TargetFunctions is Properties {
                 "liquidateCdps must liquidate at least 1 CDP when successful"
             );
             lte(cdpsLiquidated.length, _n, "liquidateCdps must not liquidate more than n CDPs");
-            // for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
-            // t(
-            //     cdpsLiquidated[i].icr < cdpManager.MCR() ||
-            //         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
-            //     L_01
-            // );
-            // }
+            for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
+                t(
+                    cdpsLiquidated[i].icr < cdpManager.MCR() ||
+                        (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                    L_01
+                );
+            }
 
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -450,10 +450,10 @@ abstract contract TargetFunctions is Properties {
         );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
-        // bool _atLeastOneCdpIsLiquidatableBefore = _atLeastOneCdpIsLiquidatable(
-        //     _getCdpIdsAndICRs(),
-        //     cdpManager.checkRecoveryMode(priceFeedMock.getPrice())
-        // );
+        bool _atLeastOneCdpIsLiquidatableBefore = _atLeastOneCdpIsLiquidatable(
+            _getCdpIdsAndICRs(),
+            cdpManager.checkRecoveryMode(priceFeedMock.getPrice())
+        );
 
         _before(_cdpId);
 
@@ -479,16 +479,15 @@ abstract contract TargetFunctions is Properties {
         if (_maxIterations == 1) {
             gte(vars.activePoolDebtBefore, vars.activePoolDebtAfter, CDPM_05);
             gte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_06);
+            // TODO: CHECK THIS
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
-            // if (!_atLeastOneCdpIsLiquidatableBefore) {
-            //     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10
-            //     gt(
-            //         vars.newTcrAfter,
-            //         vars.newTcrBefore,
-            //         R_07
-            //     );
-            // }
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/6#issuecomment-1702653146
+            if (!_atLeastOneCdpIsLiquidatableBefore) {
+                gt(
+                    vars.newTcrAfter, // TODO: See how this breaks
+                    vars.newTcrBefore,
+                    R_07
+                );
+            }
             t(invariant_CDPM_04(vars), CDPM_04);
         }
         gt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
@@ -552,7 +551,6 @@ abstract contract TargetFunctions is Properties {
         _after(bytes32(0));
 
         uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/9
         eq(_balAfter - _balBefore, _fee, "F-03: Flashloan should send fee to recipient");
 
         if (
