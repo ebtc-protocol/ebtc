@@ -73,6 +73,62 @@ contract EToFoundry is
         return totalValue;
     }
 
+
+    event DebugBytes32(string name, bytes32 v);
+    function testLS01() public {
+        openCdp(36, 1);
+        openCdp(
+            44123017348912576180317745456189857733780478953582148509153709115247120891823,
+            200000000000000000
+        );
+        setPrice(76198417712734018461546705290463707597643164940764698001817170623344387673136);
+        setPrice(87405135521336340527122586343533021380622128208084101094060450788350832849209);
+        setEthPerShare(
+            103391299437296880034081343669838720993649506068708991825092080752669230555147
+        );
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039447584007913129639936
+        );
+        adjustCdp(
+            17557140364109963148061446080805750691763165277705558547368821385485334844592,
+            65536,
+            52150574133267500752110179891739993549417328753147422856083931774206217442908,
+            false
+        );
+        setEthPerShare(131032);
+        openCdp(1273085944690585089466618884538704481757146938342, 7428);
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039457584007913129639918
+        );
+
+        // SEE invariant_LS_01
+        uint256 n = cdpManager.getActiveCdpsCount();
+
+        // Get
+        uint256 price = priceFeedMock.getPrice();
+
+        // Get lists
+        bytes32[] memory cdpsFromCurrent = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(n, price);
+        bytes32[] memory cdpsSynced = syncedLiquidationSequencer.sequenceLiqToBatchLiqWithPrice(n, price);
+
+        for(uint256 i; i < cdpsFromCurrent.length; i++) {
+            emit DebugBytes32("cdpsFromCurrent[i]", cdpsFromCurrent[i]);
+        }
+        for(uint256 i; i < cdpsSynced.length; i++) {
+            emit DebugBytes32("cdpsSynced[i]", cdpsSynced[i]);
+        }
+
+        uint256 length = cdpsFromCurrent.length;
+        assertEq(length, cdpsSynced.length, "Same Length");
+
+        // Compare Lists
+        for (uint256 i; i < length; i++) {
+            // Find difference = broken
+            console2.log("i", i);
+            assertEq(cdpsFromCurrent[i], cdpsSynced[i], "Same Cdp");
+        }
+    }
+
     /**
      * 1) EchidnaTester.setEthPerShare(645326474426547203313410069153905908525362434357) (block=10, time=17, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
      *     2) EchidnaTester.setPrice(200) (block=43, time=58, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
