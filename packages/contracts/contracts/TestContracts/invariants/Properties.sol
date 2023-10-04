@@ -128,9 +128,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             collSurplusPool.getTotalSurplusCollShares();
     }
 
-    function invariant_CSP_02(
-        CollSurplusPool collSurplusPool
-    ) internal view returns (bool) {            
+    function invariant_CSP_02(CollSurplusPool collSurplusPool) internal view returns (bool) {
         uint256 sum;
 
         // NOTE: See PropertiesConstants
@@ -418,7 +416,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
     function invariant_LS_01(
         CdpManager cdpManager,
-        SortedCdps sortedCdps,
         LiquidationSequencer ls,
         SyncedLiquidationSequencer syncedLs,
         PriceFeedTestnet priceFeedTestnet

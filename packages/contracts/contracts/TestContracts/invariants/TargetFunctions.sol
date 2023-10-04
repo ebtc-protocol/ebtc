@@ -450,10 +450,6 @@ abstract contract TargetFunctions is Properties {
         );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
-        bool _atLeastOneCdpIsLiquidatableBefore = _atLeastOneCdpIsLiquidatable(
-            _getCdpIdsAndICRs(),
-            cdpManager.checkRecoveryMode(priceFeedMock.getPrice())
-        );
 
         _before(_cdpId);
 
@@ -481,7 +477,9 @@ abstract contract TargetFunctions is Properties {
             gte(vars.cdpDebtBefore, vars.cdpDebtAfter, CDPM_06);
             // TODO: CHECK THIS
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
-            if (!_atLeastOneCdpIsLiquidatableBefore) {
+            if (vars.sortedCdpsSizeBefore == vars.sortedCdpsSizeAfter) {
+                // Redemptions do not reduce TCR
+                // If redemptions do not close any CDP that was healthy (low debt, high coll)
                 gt(
                     vars.newTcrAfter, // TODO: See how this breaks
                     vars.newTcrBefore,
@@ -493,7 +491,11 @@ abstract contract TargetFunctions is Properties {
         gt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
 
         // Verify Fee Recipient Received the Fee
-        gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, "F-02: Redemptions Fee");
+        gte(
+            vars.feeRecipientTotalCollAfter,
+            vars.feeRecipientTotalCollBefore,
+            "F-02: Redemptions Fee"
+        );
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -790,11 +792,7 @@ abstract contract TargetFunctions is Properties {
             );
 
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-            gte(
-                vars.nicrAfter,
-                vars.nicrBefore,
-                BO_03
-            );
+            gte(vars.nicrAfter, vars.nicrBefore, BO_03);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             t(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4

@@ -45,10 +45,10 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
     function echidna_coll_surplus_pool_invariant_1() public returns (bool) {
         return invariant_CSP_01(collateral, collSurplusPool);
     }
+
     function echidna_coll_surplus_pool_invariant_2() public returns (bool) {
         return invariant_CSP_02(collSurplusPool);
     }
-
 
     function echidna_sorted_list_invariant_1() public returns (bool) {
         return invariant_SL_01(cdpManager, sortedCdps);
@@ -108,12 +108,12 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
     }
 
     function echidna_LS_01() public returns (bool) {
-        return invariant_LS_01(
-            cdpManager,
-            sortedCdps,
-            liquidationSequencer,
-            syncedLiquidationSequencer,
-            priceFeedMock
-    )   ;
+        return
+            invariant_LS_01(
+                cdpManager,
+                liquidationSequencer,
+                syncedLiquidationSequencer,
+                priceFeedMock
+            );
     }
 }
