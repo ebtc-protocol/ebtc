@@ -224,7 +224,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             if (newIcr > newIcrPrevious) {
                 /// @audit Precision Threshold to flag very scary scenarios
                 /// Innoquous scenario illustrated here: https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
-                if (newIcr - NICR_ERROR_THRESHOLD > newIcrPrevious) {
+                if (newIcr - newIcrPrevious > NICR_ERROR_THRESHOLD) {
                     return false;
                 }
             }
