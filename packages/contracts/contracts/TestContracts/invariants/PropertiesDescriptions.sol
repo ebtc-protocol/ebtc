@@ -119,6 +119,13 @@ abstract contract PropertiesDescriptions {
         "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR";
 
     ///////////////////////////////////////////////////////
+    // Fee Recipient
+    ///////////////////////////////////////////////////////
+
+    F_01 = "F-01: `claimFeeRecipientCollShares` allows to claim at any time";
+    F_02 = "F-02: Fees From Redemptions are added to `claimFeeRecipientCollShares`";
+    F_03 = "F-03: Fees From FlashLoans are sent to the fee Recipient";
+    ///////////////////////////////////////////////////////
     // Price Feed
     ///////////////////////////////////////////////////////
 

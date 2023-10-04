@@ -494,7 +494,7 @@ abstract contract TargetFunctions is Properties {
         gte(
             vars.feeRecipientTotalCollAfter,
             vars.feeRecipientTotalCollBefore,
-            "F-02: Redemptions Fee"
+            F_02
         );
 
         if (
@@ -553,7 +553,7 @@ abstract contract TargetFunctions is Properties {
         _after(bytes32(0));
 
         uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-        eq(_balAfter - _balBefore, _fee, "F-03: Flashloan should send fee to recipient");
+        eq(_balAfter - _balBefore, _fee, F_03);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -613,7 +613,7 @@ abstract contract TargetFunctions is Properties {
         _after(bytes32(0));
 
         uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
-        eq(_balAfter - _balBefore, _fee, "F-03: Flashloan should send fee to recipient");
+        eq(_balAfter - _balBefore, _fee, F_03);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
