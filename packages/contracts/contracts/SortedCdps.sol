@@ -120,24 +120,30 @@ contract SortedCdps is ISortedCdps {
         address owner,
         uint256 index
     ) external view override returns (bytes32) {
-        return _cdpOfOwnerByIndex(owner, index, dummyId, 0);
+        (bytes32 _cdpId, ) = _cdpOfOwnerByIndex(owner, index, dummyId, 0);
+        return _cdpId;
     }
 
+    /// @dev a pagination-flavor search (from least ICR to biggest ICR) for CDP owned by given owner and specified index (starting at given CDP)
+    /// @param startNodeId the seach traversal will start at this given CDP instead of the tail of the list
+    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of CDPs
     function cdpOfOwnerByIdx(
         address owner,
         uint256 index,
         bytes32 startNodeId,
         uint maxNodes
-    ) external view override returns (bytes32) {
+    ) external view override returns (bytes32, bool) {
         return _cdpOfOwnerByIndex(owner, index, startNodeId, maxNodes);
     }
 
+    /// @dev return EITHER the found CDP owned by given owner & index with a true indicator OR
+    /// @dev        current lastly-visited CDP as the startNode for next pagination with a false indicator
     function _cdpOfOwnerByIndex(
         address owner,
         uint256 index,
         bytes32 startNodeId,
         uint maxNodes
-    ) internal view returns (bytes32) {
+    ) internal view returns (bytes32, bool) {
         // walk the list, until we get to the indexed CDP
         // start at the given node or from the tail of list
         bytes32 _currentCdpId = (startNodeId == dummyId ? data.tail : startNodeId);
@@ -149,7 +155,7 @@ contract SortedCdps is ISortedCdps {
             if (getOwnerAddress(_currentCdpId) == owner) {
                 // if the current index of the owner Cdp matches specified index
                 if (_currentIndex == index) {
-                    return _currentCdpId;
+                    return (_currentCdpId, true);
                 } else {
                     // if not, increment the owner index as we've seen a Cdp owned by them
                     _currentIndex = _currentIndex + 1;
@@ -165,30 +171,37 @@ contract SortedCdps is ISortedCdps {
                 break;
             }
         }
-
-        // if we reach end without seeing the specified index for the owner, a Cdp of that index doesn't exist (they have fewer active Cdps than that)
-        revert("SortedCdps: index exceeds owned count of owner or specify a bigger maxNodes");
+        // if we reach maximum iteration or end of list
+        // without seeing the specified index for the owner
+        // then maybe a new pagination is needed
+        return (_currentCdpId, false);
     }
 
     /// @notice Get active Cdp count of a given address
     /// @dev Intended for off-chain use, O(n) operation on size of linked list
     function cdpCountOf(address owner) external view override returns (uint256) {
-        return _cdpCountOf(owner, dummyId, 0);
+        (uint256 _cnt, ) = _cdpCountOf(owner, dummyId, 0);
+        return _cnt;
     }
 
-    function cdpCountOf(
+    /// @dev a pagination-flavor search count of (from least ICR to biggest ICR) CDPs owned by given owner (starting at given CDP)
+    /// @param startNodeId the count traversal will start at this given CDP instead of the tail of the list
+    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of CDPs
+    function getCdpCountOf(
         address owner,
         bytes32 startNodeId,
         uint maxNodes
-    ) external view override returns (uint256) {
+    ) external view override returns (uint256, bytes32) {
         return _cdpCountOf(owner, startNodeId, maxNodes);
     }
 
+    /// @dev return the found CDP count owned by given owner with
+    /// @dev        current lastly-visited CDP as the startNode for next pagination
     function _cdpCountOf(
         address owner,
         bytes32 startNodeId,
         uint maxNodes
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256, bytes32) {
         // walk the list, until we get to the count
         // start at the given node or from the tail of list
         bytes32 _currentCdpId = (startNodeId == dummyId ? data.tail : startNodeId);
@@ -210,37 +223,45 @@ contract SortedCdps is ISortedCdps {
                 break;
             }
         }
-        return _ownedCount;
+        return (_ownedCount, _currentCdpId);
     }
 
     /// @notice Get all active Cdps for a given address
     /// @dev Intended for off-chain use, O(n) operation on size of linked list
-    function getCdpsOf(address owner) external view override returns (bytes32[] memory) {
+    function getCdpsOf(address owner) external view override returns (bytes32[] memory cdps) {
         // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
         // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
-        uint _ownedCount = _cdpCountOf(owner, dummyId, 0);
-        return _getCdpsOf(owner, dummyId, 0, _ownedCount);
+        (uint _ownedCount, ) = _cdpCountOf(owner, dummyId, 0);
+        if (_ownedCount > 0) {
+            (bytes32[] memory _allCdps, , ) = _getCdpsOf(owner, dummyId, 0, _ownedCount);
+            cdps = _allCdps;
+        }
     }
 
-    function getCdpsOf(
+    /// @dev a pagination-flavor search retrieval of (from least ICR to biggest ICR) CDPs owned by given owner (starting at given CDP)
+    /// @param startNodeId the traversal will start at this given CDP instead of the tail of the list
+    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of CDPs
+    function getAllCdpsOf(
         address owner,
         bytes32 startNodeId,
         uint maxNodes
-    ) external view override returns (bytes32[] memory) {
+    ) external view override returns (bytes32[] memory, uint256, bytes32) {
         // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
         // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
-        uint _ownedCount = _cdpCountOf(owner, startNodeId, maxNodes);
+        (uint _ownedCount, ) = _cdpCountOf(owner, startNodeId, maxNodes);
         return _getCdpsOf(owner, startNodeId, maxNodes, _ownedCount);
     }
 
+    /// @dev return EITHER the found CDPs (also the count) owned by given owner OR empty array with
+    /// @dev        current lastly-visited CDP as the startNode for next pagination
     function _getCdpsOf(
         address owner,
         bytes32 startNodeId,
         uint maxNodes,
         uint maxArraySize
-    ) internal view returns (bytes32[] memory) {
+    ) internal view returns (bytes32[] memory, uint256, bytes32) {
         if (maxArraySize == 0) {
-            return new bytes32[](0);
+            return (new bytes32[](0), 0, dummyId);
         }
 
         // Two-pass strategy, halving the amount of Cdps we can process before relying on pagination or off-chain methods
@@ -269,7 +290,7 @@ contract SortedCdps is ISortedCdps {
             }
         }
 
-        return userCdps;
+        return (userCdps, _cdpRetrieved, _currentCdpId);
     }
 
     /*
