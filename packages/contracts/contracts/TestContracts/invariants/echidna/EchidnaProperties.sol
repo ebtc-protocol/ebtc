@@ -40,9 +40,15 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
         return invariant_CDPM_03(cdpManager);
     }
 
+    // CDPM_04 is a vars invariant
+
     function echidna_coll_surplus_pool_invariant_1() public returns (bool) {
         return invariant_CSP_01(collateral, collSurplusPool);
     }
+    function echidna_coll_surplus_pool_invariant_2() public returns (bool) {
+        return invariant_CSP_02(collSurplusPool);
+    }
+
 
     function echidna_sorted_list_invariant_1() public returns (bool) {
         return invariant_SL_01(cdpManager, sortedCdps);
@@ -60,6 +66,8 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
     function echidna_sorted_list_invariant_5() public returns (bool) {
         return invariant_SL_05(crLens, sortedCdps);
     }
+
+    // invariant_GENERAL_01 is a vars invariant
 
     function echidna_GENERAL_02() public returns (bool) {
         return invariant_GENERAL_02(cdpManager, priceFeedMock, eBTCToken);
@@ -85,6 +93,8 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
         return invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral);
     }
 
+    // invariant_GENERAL_09 is a vars
+
     function echidna_GENERAL_12() public returns (bool) {
         return invariant_GENERAL_12(cdpManager, priceFeedMock, crLens);
     }
@@ -95,5 +105,15 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
 
     function echidna_GENERAL_14() public returns (bool) {
         return invariant_GENERAL_14(crLens, cdpManager, sortedCdps);
+    }
+
+    function echidna_LS_01() public returns (bool) {
+        return invariant_LS_01(
+            cdpManager,
+            sortedCdps,
+            liquidationSequencer,
+            syncedLiquidationSequencer,
+            priceFeedMock
+    )   ;
     }
 }
