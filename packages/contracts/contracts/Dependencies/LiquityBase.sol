@@ -120,11 +120,12 @@ contract LiquityBase is BaseMath, ILiquityBase {
     /// @dev return true if given ICR is qualified for liquidation compared to configured threshold
     /// @dev this function ONLY checks numbers not check grace period switch for Recovery Mode
     function _checkICRAgainstLiqThreshold(uint256 _icr, uint _tcr) internal view returns (bool) {
-        bool _rm = _checkRecoveryModeForTCR(_tcr);
+        // Either undercollateralized
+        // OR, it's RM AND they meet the requirement
+        // Swapped Requirement && RM to save gas
         return
-            (_rm)
-                ? (_checkICRAgainstMCR(_icr) || _checkICRAgainstTCR(_icr, _tcr))
-                : _checkICRAgainstMCR(_icr);
+            _checkICRAgainstMCR(_icr) ||
+            (_checkICRAgainstTCR(_icr, _tcr) && _checkRecoveryModeForTCR(_tcr));
     }
 
     /// @dev return true if given ICR is qualified for liquidation compared to MCR
