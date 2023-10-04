@@ -85,7 +85,9 @@ RUN PATH="$PATH:$HOME/.foundry/bin" foundryup
 RUN echo "[$(date)] Finish setup"
 
 ## GO
-RUN apt install glibc-source -y
+## NOTE: For some reason we need to re-get else sometimes glibc throws error
+RUN apt-get update
+RUN apt install -y glibc-source
 RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
 RUN export PATH="$PATH:/usr/local/go/bin"
 ENV PATH="$PATH:/usr/local/go/bin"
@@ -96,6 +98,9 @@ RUN git config --global user.name "Your Name"
 RUN echo "Downloading and building Medusa..."
 RUN git clone https://github.com/crytic/medusa
 RUN cd medusa && git checkout ac99e78ee38df86a8afefb21f105be9e4eae46ee && git pull origin dev/merge-assertion-and-property-mode && git pull origin dev/no-multi-abi
+
+## WARNING!!!!
+## Comment this line on Silicon, the line below is for Intel!
 RUN cd medusa && GOOS=linux GOARCH=386 go build
 
 RUN cd medusa && mv medusa /usr/local/bin/ 
