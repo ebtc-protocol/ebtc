@@ -322,7 +322,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         bytes32 toLiquidateCdpId
     ) public {
         vm.startPrank(actor);
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         uint256 startTimestamp = block.timestamp;
         uint256 expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriod() +
             cdpManager.lastGracePeriodStartTimestamp();

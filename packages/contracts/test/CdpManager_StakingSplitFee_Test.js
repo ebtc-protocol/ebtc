@@ -284,9 +284,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _collBeforeLiquidator = await collToken.balanceOf(owner);		  
 	  	  
       // trigger cooldown and pass the liq wait
-      await cdpManager.syncGracePeriod();
-      await ethers.provider.send("evm_increaseTime", [901]);
-      await ethers.provider.send("evm_mine");
+      await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 	  
       await cdpManager.partiallyLiquidate(_aliceCdpId, _partialDebtRepaid, _aliceCdpId, _aliceCdpId, {from: owner});
       let _collAfterLiquidator = await collToken.balanceOf(owner);	
@@ -301,8 +299,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);  
 	  
       // redeem alice CDP
-      // skip bootstrapping phase	  
-      await ethers.provider.send("evm_increaseTime", [86400 * 15]);
       await ethers.provider.send("evm_mine");
 	  
       let _redeemDebt = _partialDebtRepaid.mul(toBN("9"));

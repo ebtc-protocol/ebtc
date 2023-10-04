@@ -80,9 +80,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await setup()		  
 	  	  
       // trigger cooldown and pass the liq wait
-      await cdpManager.syncGracePeriod();
-      await ethers.provider.send("evm_increaseTime", [901]);
-      await ethers.provider.send("evm_mine");
+      await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 		
       let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
@@ -100,9 +98,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);		  
 	  	  
       // trigger cooldown and pass the liq wait
-      await cdpManager.syncGracePeriod();
-      await ethers.provider.send("evm_increaseTime", [901]);
-      await ethers.provider.send("evm_mine");
+      await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 		
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});

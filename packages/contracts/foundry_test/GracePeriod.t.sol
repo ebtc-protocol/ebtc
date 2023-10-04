@@ -72,9 +72,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
 
-        // Move past bootstrap phase to allow redemptions
-        vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
-
         return cdps;
     }
 
@@ -86,9 +83,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 debt2 = 2e18;
         uint256 coll2 = _utils.calculateCollAmount(debt2, _curPrice, 1.105e18); // Extremely Risky
         bytes32 cdp = _openTestCDP(users[0], coll2, debt2);
-
-        // Move past bootstrap phase to allow redemptions
-        vm.warp(cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD());
 
         return cdp;
     }
@@ -198,7 +192,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         uint256 degenSnapshot = _assertSuccessOnAllLiquidationsDegen(cdp);
 
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
@@ -213,7 +207,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period not started, expect reverts on liquidations
         _assertRevertOnAllLiquidations(cdps);
 
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
         _assertRevertOnAllLiquidations(cdps);
 
@@ -338,7 +332,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         assertLt(TCR, 1.25e18, "!RM");
 
         // Set grace period before action which exits RM
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         _assertRevertOnAllLiquidations(cdps);
 
