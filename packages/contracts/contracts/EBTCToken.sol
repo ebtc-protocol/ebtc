@@ -101,6 +101,17 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         _burn(_account, _amount);
     }
 
+    /**
+     * @notice Burn existing tokens from caller
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
+     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+     * @param _amount The amount of tokens to burn
+     */
+    function burn(uint256 _amount) external {
+        _requireCallerIsBOorCdpMOrAuth();
+        _burn(msg.sender, _amount);
+    }
+
     // --- External functions ---
 
     function totalSupply() external view override returns (uint256) {

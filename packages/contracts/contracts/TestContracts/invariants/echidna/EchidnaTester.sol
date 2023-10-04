@@ -326,7 +326,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-            if(vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
+            if (vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
                 // CDP was not fully liquidated
                 assertGte(
                     collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
@@ -458,11 +458,6 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         uint _maxFeePercentage,
         uint _maxIterations
     ) external {
-        require(
-            block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
-
         actor = actors[msg.sender];
 
         bool success;
