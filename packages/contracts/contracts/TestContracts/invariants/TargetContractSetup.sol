@@ -367,6 +367,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         addresses[0] = USER1;
         addresses[1] = USER2;
         addresses[2] = USER3;
+        Actor[] memory actorsArray = new Actor[](NUMBER_OF_ACTORS);
         for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
             actors[addresses[i]] = new Actor(tokens, callers);
             (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
@@ -377,6 +378,13 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 INITIAL_COLL_BALANCE
             );
             assert(success);
+            actorsArray[i] = actors[addresses[i]];
         }
+        simulator = new Simulator(
+            actorsArray,
+            cdpManager,
+            sortedCdps,
+            borrowerOperations
+        );
     }
 }
