@@ -381,12 +381,42 @@ contract EToFoundry is
             8515157922397009703417557607681739958843134455800791473869353135908031450320,
             131251319846597049
         );
+
+        console2.log("");
+        console2.log("");
+        console2.log("Before");
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        while (currentCdp != bytes32(0)) {
+            (uint256 debtBefore, uint256 collBefore, ) = cdpManager.getDebtAndCollShares(currentCdp);
+            console2.log("debtBefore", debtBefore);
+            console2.log("collBefore", collBefore);
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
         redeemCollateral(
             289058276040013882279825268963168994859580940307359182338590061533,
             721412354899084084812938159596061041337963802121256850421410071451651,
             746364832991185847452451142827121750634362670833976451629299654241,
             1279293321452559466690908804649893886462942558282969306040083134065919
         );
+
+        // Debug all CDPs
+        console2.log("");
+        console2.log("");
+        console2.log("After");
+        currentCdp = sortedCdps.getFirst();
+
+        while (currentCdp != bytes32(0)) {
+            (uint256 debtBefore, uint256 collBefore, ) = cdpManager.getDebtAndCollShares(currentCdp);
+            console2.log("debtBefore", debtBefore);
+            console2.log("collBefore", collBefore);
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+
         assertTrue(invariant_CDPM_04(vars), "Cdp-04");
 
             uint256 beforeValue = ((vars.activePoolCollBefore +
