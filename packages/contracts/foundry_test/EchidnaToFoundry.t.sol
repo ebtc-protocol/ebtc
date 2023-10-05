@@ -73,8 +73,8 @@ contract EToFoundry is
         return totalValue;
     }
 
-
     event DebugBytes32(string name, bytes32 v);
+
     function testLS01() public {
         openCdp(36, 1);
         openCdp(
@@ -108,13 +108,19 @@ contract EToFoundry is
         uint256 price = priceFeedMock.getPrice();
 
         // Get lists
-        bytes32[] memory cdpsFromCurrent = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(n, price);
-        bytes32[] memory cdpsSynced = syncedLiquidationSequencer.sequenceLiqToBatchLiqWithPrice(n, price);
+        bytes32[] memory cdpsFromCurrent = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            n,
+            price
+        );
+        bytes32[] memory cdpsSynced = syncedLiquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            n,
+            price
+        );
 
-        for(uint256 i; i < cdpsFromCurrent.length; i++) {
+        for (uint256 i; i < cdpsFromCurrent.length; i++) {
             emit DebugBytes32("cdpsFromCurrent[i]", cdpsFromCurrent[i]);
         }
-        for(uint256 i; i < cdpsSynced.length; i++) {
+        for (uint256 i; i < cdpsSynced.length; i++) {
             emit DebugBytes32("cdpsSynced[i]", cdpsSynced[i]);
         }
 

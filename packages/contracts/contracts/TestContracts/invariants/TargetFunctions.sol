@@ -491,11 +491,7 @@ abstract contract TargetFunctions is Properties {
         gt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
 
         // Verify Fee Recipient Received the Fee
-        gte(
-            vars.feeRecipientTotalCollAfter,
-            vars.feeRecipientTotalCollBefore,
-            F_02
-        );
+        gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_02);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -1237,5 +1233,56 @@ abstract contract TargetFunctions is Properties {
             (currentPrice * MAX_PRICE_CHANGE_PERCENT) / 1e18
         );
         priceFeedMock.setPrice(_newPrice);
+    }
+
+    ///////////////////////////////////////////////////////
+    // Governance
+    ///////////////////////////////////////////////////////
+
+    function setGovernanceParameters(uint256 parameter, uint256 value) public {
+        parameter = between(parameter, 0, 10);
+
+        if (parameter == 0) {
+            value = between(value, cdpManager.MINIMUM_GRACE_PERIOD(), type(uint128).max);
+            cdpManager.setGracePeriod(uint128(value));
+        } else if (parameter == 1) {
+            value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
+            activePool.claimFeeRecipientCollShares(value);
+        } else if (parameter == 2) {
+            value = between(value, 0, activePool.MAX_FEE_BPS());
+            activePool.setFeeBps(value);
+        } else if (parameter == 3) {
+            value = between(value, 0, 1);
+            activePool.setFlashLoansPaused(value == 1 ? true : false);
+        } else if (parameter == 4) {
+            value = between(value, 0, borrowerOperations.MAX_FEE_BPS());
+            borrowerOperations.setFeeBps(value);
+        } else if (parameter == 5) {
+            value = between(value, 0, 1);
+            borrowerOperations.setFlashLoansPaused(value == 1 ? true : false);
+        } else if (parameter == 6) {
+            value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
+            cdpManager.setStakingRewardSplit(value);
+        } else if (parameter == 7) {
+            value = between(
+                value,
+                cdpManager.MIN_REDEMPTION_FEE_FLOOR(),
+                cdpManager.DECIMAL_PRECISION()
+            );
+            cdpManager.setRedemptionFeeFloor(value);
+        } else if (parameter == 8) {
+            value = between(
+                value,
+                cdpManager.MIN_MINUTE_DECAY_FACTOR(),
+                cdpManager.MAX_MINUTE_DECAY_FACTOR()
+            );
+            cdpManager.setMinuteDecayFactor(value);
+        } else if (parameter == 9) {
+            // TODO: what are reasonable beta bounds?
+            cdpManager.setBeta(value);
+        } else if (parameter == 10) {
+            value = between(value, 0, 1);
+            cdpManager.setRedemptionsPaused(value == 1 ? true : false);
+        }
     }
 }

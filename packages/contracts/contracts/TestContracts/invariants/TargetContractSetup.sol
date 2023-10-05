@@ -30,29 +30,6 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
     IHevm internal constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-    // -- Permissioned Function Signatures for Authority --
-    // CDPManager
-    bytes4 internal constant SET_STAKING_REWARD_SPLIT_SIG =
-        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
-    bytes4 internal constant SET_REDEMPTION_FEE_FLOOR_SIG =
-        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
-    bytes4 internal constant SET_MINUTE_DECAY_FACTOR_SIG =
-        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 internal constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
-
-    // EBTCToken
-    bytes4 internal constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
-    bytes4 internal constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
-
-    // PriceFeed
-    bytes4 internal constant SET_TELLOR_CALLER_SIG =
-        bytes4(keccak256(bytes("setTellorCaller(address)")));
-
-    // Flash Lender
-    bytes4 internal constant SET_FLASH_FEE_SIG = bytes4(keccak256(bytes("setFlashFee(uint256)")));
-    bytes4 internal constant SET_MAX_FLASH_FEE_SIG =
-        bytes4(keccak256(bytes("setMaxFlashFee(uint256)")));
-
     struct CDPChange {
         uint collAddition;
         uint collReduction;
@@ -61,7 +38,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     }
 
     function _setUp() internal {
-        defaultGovernance = msg.sender;
+        defaultGovernance = address(this);
         ebtcDeployer = new EBTCDeployer();
 
         // Default governance is deployer
@@ -243,24 +220,77 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             authority.setRoleName(2, "eBTCToken: burn");
             authority.setRoleName(3, "CDPManager: all");
             authority.setRoleName(4, "PriceFeed: setTellorCaller");
-            authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
+            authority.setRoleName(5, "BorrowerOperations: all");
 
-            authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
+            authority.setRoleCapability(1, address(eBTCToken), eBTCToken.mint.selector, true);
 
-            authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+            authority.setRoleCapability(2, address(eBTCToken), eBTCToken.burn.selector, true);
 
-            authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
-            authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
-            authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
-            authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setStakingRewardSplit.selector,
+                true
+            );
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setRedemptionFeeFloor.selector,
+                true
+            );
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setMinuteDecayFactor.selector,
+                true
+            );
+            authority.setRoleCapability(3, address(cdpManager), cdpManager.setBeta.selector, true);
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setGracePeriod.selector,
+                true
+            );
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setRedemptionsPaused.selector,
+                true
+            );
 
-            authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
+            authority.setRoleCapability(
+                4,
+                address(priceFeedMock),
+                priceFeedMock.setFallbackCaller.selector,
+                true
+            );
 
-            authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
-            authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
+            authority.setRoleCapability(
+                5,
+                address(borrowerOperations),
+                borrowerOperations.setFeeBps.selector,
+                true
+            );
+            authority.setRoleCapability(
+                5,
+                address(borrowerOperations),
+                borrowerOperations.setFlashLoansPaused.selector,
+                true
+            );
 
-            authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
-            authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
+            authority.setRoleCapability(5, address(activePool), activePool.setFeeBps.selector, true);
+            authority.setRoleCapability(
+                5,
+                address(activePool),
+                activePool.setFlashLoansPaused.selector,
+                true
+            );
+            authority.setRoleCapability(
+                5,
+                address(activePool),
+                activePool.claimFeeRecipientCollShares.selector,
+                true
+            );
 
             authority.setUserRole(defaultGovernance, 0, true);
             authority.setUserRole(defaultGovernance, 1, true);
@@ -268,8 +298,6 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             authority.setUserRole(defaultGovernance, 3, true);
             authority.setUserRole(defaultGovernance, 4, true);
             authority.setUserRole(defaultGovernance, 5, true);
-
-            authority.transferOwnership(defaultGovernance);
 
             crLens = new CRLens(address(cdpManager), address(priceFeedMock));
 
@@ -293,7 +321,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     event Log(string);
 
     function _setUpFork() internal {
-        defaultGovernance = msg.sender;
+        defaultGovernance = address(this); // TODO we need to prank the governance
         ebtcDeployer = EBTCDeployer(0xe90f99c08F286c48db4D1AfdAE6C122de69B7219);
         collateral = CollateralTokenTester(payable(0xf8017430A0efE03577f6aF88069a21900448A373));
         {
@@ -308,40 +336,6 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             hintHelpers = HintHelpers(0xCaBdBc4218dd4b9E3fB9842232aD0aFc7c431693);
             eBTCToken = EBTCTokenTester(0x9Aa69Db8c53E504EF22615390EE9Eb72cb8bE498);
             feeRecipient = FeeRecipient(0x40FF68eaE525233950B63C2BCEa39770efDE52A4);
-
-            // Configure authority
-            // authority.setRoleName(0, "Admin");
-            // authority.setRoleName(1, "eBTCToken: mint");
-            // authority.setRoleName(2, "eBTCToken: burn");
-            // authority.setRoleName(3, "CDPManager: all");
-            // authority.setRoleName(4, "PriceFeed: setTellorCaller");
-            // authority.setRoleName(5, "BorrowerOperations: setFlashFee & setMaxFlashFee");
-
-            // authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
-
-            // authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
-
-            // authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
-            // authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
-            // authority.setRoleCapability(3, address(cdpManager), SET_MINUTE_DECAY_FACTOR_SIG, true);
-            // authority.setRoleCapability(3, address(cdpManager), SET_BASE_SIG, true);
-
-            // authority.setRoleCapability(4, address(priceFeedMock), SET_TELLOR_CALLER_SIG, true);
-
-            // authority.setRoleCapability(5, address(borrowerOperations), SET_FLASH_FEE_SIG, true);
-            // authority.setRoleCapability(5, address(borrowerOperations), SET_MAX_FLASH_FEE_SIG, true);
-
-            // authority.setRoleCapability(5, address(activePool), SET_FLASH_FEE_SIG, true);
-            // authority.setRoleCapability(5, address(activePool), SET_MAX_FLASH_FEE_SIG, true);
-
-            // authority.setUserRole(defaultGovernance, 0, true);
-            // authority.setUserRole(defaultGovernance, 1, true);
-            // authority.setUserRole(defaultGovernance, 2, true);
-            // authority.setUserRole(defaultGovernance, 3, true);
-            // authority.setUserRole(defaultGovernance, 4, true);
-            // authority.setUserRole(defaultGovernance, 5, true);
-
-            // authority.transferOwnership(defaultGovernance);
 
             crLens = new CRLens(address(cdpManager), address(priceFeedMock));
 
