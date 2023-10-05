@@ -364,14 +364,22 @@ contract('SortedCdps', async accounts => {
     })
 
     it('getCdpsOf(): returns no CDPs if user didnt open one', async () => {
-      // Alice has 3 CDPs opened
-      const cdps = await sortedCdps.getCdpsOf(alice);
+      // Alice has zero CDPs opened
+      let _cdpCnt = await sortedCdps.cdpCountOf(alice);
+      assert.equal(_cdpCnt.toString(), '0')
+      let cdps = await sortedCdps.getCdpsOf(alice);
       assert.equal(cdps.length, 0)
       // Make sure arrays are equal
       assert.deepEqual(cdps, []);
+      
+      cdps = await sortedCdps.getAllCdpsOf(alice, th.DUMMY_BYTES32, 123);
+      assert.equal(cdps[0].length, 0)
+      assert.equal(cdps[1].toString(), '0')
+      // Make sure arrays are equal
+      assert.deepEqual(cdps[0], []);
     })
 
-    it('getCdpsOf(owner, startNodeId, maxNodes): cut the run if we exceed expected iterations through the loop', async () => {
+    it('getAllCdpsOf(owner, startNodeId, maxNodes): cut the run if we exceed expected iterations through the loop', async () => {
       // Open a few cdps
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
@@ -382,40 +390,50 @@ contract('SortedCdps', async accounts => {
           await sortedCdps.cdpOfOwnerByIndex(alice, 2)
       ];
       // check different maxNodes
-      const cdps = await sortedCdps.getCdpsOf(alice, th.DUMMY_BYTES32, 1);
-      assert.equal(cdps.length, 1)
-      assert.deepEqual(cdps, [expectedCdps[0]]);
-      const cdps2 = await sortedCdps.getCdpsOf(alice, th.DUMMY_BYTES32, 2);
-      assert.equal(cdps2.length, 2)
-      assert.deepEqual(cdps2, [expectedCdps[0], expectedCdps[1]]);
-      const cdps3 = await sortedCdps.getCdpsOf(alice, th.DUMMY_BYTES32, 3);
-      assert.equal(cdps3.length, 3)
-      assert.deepEqual(cdps3, expectedCdps);
+      const cdps = await sortedCdps.getAllCdpsOf(alice, th.DUMMY_BYTES32, 1);
+      assert.equal(cdps[0].length, 1)
+      assert.equal(cdps[1].toString(), '1')
+      assert.deepEqual(cdps[0], [expectedCdps[0]]);
+      const cdps2 = await sortedCdps.getAllCdpsOf(alice, th.DUMMY_BYTES32, 2);
+      assert.equal(cdps2[0].length, 2)
+      assert.equal(cdps2[1].toString(), '2')
+      assert.deepEqual(cdps2[0], [expectedCdps[0], expectedCdps[1]]);
+      const cdps3 = await sortedCdps.getAllCdpsOf(alice, th.DUMMY_BYTES32, 3);
+      assert.equal(cdps3[0].length, 3)
+      assert.equal(cdps3[1].toString(), '3')
+      assert.deepEqual(cdps3[0], expectedCdps);
 	  
-      // bob insert a CDP into the list	  
+      // bob insert a CDP into the list	between the first and the second CDP of alice
       await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
       // since we specify maxNodes==2 which will fetch 1 CDP for alice & bob accoridng to sorting order
-      const cdpsAlice = await sortedCdps.getCdpsOf(alice, th.DUMMY_BYTES32, 2);
-      assert.equal(cdpsAlice.length, 1)
-      assert.deepEqual(cdpsAlice, [expectedCdps[0]]);
+      const cdpsAlice = await sortedCdps.getAllCdpsOf(alice, th.DUMMY_BYTES32, 2);
+      assert.equal(cdpsAlice[0].length, 1)
+      assert.equal(cdpsAlice[1].toString(), '1')
+      assert.equal(cdpsAlice[2], expectedCdps[1])
+      assert.deepEqual(cdpsAlice[0], [expectedCdps[0]]);
       // since we specify maxNodes==3 which will fetch 2 CDP for alice & 1 CDP for bob accoridng to sorting order
-      const cdpsAlice2 = await sortedCdps.getCdpsOf(alice, th.DUMMY_BYTES32, 3);
-      assert.equal(cdpsAlice2.length, 2)
-      assert.deepEqual(cdpsAlice2, [expectedCdps[0], expectedCdps[1]]);
+      const cdpsAlice2 = await sortedCdps.getAllCdpsOf(alice, th.DUMMY_BYTES32, 3);
+      assert.equal(cdpsAlice2[0].length, 2)
+      assert.equal(cdpsAlice2[1].toString(), '2')
+      assert.equal(cdpsAlice2[2], expectedCdps[2])
+      assert.deepEqual(cdpsAlice2[0], [expectedCdps[0], expectedCdps[1]]);
     })
 
-    it('cdpCountOf(owner, startNodeId, maxNodes): cut the run if we exceed expected iterations through the loop', async () => {
+    it('getCdpCountOf(owner, startNodeId, maxNodes): cut the run if we exceed expected iterations through the loop', async () => {
       // Open a few cdps
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: alice } })
       // check different maxNodes
-      const cdps = await sortedCdps.cdpCountOf(alice, th.DUMMY_BYTES32, 1);
-      assert.equal(cdps.toString(), '1')
-      const cdps2 = await sortedCdps.cdpCountOf(alice, th.DUMMY_BYTES32, 2);
-      assert.equal(cdps2.toString(), '2')
-      const cdps3 = await sortedCdps.cdpCountOf(alice, th.DUMMY_BYTES32, 3);
-      assert.equal(cdps3.toString(), '3')
+      const cdps = await sortedCdps.getCdpCountOf(alice, th.DUMMY_BYTES32, 1);
+      assert.equal(cdps[0].toString(), '1')
+      assert.equal(cdps[1], await sortedCdps.cdpOfOwnerByIndex(alice, 1))
+      const cdps2 = await sortedCdps.getCdpCountOf(alice, th.DUMMY_BYTES32, 2);
+      assert.equal(cdps2[0].toString(), '2')
+      assert.equal(cdps2[1], await sortedCdps.cdpOfOwnerByIndex(alice, 2))
+      const cdps3 = await sortedCdps.getCdpCountOf(alice, th.DUMMY_BYTES32, 3);
+      assert.equal(cdps3[0].toString(), '3')
+      assert.equal(cdps3[1], th.DUMMY_BYTES32)
     })
 
     it('cdpOfOwnerByIdx(owner, index, startNodeId, maxNodes): cut the run if we exceed expected iterations through the loop', async () => {
@@ -426,80 +444,169 @@ contract('SortedCdps', async accounts => {
       // check different maxNodes
       let _cdp1 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
       const cdp1 = await sortedCdps.cdpOfOwnerByIdx(alice, 0, th.DUMMY_BYTES32, 1);
-      assert.equal(cdp1, _cdp1)
+      assert.equal(cdp1[0], _cdp1)
+      assert.isTrue(cdp1[1]);
       let _cdp2 = await sortedCdps.cdpOfOwnerByIndex(alice, 1);
       const cdp2 = await sortedCdps.cdpOfOwnerByIdx(alice, 1, th.DUMMY_BYTES32, 2);
-      assert.equal(cdp2, _cdp2)
+      assert.equal(cdp2[0], _cdp2)
+      assert.isTrue(cdp2[1]);
       let _cdp3 = await sortedCdps.cdpOfOwnerByIndex(alice, 2);
       const cdp3 = await sortedCdps.cdpOfOwnerByIdx(alice, 2, th.DUMMY_BYTES32, 3);
-      assert.equal(cdp3, _cdp3)
-      await th.assertRevert(sortedCdps.cdpOfOwnerByIdx(alice, 3, th.DUMMY_BYTES32, 3), "SortedCdps: index exceeds owned count of owner or specify a bigger maxNodes");
+      assert.equal(cdp3[0], _cdp3)
+      assert.isTrue(cdp3[1]);
+      const cdp4 = await sortedCdps.cdpOfOwnerByIdx(alice, 3, th.DUMMY_BYTES32, 3);
+      assert.isFalse(cdp4[1]);
     })
 
-    it('cdpCountOf(owner, startNodeId, maxNodes): start at the given node', async () => {
+    it('getCdpCountOf(owner, startNodeId, maxNodes): start at the given node', async () => {
       // Open a few cdps
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(161, 16)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(21, 18)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(2010, 18)), extraParams: { from: bob } })
       // check different startNodeId
-      const cdps = await sortedCdps.cdpCountOf(alice, (await sortedCdps.cdpOfOwnerByIndex(alice, 0)), 3);
-      assert.equal(cdps.toString(), '3')
-      const cdps2 = await sortedCdps.cdpCountOf(alice, (await sortedCdps.cdpOfOwnerByIndex(alice, 1)), 2);
-      assert.equal(cdps2.toString(), '2')
-      const cdps3 = await sortedCdps.cdpCountOf(alice, (await sortedCdps.cdpOfOwnerByIndex(alice, 2)), 1);
-      assert.equal(cdps3.toString(), '1')
+      let _cdp1 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _startNode = _cdp1;
+      let _maxNodes = 1;
+	  
+      const cdps = await sortedCdps.getCdpCountOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps[0].toString(), '1')
+      assert.equal(cdps[1], await sortedCdps.cdpOfOwnerByIndex(bob, 0))
+	  
+      // current pagination return a CDP as startNode for next iteration
+      let _cdp2 = await sortedCdps.cdpOfOwnerByIndex(alice, 1);
+      _maxNodes = _maxNodes + 1;
+      const cdps2 = await sortedCdps.getCdpCountOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps2[0].toString(), '1')
+      assert.equal(cdps2[1], _cdp2)
+	  
+      // run another pagination
+      _startNode = cdps2[1]
+      _maxNodes = 1;
+      let _cdp3 = await sortedCdps.cdpOfOwnerByIndex(alice, 2);
+      const cdps3 = await sortedCdps.getCdpCountOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps3[0].toString(), '1')
+      assert.equal(cdps3[1], await sortedCdps.cdpOfOwnerByIndex(bob, 1))
+      _startNode = cdps3[1];
+      _maxNodes = _maxNodes + 1;
+      const cdpLast = await sortedCdps.getCdpCountOf(alice, _startNode, _maxNodes);
+      assert.equal(cdpLast[0].toString(), '1')
+      assert.equal(cdpLast[1], await sortedCdps.cdpOfOwnerByIndex(bob, 2))
+	  
+      // final pagination should return false indicator and reach end of list
+      const cdpFinal = await sortedCdps.getCdpCountOf(alice, cdpLast[1], _maxNodes);
+      assert.equal(cdpFinal[0].toString(), '0')
+      assert.equal(cdpFinal[1], th.DUMMY_BYTES32)
     })
 
     it('cdpOfOwnerByIdx(owner, index, startNodeId, maxNodes): start at the given node', async () => {
       // Open a few cdps
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(161, 16)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(21, 18)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(2010, 18)), extraParams: { from: bob } })
       // check different startNodeId
       let _cdp1 = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-      const cdp1 = await sortedCdps.cdpOfOwnerByIdx(alice, 0, _cdp1, 1);
-      assert.equal(cdp1, _cdp1)
+      let _startNode = _cdp1;
+      let _maxNodes = 1;
+	  
+      const cdp1 = await sortedCdps.cdpOfOwnerByIdx(alice, _maxNodes - 1, _startNode, _maxNodes);
+      assert.equal(cdp1[0], _cdp1)
+      assert.isTrue(cdp1[1]);
+	  
+      // current pagination return a CDP as startNode for next iteration
       let _cdp2 = await sortedCdps.cdpOfOwnerByIndex(alice, 1);
-      const cdp2 = await sortedCdps.cdpOfOwnerByIdx(alice, 0, _cdp2, 1);
-      assert.equal(cdp2, _cdp2)
+      _maxNodes = _maxNodes + 1;	  
+      const cdpB1 = await sortedCdps.cdpOfOwnerByIdx(alice, _maxNodes - 1, _startNode, _maxNodes);
+      assert.equal(cdpB1[0], _cdp2);
+      assert.isFalse(cdpB1[1]);
+      _startNode = cdpB1[0];
+      _maxNodes = 1;
+      const cdp2 = await sortedCdps.cdpOfOwnerByIdx(alice, _maxNodes - 1, _startNode, _maxNodes);
+      assert.equal(cdp2[0], _cdp2)
+      assert.isTrue(cdp2[1]);
+	  
+      // run another pagination
       let _cdp3 = await sortedCdps.cdpOfOwnerByIndex(alice, 2);
-      const cdp3 = await sortedCdps.cdpOfOwnerByIdx(alice, 0, _cdp3, 1);
-      assert.equal(cdp3, _cdp3)
-      await th.assertRevert(sortedCdps.cdpOfOwnerByIdx(alice, 1, _cdp3, 1), "SortedCdps: index exceeds owned count of owner or specify a bigger maxNodes");
+      _maxNodes = _maxNodes + 1;	  
+      const cdpB2 = await sortedCdps.cdpOfOwnerByIdx(alice, _maxNodes - 1, _startNode, _maxNodes);
+      assert.equal(cdpB2[0], _cdp3);
+      assert.isFalse(cdpB2[1]);
+      _startNode = cdpB2[0];
+      _maxNodes = 1;
+      const cdp3 = await sortedCdps.cdpOfOwnerByIdx(alice, _maxNodes - 1, _startNode, _maxNodes);
+      assert.equal(cdp3[0], _cdp3)
+      assert.isTrue(cdp3[1]);
+	  
+      // final pagination should return false indicator and reach end of list
+      _maxNodes = _maxNodes + 1;	  
+      const cdp4 = await sortedCdps.cdpOfOwnerByIdx(alice, _maxNodes - 1, _startNode, _maxNodes);
+      assert.equal(cdp4[0], th.DUMMY_BYTES32)
+      assert.isFalse(cdp4[1]);	  
     })
 
-    it('getCdpsOf(owner, startNodeId, maxNodes): start at the given node', async () => {
+    it('getAllCdpsOf(owner, startNodeId, maxNodes): start at the given node', async () => {
       // Open a few cdps
       await openCdp({ ICR: toBN(dec(151, 16)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(161, 16)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(21, 18)), extraParams: { from: bob } })
       await openCdp({ ICR: toBN(dec(2000, 18)), extraParams: { from: alice } })
+      await openCdp({ ICR: toBN(dec(2010, 18)), extraParams: { from: bob } })
       const expectedCdps = [
           await sortedCdps.cdpOfOwnerByIndex(alice, 0),
           await sortedCdps.cdpOfOwnerByIndex(alice, 1),
           await sortedCdps.cdpOfOwnerByIndex(alice, 2)
       ];
       // check different startNodeId
-      const cdps = await sortedCdps.getCdpsOf(alice, expectedCdps[0], 3);
-      assert.equal(cdps.length, 3)
-      assert.deepEqual(cdps, expectedCdps);
-      const cdps2 = await sortedCdps.getCdpsOf(alice, expectedCdps[1], 2);
-      assert.equal(cdps2.length, 2)
-      assert.deepEqual(cdps2, [expectedCdps[1], expectedCdps[2]]);
-      const cdps3 = await sortedCdps.getCdpsOf(alice, expectedCdps[2], 1);
-      assert.equal(cdps3.length, 1)
-      assert.deepEqual(cdps3, [expectedCdps[2]]);
+      let _cdp1 = expectedCdps[0];
+      let _startNode = _cdp1;
+      let _maxNodes = 1;
 	  
-      // bob insert a CDP into the list	  
-      await openCdp({ ICR: toBN(dec(10, 18)), extraParams: { from: bob } })
-	  let _cdpBob = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-      // since we specify startNodeId=aliceFirstCdp & maxNodes==2 which will fetch 1 CDP for alice & bob accoridng to sorting order
-      const cdpsAlice = await sortedCdps.getCdpsOf(alice, expectedCdps[0], 2);
-      assert.equal(cdpsAlice.length, 1)
-      assert.deepEqual(cdpsAlice, [expectedCdps[0]]);
-      // since we specify startNodeId=bobFirstCdp & maxNodes==2 which will fetch 2 CDP for alice & 1 CDP for bob accoridng to sorting order
-      const cdpsAlice2 = await sortedCdps.getCdpsOf(alice, _cdpBob, 3);
-      assert.equal(cdpsAlice2.length, 2)
-      assert.deepEqual(cdpsAlice2, [expectedCdps[1], expectedCdps[2]]);
+      const cdps = await sortedCdps.getAllCdpsOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps[0].length, 1)
+      assert.equal(cdps[1].toString(), '1')
+      assert.equal(cdps[2], await sortedCdps.cdpOfOwnerByIndex(bob, 0))
+      assert.deepEqual(cdps[0], [expectedCdps[0]]);
+	  
+      // current pagination return a CDP as startNode for next iteration
+      let _cdp2 = expectedCdps[1];
+      _maxNodes = _maxNodes + 1;
+      const cdps2 = await sortedCdps.getAllCdpsOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps2[0].length, 1)
+      assert.equal(cdps2[1].toString(), '1')
+      assert.equal(cdps2[2], _cdp2)
+      assert.deepEqual(cdps2[0], [expectedCdps[0]]);
+      _startNode = cdps2[2];
+      _maxNodes = 1;
+      const cdps3 = await sortedCdps.getAllCdpsOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps3[0].length, 1)
+      assert.equal(cdps3[1].toString(), '1')
+      assert.equal(cdps3[2], await sortedCdps.cdpOfOwnerByIndex(bob, 1))
+      assert.deepEqual(cdps3[0], [expectedCdps[1]]);
+	  
+      // run another pagination
+      _startNode = cdps3[2]
+      _maxNodes = _maxNodes + 1;
+      let _cdp3 = expectedCdps[2];
+      const cdps4 = await sortedCdps.getAllCdpsOf(alice, _startNode, _maxNodes);
+      assert.equal(cdps4[0].length, 1)
+      assert.equal(cdps4[1].toString(), '1')
+      assert.equal(cdps4[2], await sortedCdps.cdpOfOwnerByIndex(bob, 2))
+      assert.deepEqual(cdps4[0], [expectedCdps[2]]);
+	  
+      // final pagination should return false indicator and reach end of list
+      _startNode = cdps4[2]
+      _maxNodes = 1;
+      const cdpsFinal = await sortedCdps.getAllCdpsOf(alice, _startNode, _maxNodes);
+      assert.equal(cdpsFinal[0].length, 0)
+      assert.equal(cdpsFinal[1].toString(), '0')
+      assert.equal(cdpsFinal[2], th.DUMMY_BYTES32)
+	  
     })
 
     // --- findInsertPosition ---

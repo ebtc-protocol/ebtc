@@ -13,20 +13,22 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/Ownable.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
+import "./Dependencies/PermitNonce.sol";
 
 contract BorrowerOperations is
     LiquityBase,
     ReentrancyGuard,
     IBorrowerOperations,
     ERC3156FlashLender,
-    AuthNoOwner
+    AuthNoOwner,
+    PermitNonce
 {
     string public constant NAME = "BorrowerOperations";
 
-    // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)");
+    // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint8 status,uint256 nonce,uint256 deadline)");
     bytes32 private constant _PERMIT_POSITION_MANAGER_TYPEHASH =
         keccak256(
-            "PermitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)"
+            "PermitPositionManagerApproval(address borrower,address positionManager,uint8 status,uint256 nonce,uint256 deadline)"
         );
 
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");
@@ -58,7 +60,6 @@ contract BorrowerOperations is
 
     // Mapping of borrowers to approved position managers, by approval status: cdpOwner(borrower) -> positionManager -> PositionManagerApproval (None, OneTime, Persistent)
     mapping(address => mapping(address => PositionManagerApproval)) public positionManagers;
-    mapping(address => uint256) private _nonces;
 
     /* --- Variable container structs  ---
 
@@ -619,11 +620,6 @@ contract BorrowerOperations is
         bytes32 version
     ) private view returns (bytes32) {
         return keccak256(abi.encode(typeHash, name, version, _chainID(), address(this)));
-    }
-
-    function nonces(address _borrower) external view override returns (uint256) {
-        // FOR EIP 2612
-        return _nonces[_borrower];
     }
 
     function version() external pure override returns (string memory) {

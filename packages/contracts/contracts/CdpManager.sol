@@ -282,13 +282,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (
             _firstRedemptionHint == sortedCdps.nonExistId() ||
             !sortedCdps.contains(_firstRedemptionHint) ||
-            getICR(_firstRedemptionHint, _price) < MCR
+            getSyncedICR(_firstRedemptionHint, _price) < MCR
         ) {
             return false;
         }
 
         bytes32 nextCdp = sortedCdps.getNext(_firstRedemptionHint);
-        return nextCdp == sortedCdps.nonExistId() || getICR(nextCdp, _price) < MCR;
+        return nextCdp == sortedCdps.nonExistId() || getSyncedICR(nextCdp, _price) < MCR;
     }
 
     /** 
@@ -336,7 +336,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         RedemptionTotals memory totals;
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
-        _requireAfterBootstrapPeriod();
 
         _syncGlobalAccounting(); // Apply state, we will syncGracePeriod at end of function
 
@@ -374,9 +373,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
-                /// @audit this is view ICR
-                _cId = sortedCdps.getPrev(_cId); /// @audit you can still get an incorrectly sorted CDP
+            while (currentBorrower != address(0) && getSyncedICR(_cId, totals.price) < MCR) {
+                _cId = sortedCdps.getPrev(_cId);
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }
         }
@@ -398,7 +396,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
                 _syncAccounting(_cId); /// @audit This happens even if the re-insertion doesn't
-                /// @audit If we re-insert it here, then this is synched.
 
                 SingleRedemptionInputs memory _redeemColFromCdp = SingleRedemptionInputs(
                     _cId,
@@ -749,14 +746,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _requireTCRoverMCR(uint256 _price, uint256 _TCR) internal view {
         require(_TCR >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
-    }
-
-    function _requireAfterBootstrapPeriod() internal view {
-        uint256 systemDeploymentTime = getDeploymentStartTime();
-        require(
-            block.timestamp >= systemDeploymentTime + BOOTSTRAP_PERIOD,
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
     }
 
     function _requireValidMaxFeePercentage(uint256 _maxFeePercentage) internal view {

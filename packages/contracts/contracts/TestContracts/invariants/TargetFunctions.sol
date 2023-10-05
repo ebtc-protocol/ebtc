@@ -432,11 +432,6 @@ abstract contract TargetFunctions is Properties {
         uint _maxFeePercentage,
         uint _maxIterations
     ) public setup {
-        require(
-            block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
-
         bool success;
         bytes memory returnData;
 
