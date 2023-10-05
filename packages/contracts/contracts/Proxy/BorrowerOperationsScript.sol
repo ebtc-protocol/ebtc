@@ -38,22 +38,22 @@ contract BorrowerOperationsScript {
         borrowerOperations.withdrawColl(_cdpId, _stEthBalanceDecrease, _upperHint, _lowerHint);
     }
 
-    function withdrawEBTC(
+    function withdrawDebt(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.withdrawEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+        borrowerOperations.withdrawDebt(_cdpId, _amount, _upperHint, _lowerHint);
     }
 
-    function repayEBTC(
+    function repayDebt(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.repayEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+        borrowerOperations.repayDebt(_cdpId, _amount, _upperHint, _lowerHint);
     }
 
     function closeCdp(bytes32 _cdpId) external {

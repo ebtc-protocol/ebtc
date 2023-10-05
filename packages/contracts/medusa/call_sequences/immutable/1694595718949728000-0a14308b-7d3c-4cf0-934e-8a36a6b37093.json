@@ -190,7 +190,7 @@
    "gasTipCap": "0x0",
    "data": "0x96038a9fffffffffffffffffffffffffffffffffffffffffffff2c3de43133125efffffbffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff0000",
    "dataAbiValues": {
-    "methodName": "repayEBTC",
+    "methodName": "repayDebt",
     "inputValues": [
      "115792089237316195423570985008687907853269984665640563039457584007913129639931",
      "115792089237316195423570985008687907853269984665640564039457584007913129574400"
@@ -609,7 +609,7 @@
    "gasTipCap": "0x0",
    "data": "0x96038a9f0000000000000000000000000000000000000000000000008aeaa9f6f9a9000033e95795b8d9185baa1454a0192cecf910c405e40736155c1c88d92a26533579",
    "dataAbiValues": {
-    "methodName": "repayEBTC",
+    "methodName": "repayDebt",
     "inputValues": [
      "10010000000000000000",
      "23480235132270942971476129785372794749866794499479382824522950910600490988921"

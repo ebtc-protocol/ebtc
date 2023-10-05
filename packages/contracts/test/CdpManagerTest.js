@@ -56,7 +56,7 @@ contract('CdpManager', async accounts => {
   const getActualDebtFromComposite = async (compositeDebt) => th.getActualDebtFromComposite(compositeDebt, contracts)
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
   const openCdp = async (params) => th.openCdp(contracts, params)
-  const withdrawEBTC = async (params) => th.withdrawEBTC(contracts, params)
+  const withdrawDebt = async (params) => th.withdrawDebt(contracts, params)
 
   before(async () => {	  
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [beadp]}); 
@@ -123,7 +123,7 @@ contract('CdpManager', async accounts => {
     const A_EBTCWithdrawal = await getNetBorrowingAmount(dec(130, 18))
 
     const targetICR = toBN('1111111111111111111')
-    await withdrawEBTC({_cdpId: _aliceCdpId, ICR: targetICR, extraParams: { from: alice } })
+    await withdrawDebt({_cdpId: _aliceCdpId, ICR: targetICR, extraParams: { from: alice } })
 
     const ICR_AfterWithdrawal = await cdpManager.getICR(_aliceCdpId, price)
     assert.isAtMost(th.getDifference(ICR_AfterWithdrawal, targetICR), 100)
@@ -354,7 +354,7 @@ contract('CdpManager', async accounts => {
     assert.isAtMost(th.getDifference(L_EBTCDebt_AfterCarolLiquidated, L_EBTCDebt_expected_1), 100)
 
     // Bob now withdraws EBTC, bringing his ICR to 1.11
-    const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawEBTC({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
+    const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawDebt({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
     let _bobTotalDebt = (await cdpManager.getDebtAndCollShares(_bobCdpId))[0]
 
     // Confirm system is not in Recovery Mode
@@ -1098,8 +1098,8 @@ contract('CdpManager', async accounts => {
 
     // // All remaining cdps D and E repay a little debt, applying their pending rewards
     assert.isTrue((await sortedCdps.getSize()).eq(toBN('3')))
-    await borrowerOperations.repayEBTC(_dCdpId, _repayAmt, _dCdpId, _dCdpId, {from: D})
-    await borrowerOperations.repayEBTC(_eCdpId, _repayAmt, _eCdpId, _eCdpId, {from: E})
+    await borrowerOperations.repayDebt(_dCdpId, _repayAmt, _dCdpId, _dCdpId, {from: D})
+    await borrowerOperations.repayDebt(_eCdpId, _repayAmt, _eCdpId, _eCdpId, {from: E})
 
     // Check D & E pending rewards already applied
     assert.isTrue(await cdpManager.hasPendingRedistributedDebt(_cCdpId))
@@ -1872,8 +1872,8 @@ contract('CdpManager', async accounts => {
 
     // // All remaining cdps D and E repay a little debt, applying their pending rewards
     assert.isTrue((await sortedCdps.getSize()).eq(toBN('3')))
-    await borrowerOperations.repayEBTC(_dCdpId, dec(1, 15), _dCdpId, _dCdpId, {from: D})
-    await borrowerOperations.repayEBTC(_eCdpId, dec(1, 15), _eCdpId, _eCdpId, {from: E})
+    await borrowerOperations.repayDebt(_dCdpId, dec(1, 15), _dCdpId, _dCdpId, {from: D})
+    await borrowerOperations.repayDebt(_eCdpId, dec(1, 15), _eCdpId, _eCdpId, {from: E})
 
     // Check all pending rewards already applied
     assert.isTrue(await cdpManager.hasPendingRedistributedDebt(_cCdpId))

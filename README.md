@@ -394,8 +394,8 @@ Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the 
 | Function                      | eBTC Quantity | ERC20 Operation                      |
 |-------------------------------|---------------|--------------------------------------|
 | openCdp                     | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| withdrawEBTC                  | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| repayEBTC                     | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
+| withdrawDebt                  | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
+| repayDebt                     | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | adjustCdp: withdrawing eBTC | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
 | adjustCdp: repaying eBTC    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | closeCdp                    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount) |
@@ -505,8 +505,8 @@ All data structures with the ‘public’ visibility specifier are ‘gettable�
 - `openCdp`
 - `addColl`
 - `withdrawColl`
-- `withdrawEBTC`
-- `repayEBTC`
+- `withdrawDebt`
+- `repayDebt`
 - `_adjustCdp`
 - `closeCdp()`
 - `claimCollateral`

@@ -103,12 +103,12 @@ class BorrowerOperationsProxy extends Proxy {
     return this.forwardFunction(params, 'withdrawColl(uint256,bytes32,bytes32)')
   }
 
-  async withdrawEBTC(...params) {
-    return this.forwardFunction(params, 'withdrawEBTC(uint256,bytes32,bytes32)')
+  async withdrawDebt(...params) {
+    return this.forwardFunction(params, 'withdrawDebt(uint256,bytes32,bytes32)')
   }
 
-  async repayEBTC(...params) {
-    return this.forwardFunction(params, 'repayEBTC(uint256,bytes32,bytes32)')
+  async repayDebt(...params) {
+    return this.forwardFunction(params, 'repayDebt(uint256,bytes32,bytes32)')
   }
 
   async closeCdp(...params) {

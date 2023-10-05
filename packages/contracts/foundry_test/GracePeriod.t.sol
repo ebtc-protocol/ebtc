@@ -366,9 +366,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, 1);
         } else if (action == 2) {
-            //adjustCdp: repayEBTC
+            //adjustCdp: repayDebt
             vm.prank(borrower);
-            borrowerOperations.repayEBTC(cdps[0], 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             uint256 toRedeem = 5e17;
             //redemption
@@ -415,12 +415,12 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, coll);
         } else if (action == 2) {
-            //adjustCdp: withdrawEBTC (reduce debt)
+            //adjustCdp: withdrawDebt (reduce debt)
             debt = cdpManager.getCdpDebt(cdps[0]);
             console.log(debt);
 
             vm.prank(borrower);
-            borrowerOperations.repayEBTC(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             //adjustCdp: adjustCdpWithColl (reduce debt + increase coll)
             debt = cdpManager.getCdpDebt(cdps[0]);

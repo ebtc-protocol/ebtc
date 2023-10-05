@@ -39,8 +39,8 @@ contract('HintHelpers', async accounts => {
   // console.time("makeCdpsInParallel")
   const openCdppromises = activeAccounts.map((account, index) => openCdp(account, index))
   await Promise.all(openCdppromises)
-  const withdrawEBTCpromises = activeAccounts.map(account => withdrawEBTCfromCdp(account))
-  await Promise.all(withdrawEBTCpromises)
+  const withdrawDebtpromises = activeAccounts.map(account => withdrawDebtfromCdp(account))
+  await Promise.all(withdrawDebtpromises)
   // console.timeEnd("makeCdpsInParallel")
  }
 
@@ -50,8 +50,8 @@ contract('HintHelpers', async accounts => {
    await borrowerOperations.openCdp(0, account, account, { from: account, value: coll })
  }
 
- const withdrawEBTCfromCdp = async (account) => {
-  await borrowerOperations.withdrawEBTC(th._100pct, '100000000000000000000', account, account, { from: account })
+ const withdrawDebtfromCdp = async (account) => {
+  await borrowerOperations.withdrawDebt(th._100pct, '100000000000000000000', account, account, { from: account })
  }
 
  // Sequentially add coll and withdraw EBTC, 1 account at a time

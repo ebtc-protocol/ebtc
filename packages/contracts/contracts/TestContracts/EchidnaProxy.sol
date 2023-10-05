@@ -193,18 +193,18 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         _ensureNoRecoveryModeTriggered();
     }
 
-    function withdrawEBTCPrx(
+    function withdrawDebtPrx(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external {
-        borrowerOperations.withdrawEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+        borrowerOperations.withdrawDebt(_cdpId, _amount, _upperHint, _lowerHint);
         _ensureNoLiquidationTriggered(_cdpId);
         _ensureNoRecoveryModeTriggered();
     }
 
-    function repayEBTCPrx(
+    function repayDebtPrx(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,
@@ -213,7 +213,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
         if (_amount > 0) {
             uint256 _price = priceFeed.fetchPrice();
             uint256 _tcrBefore = cdpManager.getTCR(_price);
-            borrowerOperations.repayEBTC(_cdpId, _amount, _upperHint, _lowerHint);
+            borrowerOperations.repayDebt(_cdpId, _amount, _upperHint, _lowerHint);
             uint256 _tcrAfter = cdpManager.getTCR(_price);
             require(_tcrAfter > _tcrBefore, "!tcrAfterRepay");
         }

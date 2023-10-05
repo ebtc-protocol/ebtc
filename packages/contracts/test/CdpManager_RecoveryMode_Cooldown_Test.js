@@ -198,7 +198,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       await priceFeed.setPrice(_originalPrice);
       let _tcrAfter = await cdpManager.getTCR(_originalPrice);
       assert.isTrue(toBN(_tcrAfter.toString()).gt(_CCR));	  
-      await borrowerOperations.withdrawEBTC(_carolCdpId, _dustVal, _carolCdpId, _carolCdpId, { from: carol } ); 
+      await borrowerOperations.withdrawDebt(_carolCdpId, _dustVal, _carolCdpId, _carolCdpId, { from: carol } ); 
       let _rmExitTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
       assert.isTrue(_rmExitTimestamp.eq(_initVal));
 	  
@@ -212,7 +212,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
 	  
       // end RM cooldown by adjust a CDP in RM (repayment)
       await debtToken.approve(borrowerOperations.address, _carolDebt, {from: carol});	  
-      await borrowerOperations.repayEBTC(_carolCdpId, _carolDebt, _carolCdpId, _carolCdpId, { from: carol } );
+      await borrowerOperations.repayDebt(_carolCdpId, _carolDebt, _carolCdpId, _carolCdpId, { from: carol } );
       let _tcrFinal = await cdpManager.getTCR(_newPrice);
       assert.isTrue(toBN(_tcrFinal.toString()).gt(_CCR));
       let _rmExitFinal = await cdpManager.lastGracePeriodStartTimestamp();
