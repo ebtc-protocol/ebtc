@@ -73,8 +73,8 @@ contract EToFoundry is
         return totalValue;
     }
 
-
     event DebugBytes32(string name, bytes32 v);
+
     function testLS01() public {
         openCdp(36, 1);
         openCdp(
@@ -108,13 +108,19 @@ contract EToFoundry is
         uint256 price = priceFeedMock.getPrice();
 
         // Get lists
-        bytes32[] memory cdpsFromCurrent = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(n, price);
-        bytes32[] memory cdpsSynced = syncedLiquidationSequencer.sequenceLiqToBatchLiqWithPrice(n, price);
+        bytes32[] memory cdpsFromCurrent = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            n,
+            price
+        );
+        bytes32[] memory cdpsSynced = syncedLiquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            n,
+            price
+        );
 
-        for(uint256 i; i < cdpsFromCurrent.length; i++) {
+        for (uint256 i; i < cdpsFromCurrent.length; i++) {
             emit DebugBytes32("cdpsFromCurrent[i]", cdpsFromCurrent[i]);
         }
-        for(uint256 i; i < cdpsSynced.length; i++) {
+        for (uint256 i; i < cdpsSynced.length; i++) {
             emit DebugBytes32("cdpsSynced[i]", cdpsSynced[i]);
         }
 
@@ -300,7 +306,6 @@ contract EToFoundry is
 
     function testCdpm04AnotheAdditional() public {
         // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/fe1496f7-cfb8-4376-b7e5-05ffa4ee7d6f/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20231002%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231002T163253Z&X-Amz-Expires=3600&X-Amz-Signature=050d7e5fd68eb61a99b521314d454bbdf2732eee66c14ba09fe639db1fc29c17&X-Amz-SignedHeaders=host&x-id=GetObject
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
         setEthPerShare(
             23616972738430218693583668677955189858970801833460037124433618006874437290965
@@ -331,7 +336,6 @@ contract EToFoundry is
 
     function testCdpm04AnotherFalsePositive() public {
         // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/4be81955-d57f-4cab-a2c1-17a1f4cb8905/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20231002%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231002T163253Z&X-Amz-Expires=3600&X-Amz-Signature=234ab66b56a96bdc934c02f1cfe311502e0cc1dbb28ea9d43f8648b19963a0ea&X-Amz-SignedHeaders=host&x-id=GetObject
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
 
         setEthPerShare(
             23616972738430218693583668677955189858970801833460037124433618006874437290965
@@ -361,7 +365,6 @@ contract EToFoundry is
 
     function testCdpm04AFalsePositiveNew() public {
         // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/4be81955-d57f-4cab-a2c1-17a1f4cb8905/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20231002%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20231002T163253Z&X-Amz-Expires=3600&X-Amz-Signature=234ab66b56a96bdc934c02f1cfe311502e0cc1dbb28ea9d43f8648b19963a0ea&X-Amz-SignedHeaders=host&x-id=GetObject
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
         setEthPerShare(
             23616972738430218693583668677955189858970801833460037124433618006874437290965
         );
@@ -502,7 +505,6 @@ contract EToFoundry is
 
     // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/5414c08a-742e-49c1-8ca4-40e53b0a339c/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20230922%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230922T151344Z&X-Amz-Expires=3600&X-Amz-Signature=ec081f6d369188a914e2fad9bf9d5c505b7a7596b16fe18690fe711bed9da22d&X-Amz-SignedHeaders=host&x-id=GetObject
     function testCdpAgain() public {
-
         setEthPerShare(1000);
         openCdp(4524377229654262, 1);
         setEthPerShare(590);
@@ -951,7 +953,6 @@ contract EToFoundry is
     }
 
     function testCDPM04Again() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         skip(255508);
         openCdp(0, 1);
         skip(448552);
