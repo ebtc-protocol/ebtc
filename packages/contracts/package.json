@@ -20,7 +20,7 @@
     "prepare:set-version": "node scripts/set-version.js",
     "test": "hardhat test --show-stack-traces",
     "echidna": "echidna contracts/TestContracts/invariants/echidna/EchidnaTester.sol --contract EchidnaTester --config fuzzTests/echidna_config.yaml --corpus-dir ../../echidna",
-    "medusa": "medusa fuzz --corpus-dir ../../medusa",
+    "medusa": "medusa fuzz --no-color --corpus-dir ../../medusa",
     "echidna-fork": "export ECHIDNA_RPC_BLOCK=4368824 && export ECHIDNA_RPC_URL=http://127.0.0.1:8545 && echidna contracts/TestContracts/invariants/echidna/EchidnaForkTester.sol --contract EchidnaForkTester --config fuzzTests/echidna_config.yaml --corpus-dir ../../echidna",
     "echidna-collateral-token-tester": "echidna contracts/TestContracts/invariants/echidna/EchidnaCollateralTokenTester.sol --test-mode assertion --contract EchidnaCollateralTokenTester --config fuzzTests/echidna_config.yaml --corpus-dir ../../echidna-collateral-token-tester",
     "echidna-price-feed": "echidna contracts/TestContracts/invariants/echidna/EchidnaPriceFeedTester.sol --test-mode assertion --contract EchidnaPriceFeedTester --config fuzzTests/echidna_config.yaml --corpus-dir ../../echidna-price-feed",
