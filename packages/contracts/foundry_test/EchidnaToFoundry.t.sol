@@ -401,6 +401,9 @@ contract EToFoundry is
             1e18 -
             vars.activePoolDebtAfter;
         
+        console2.log("vars.priceBefore", vars.priceBefore);
+        console2.log("vars.priceAfter", vars.priceAfter);
+        
         console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
         console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
         console2.log("vars.feeRecipientTotalCollBefore", vars.feeRecipientTotalCollBefore);
