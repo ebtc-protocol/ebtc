@@ -388,6 +388,30 @@ contract EToFoundry is
             1279293321452559466690908804649893886462942558282969306040083134065919
         );
         assertTrue(invariant_CDPM_04(vars), "Cdp-04");
+
+            uint256 beforeValue = ((vars.activePoolCollBefore +
+            vars.collSurplusPoolBefore +
+            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
+            1e18 -
+            vars.activePoolDebtBefore;
+
+        uint256 afterValue = ((vars.activePoolCollAfter +
+            vars.collSurplusPoolAfter +
+            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
+            1e18 -
+            vars.activePoolDebtAfter;
+        
+        console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
+        console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
+        console2.log("vars.feeRecipientTotalCollBefore", vars.feeRecipientTotalCollBefore);
+        console2.log("vars.activePoolDebtBefore", vars.activePoolDebtBefore);
+        console2.log("beforeValue", beforeValue);
+
+        console2.log("vars.activePoolCollAfter", vars.activePoolCollAfter);
+        console2.log("vars.collSurplusPoolAfter", vars.collSurplusPoolAfter);
+        console2.log("vars.feeRecipientTotalCollAfter", vars.feeRecipientTotalCollAfter);
+        console2.log("vars.activePoolDebtAfter", vars.activePoolDebtAfter);
+        console2.log("afterValue", afterValue);
     }
 
     function testEchidnaCdpm04() public {
