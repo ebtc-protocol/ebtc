@@ -380,11 +380,46 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             assert(success);
             actorsArray[i] = actors[addresses[i]];
         }
-        simulator = new Simulator(
-            actorsArray,
-            cdpManager,
-            sortedCdps,
-            borrowerOperations
+        simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    function _openWhaleCdpAndTransferEBTC() internal {
+        bool success;
+        Actor actor = actors[USER3]; // USER3 is the whale CDP holder
+        uint256 _col = INITIAL_COLL_BALANCE / 2; // 50% of their initial collateral balance
+
+        uint256 price = priceFeedMock.getPrice();
+        uint256 _EBTCAmount = (_col * price) / cdpManager.CCR();
+
+        (success, ) = actor.proxy(
+            address(collateral),
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                _col
+            )
         );
+        assert(success);
+        (success, ) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.openCdp.selector,
+                _EBTCAmount,
+                bytes32(0),
+                bytes32(0),
+                _col
+            )
+        );
+        assert(success);
+        address[] memory addresses = new address[](2);
+        addresses[0] = USER1;
+        addresses[1] = USER2;
+        for (uint i = 0; i < addresses.length; i++) {
+            (success, ) = actor.proxy(
+                address(eBTCToken),
+                abi.encodeWithSelector(eBTCToken.transfer.selector, actors[addresses[i]], _EBTCAmount / 3)
+            );
+            assert(success);
+        }
     }
 }
