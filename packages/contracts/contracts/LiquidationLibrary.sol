@@ -61,7 +61,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getICR(_cdpId, _price);
+        uint256 _ICR = getICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
             _price
         );
@@ -714,7 +714,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getICR(vars.cdpId, _price);
+                vars.ICR = getSyncedICR(vars.cdpId, _price);
 
                 if (
                     !vars.backToNormalMode &&
@@ -819,7 +819,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getICR(vars.cdpId, _price);
+                vars.ICR = getSyncedICR(vars.cdpId, _price);
 
                 if (vars.ICR < MCR) {
                     _syncAccounting(vars.cdpId);
