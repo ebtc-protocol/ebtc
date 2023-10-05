@@ -821,7 +821,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
             emit L3(
                 block.timestamp,
                 cdpManager.lastGracePeriodStartTimestamp(),
-                cdpManager.recoveryModeGracePeriod()
+                cdpManager.recoveryModeGracePeriodDuration()
             );
 
             assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);

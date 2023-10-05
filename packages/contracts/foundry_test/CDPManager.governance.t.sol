@@ -239,7 +239,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         );
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriodDuration();
 
         address noPermissionsUser = _utils.getNextUserAddress();
         vm.prank(noPermissionsUser);
@@ -253,12 +253,12 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         );
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriodDuration();
 
         vm.prank(defaultGovernance);
         cdpManager.setGracePeriod(newGracePeriod);
 
-        assertEq(cdpManager.recoveryModeGracePeriod(), newGracePeriod);
+        assertEq(cdpManager.recoveryModeGracePeriodDuration(), newGracePeriod);
     }
 
     /// @dev Confirm extending the grace period works
@@ -271,12 +271,12 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
 
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriodDuration();
 
         vm.prank(defaultGovernance);
         cdpManager.setGracePeriod(newGracePeriod);
 
-        assertEq(cdpManager.recoveryModeGracePeriod(), newGracePeriod);
+        assertEq(cdpManager.recoveryModeGracePeriodDuration(), newGracePeriod);
 
         _confirmGracePeriodNewDurationEnforced(
             oldGracePeriod,
@@ -290,13 +290,13 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         newGracePeriod = uint128(bound(newGracePeriod, 0, cdpManager.MINIMUM_GRACE_PERIOD() - 1));
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriodDuration();
 
         vm.prank(defaultGovernance);
         vm.expectRevert("CdpManager: Grace period below minimum duration");
         cdpManager.setGracePeriod(newGracePeriod);
 
-        assertEq(cdpManager.recoveryModeGracePeriod(), oldGracePeriod);
+        assertEq(cdpManager.recoveryModeGracePeriodDuration(), oldGracePeriod);
     }
 
     function test_CdpManagerSetGracePeriodInvalid_RevertsAndIsNotEnforcedForUnsetGracePeriod(
@@ -305,13 +305,13 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         newGracePeriod = uint128(bound(newGracePeriod, 0, cdpManager.MINIMUM_GRACE_PERIOD() - 1));
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
 
-        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriod();
+        uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriodDuration();
 
         vm.prank(defaultGovernance);
         vm.expectRevert("CdpManager: Grace period below minimum duration");
         cdpManager.setGracePeriod(newGracePeriod);
 
-        assertEq(cdpManager.recoveryModeGracePeriod(), oldGracePeriod);
+        assertEq(cdpManager.recoveryModeGracePeriodDuration(), oldGracePeriod);
     }
 
     /// @dev Assumes newGracePeriod > oldGracePeriod
@@ -324,7 +324,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.startPrank(actor);
         cdpManager.syncGracePeriod();
         uint256 startTimestamp = block.timestamp;
-        uint256 expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriod() +
+        uint256 expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriodDuration() +
             cdpManager.lastGracePeriodStartTimestamp();
 
         assertEq(startTimestamp, cdpManager.lastGracePeriodStartTimestamp());

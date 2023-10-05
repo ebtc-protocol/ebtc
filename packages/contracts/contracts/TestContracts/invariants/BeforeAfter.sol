@@ -111,7 +111,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.hasGracePeriodPassedBefore =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >
-            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
 
         vars.newTcrBefore = crLens.quoteRealTCR();
@@ -157,7 +157,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.hasGracePeriodPassedAfter =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
             block.timestamp >
-            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
+            cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexAfter = cdpManager.systemDebtRedistributionIndex();
 
         vars.newTcrAfter = crLens.quoteRealTCR();

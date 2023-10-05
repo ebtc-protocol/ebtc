@@ -25,7 +25,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // TODO: IMPROVE THIS!!!
     uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
-    uint128 public recoveryModeGracePeriod = MINIMUM_GRACE_PERIOD;
+    uint128 public recoveryModeGracePeriodDuration = MINIMUM_GRACE_PERIOD;
 
     // TODO: Pitfal is fee split // NOTE: Solved by calling `syncGracePeriod` on external operations from BO
 
@@ -119,8 +119,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         );
 
         syncGlobalAccountingAndGracePeriod();
-        recoveryModeGracePeriod = _gracePeriod;
-        emit GracePeriodSet(_gracePeriod);
+        recoveryModeGracePeriodDuration = _gracePeriod;
+        emit GracePeriodDurationSet(_gracePeriod);
     }
 
     string public constant NAME = "CdpManager";
@@ -818,6 +818,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return
             icr < tcr &&
             cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
-            block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod;
+            block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriodDuration;
     }
 }

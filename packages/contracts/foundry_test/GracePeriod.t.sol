@@ -203,7 +203,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
         // Grace Period Ended, liquidations work
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         _assertSuccessOnAllLiquidationsDegen(cdp);
         return degenSnapshot;
     }
@@ -218,7 +218,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended, liquidations work
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         _assertAllLiquidationSuccess(cdps);
     }
 
@@ -478,7 +478,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
 
         // Grace period timestamp hasn't changed
         assertEq(
@@ -503,7 +503,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
 
         // Grace period timestamp hasn't changed
         assertEq(

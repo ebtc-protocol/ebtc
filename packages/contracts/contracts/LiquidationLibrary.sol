@@ -81,7 +81,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                 "LiquidationLibrary: Recovery Mode grace period not started"
             );
             require(
-                block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod,
+                block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriodDuration,
                 "LiquidationLibrary: Recovery mode grace period still in effect"
             );
         } // Implicit Else Case, Implies ICR < MRC, meaning the CDP is liquidatable
