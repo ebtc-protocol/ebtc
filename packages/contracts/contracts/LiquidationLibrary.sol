@@ -546,13 +546,17 @@ contract LiquidationLibrary is CdpManagerStorage {
                 debtToRedistribute = _debtToRepay < _totalDebtToBurn
                     ? _totalDebtToBurn - _debtToRepay
                     : 0;
+                // now CDP owner should have zero surplus to claim
+                cappedColPortion = _totalColToSend;
             } else {
                 // for partial liquidation, new ICR would deteriorate
                 // since we give more incentive (103%) than current _ICR allowed
                 _incentiveColl = (_totalDebtToBurn * LICR) / _price;
             }
         }
-        cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
+        if (cappedColPortion == 0) {
+            cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
+        }
         cappedColPortion = cappedColPortion < _totalColToSend ? cappedColPortion : _totalColToSend;
         collSurplus = (cappedColPortion == _totalColToSend) ? 0 : _totalColToSend - cappedColPortion;
     }
