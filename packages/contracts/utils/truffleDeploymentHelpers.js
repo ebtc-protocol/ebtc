@@ -2,7 +2,7 @@
 const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const DefaultPool = artifacts.require("./DefaultPool.sol");
 const StabilityPool = artifacts.require("./StabilityPool.sol")
@@ -18,14 +18,14 @@ const deployLiquity = async () => {
   const defaultPool = await DefaultPool.new()
   const functionCaller = await FunctionCaller.new()
   const borrowerOperations = await BorrowerOperations.new()
-  const ebtcToken = await EBTCToken.new(
+  const ebtcToken = await EbtcToken.new(
     cdpManager.address,
     stabilityPool.address,
     borrowerOperations.address
   )
   DefaultPool.setAsDeployed(defaultPool)
   PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
-  EBTCToken.setAsDeployed(ebtcToken)
+  EbtcToken.setAsDeployed(ebtcToken)
   SortedCdps.setAsDeployed(sortedCdps)
   CdpManager.setAsDeployed(cdpManager)
   ActivePool.setAsDeployed(activePool)
@@ -51,7 +51,7 @@ const getAddresses = (contracts) => {
   return {
     BorrowerOperations: contracts.borrowerOperations.address,
     PriceFeedTestnet: contracts.priceFeedTestnet.address,
-    EBTCToken: contracts.ebtcToken.address,
+    EbtcToken: contracts.ebtcToken.address,
     SortedCdps: contracts.sortedCdps.address,
     CdpManager: contracts.cdpManager.address,
     StabilityPool: contracts.stabilityPool.address,
@@ -74,7 +74,7 @@ const connectContracts = async (contracts, addresses) => {
   await contracts.priceFeedTestnet.setCdpManagerAddress(addresses.CdpManager)
 
   // set contracts in the Cdp Manager
-  await contracts.cdpManager.setEBTCToken(addresses.EBTCToken)
+  await contracts.cdpManager.setEbtcToken(addresses.EbtcToken)
   await contracts.cdpManager.setSortedCdps(addresses.SortedCdps)
   await contracts.cdpManager.setPriceFeed(addresses.PriceFeedTestnet)
   await contracts.cdpManager.setActivePool(addresses.ActivePool)

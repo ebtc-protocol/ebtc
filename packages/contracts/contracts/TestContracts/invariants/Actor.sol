@@ -1,7 +1,7 @@
 pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../Interfaces/IERC3156FlashBorrower.sol";
-import {EBTCTokenTester} from "../EBTCTokenTester.sol";
+import {EbtcTokenTester} from "../EbtcTokenTester.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
 import {ActivePool} from "../../ActivePool.sol";
 import {IERC20} from "../../Dependencies/IERC20.sol";

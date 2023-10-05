@@ -2,7 +2,7 @@ const { TestHelper: { dec } } = require("../utils/testHelpers.js")
 
 const EchidnaTester = artifacts.require('EchidnaTester')
 const CdpManager = artifacts.require('CdpManager')
-const EBTCToken = artifacts.require('EBTCToken')
+const EbtcToken = artifacts.require('EbtcToken')
 const ActivePool = artifacts.require('ActivePool')
 const DefaultPool = artifacts.require('DefaultPool')
 const StabilityPool = artifacts.require('StabilityPool')
@@ -22,7 +22,7 @@ contract('Echidna debugger', async accounts => {
   before(async () => {
     echidnaTester = await EchidnaTester.new({ value: dec(11, 25) })
     cdpManager = await CdpManager.at(await echidnaTester.cdpManager())
-    ebtcToken = await EBTCToken.at(await echidnaTester.ebtcToken())
+    ebtcToken = await EbtcToken.at(await echidnaTester.ebtcToken())
     activePool = await ActivePool.at(await echidnaTester.activePool())
     defaultPool = await DefaultPool.at(await echidnaTester.defaultPool())
     stabilityPool = await StabilityPool.at(await echidnaTester.stabilityPool())

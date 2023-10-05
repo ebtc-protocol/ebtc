@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 pragma abicoder v2;
 
-import "./EBTCTokenTester.sol";
+import "./EbtcTokenTester.sol";
 import "./CollateralTokenTester.sol";
 
 contract Mock1Inch {
@@ -14,11 +14,11 @@ contract Mock1Inch {
     uint256 public price = 7428 * 1e13;
 
     CollateralTokenTester public stETH;
-    EBTCTokenTester public eBTCToken;
+    EbtcTokenTester public eBTCToken;
 
     constructor(address _ebtcTester, address _collTester) {
         stETH = CollateralTokenTester(payable(_collTester));
-        eBTCToken = EBTCTokenTester(_ebtcTester);
+        eBTCToken = EbtcTokenTester(_ebtcTester);
     }
 
     function setPrice(uint256 _newPrice) external {

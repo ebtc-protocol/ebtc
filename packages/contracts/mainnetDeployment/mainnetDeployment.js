@@ -326,7 +326,7 @@ async function mainnetDeploy(configParams) {
   const token0Addr = await EBTCETHPair.token0()
   const token1Addr = await EBTCETHPair.token1()
   console.log(`EBTC-ETH Pair token 0: ${th.squeezeAddr(token0Addr)},
-        EBTCToken contract addr: ${th.squeezeAddr(ebtcCore.ebtcToken.address)}`)
+        EbtcToken contract addr: ${th.squeezeAddr(ebtcCore.ebtcToken.address)}`)
   console.log(`EBTC-ETH Pair token 1: ${th.squeezeAddr(token1Addr)},
         WETH ERC20 contract addr: ${th.squeezeAddr(configParams.externalAddrs.WETH_ERC20)}`)
 

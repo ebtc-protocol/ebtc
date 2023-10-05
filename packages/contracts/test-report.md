@@ -47,7 +47,7 @@ $ hardhat test
     StabilityPool
       ✓ offset(): reverts when called by an account that is not CdpManager
       ✓ fallback(): reverts when called by an account that is not the Active Pool
-    EBTCToken
+    EbtcToken
       ✓ mint(): reverts when called by an account that is not BorrowerOperations
       ✓ burn(): reverts when called by an account that is not BO nor CdpM nor SP
       ✓ sendToPool(): reverts when called by an account that is not StabilityPool
@@ -112,7 +112,7 @@ $ hardhat test
       ✓ withdrawEBTC(): reverts if system is in Recovery Mode (312ms)
       ✓ withdrawEBTC(): increases the Cdp's EBTC debt by the correct amount (208ms)
       ✓ withdrawEBTC(): increases EBTC debt in ActivePool by correct amount (230ms)
-      ✓ withdrawEBTC(): increases user EBTCToken balance by correct amount (243ms)
+      ✓ withdrawEBTC(): increases user EbtcToken balance by correct amount (243ms)
       ✓ repayEBTC(): reverts when repayment would leave cdp with ICR < MCR (392ms)
       ✓ repayEBTC(): Succeeds when it would leave cdp with net debt >= minimum net debt (435ms)
       ✓ repayEBTC(): reverts when it would leave cdp with net debt < minimum net debt (256ms)
@@ -120,7 +120,7 @@ $ hardhat test
       ✓ repayEBTC(): reverts when attempted repayment is > the debt of the cdp (418ms)
       ✓ repayEBTC(): reduces the Cdp's EBTC debt by the correct amount (403ms)
       ✓ repayEBTC(): decreases EBTC debt in ActivePool by correct amount (406ms)
-      ✓ repayEBTC(): decreases user EBTCToken balance by correct amount (404ms)
+      ✓ repayEBTC(): decreases user EbtcToken balance by correct amount (404ms)
       ✓ repayEBTC(): can repay debt in Recovery Mode (557ms)
       ✓ repayEBTC(): Reverts if borrower has insufficient EBTC balance to cover his debt repayment (1122ms)
       ✓ adjustCdp(): reverts when adjustment would leave cdp with ICR < MCR (572ms)
@@ -158,8 +158,8 @@ $ hardhat test
       ✓ adjustCdp(): updates borrower's debt and coll with coll decrease, debt increase (346ms)
       ✓ adjustCdp(): updates borrower's stake and totalStakes with a coll increase (385ms)
       ✓ adjustCdp():  updates borrower's stake and totalStakes with a coll decrease (553ms)
-      ✓ adjustCdp(): changes EBTCToken balance by the requested decrease (529ms)
-      ✓ adjustCdp(): changes EBTCToken balance by the requested increase (577ms)
+      ✓ adjustCdp(): changes EbtcToken balance by the requested decrease (529ms)
+      ✓ adjustCdp(): changes EbtcToken balance by the requested increase (577ms)
       ✓ adjustCdp(): Changes the activePool ETH and raw ether balance by the requested decrease (1371ms)
       ✓ adjustCdp(): Changes the activePool ETH and raw ether balance by the amount of ETH sent (548ms)
       ✓ adjustCdp(): Changes the EBTC debt in ActivePool by requested decrease (541ms)
@@ -184,7 +184,7 @@ $ hardhat test
       ✓ closeCdp(): reduces ActivePool debt by correct amount (522ms)
       ✓ closeCdp(): updates the the total stakes (790ms)
       ✓ closeCdp(): sends the correct amount of ETH to the user (390ms)
-      ✓ closeCdp(): subtracts the debt of the closed Cdp from the Borrower's EBTCToken balance (405ms)
+      ✓ closeCdp(): subtracts the debt of the closed Cdp from the Borrower's EbtcToken balance (405ms)
       ✓ closeCdp(): applies pending rewards (1267ms)
       ✓ closeCdp(): reverts if borrower has insufficient EBTC balance to repay his entire debt (347ms)
       ✓ openCdp(): emits a CdpUpdated event with the correct collateral and debt (820ms)
@@ -220,7 +220,7 @@ $ hardhat test
       ✓ openCdp(): allows a user to open a Cdp, then close it, then re-open it (687ms)
       ✓ openCdp(): increases the Cdp's EBTC debt by the correct amount (129ms)
       ✓ openCdp(): increases EBTC debt in ActivePool by the debt of the cdp (162ms)
-      ✓ openCdp(): increases user EBTCToken balance by correct amount (85ms)
+      ✓ openCdp(): increases user EbtcToken balance by correct amount (85ms)
       ✓ getCompositeDebt(): returns debt + gas comp
       ✓ closeCdp(): fails if owner cannot receive ETH (440ms)
       getNewICRFromCdpChange() returns the correct ICR
@@ -254,7 +254,7 @@ $ hardhat test
 
   Contract: Deployment script - Sets correct contract addresses dependencies after deployment
     ✓ Sets the correct PriceFeed address in CdpManager
-    ✓ Sets the correct EBTCToken address in CdpManager
+    ✓ Sets the correct EbtcToken address in CdpManager
     ✓ Sets the correct SortedCdps address in CdpManager
     ✓ Sets the correct BorrowerOperations address in CdpManager
     ✓ Sets the correct ActivePool address in CdpManager
@@ -267,7 +267,7 @@ $ hardhat test
     ✓ Sets the correct CdpManager address in ActivePool
     ✓ Sets the correct ActivePool address in StabilityPool
     ✓ Sets the correct BorrowerOperations address in StabilityPool
-    ✓ Sets the correct EBTCToken address in StabilityPool
+    ✓ Sets the correct EbtcToken address in StabilityPool
     ✓ Sets the correct CdpManager address in StabilityPool
     ✓ Sets the correct CdpManager address in DefaultPool
     ✓ Sets the correct ActivePool address in DefaultPool
@@ -559,7 +559,7 @@ issuance fraction after: 949066037374286
     ✓ unstake(): reverts if user has no stake
     ✓ Test requireCallerIsCdpManager
 
-  Contract: EBTCToken
+  Contract: EbtcToken
     Basic token functions, without Proxy
       ✓ balanceOf(): gets the balance of the account
       ✓ totalSupply(): gets the total supply
@@ -1175,7 +1175,7 @@ gasUsed:  636956
     ✓ redeemCollateral(): reverts if fee exceeds max fee percentage (2899ms)
     ✓ redeemCollateral(): succeeds if fee is less than max fee percentage (3127ms)
     ✓ redeemCollateral(): doesn't affect the Stability Pool deposits or ETH gain of redeemed-from cdps (2311ms)
-    ✓ redeemCollateral(): caller can redeem their entire EBTCToken balance (1086ms)
+    ✓ redeemCollateral(): caller can redeem their entire EbtcToken balance (1086ms)
     ✓ redeemCollateral(): reverts when requested redemption amount exceeds caller's EBTC token balance (1320ms)
     ✓ redeemCollateral(): value of issued ETH == face value of redeemed EBTC (assuming 1 EBTC has value of $1) (1353ms)
     ✓ redeemCollateral(): reverts if there is zero outstanding system debt (66ms)

@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/IEbtcToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
@@ -131,7 +131,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     ICollSurplusPool immutable collSurplusPool;
 
-    IEBTCToken public immutable override ebtcToken;
+    IEbtcToken public immutable override ebtcToken;
 
     address public immutable liquidationLibrary;
 
@@ -231,7 +231,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         borrowerOperationsAddress = _borrowerOperationsAddress;
         collSurplusPool = ICollSurplusPool(_collSurplusPool);
-        ebtcToken = IEBTCToken(_ebtcToken);
+        ebtcToken = IEbtcToken(_ebtcToken);
         sortedCdps = ISortedCdps(_sortedCdps);
     }
 

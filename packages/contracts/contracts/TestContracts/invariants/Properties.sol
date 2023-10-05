@@ -2,7 +2,7 @@ pragma solidity 0.8.17;
 
 import {ICollateralToken} from "../../Dependencies/ICollateralToken.sol";
 import {ActivePool} from "../../ActivePool.sol";
-import {EBTCToken} from "../../EBTCToken.sol";
+import {EbtcToken} from "../../EbtcToken.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
 import {CdpManager} from "../../CdpManager.sol";
 import {SortedCdps} from "../../SortedCdps.sol";
@@ -30,7 +30,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     }
 
     function invariant_AP_03(
-        EBTCToken eBTCToken,
+        EbtcToken eBTCToken,
         ActivePool activePool
     ) internal view returns (bool) {
         return (eBTCToken.totalSupply() == activePool.getSystemDebt());
@@ -233,7 +233,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     function invariant_GENERAL_02(
         CdpManager cdpManager,
         PriceFeedTestnet priceFeedTestnet,
-        EBTCToken eBTCToken
+        EbtcToken eBTCToken
     ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
@@ -248,7 +248,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     function invariant_GENERAL_03(
         CdpManager cdpManager,
         BorrowerOperations borrowerOperations,
-        EBTCToken eBTCToken,
+        EbtcToken eBTCToken,
         ICollateralToken collateral
     ) internal view returns (bool) {
         return
@@ -266,7 +266,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     }
 
     function invariant_GENERAL_06(
-        EBTCToken eBTCToken,
+        EbtcToken eBTCToken,
         CdpManager cdpManager,
         SortedCdps sortedCdps
     ) internal view returns (bool) {

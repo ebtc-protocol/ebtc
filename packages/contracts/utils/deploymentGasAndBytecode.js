@@ -2,7 +2,7 @@
 const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const StabilityPool = artifacts.require("./StabilityPool.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
@@ -18,7 +18,7 @@ const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
-const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
+const EbtcTokenTester = artifacts.require("./EbtcTokenTester.sol")
 
 const { TestHelper: th } = require("../utils/testHelpers.js")
 
@@ -28,7 +28,7 @@ const ARBITRARY_ADDRESS = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"   // plac
 const coreContractABIs = [
   BorrowerOperations,
   PriceFeed,
-  EBTCToken,
+  EbtcToken,
   SortedCdps,
   CdpManager,
   ActivePool,
@@ -49,7 +49,7 @@ const TesterContractABIs  = [
   EbtcMathTester,
   BorrowerOperationsTester,
   CdpManagerTester,
-  EBTCTokenTester,
+  EbtcTokenTester,
 ]
 
 const getGasFromContractDeployment = async (contractObject, name) => {

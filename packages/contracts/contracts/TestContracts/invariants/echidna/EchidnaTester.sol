@@ -14,9 +14,9 @@ import "../../../HintHelpers.sol";
 import "../../../FeeRecipient.sol";
 import "../../testnet/PriceFeedTestnet.sol";
 import "../../CollateralTokenTester.sol";
-import "../../EBTCTokenTester.sol";
+import "../../EbtcTokenTester.sol";
 import "../../../Governor.sol";
-import "../../../EBTCDeployer.sol";
+import "../../../EbtcDeployer.sol";
 
 import "../IHevm.sol";
 import "../Properties.sol";

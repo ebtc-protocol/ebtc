@@ -70,7 +70,7 @@ def contracts():
     """
 
     ## -1 Deployer (NOTE: Raised gas limit)
-    contracts.ebtcDeployer = EBTCDeployerTester.deploy({"from": a[0]})
+    contracts.ebtcDeployer = EbtcDeployerTester.deploy({"from": a[0]})
     contracts.collateral = CollateralTokenTester.deploy({"from": a[0]})
 
     _addresses = contracts.ebtcDeployer.getFutureEbtcAddresses()
@@ -285,7 +285,7 @@ def contracts():
     contracts.collSurplusPool = CollSurplusPool.at(_addresses[7])
     contracts.borrowerOperations = BorrowerOperations.at(_addresses[3])
     contracts.hintHelpers = HintHelpers.at(_addresses[8])
-    contracts.ebtcToken = EBTCToken.at(_addresses[9])
+    contracts.ebtcToken = EbtcToken.at(_addresses[9])
     contracts.feeRecipient = FeeRecipient.at(_addresses[10])
     ## TODO: Add the addresses from the factory
     ## TODO: Add some sort of test to prove they are correct

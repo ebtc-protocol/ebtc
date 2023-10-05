@@ -8,14 +8,14 @@ import "../ActivePool.sol";
 import "../LiquidationSequencer.sol";
 import "./CollateralTokenTester.sol";
 import "./testnet/PriceFeedTestnet.sol";
-import "./EBTCTokenTester.sol";
+import "./EbtcTokenTester.sol";
 import "../Interfaces/IERC3156FlashBorrower.sol";
 import "../Dependencies/IERC20.sol";
 
 contract EchidnaProxy is IERC3156FlashBorrower {
     CdpManager cdpManager;
     BorrowerOperations borrowerOperations;
-    EBTCTokenTester ebtcToken;
+    EbtcTokenTester ebtcToken;
     CollateralTokenTester collateral;
     ActivePool activePool;
     PriceFeedTestnet priceFeed;
@@ -24,7 +24,7 @@ contract EchidnaProxy is IERC3156FlashBorrower {
     constructor(
         CdpManager _cdpManager,
         BorrowerOperations _borrowerOperations,
-        EBTCTokenTester _ebtcToken,
+        EbtcTokenTester _ebtcToken,
         CollateralTokenTester _collateral,
         ActivePool _activePool,
         PriceFeedTestnet _priceFeed

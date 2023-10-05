@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICdpManagerData.sol";
-import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/IEbtcToken.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/EbtcBase.sol";
@@ -51,7 +51,7 @@ contract BorrowerOperations is
 
     address public feeRecipientAddress;
 
-    IEBTCToken public immutable ebtcToken;
+    IEbtcToken public immutable ebtcToken;
 
     // A doubly linked list of Cdps, sorted by their collateral ratios
     ISortedCdps public immutable sortedCdps;
@@ -118,7 +118,7 @@ contract BorrowerOperations is
         cdpManager = ICdpManager(_cdpManagerAddress);
         collSurplusPool = ICollSurplusPool(_collSurplusPoolAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
-        ebtcToken = IEBTCToken(_ebtcTokenAddress);
+        ebtcToken = IEbtcToken(_ebtcTokenAddress);
         feeRecipientAddress = _feeRecipientAddress;
 
         address _authorityAddress = address(AuthNoOwner(_cdpManagerAddress).authority());
@@ -889,7 +889,7 @@ contract BorrowerOperations is
     }
 
     function _requireSufficientEBTCBalance(
-        IEBTCToken _ebtcToken,
+        IEbtcToken _ebtcToken,
         address _account,
         uint256 _debtRepayment
     ) internal view {

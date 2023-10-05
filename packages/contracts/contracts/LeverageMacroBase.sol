@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/IBorrowerOperations.sol";
 import "./Interfaces/IERC3156FlashLender.sol";
-import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/IEbtcToken.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/IPriceFeed.sol";
@@ -29,7 +29,7 @@ contract LeverageMacroBase {
     IBorrowerOperations public immutable borrowerOperations;
     IActivePool public immutable activePool;
     ICdpCdps public immutable cdpManager;
-    IEBTCToken public immutable ebtcToken;
+    IEbtcToken public immutable ebtcToken;
     ISortedCdps public immutable sortedCdps;
     ICollateralToken public immutable stETH;
     bool internal immutable willSweep;
@@ -60,7 +60,7 @@ contract LeverageMacroBase {
         borrowerOperations = IBorrowerOperations(_borrowerOperationsAddress);
         activePool = IActivePool(_activePool);
         cdpManager = ICdpCdps(_cdpManager);
-        ebtcToken = IEBTCToken(_ebtc);
+        ebtcToken = IEbtcToken(_ebtc);
         stETH = ICollateralToken(_coll);
         sortedCdps = ISortedCdps(_sortedCdps);
 

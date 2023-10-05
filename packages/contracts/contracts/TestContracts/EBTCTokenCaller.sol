@@ -2,12 +2,12 @@
 
 pragma solidity 0.8.17;
 
-import "../Interfaces/IEBTCToken.sol";
+import "../Interfaces/IEbtcToken.sol";
 
-contract EBTCTokenCaller {
-    IEBTCToken EBTC;
+contract EbtcTokenCaller {
+    IEbtcToken EBTC;
 
-    function setEBTC(IEBTCToken _EBTC) external {
+    function setEBTC(IEbtcToken _EBTC) external {
         EBTC = _EBTC;
     }
 

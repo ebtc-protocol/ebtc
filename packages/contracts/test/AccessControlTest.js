@@ -178,7 +178,7 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
     })
   })
 
-  describe('EBTCToken', async accounts => {
+  describe('EbtcToken', async accounts => {
     //    mint
     it("mint(): reverts when called by an account that is not BorrowerOperations", async () => {
       // Attempt call from alice

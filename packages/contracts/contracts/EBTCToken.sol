@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/IEbtcToken.sol";
 
 import "./Dependencies/AuthNoOwner.sol";
 
@@ -15,14 +15,14 @@ import "./Dependencies/AuthNoOwner.sol";
  * https://github.com/OpenZeppelin/openzeppelin-contracts/blob/53516bc555a454862470e7860a9b5254db4d00f5/contracts/token/ERC20/ERC20Permit.sol
  *
  *
- * --- Functionality added specific to the EBTCToken ---
+ * --- Functionality added specific to the EbtcToken ---
  *
  * 1) Transfer protection: blacklist of addresses that are invalid recipients (i.e. core Liquity contracts) in external
  * transfer() and transferFrom() calls. The purpose is to protect users from losing tokens by mistakenly sending EBTC directly to a Liquity
  * core contract, when they should rather call the right function.
  */
 
-contract EBTCToken is IEBTCToken, AuthNoOwner {
+contract EbtcToken is IEbtcToken, AuthNoOwner {
     uint256 private _totalSupply;
     string internal constant _NAME = "EBTC Stablecoin";
     string internal constant _SYMBOL = "EBTC";
@@ -225,8 +225,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     // Warning: sanity checks (for sender and recipient) should have been done before calling these internal functions
 
     function _transfer(address sender, address recipient, uint256 amount) internal {
-        require(sender != address(0), "EBTCToken: zero sender!");
-        require(recipient != address(0), "EBTCToken: zero recipient!");
+        require(sender != address(0), "EbtcToken: zero sender!");
+        require(recipient != address(0), "EbtcToken: zero recipient!");
 
         uint256 cachedSenderBalances = _balances[sender];
         require(cachedSenderBalances >= amount, "ERC20: transfer amount exceeds balance");
@@ -241,7 +241,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     function _mint(address account, uint256 amount) internal {
-        require(account != address(0), "EBTCToken: mint to zero recipient!");
+        require(account != address(0), "EbtcToken: mint to zero recipient!");
 
         _totalSupply = _totalSupply + amount;
         _balances[account] = _balances[account] + amount;
@@ -249,7 +249,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     function _burn(address account, uint256 amount) internal {
-        require(account != address(0), "EBTCToken: burn from zero account!");
+        require(account != address(0), "EbtcToken: burn from zero account!");
 
         uint256 cachedBalance = _balances[account];
         require(cachedBalance >= amount, "ERC20: burn amount exceeds balance");
@@ -264,8 +264,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     }
 
     function _approve(address owner, address spender, uint256 amount) internal {
-        require(owner != address(0), "EBTCToken: zero approve owner!");
-        require(spender != address(0), "EBTCToken: zero approve spender!");
+        require(owner != address(0), "EbtcToken: zero approve owner!");
+        require(spender != address(0), "EbtcToken: zero approve spender!");
 
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
@@ -287,7 +287,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     function _requireCallerIsBorrowerOperations() internal view {
         require(
             msg.sender == borrowerOperationsAddress,
-            "EBTCToken: Caller is not BorrowerOperations"
+            "EbtcToken: Caller is not BorrowerOperations"
         );
     }
 

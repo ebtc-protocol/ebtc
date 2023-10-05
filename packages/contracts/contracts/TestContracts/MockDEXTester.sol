@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 pragma abicoder v2;
 
 import "../Dependencies/IBalancerV2Vault.sol";
-import "./EBTCTokenTester.sol";
+import "./EbtcTokenTester.sol";
 import "./CollateralTokenTester.sol";
 
 contract MockDEXTester is IBalancerV2Vault {
@@ -15,11 +15,11 @@ contract MockDEXTester is IBalancerV2Vault {
     uint256 public price = 7428 * 1e13;
 
     CollateralTokenTester public collateral;
-    EBTCTokenTester public ebtcToken;
+    EbtcTokenTester public ebtcToken;
 
     constructor(address _ebtcTester, address _collTester) {
         collateral = CollateralTokenTester(payable(_collTester));
-        ebtcToken = EBTCTokenTester(ebtcToken);
+        ebtcToken = EbtcTokenTester(ebtcToken);
     }
 
     function setSlippage(uint256 _slippage) public {

@@ -2,9 +2,9 @@
 
 pragma solidity 0.8.17;
 
-import "../EBTCToken.sol";
+import "../EbtcToken.sol";
 
-contract EBTCTokenTester is EBTCToken {
+contract EbtcTokenTester is EbtcToken {
     bytes32 private immutable _PERMIT_TYPEHASH =
         0x6e71edae12b1b97f4d1f60370fef10105fa2faae0126114a169c64845d6126c9;
 
@@ -12,7 +12,7 @@ contract EBTCTokenTester is EBTCToken {
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
         address _authorityAddress
-    ) EBTCToken(_cdpManagerAddress, _borrowerOperationsAddress, _authorityAddress) {}
+    ) EbtcToken(_cdpManagerAddress, _borrowerOperationsAddress, _authorityAddress) {}
 
     function unprotectedMint(address _account, uint256 _amount) external {
         // No check on caller here

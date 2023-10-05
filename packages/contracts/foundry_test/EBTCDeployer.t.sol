@@ -13,16 +13,16 @@ import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/FeeRecipient.sol";
-import {EBTCToken} from "../contracts/EBTCToken.sol";
+import {EbtcToken} from "../contracts/EbtcToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
-import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
+import {EbtcDeployer} from "../contracts/EbtcDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 
-contract EBTCDeployerTest is eBTCBaseFixture {
+contract EbtcDeployerTest is eBTCBaseFixture {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
     uint256 public mintAmount = 1e18;

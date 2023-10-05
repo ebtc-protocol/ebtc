@@ -14,9 +14,9 @@ import "../../../HintHelpers.sol";
 import "../../../FeeRecipient.sol";
 import "../../testnet/PriceFeedTestnet.sol";
 import "../../CollateralTokenTester.sol";
-import "../../EBTCTokenTester.sol";
+import "../../EbtcTokenTester.sol";
 import "../../../Governor.sol";
-import "../../../EBTCDeployer.sol";
+import "../../../EbtcDeployer.sol";
 
 import "../IHevm.sol";
 import "../Properties.sol";
@@ -48,7 +48,7 @@ abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants
         bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
     bytes4 internal constant SET_BASE_SIG = bytes4(keccak256(bytes("setBase(uint256)")));
 
-    // EBTCToken
+    // EbtcToken
     bytes4 internal constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 internal constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
@@ -70,19 +70,19 @@ abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants
 
     function _setUp() internal {
         defaultGovernance = msg.sender;
-        ebtcDeployer = new EBTCDeployer();
+        ebtcDeployer = new EbtcDeployer();
 
         // Default governance is deployer
         // vm.prank(defaultGovernance);
         collateral = new CollateralTokenTester();
 
-        EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
+        EbtcDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
 
         {
             bytes memory creationCode;
             bytes memory args;
 
-            // Use EBTCDeployer to deploy all contracts at determistic addresses
+            // Use EbtcDeployer to deploy all contracts at determistic addresses
 
             // Authority
             creationCode = type(Governor).creationCode;
@@ -217,14 +217,14 @@ abstract contract EchidnaBaseTester is BaseStorageVariables, PropertiesConstants
             );
 
             // eBTC Token
-            creationCode = type(EBTCTokenTester).creationCode;
+            creationCode = type(EbtcTokenTester).creationCode;
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.borrowerOperationsAddress,
                 addr.authorityAddress
             );
 
-            eBTCToken = EBTCTokenTester(
+            eBTCToken = EbtcTokenTester(
                 ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
             );
 

@@ -4,7 +4,7 @@ const testHelpers = require("../utils/testHelpers.js")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const NonPayable = artifacts.require('NonPayable.sol')
 const CdpManagerTester = artifacts.require("CdpManagerTester")
-const EBTCTokenTester = artifacts.require("./EBTCTokenTester")
+const EbtcTokenTester = artifacts.require("./EbtcTokenTester")
 const MultipleCdpsTester = artifacts.require("./MultipleCdpsTester.sol")
 
 const th = testHelpers.TestHelper
@@ -1085,19 +1085,19 @@ contract('BorrowerOperations', async accounts => {
       th.assertIsApproximatelyEqual(activePool_EBTC_After, activePool_EBTC_Before.add(toBN(dec(1, 17))))
     })
 
-    it("withdrawEBTC(): increases user EBTCToken balance by correct amount", async () => {
+    it("withdrawEBTC(): increases user EbtcToken balance by correct amount", async () => {
       await openCdp({ extraParams: { value: toBN(dec(100, 'ether')), from: alice } })
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)  
 
       // check before
-      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
+      const alice_EbtcTokenBalance_Before = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_Before.gt(toBN('0')))
 
       await borrowerOperations.withdrawEBTC(aliceIndex, dec(1, 17), aliceIndex, aliceIndex, { from: alice })
 
       // check after
-      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_After.eq(alice_EBTCTokenBalance_Before.add(toBN(dec(1, 17)))))
+      const alice_EbtcTokenBalance_After = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_After.eq(alice_EbtcTokenBalance_Before.add(toBN(dec(1, 17)))))
     })
 
     // --- repayEBTC() ---
@@ -1267,7 +1267,7 @@ contract('BorrowerOperations', async accounts => {
       th.assertIsApproximatelyEqual(activePool_EBTC_After, activePool_EBTC_Before.sub(aliceDebtBefore.div(toBN(10))))
     })
 
-    it("repayEBTC(): decreases user EBTCToken balance by correct amount", async () => {
+    it("repayEBTC(): decreases user EbtcToken balance by correct amount", async () => {
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: bob, value: ethers.utils.parseEther("20000")});
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
@@ -1280,14 +1280,14 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceDebtBefore.gt(toBN('0')))
 
       // check before
-      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
+      const alice_EbtcTokenBalance_Before = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_Before.gt(toBN('0')))
 
       await borrowerOperations.repayEBTC(aliceIndex, aliceDebtBefore.div(toBN(10)), aliceIndex, aliceIndex, { from: alice })  // Repays 1/10 her debt
 
       // check after
-      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
-      th.assertIsApproximatelyEqual(alice_EBTCTokenBalance_After, alice_EBTCTokenBalance_Before.sub(aliceDebtBefore.div(toBN(10))))
+      const alice_EbtcTokenBalance_After = await ebtcToken.balanceOf(alice)
+      th.assertIsApproximatelyEqual(alice_EbtcTokenBalance_After, alice_EbtcTokenBalance_Before.sub(aliceDebtBefore.div(toBN(10))))
     })
 
     //TODO: fix
@@ -1920,7 +1920,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(totalStakesAfter.eq(totalStakesBefore.sub(toBN(dec(5, 17)))))
     })
 
-    it("adjustCdp(): changes EBTCToken balance by the requested decrease", async () => {
+    it("adjustCdp(): changes EbtcToken balance by the requested decrease", async () => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1928,18 +1928,18 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
+      const alice_EbtcTokenBalance_Before = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_Before.gt(toBN('0')))
 
       // Alice adjusts cdp - coll decrease and debt decrease
       await borrowerOperations.adjustCdp(aliceIndex, dec(100, 'finney'), dec(10, 18), false, aliceIndex, aliceIndex, { from: alice })
 
       // check after
-      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_After.eq(alice_EBTCTokenBalance_Before.sub(toBN(dec(10, 18)))))
+      const alice_EbtcTokenBalance_After = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_After.eq(alice_EbtcTokenBalance_Before.sub(toBN(dec(10, 18)))))
     })
 
-    it("adjustCdp(): changes EBTCToken balance by the requested increase", async () => {
+    it("adjustCdp(): changes EbtcToken balance by the requested increase", async () => {
       await _signer.sendTransaction({ to: whale, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("50000")});
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(10, 18)), extraParams: { from: whale } })
@@ -1947,15 +1947,15 @@ contract('BorrowerOperations', async accounts => {
 
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
-      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_Before.gt(toBN('0')))
+      const alice_EbtcTokenBalance_Before = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_Before.gt(toBN('0')))
 
       // Alice adjusts cdp - coll increase and debt increase
       await borrowerOperations.adjustCdpWithColl(aliceIndex, 0, dec(100, 18), true, aliceIndex, aliceIndex, dec(1, 'ether'), { from: alice })
 
       // check after
-      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
-      assert.isTrue(alice_EBTCTokenBalance_After.eq(alice_EBTCTokenBalance_Before.add(toBN(dec(100, 18)))))
+      const alice_EbtcTokenBalance_After = await ebtcToken.balanceOf(alice)
+      assert.isTrue(alice_EbtcTokenBalance_After.eq(alice_EbtcTokenBalance_Before.add(toBN(dec(100, 18)))))
     })
 
     it("adjustCdp(): Changes the activePool ETH and raw ether balance by the requested decrease", async () => {
@@ -2515,7 +2515,7 @@ contract('BorrowerOperations', async accounts => {
       })
     }
 
-    it("closeCdp(): subtracts the debt of the closed Cdp from the Borrower's EBTCToken balance", async () => {
+    it("closeCdp(): subtracts the debt of the closed Cdp from the Borrower's EbtcToken balance", async () => {
       await _signer.sendTransaction({ to: dennis, value: ethers.utils.parseEther("20000")});
       await _signer.sendTransaction({ to: alice, value: ethers.utils.parseEther("20000")});
       await openCdp({ extraEBTCAmount: toBN(dec(100, 18)), ICR: toBN(dec(2, 18)), extraParams: { from: dennis } })
@@ -3620,17 +3620,17 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(activePool_EBTCDebt_After.eq(aliceDebt))
     })
 
-    it("openCdp(): increases user EBTCToken balance by correct amount", async () => {
+    it("openCdp(): increases user EbtcToken balance by correct amount", async () => {
       // check before
-      const alice_EBTCTokenBalance_Before = await ebtcToken.balanceOf(alice)
-      assert.equal(alice_EBTCTokenBalance_Before, 0)
+      const alice_EbtcTokenBalance_Before = await ebtcToken.balanceOf(alice)
+      assert.equal(alice_EbtcTokenBalance_Before, 0)
       await contracts.collateral.deposit({from: alice, value: dec(5000, 'ether')});
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
       await borrowerOperations.openCdp(dec(1, 18), alice, alice, dec(100, 'ether'), { from: alice })
 
       // check after
-      const alice_EBTCTokenBalance_After = await ebtcToken.balanceOf(alice)
-      assert.equal(alice_EBTCTokenBalance_After, dec(1, 18))
+      const alice_EbtcTokenBalance_After = await ebtcToken.balanceOf(alice)
+      assert.equal(alice_EbtcTokenBalance_After, dec(1, 18))
     })
 
     //  --- getNewICRFromCdpChange - (external wrapper in Tester contract calls internal function) ---

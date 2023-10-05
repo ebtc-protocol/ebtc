@@ -4,11 +4,11 @@ pragma solidity 0.8.17;
 
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ICollSurplusPool.sol";
-import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/IEbtcToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
-import "./EBTCDeployer.sol";
+import "./EbtcDeployer.sol";
 import "./Dependencies/Proxy.sol";
 
 contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
@@ -726,7 +726,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- 'require' wrapper functions ---
 
     function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
-        IEBTCToken _ebtcToken,
+        IEbtcToken _ebtcToken,
         address _redeemer,
         uint256 _amount,
         uint256 _totalSupply
