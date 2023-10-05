@@ -339,7 +339,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
-        _requireAfterBootstrapPeriod();
 
         _syncGlobalAccounting(); // Apply state, we will syncGracePeriod at end of function
 
@@ -748,14 +747,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _requireTCRoverMCR(uint256 _price, uint256 _TCR) internal view {
         require(_TCR >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
-    }
-
-    function _requireAfterBootstrapPeriod() internal view {
-        uint256 systemDeploymentTime = getDeploymentStartTime();
-        require(
-            block.timestamp >= systemDeploymentTime + BOOTSTRAP_PERIOD,
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
     }
 
     function _requireValidMaxFeePercentage(uint256 _maxFeePercentage) internal view {

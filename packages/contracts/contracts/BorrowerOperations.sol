@@ -23,10 +23,10 @@ contract BorrowerOperations is
 {
     string public constant NAME = "BorrowerOperations";
 
-    // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)");
+    // keccak256("permitPositionManagerApproval(address borrower,address positionManager,uint8 status,uint256 nonce,uint256 deadline)");
     bytes32 private constant _PERMIT_POSITION_MANAGER_TYPEHASH =
         keccak256(
-            "PermitPositionManagerApproval(address borrower,address positionManager,uint256 status,uint256 nonce,uint256 deadline)"
+            "PermitPositionManagerApproval(address borrower,address positionManager,uint8 status,uint256 nonce,uint256 deadline)"
         );
 
     // keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)");

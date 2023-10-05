@@ -132,6 +132,32 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
         assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
     }
 
+    function testEBTCUserWithBurningPermisionCanBurnWithoutAddress() public {
+        address user = _utils.getNextUserAddress();
+
+        // Grant user burning permissions
+        vm.startPrank(defaultGovernance);
+        eBTCToken.mint(user, mintAmount);
+        authority.setUserRole(user, 2, true);
+        vm.stopPrank();
+
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(user);
+
+        vm.startPrank(user);
+
+        // Burn succeeds
+        eBTCToken.burn(mintAmount);
+
+        vm.stopPrank();
+
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(user);
+
+        assertEq(totalSupply0 - totalSupply1, mintAmount);
+        assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
+    }
+
     /// @dev Normal minting via CDP opening should work even when authority is bricked
     function testCdpManagerMintWorksWhenAuthorityBricked() public {
         // TODO
