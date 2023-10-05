@@ -11,7 +11,6 @@ import {MultiCdpGetter} from "../contracts/MultiCdpGetter.sol";
   Tests around MultiCdpGetter
  */
 contract MultiCdpGetterTest is eBTCBaseFixture {
-
     function setUp() public override {
         eBTCBaseFixture.setUp();
         eBTCBaseFixture.connectCoreContracts();
@@ -40,7 +39,10 @@ contract MultiCdpGetterTest is eBTCBaseFixture {
             vm.stopPrank();
         }
 
-        MultiCdpGetter.CombinedCdpData[] memory cdps = cdpGetter.getMultipleSortedCdps(0, usersCount);
+        MultiCdpGetter.CombinedCdpData[] memory cdps = cdpGetter.getMultipleSortedCdps(
+            0,
+            usersCount
+        );
 
         uint256 totalColl = activePool.getSystemCollShares();
         uint256 totalDebt = activePool.getSystemDebt();
