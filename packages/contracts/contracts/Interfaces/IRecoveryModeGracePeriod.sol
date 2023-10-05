@@ -10,8 +10,6 @@ interface IRecoveryModeGracePeriod {
     event GracePeriodEnd();
     event GracePeriodSet(uint256 _recoveryModeGracePeriod);
 
-    function syncGracePeriod() external;
-
     function notifyStartGracePeriod(uint256 tcr) external;
 
     function notifyEndGracePeriod(uint256 tcr) external;

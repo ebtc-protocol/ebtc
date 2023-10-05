@@ -151,9 +151,6 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // alice claims collateral and re-opens the cdp
     await assertRevert(
       borrowerWrappers.claimCollateralAndOpenCdp(ebtcAmount, alice, alice, { from: alice }),
@@ -177,9 +174,6 @@ contract('BorrowerWrappers', async accounts => {
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
-
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // whale redeems 150 EBTC
     await th.redeemCollateral(whale, contracts, redeemAmount, GAS_PRICE)
@@ -211,9 +205,6 @@ contract('BorrowerWrappers', async accounts => {
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
-
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // whale redeems 150 EBTC
     await th.redeemCollateral(whale, contracts, redeemAmount, GAS_PRICE)
@@ -360,9 +351,6 @@ contract('BorrowerWrappers', async accounts => {
     // Defaulter Cdp opened
     const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // whale redeems 100 EBTC
     const redeemedAmount = toBN(dec(100, 18))
     await th.redeemCollateral(whale, contracts, redeemedAmount, GAS_PRICE)
@@ -395,9 +383,6 @@ contract('BorrowerWrappers', async accounts => {
 
     // Alice EBTC gain is ((150/2000) * borrowingFee)
     const expectedEBTCGain_A = borrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
-
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // whale redeems 100 EBTC
     const redeemedAmount = toBN(dec(100, 18))

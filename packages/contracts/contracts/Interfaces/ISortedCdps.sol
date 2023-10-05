@@ -60,19 +60,19 @@ interface ISortedCdps {
 
     function cdpCountOf(address owner) external view returns (uint256);
 
-    function cdpCountOf(
+    function getCdpCountOf(
         address owner,
         bytes32 startNodeId,
         uint maxNodes
-    ) external view returns (uint256);
+    ) external view returns (uint256, bytes32);
 
     function getCdpsOf(address owner) external view returns (bytes32[] memory);
 
-    function getCdpsOf(
+    function getAllCdpsOf(
         address owner,
         bytes32 startNodeId,
         uint maxNodes
-    ) external view returns (bytes32[] memory);
+    ) external view returns (bytes32[] memory, uint256, bytes32);
 
     function cdpOfOwnerByIndex(address owner, uint256 index) external view returns (bytes32);
 
@@ -81,5 +81,5 @@ interface ISortedCdps {
         uint256 index,
         bytes32 startNodeId,
         uint maxNodes
-    ) external view returns (bytes32);
+    ) external view returns (bytes32, bool);
 }

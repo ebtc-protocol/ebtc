@@ -145,7 +145,6 @@ contract EToFoundry is
      *     13) EchidnaTester.partialLiquidate(257, 71149553722330727595372666179561318863321173766102370975927893395343749396843) (block=276132, time=2338894, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
      */
     function testBrokenLiquidationLoc() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
         setEthPerShare(645326474426547203313410069153905908525362434357);
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         setPrice(200);
@@ -259,7 +258,6 @@ contract EToFoundry is
      */
 
     function testCdpm04() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         bytes32 firstCdp = openCdp(1999999999998000000, 900);
         setEthPerShare(1250000000000000000);
         openCdp(8000000000000000000, 2000000000000000000);
@@ -391,7 +389,6 @@ contract EToFoundry is
 
     function testEchidnaCdpm04() public {
         setEthPerShare(1000);
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         openCdp(4524377229654262, 1);
         setEthPerShare(590);
         setPrice(62585740236349503659258829433448686991336332142246890573120200334913125020112);
@@ -463,8 +460,6 @@ contract EToFoundry is
      * 14) EchidnaTester.redeemCollateral(100000000000000000000, 44528197469369619828452631535878582533537470583240950950026051403192050331017, 102238259035789227257399501220130095402144821045197998782718521293354458806802, 109921003103601632895059323246440408018934276513278813998597458827588043910345
      */
     function testCdpm04NewBroken() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
-
         bytes32 firstCdp = openCdp(
             61352334913724331844673735825348778692790231616991642409891756431271008690910,
             3
@@ -507,7 +502,7 @@ contract EToFoundry is
 
     // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/5414c08a-742e-49c1-8ca4-40e53b0a339c/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20230922%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230922T151344Z&X-Amz-Expires=3600&X-Amz-Signature=ec081f6d369188a914e2fad9bf9d5c505b7a7596b16fe18690fe711bed9da22d&X-Amz-SignedHeaders=host&x-id=GetObject
     function testCdpAgain() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
+
         setEthPerShare(1000);
         openCdp(4524377229654262, 1);
         setEthPerShare(590);
@@ -549,7 +544,6 @@ contract EToFoundry is
 
     // https://app.fuzzy.fyi/dashboard/jobs/0d22a32b-5612-4b73-bad2-824dffb6549d
     function testCdpM04ThirdTimesTheCharm() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         openCdp(0, 1);
         setPrice(167381130243608416929425501779011646220066545286939311441885146324);
         openCdp(
@@ -598,7 +592,6 @@ contract EToFoundry is
      */
 
     function testBrokenInvariantFive() external {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
         setEthPerShare(
             86688896451552136001225523381455512999487671226724657278887281953146484774479
         );
@@ -757,8 +750,6 @@ contract EToFoundry is
          */
 
         // CDPM-05:
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
-
         setPrice(34051283353441948537783721195918380744632616820013704574804095343781505350319);
         setPrice(34051283353441948537783721195918380744632616820013704574804095343781505350319);
         openCdp(
@@ -886,7 +877,6 @@ contract EToFoundry is
     }
 
     function testGeneral09AnotherEchidna() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         setEthPerShare(422969885005186853460329118216965939317476978914332751313210691257388459660);
         setPrice(32722689803297159564660);
         setEthPerShare(2295800715889050428049394301540389611305203770840759558107023063707478756137);
@@ -1063,7 +1053,6 @@ contract EToFoundry is
     // }
 
     function testPropertyCSP01() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD() + 1);
         openCdp(4875031885513970860143576544506802817390763544834983767953988765, 2);
         setEthPerShare(165751067651587426758928329439401399262641793);
         openCdp(0, 1);
