@@ -13,7 +13,7 @@ import "../Dependencies/ICollateralTokenOracle.sol";
 interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Events ---
 
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
+    event FeeRecipientAddressChanged(address indexed _feeRecipientAddress);
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
@@ -26,7 +26,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _actualEBTCAmount,
         uint256 _ETHSent,
         uint256 _ETHFee,
-        address _redeemer
+        address indexed _redeemer
     );
     event CdpUpdated(
         bytes32 indexed _cdpId,
@@ -44,7 +44,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint _debt,
         uint _coll,
         CdpOperation _operation,
-        address _liquidator,
+        address indexed _liquidator,
         uint _premiumToLiquidator
     );
     event CdpPartiallyLiquidated(
@@ -53,7 +53,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _debt,
         uint256 _coll,
         CdpOperation operation,
-        address _liquidator,
+        address indexed _liquidator,
         uint _premiumToLiquidator
     );
     event BaseRateUpdated(uint256 _baseRate);

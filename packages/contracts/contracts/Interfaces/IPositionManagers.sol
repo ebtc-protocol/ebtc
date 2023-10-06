@@ -10,8 +10,8 @@ interface IPositionManagers {
     }
 
     event PositionManagerApprovalSet(
-        address _borrower,
-        address _positionManager,
+        address indexed _borrower,
+        address indexed _positionManager,
         PositionManagerApproval _approval
     );
 
