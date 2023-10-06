@@ -300,7 +300,7 @@ class TestHelper {
   
   static async syncGlobalStateAndGracePeriod(contracts, provider){	  
     await contracts.cdpManager.syncGlobalAccountingAndGracePeriod();
-    let _gracePeriod = await contracts.cdpManager.recoveryModeGracePeriod();
+    let _gracePeriod = await contracts.cdpManager.recoveryModeGracePeriodDuration();
     await provider.send("evm_increaseTime", [_gracePeriod.add(web3.utils.toBN('1')).toNumber()]);
     await provider.send("evm_mine");
   }
