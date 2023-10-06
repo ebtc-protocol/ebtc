@@ -81,13 +81,13 @@ contract EbtcBase is BaseMath, IEbtcBase {
     function _getTCRWithSystemDebtAndCollShares(
         uint256 _price
     ) internal view returns (uint256 TCR, uint256 _coll, uint256 _debt) {
-        uint256 entireSystemColl = getSystemCollShares();
-        uint256 entireSystemDebt = _getSystemDebt();
+        uint256 systemCollShares = getSystemCollShares();
+        uint256 systemDebt = _getSystemDebt();
 
-        uint256 _underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
-        TCR = EbtcMath._computeCR(_underlyingCollateral, entireSystemDebt, _price);
+        uint256 _systemStEthBalance = collateral.getPooledEthByShares(systemCollShares);
+        TCR = EbtcMath._computeCR(_systemStEthBalance, systemDebt, _price);
 
-        return (TCR, entireSystemColl, entireSystemDebt);
+        return (TCR, systemCollShares, systemDebt);
     }
 
     function _checkRecoveryMode(uint256 _price) internal view returns (bool) {

@@ -194,22 +194,22 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Variable container structs for redemptions ---
 
     struct RedemptionTotals {
-        uint256 remainingEBTC;
-        uint256 totalEBTCToRedeem;
-        uint256 totalETHDrawn;
+        uint256 remainingDebtToRedeem;
+        uint256 debtToRedeem;
+        uint256 collSharesDrawn;
         uint256 totalCollSharesSurplus;
-        uint256 ETHFee;
-        uint256 ETHToSendToRedeemer;
+        uint256 feeCollShares;
+        uint256 collSharesToRedeemer;
         uint256 decayedBaseRate;
         uint256 price;
-        uint256 totalEBTCSupplyAtStart;
-        uint256 totalCollSharesAtStart;
+        uint256 systemDebtAtStart;
+        uint256 systemCollSharesAtStart;
         uint256 tcrAtStart;
     }
 
     struct SingleRedemptionValues {
-        uint256 eBtcToRedeem;
-        uint256 stEthToRecieve;
+        uint256 debtToRedeem;
+        uint256 collSharesDrawn;
         uint256 collSurplus;
         uint256 liquidatorRewardShares;
         bool cancelledPartial;

@@ -381,10 +381,10 @@ class TestHelper {
 
         const EBTCAmount = redemptionTx.logs[i].args[0]
         const totalEBTCRedeemed = redemptionTx.logs[i].args[1]
-        const totalETHDrawn = redemptionTx.logs[i].args[2]
-        const ETHFee = redemptionTx.logs[i].args[3]
+        const collSharesDrawn = redemptionTx.logs[i].args[2]
+        const feeCollShares = redemptionTx.logs[i].args[3]
 
-        return [EBTCAmount, totalEBTCRedeemed, totalETHDrawn, ETHFee]
+        return [EBTCAmount, totalEBTCRedeemed, collSharesDrawn, feeCollShares]
       }
     }
     throw ("The transaction logs do not contain a redemption event")
