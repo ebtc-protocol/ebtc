@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+import "@crytic/properties/contracts/util/Hevm.sol";
+
 import "../../Interfaces/ICdpManagerData.sol";
 import "../../Dependencies/SafeMath.sol";
 import "../../CdpManager.sol";
@@ -18,7 +20,6 @@ import "../EBTCTokenTester.sol";
 import "../../Governor.sol";
 import "../../EBTCDeployer.sol";
 
-import "./IHevm.sol";
 import "./Properties.sol";
 import "./Actor.sol";
 import "./BeforeAfter.sol";
@@ -1235,48 +1236,43 @@ abstract contract TargetFunctions is Properties {
     ///////////////////////////////////////////////////////
 
     function setGovernanceParameters(uint256 parameter, uint256 value) public {
-        parameter = between(parameter, 0, 10);
+        parameter = between(parameter, 0, 6);
 
         if (parameter == 0) {
             value = between(value, cdpManager.MINIMUM_GRACE_PERIOD(), type(uint128).max);
+            hevm.prank(defaultGovernance);
             cdpManager.setGracePeriod(uint128(value));
         } else if (parameter == 1) {
             value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
+            hevm.prank(defaultGovernance);
             activePool.claimFeeRecipientCollShares(value);
         } else if (parameter == 2) {
-            value = between(value, 0, activePool.MAX_FEE_BPS());
-            activePool.setFeeBps(value);
-        } else if (parameter == 3) {
-            value = between(value, 0, 1);
-            activePool.setFlashLoansPaused(value == 1 ? true : false);
-        } else if (parameter == 4) {
-            value = between(value, 0, borrowerOperations.MAX_FEE_BPS());
-            borrowerOperations.setFeeBps(value);
-        } else if (parameter == 5) {
-            value = between(value, 0, 1);
-            borrowerOperations.setFlashLoansPaused(value == 1 ? true : false);
-        } else if (parameter == 6) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
+            hevm.prank(defaultGovernance);
             cdpManager.setStakingRewardSplit(value);
-        } else if (parameter == 7) {
+        } else if (parameter == 3) {
             value = between(
                 value,
                 cdpManager.MIN_REDEMPTION_FEE_FLOOR(),
                 cdpManager.DECIMAL_PRECISION()
             );
+            hevm.prank(defaultGovernance);
             cdpManager.setRedemptionFeeFloor(value);
-        } else if (parameter == 8) {
+        } else if (parameter == 4) {
             value = between(
                 value,
                 cdpManager.MIN_MINUTE_DECAY_FACTOR(),
                 cdpManager.MAX_MINUTE_DECAY_FACTOR()
             );
+            hevm.prank(defaultGovernance);
             cdpManager.setMinuteDecayFactor(value);
-        } else if (parameter == 9) {
+        } else if (parameter == 5) {
             // TODO: what are reasonable beta bounds?
+            hevm.prank(defaultGovernance);
             cdpManager.setBeta(value);
-        } else if (parameter == 10) {
+        } else if (parameter == 6) {
             value = between(value, 0, 1);
+            hevm.prank(defaultGovernance);
             cdpManager.setRedemptionsPaused(value == 1 ? true : false);
         }
     }

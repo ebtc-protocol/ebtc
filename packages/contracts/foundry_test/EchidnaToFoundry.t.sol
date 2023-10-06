@@ -416,10 +416,9 @@ contract EToFoundry is
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-
         assertTrue(invariant_CDPM_04(vars), "Cdp-04");
 
-            uint256 beforeValue = ((vars.activePoolCollBefore +
+        uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.collSurplusPoolBefore +
             vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
             1e18 -
@@ -430,10 +429,10 @@ contract EToFoundry is
             vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
-        
+
         console2.log("vars.priceBefore", vars.priceBefore);
         console2.log("vars.priceAfter", vars.priceAfter);
-        
+
         console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
         console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
         console2.log("vars.feeRecipientTotalCollBefore", vars.feeRecipientTotalCollBefore);

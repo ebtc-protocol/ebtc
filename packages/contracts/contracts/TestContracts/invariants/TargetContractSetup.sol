@@ -18,7 +18,6 @@ import "../EBTCTokenTester.sol";
 import "../../Governor.sol";
 import "../../EBTCDeployer.sol";
 
-import "./IHevm.sol";
 import "./Properties.sol";
 import "./Actor.sol";
 import "../BaseStorageVariables.sol";
@@ -26,9 +25,9 @@ import "../BaseStorageVariables.sol";
 abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstants {
     using SafeMath for uint;
 
-    uint internal numberOfCdps;
+    bytes4 internal constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
-    IHevm internal constant hevm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+    uint internal numberOfCdps;
 
     struct CDPChange {
         uint collAddition;
@@ -224,7 +223,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
             authority.setRoleCapability(1, address(eBTCToken), eBTCToken.mint.selector, true);
 
-            authority.setRoleCapability(2, address(eBTCToken), eBTCToken.burn.selector, true);
+            authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
 
             authority.setRoleCapability(
                 3,
@@ -321,7 +320,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     event Log(string);
 
     function _setUpFork() internal {
-        defaultGovernance = address(this); // TODO we need to prank the governance
+        defaultGovernance = address(0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128);
         ebtcDeployer = EBTCDeployer(0xe90f99c08F286c48db4D1AfdAE6C122de69B7219);
         collateral = CollateralTokenTester(payable(0xf8017430A0efE03577f6aF88069a21900448A373));
         {
