@@ -1267,7 +1267,7 @@ abstract contract TargetFunctions is Properties {
             hevm.prank(defaultGovernance);
             cdpManager.setMinuteDecayFactor(value);
         } else if (parameter == 5) {
-            // TODO: what are reasonable beta bounds?
+            value = between(value, 0, cdpManager.DECIMAL_PRECISION());
             hevm.prank(defaultGovernance);
             cdpManager.setBeta(value);
         } else if (parameter == 6) {
