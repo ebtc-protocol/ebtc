@@ -258,7 +258,9 @@ contract LiquidationLibrary is CdpManagerStorage {
         _liqState.totalDebtToBurn = _liqState.totalDebtToBurn + _totalDebtToBurn;
         _liqState.totalCollSharesToSend = _liqState.totalCollSharesToSend + _cappedColPortion;
         _liqState.totalDebtToRedistribute = _liqState.totalDebtToRedistribute + _debtToRedistribute;
-        _liqState.totalLiquidatorRewardCollShares = _liqState.totalLiquidatorRewardCollShares + _liquidatorReward;
+        _liqState.totalLiquidatorRewardCollShares =
+            _liqState.totalLiquidatorRewardCollShares +
+            _liquidatorReward;
 
         // Emit events
         uint _debtToColl = (_totalDebtToBurn * DECIMAL_PRECISION) / _liqState.price;
@@ -317,18 +319,24 @@ contract LiquidationLibrary is CdpManagerStorage {
             );
             if (_collSurplus > 0) {
                 collSurplusPool.increaseSurplusCollShares(_borrower, _collSurplus);
-                _recoveryState.totalSurplusCollShares = _recoveryState.totalSurplusCollShares + _collSurplus;
+                _recoveryState.totalSurplusCollShares =
+                    _recoveryState.totalSurplusCollShares +
+                    _collSurplus;
             }
             if (_debtToRedistribute > 0) {
                 _totalDebtToBurn = _totalDebtToBurn - _debtToRedistribute;
             }
         }
         _recoveryState.totalDebtToBurn = _recoveryState.totalDebtToBurn + _totalDebtToBurn;
-        _recoveryState.totalCollSharesToSend = _recoveryState.totalCollSharesToSend + _cappedColPortion;
+        _recoveryState.totalCollSharesToSend =
+            _recoveryState.totalCollSharesToSend +
+            _cappedColPortion;
         _recoveryState.totalDebtToRedistribute =
             _recoveryState.totalDebtToRedistribute +
             _debtToRedistribute;
-        _recoveryState.totalLiquidatorRewardCollShares = _recoveryState.totalLiquidatorRewardCollShares + _liquidatorReward;
+        _recoveryState.totalLiquidatorRewardCollShares =
+            _recoveryState.totalLiquidatorRewardCollShares +
+            _liquidatorReward;
 
         // check if system back to normal mode
         _recoveryState.entireSystemDebt = _recoveryState.entireSystemDebt > _totalDebtToBurn
@@ -887,7 +895,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             oldTotals.totalDebtToRedistribute +
             singleLiquidation.debtToRedistribute;
         newTotals.totalCollSurplus = oldTotals.totalCollSurplus + singleLiquidation.collSurplus;
-        newTotals.totalCollReward = oldTotals.totalCollReward + singleLiquidation.liquidatorCollSharesReward;
+        newTotals.totalCollReward =
+            oldTotals.totalCollReward +
+            singleLiquidation.liquidatorCollSharesReward;
 
         return newTotals;
     }
