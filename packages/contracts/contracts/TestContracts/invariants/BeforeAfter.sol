@@ -20,6 +20,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 feeSplitAfter;
         uint256 feeRecipientTotalCollBefore;
         uint256 feeRecipientTotalCollAfter;
+        uint256 feeRecipientCollSharesBefore;
+        uint256 feeRecipientCollSharesAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
         uint256 actorEbtcBefore;
@@ -95,6 +97,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.feeRecipientTotalCollBefore =
             activePool.getFeeRecipientClaimableCollShares() +
             collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientCollSharesBefore = activePool.getFeeRecipientClaimableCollShares();
         vars.actorCollBefore = collateral.balanceOf(address(actor));
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
@@ -141,6 +144,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.feeRecipientTotalCollAfter =
             activePool.getFeeRecipientClaimableCollShares() +
             collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientCollSharesAfter = activePool.getFeeRecipientClaimableCollShares();
         vars.actorCollAfter = collateral.balanceOf(address(actor));
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));

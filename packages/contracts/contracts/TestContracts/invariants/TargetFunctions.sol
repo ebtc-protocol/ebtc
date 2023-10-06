@@ -1246,6 +1246,7 @@ abstract contract TargetFunctions is Properties {
             value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
             hevm.prank(defaultGovernance);
             activePool.claimFeeRecipientCollShares(value);
+            eq(vars.feeRecipientCollSharesAfter + value, vars.feeRecipientCollSharesBefore, F_01);
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
             hevm.prank(defaultGovernance);
