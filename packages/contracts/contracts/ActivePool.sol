@@ -380,6 +380,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit SweepTokenSuccess(token, amount, cachedFeeRecipientAddress);
     }
 
+    /// @notice Set new FeeRecipient
+    /// @dev Previous fees are forfeited, if you wish to claim to previous address
+    ///       call `claimFeeRecipientCollShares` first
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 
@@ -392,6 +395,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
+    /// @notice Sets new Fee for FlashLoans
     function setFeeBps(uint256 _newFee) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 
@@ -403,6 +407,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }
 
+    /// @notice Should Flashloans be paused?
     function setFlashLoansPaused(bool _paused) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 

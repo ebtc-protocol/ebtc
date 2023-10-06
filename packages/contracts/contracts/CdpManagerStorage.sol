@@ -73,8 +73,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
         }
     }
 
-    /// TODO: obv optimizations
-    function syncGracePeriod() public {
+    function _syncGracePeriod() internal {
         uint256 price = priceFeed.fetchPrice();
         uint256 tcr = _getTCR(price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
@@ -152,9 +151,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     uint256 public minuteDecayFactor = 999037758833783000;
     uint256 public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
     uint256 public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
-
-    // During bootsrap period redemptions are not allowed
-    uint256 public constant BOOTSTRAP_PERIOD = 14 days;
 
     uint256 internal immutable deploymentStartTime;
 
@@ -486,7 +482,7 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     /// @notice Call this if you want to accrue feeSplit
     function syncGlobalAccountingAndGracePeriod() public {
         _syncGlobalAccounting(); // Apply // Could trigger RM
-        syncGracePeriod(); // Synch Grace Period
+        _syncGracePeriod(); // Synch Grace Period
     }
 
     /// @return existing(old) local stETH index AND
