@@ -252,7 +252,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 _liquidatorRewardShares,
         address _borrower
     ) internal {
-        _removeStake(_cdpId);
         _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
         // Update Active Pool EBTC, and send ETH to account
@@ -516,11 +515,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     function syncAccounting(bytes32 _cdpId) external override {
         // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
         return _syncAccounting(_cdpId);
-    }
-
-    function removeStake(bytes32 _cdpId) external override {
-        _requireCallerIsBorrowerOperations();
-        return _removeStake(_cdpId);
     }
 
     // get totalStakes after split fee taken removed

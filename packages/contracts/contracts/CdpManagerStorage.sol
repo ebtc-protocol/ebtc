@@ -263,6 +263,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 cdpIdsArrayLength = CdpIds.length;
         _requireMoreThanOneCdpInSystem(cdpIdsArrayLength);
 
+        _removeStake(_cdpId);
+
         Cdps[_cdpId].status = closedStatus;
         Cdps[_cdpId].coll = 0;
         Cdps[_cdpId].debt = 0;
