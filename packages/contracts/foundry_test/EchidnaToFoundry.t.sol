@@ -216,6 +216,16 @@ contract EToFoundry is
         );
     }
 
+    function testPartialLiquidationCanCloseCDPS() public {
+        openCdp(67534042799335353648407647554112468697195277953615236438520200454730440793371, 8);
+        openCdp(115792089237316195423570985008687907853269984665640564039457584007913129639931, 1000000000000000900);
+        setEthPerShare(48542174391735010270995007834653745032392815149632706327135797120960854131722);
+        setEthPerShare(40);
+        console2.log("cdpManager.getActiveCdpsCount()", cdpManager.getActiveCdpsCount());
+        partialLiquidate(10055443073786697780288631944863873711310414440862685961782620523444705292193, 0);
+        console2.log("cdpManager.getActiveCdpsCount()", cdpManager.getActiveCdpsCount());
+    }
+
     function testBrokenImprovementofNICR() public {
         bytes32 cdpId = openCdp(36, 1);
         setEthPerShare(

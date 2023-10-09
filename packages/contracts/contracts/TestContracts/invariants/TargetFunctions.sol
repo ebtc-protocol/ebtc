@@ -316,6 +316,8 @@ abstract contract TargetFunctions is Properties {
                 L_01
             );
 
+            eq(vars.sortedCdpsSizeAfter, vars.sortedCdpsSizeBefore, "L-17 : Partial Liquidations do not close Cdps");
+
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             if (vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
                 // CDP was not fully liquidated
@@ -1245,8 +1247,14 @@ abstract contract TargetFunctions is Properties {
         } else if (parameter == 1) {
             value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
             hevm.prank(defaultGovernance);
+            _before(bytes32(0));
             activePool.claimFeeRecipientCollShares(value);
-            eq(vars.feeRecipientCollSharesAfter + value, vars.feeRecipientCollSharesBefore, F_01);
+            _after(bytes32(0));
+            // If there was something to claim
+            if(value > 0) {
+                // Claiming will increase the balance
+                gte(vars.feeRecipientCollSharesAfter, vars.feeRecipientCollSharesBefore, F_01);
+            }
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
             hevm.prank(defaultGovernance);
