@@ -430,7 +430,7 @@ contract BorrowerOperations is
         */
         uint256 newTCR = _getNewTCRFromCdpChange(vars.netColl, true, vars.debt, true, vars.price);
         if (isRecoveryMode) {
-            _requireICRisAboveCCR(vars.ICR);
+            _requireICRisNotBelowCCR(vars.ICR);
 
             // == Grace Period == //
             // We are in RM, Edge case is Depositing Coll could exit RM
@@ -443,8 +443,8 @@ contract BorrowerOperations is
                 cdpManager.notifyEndGracePeriod(newTCR);
             }
         } else {
-            _requireICRisAboveMCR(vars.ICR);
-            _requireNewTCRisAboveCCR(newTCR);
+            _requireICRisNotBelowMCR(vars.ICR);
+            _requireNewTCRisNotBelowCCR(newTCR);
 
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
@@ -516,7 +516,7 @@ contract BorrowerOperations is
             false,
             price
         );
-        _requireNewTCRisAboveCCR(newTCR);
+        _requireNewTCRisNotBelowCCR(newTCR);
 
         // == Grace Period == //
         // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
@@ -775,7 +775,7 @@ contract BorrowerOperations is
     function _requireNoStEthBalanceDecrease(uint256 _stEthBalanceDecrease) internal pure {
         require(
             _stEthBalanceDecrease == 0,
-            "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode"
+            "BorrowerOperations: Collateral withdrawal not permitted during Recovery Mode"
         );
     }
 
@@ -811,8 +811,8 @@ contract BorrowerOperations is
         if (_isRecoveryMode) {
             _requireNoStEthBalanceDecrease(_stEthBalanceDecrease);
             if (_isDebtIncrease) {
-                _requireICRisAboveCCR(_vars.newICR);
-                _requireNewICRisAboveOldICR(_vars.newICR, _vars.oldICR);
+                _requireICRisNotBelowCCR(_vars.newICR);
+                _requireNoDecreaseOfICR(_vars.newICR, _vars.oldICR);
             }
 
             // == Grace Period == //
@@ -827,8 +827,8 @@ contract BorrowerOperations is
             }
         } else {
             // if Normal Mode
-            _requireICRisAboveMCR(_vars.newICR);
-            _requireNewTCRisAboveCCR(_vars.newTCR);
+            _requireICRisNotBelowMCR(_vars.newICR);
+            _requireNewTCRisNotBelowCCR(_vars.newTCR);
 
             // == Grace Period == //
             // We are not in RM, no edge case, we always stay above RM
@@ -837,25 +837,25 @@ contract BorrowerOperations is
         }
     }
 
-    function _requireICRisAboveMCR(uint256 _newICR) internal pure {
+    function _requireICRisNotBelowMCR(uint256 _newICR) internal pure {
         require(
             _newICR >= MCR,
             "BorrowerOperations: An operation that would result in ICR < MCR is not permitted"
         );
     }
 
-    function _requireICRisAboveCCR(uint256 _newICR) internal pure {
+    function _requireICRisNotBelowCCR(uint256 _newICR) internal pure {
         require(_newICR >= CCR, "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
     }
 
-    function _requireNewICRisAboveOldICR(uint256 _newICR, uint256 _oldICR) internal pure {
+    function _requireNoDecreaseOfICR(uint256 _newICR, uint256 _oldICR) internal pure {
         require(
             _newICR >= _oldICR,
             "BorrowerOperations: Cannot decrease your Cdp's ICR in Recovery Mode"
         );
     }
 
-    function _requireNewTCRisAboveCCR(uint256 _newTCR) internal pure {
+    function _requireNewTCRisNotBelowCCR(uint256 _newTCR) internal pure {
         require(
             _newTCR >= CCR,
             "BorrowerOperations: An operation that would result in TCR < CCR is not permitted"
@@ -869,7 +869,7 @@ contract BorrowerOperations is
     function _requireAtLeastMinNetStEthBalance(uint256 _coll) internal pure {
         require(
             _coll >= MIN_NET_COLL,
-            "BorrowerOperations: Cdp's net coll must be greater than minimum"
+            "BorrowerOperations: Cdp's net coll must not fall below minimum"
         );
     }
 

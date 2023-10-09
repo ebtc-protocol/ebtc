@@ -353,7 +353,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             totals.systemDebtAtStart = systemDebtAtStart;
         }
 
-        _requireTCRoverMCR(totals.price, totals.tcrAtStart);
+        _requireTCRisNotBelowMCR(totals.price, totals.tcrAtStart);
         _requireAmountGreaterThanZero(_debt);
 
         _requireEbtcBalanceCoversRedemptionAndWithinSupply(
@@ -746,7 +746,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         require(_amount > 0, "CdpManager: Amount must be greater than zero");
     }
 
-    function _requireTCRoverMCR(uint256 _price, uint256 _TCR) internal view {
+    function _requireTCRisNotBelowMCR(uint256 _price, uint256 _TCR) internal view {
         require(_TCR >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
     }
 
