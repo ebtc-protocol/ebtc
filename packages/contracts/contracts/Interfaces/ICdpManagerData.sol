@@ -129,7 +129,6 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
         uint256 totalLiquidatorRewardCollShares;
-        bool sequenceLiq;
     }
 
     struct LiquidationRecoveryModeLocals {
@@ -143,7 +142,6 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 ICR;
         uint256 totalDebtToRedistribute;
         uint256 totalLiquidatorRewardCollShares;
-        bool sequenceLiq;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
