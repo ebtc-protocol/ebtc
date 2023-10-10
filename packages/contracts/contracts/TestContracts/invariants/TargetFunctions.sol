@@ -1244,9 +1244,11 @@ abstract contract TargetFunctions is Properties {
             cdpManager.setGracePeriod(uint128(value));
         } else if (parameter == 1) {
             value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
+            _before(bytes32(0));
             hevm.prank(defaultGovernance);
             activePool.claimFeeRecipientCollShares(value);
-            eq(vars.feeRecipientCollSharesAfter + value, vars.feeRecipientCollSharesBefore, F_01);
+            _after(bytes32(0));
+            gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
             hevm.prank(defaultGovernance);
