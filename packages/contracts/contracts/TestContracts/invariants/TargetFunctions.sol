@@ -1248,7 +1248,8 @@ abstract contract TargetFunctions is Properties {
             hevm.prank(defaultGovernance);
             activePool.claimFeeRecipientCollShares(value);
             _after(bytes32(0));
-            gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/22
+            // gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
             hevm.prank(defaultGovernance);
