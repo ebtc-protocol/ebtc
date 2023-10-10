@@ -1248,7 +1248,6 @@ abstract contract TargetFunctions is Properties {
             value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
             _before(bytes32(0));
             hevm.prank(defaultGovernance);
-            _before(bytes32(0));
             activePool.claimFeeRecipientCollShares(value);
             _after(bytes32(0));
             // If there was something to claim
