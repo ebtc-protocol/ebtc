@@ -1246,12 +1246,13 @@ abstract contract TargetFunctions is Properties {
             cdpManager.setGracePeriod(uint128(value));
         } else if (parameter == 1) {
             value = between(value, 0, activePool.getFeeRecipientClaimableCollShares());
-            hevm.prank(defaultGovernance);
             _before(bytes32(0));
+            hevm.prank(defaultGovernance);
             activePool.claimFeeRecipientCollShares(value);
             _after(bytes32(0));
             // If there was something to claim
             if(value > 0) {
+                // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/22
                 // Claiming will increase the balance
                 gte(vars.feeRecipientCollSharesAfter, vars.feeRecipientCollSharesBefore, F_01);
             }

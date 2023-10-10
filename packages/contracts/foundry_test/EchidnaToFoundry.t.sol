@@ -1158,6 +1158,20 @@ contract EToFoundry is
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
+    function testF01() public {
+        openCdp(0, 1);
+        setEthPerShare(72580278775459614875680109836551451731847937020661918235497624907365924);
+        addColl(
+            22138613526052302441376450399968068798496608035963549798722,
+            3806711576090684669967868790998768819578537863174115315793120
+        );
+        setEthPerShare(21354666003248974642639784240979468692379024380367761691387658103393);
+        setGovernanceParameters(
+            29,
+            223938810574888616633466991236275262629878472789059996276344994544839180
+        );
+    }
+
     function get_cdp(uint256 _i) internal returns (bytes32) {
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
 
