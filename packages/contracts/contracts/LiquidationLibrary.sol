@@ -44,6 +44,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
     ) external nonReentrantSelfAndBOps {
+        require(_partialAmount != 0, "LiquidationLibrary: use `liquidate` for 100%");
         _liquidateIndividualCdpSetup(_cdpId, _partialAmount, _upperPartialHint, _lowerPartialHint);
     }
 
