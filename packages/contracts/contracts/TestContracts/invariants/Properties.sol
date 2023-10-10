@@ -128,8 +128,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return sum == collSurplusPool.getTotalSurplusCollShares();
     }
 
-    event L(string, uint);
-
     function invariant_SL_01(CdpManager cdpManager, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
         bytes32 nextCdp = sortedCdps.getNext(currentCdp);
@@ -138,8 +136,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             // TODO remove tolerance once proper fix has been applied
             uint256 nicrNext = cdpManager.getNominalICR(nextCdp);
             uint256 nicrCurrent = cdpManager.getNominalICR(currentCdp);
-            emit L("NICR next", nicrNext);
-            emit L("NICR curr", nicrCurrent);
+            emit L2(nicrNext, nicrCurrent);
             if (nicrNext > nicrCurrent && diffPercent(nicrNext, nicrCurrent) > 0.01e18) {
                 return false;
             }
@@ -400,6 +397,10 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
         return true;
+    }
+
+    function invariant_GENERAL_15() internal returns (bool) {
+        return crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
     }
 
     function invariant_LS_01(

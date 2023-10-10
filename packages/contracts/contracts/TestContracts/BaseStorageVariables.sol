@@ -20,6 +20,7 @@ import {Governor} from "../Governor.sol";
 import {EBTCDeployer} from "../EBTCDeployer.sol";
 import {Actor} from "./invariants/Actor.sol";
 import {CRLens} from "../CRLens.sol";
+import {Simulator} from "./invariants/Simulator.sol";
 
 abstract contract BaseStorageVariables {
     PriceFeedTestnet internal priceFeedMock;
@@ -47,6 +48,7 @@ abstract contract BaseStorageVariables {
     Actor internal actor;
 
     CRLens internal crLens;
+    Simulator internal simulator;
 
     uint internal constant NUMBER_OF_ACTORS = 3;
     uint internal constant INITIAL_ETH_BALANCE = 1e24;
