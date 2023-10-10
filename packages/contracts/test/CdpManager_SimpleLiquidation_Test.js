@@ -1057,7 +1057,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _icr = await cdpManager.getSyncedICR(_bobCdpId, _oldPrice);
       assert.isTrue(_icr.lt(LICR));
       let _tcr = await cdpManager.getSyncedTCR(_oldPrice);
-      assert.isTrue(_tcr.lt(CCR));
+      assert.isTrue(_tcr.lt(_CCR));
 	  
       // full liquidation should leave bad debt and zero collateral for this CDP
       let _surplusBalBefore = await collSurplusPool.getSurplusCollShares(bob);
