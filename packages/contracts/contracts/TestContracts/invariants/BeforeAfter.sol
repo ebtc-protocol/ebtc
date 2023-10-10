@@ -116,9 +116,11 @@ abstract contract BeforeAfter is BaseStorageVariables {
             block.timestamp >
             cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriod();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
-
+        // TODO: Cleanup new vs old
         vars.newTcrBefore = crLens.quoteRealTCR();
         vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
+
+        // TODO: Compute value here since we have access to the stETH token
     }
 
     function _after(bytes32 _cdpId) internal {

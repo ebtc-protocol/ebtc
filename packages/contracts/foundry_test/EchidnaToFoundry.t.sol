@@ -405,6 +405,18 @@ contract EToFoundry is
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
+        /**
+        PYTHON
+        >>> activePoolCollBefore = 11166023933140299463
+        >>> collSurplusPoolBefore = 0
+        >>> feeRecipientTotalCollBefore = 0
+        >>> activePoolDebtBefore = 392223419614173403
+        >>> activePoolCollAfter = 8251456769332992047
+        >>> collSurplusPoolAfter = 640951562503257069
+        >>> feeRecipientTotalCollAfter = 441787493250854661
+        >>> activePoolDebtAfter = 260972099767576354
+         */
+
         redeemCollateral(
             289058276040013882279825268963168994859580940307359182338590061533,
             721412354899084084812938159596061041337963802121256850421410071451651,
