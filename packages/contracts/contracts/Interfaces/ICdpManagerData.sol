@@ -22,19 +22,19 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     event Liquidation(uint256 _liquidatedDebt, uint256 _liquidatedColl, uint256 _liqReward);
     event Redemption(
-        uint256 _attemptedEBTCAmount,
-        uint256 _actualEBTCAmount,
-        uint256 _ETHSent,
-        uint256 _ETHFee,
+        uint256 _debtToRedeemExpected,
+        uint256 _debtToRedeemActual,
+        uint256 _collSharesSent,
+        uint256 _feeCollShares,
         address _redeemer
     );
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint256 _oldDebt,
-        uint256 _oldColl,
+        uint256 _oldCollShares,
         uint256 _debt,
-        uint256 _coll,
+        uint256 _collShares,
         uint256 _stake,
         CdpOperation _operation
     );
@@ -42,7 +42,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
-        uint _coll,
+        uint _collShares,
         CdpOperation _operation,
         address _liquidator,
         uint _premiumToLiquidator
@@ -51,7 +51,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint256 _debt,
-        uint256 _coll,
+        uint256 _collShares,
         CdpOperation operation,
         address _liquidator,
         uint _premiumToLiquidator
@@ -61,7 +61,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     event TotalStakesUpdated(uint256 _newTotalStakes);
     event SystemSnapshotsUpdated(uint256 _totalStakesSnapshot, uint256 _totalCollateralSnapshot);
     event SystemDebtRedistributionIndexUpdated(uint256 _systemDebtRedistributionIndex);
-    event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint256 _debtRedistributionIndex);
+    event CdpDebtRedistributionIndexUpdated(bytes32 _cdpId, uint256 _cdpDebtRedistributionIndex);
     event CdpArrayIndexUpdated(bytes32 _cdpId, uint256 _newIndex);
     event StEthIndexUpdated(uint256 _oldIndex, uint256 _newIndex, uint256 _updTimestamp);
     event CollateralFeePerUnitUpdated(uint256 _oldPerUnit, uint256 _newPerUnit, uint256 _feeTaken);
@@ -124,26 +124,24 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 lowerPartialHint;
         bool recoveryModeAtStart;
         uint256 TCR;
-        uint256 totalColSurplus;
-        uint256 totalColToSend;
+        uint256 totalSurplusCollShares;
+        uint256 totalCollSharesToSend;
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
-        bool sequenceLiq;
+        uint256 totalLiquidatorRewardCollShares;
     }
 
     struct LiquidationRecoveryModeLocals {
         uint256 entireSystemDebt;
         uint256 entireSystemColl;
         uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalColSurplus;
+        uint256 totalCollSharesToSend;
+        uint256 totalSurplusCollShares;
         bytes32 cdpId;
         uint256 price;
         uint256 ICR;
         uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
-        bool sequenceLiq;
+        uint256 totalLiquidatorRewardCollShares;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -175,16 +173,16 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     struct LiquidationValues {
         uint256 entireCdpDebt;
-        uint256 debtToOffset;
+        uint256 debtToBurn;
         uint256 totalCollToSendToLiquidator;
         uint256 debtToRedistribute;
         uint256 collSurplus;
-        uint256 collReward;
+        uint256 liquidatorCollSharesReward;
     }
 
     struct LiquidationTotals {
         uint256 totalDebtInSequence;
-        uint256 totalDebtToOffset;
+        uint256 totalDebtToBurn;
         uint256 totalCollToSendToLiquidator;
         uint256 totalDebtToRedistribute;
         uint256 totalCollSurplus;
@@ -194,22 +192,22 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Variable container structs for redemptions ---
 
     struct RedemptionTotals {
-        uint256 remainingEBTC;
-        uint256 totalEBTCToRedeem;
-        uint256 totalETHDrawn;
+        uint256 remainingDebtToRedeem;
+        uint256 debtToRedeem;
+        uint256 collSharesDrawn;
         uint256 totalCollSharesSurplus;
-        uint256 ETHFee;
-        uint256 ETHToSendToRedeemer;
+        uint256 feeCollShares;
+        uint256 collSharesToRedeemer;
         uint256 decayedBaseRate;
         uint256 price;
-        uint256 totalEBTCSupplyAtStart;
-        uint256 totalCollSharesAtStart;
+        uint256 systemDebtAtStart;
+        uint256 systemCollSharesAtStart;
         uint256 tcrAtStart;
     }
 
     struct SingleRedemptionValues {
-        uint256 eBtcToRedeem;
-        uint256 stEthToRecieve;
+        uint256 debtToRedeem;
+        uint256 collSharesDrawn;
         uint256 collSurplus;
         uint256 liquidatorRewardShares;
         bool cancelledPartial;

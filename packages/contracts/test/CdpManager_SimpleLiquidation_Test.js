@@ -1043,4 +1043,30 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_batch5.length == 3 && _batch5[2] == _aliceCdpId && _batch5[1] == _bobCdpId && _batch5[0] == _carolCdpId);	  
   })
   
+  it("Full liquidation should leave zero collateral surplus if bad debt generated", async () => {
+      let {tx: opAliceTx} = await openCdp({ ICR: toBN(dec(149, 16)), extraEBTCAmount: toBN(minDebt.toString()).add(toBN(1)), extraParams: { from: alice } })
+      await openCdp({ extraEBTCAmount: toBN('951439999999999990'), extraParams: { from: bob, value: toBN('18311039310716208939') } })
+      let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
+      let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
+      let _oldPrice = await priceFeed.getPrice();
+      console.log('cdpCollateral=' + (await cdpManager.getSyncedCdpCollShares(_bobCdpId)));
+      console.log('cdpDebt=' + (await cdpManager.getSyncedCdpDebt(_bobCdpId)));
+	  
+      // shuffle a bit for the share rate to trigger liquidation since ICR < LICR
+      await collToken.setEthPerShare(toBN("827268193736210321"));
+      let _icr = await cdpManager.getSyncedICR(_bobCdpId, _oldPrice);
+      assert.isTrue(_icr.lt(LICR));
+      let _tcr = await cdpManager.getSyncedTCR(_oldPrice);
+      assert.isTrue(_tcr.lt(_CCR));
+	  
+      // full liquidation should leave bad debt and zero collateral for this CDP
+      let _surplusBalBefore = await collSurplusPool.getSurplusCollShares(bob);
+      let _redistributedIndexBefore = await cdpManager.systemDebtRedistributionIndex();
+      await cdpManager.liquidate(_bobCdpId, {from: alice});
+      let _surplusBalAfter = await collSurplusPool.getSurplusCollShares(bob);
+      let _redistributedIndexAfter = await cdpManager.systemDebtRedistributionIndex();
+      assert.isTrue(_surplusBalBefore.eq(_surplusBalAfter));
+      assert.isTrue(_redistributedIndexAfter.gt(_redistributedIndexBefore));
+  })
+  
 })

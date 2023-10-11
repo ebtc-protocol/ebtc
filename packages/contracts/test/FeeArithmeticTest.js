@@ -3,7 +3,7 @@ const deploymentHelper = require("../utils/deploymentHelpers.js")
 const { BNConverter } = require("../utils/BNConverter.js")
 const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
-const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
+const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
 const th = testHelpers.TestHelper
@@ -332,8 +332,8 @@ contract('Fee arithmetic tests', async accounts => {
   ]
 
   before(async () => {
-    mathTester = await LiquityMathTester.new()
-    LiquityMathTester.setAsDeployed(mathTester)
+    mathTester = await EbtcMathTester.new()
+    EbtcMathTester.setAsDeployed(mathTester)
   })
 
   beforeEach(async () => {

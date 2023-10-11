@@ -3,12 +3,12 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 
 /*
- * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
+ * Test suite that tests opened CDPs with two different operations: repayDebt and withdrawDebt
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPOpsTest is eBTCBaseFixture, Properties {
@@ -24,7 +24,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     // -------- Repay eBTC Test cases --------
 
     // Happy case for borrowing and repaying back eBTC which should result in increasing ICR
-    function testRepayEBTCHappy() public {
+    function testrepayDebtHappy() public {
         uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -41,7 +41,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         uint256 balanceSnapshot = eBTCToken.balanceOf(user);
         // Repay eBTC
-        borrowerOperations.repayEBTC(
+        borrowerOperations.repayDebt(
             cdpId,
             // Repay 10% of eBTC
             borrowedAmount / 10,
@@ -75,12 +75,12 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         vm.expectRevert(
             bytes("BorrowerOperations: There must be either a collateral change or a debt change")
         );
-        borrowerOperations.repayEBTC(cdpId, 0, HINT, HINT);
+        borrowerOperations.repayDebt(cdpId, 0, HINT, HINT);
         vm.stopPrank();
     }
 
     // Fuzzing different amounts of eBTC repaid
-    function testRepayEBTCFuzz(uint88 repayAmnt) public {
+    function testrepayDebtFuzz(uint88 repayAmnt) public {
         repayAmnt = uint88(bound(repayAmnt, 1e10, type(uint88).max));
         // Coll amount will always be max of uint96
         uint256 collAmount = type(uint96).max;
@@ -99,7 +99,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         uint256 balanceSnapshot = eBTCToken.balanceOf(user);
         // Repay eBTC
-        borrowerOperations.repayEBTC(cdpId, repayAmnt, HINT, HINT);
+        borrowerOperations.repayDebt(cdpId, repayAmnt, HINT, HINT);
         // Make sure eBTC balance decreased
         assertLt(eBTCToken.balanceOf(user), balanceSnapshot);
         // Make sure eBTC balance decreased by repayAmnt precisely
@@ -111,7 +111,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     }
 
     // Repaying eBTC by multiple users for many CDPs with randomized collateral
-    function testRepayEbtcManyUsersManyCdps() public {
+    function testrepayDebtManyUsersManyCdps() public {
         for (uint256 userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.startPrank(user);
@@ -156,7 +156,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             uint256 initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Repay eBTC for each CDP
-            borrowerOperations.repayEBTC(cdpIds[cdpIx], randRepayAmnt, HINT, HINT);
+            borrowerOperations.repayDebt(cdpIds[cdpIx], randRepayAmnt, HINT, HINT);
             uint256 newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
@@ -170,7 +170,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     // -------- Withdraw eBTC Test cases --------
 
     // Simple Happy case for borrowing and withdrawing eBTC from CDP
-    function testWithdrawEBTCHappy() public {
+    function testwithdrawDebtHappy() public {
         uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -191,7 +191,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         // Get initial Debt after opened CDP
         uint256 initialDebt = cdpManager.getCdpDebt(cdpId);
         // Withdraw 1 eBTC
-        borrowerOperations.withdrawEBTC(cdpId, 1e17, "hint", "hint");
+        borrowerOperations.withdrawDebt(cdpId, 1e17, "hint", "hint");
         // Make sure ICR decreased
         assertLt(cdpManager.getICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
         // Make sure debt increased
@@ -217,13 +217,13 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         vm.expectRevert(bytes("BorrowerOperations: Debt increase requires non-zero debtChange"));
-        borrowerOperations.withdrawEBTC(cdpId, 0, "hint", "hint");
+        borrowerOperations.withdrawDebt(cdpId, 0, "hint", "hint");
         vm.stopPrank();
     }
 
     // Fuzz for borrowing and withdrawing eBTC from CDP
     // Handle scenarios when users try to withdraw too much eBTC resulting in either ICR < MCR or TCR < CCR
-    function testWithdrawEBTCFuzz(uint96 withdrawAmnt, uint96 collAmount) public {
+    function testwithdrawDebtFuzz(uint96 withdrawAmnt, uint96 collAmount) public {
         withdrawAmnt = uint96(bound(withdrawAmnt, 1e13, type(uint96).max));
         collAmount = uint96(bound(collAmount, 30e18, type(uint96).max));
 
@@ -246,14 +246,14 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 initialDebt = cdpManager.getCdpDebt(cdpId);
 
         // Calculate projected ICR change
-        uint256 projectedIcr = LiquityMath._computeCR(
+        uint256 projectedIcr = EbtcMath._computeCR(
             collAmount,
             initialDebt + withdrawAmnt,
             priceFeedMock.fetchPrice()
         );
         // Calculate projected TCR change with new debt added on top
         uint256 projectedSystemDebt = cdpManager.getSystemDebt() + withdrawAmnt;
-        uint256 projectedTcr = LiquityMath._computeCR(
+        uint256 projectedTcr = EbtcMath._computeCR(
             borrowerOperations.getSystemCollShares(),
             projectedSystemDebt,
             priceFeedMock.fetchPrice()
@@ -261,11 +261,11 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         // Make sure tx is reverted if user tries to make withdraw resulting in either TCR < CCR or ICR < MCR
         if (projectedTcr <= CCR || projectedIcr <= MINIMAL_COLLATERAL_RATIO) {
             vm.expectRevert();
-            borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
+            borrowerOperations.withdrawDebt(cdpId, withdrawAmnt, "hint", "hint");
             return;
         }
         // Withdraw
-        borrowerOperations.withdrawEBTC(cdpId, withdrawAmnt, "hint", "hint");
+        borrowerOperations.withdrawDebt(cdpId, withdrawAmnt, "hint", "hint");
         // Make sure ICR decreased
         uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
@@ -277,7 +277,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     }
 
     // Test case for multiple users with random amount of CDPs, withdrawing eBTC
-    function testWithdrawEBTCManyUsersManyCdps() public {
+    function testwithdrawDebtManyUsersManyCdps() public {
         for (uint256 userIx = 0; userIx < AMOUNT_OF_USERS; userIx++) {
             address user = _utils.getNextUserAddress();
             vm.startPrank(user);
@@ -323,7 +323,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             uint256 initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Withdraw
-            borrowerOperations.withdrawEBTC(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
+            borrowerOperations.withdrawDebt(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
             uint256 newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);
@@ -334,7 +334,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         assertGt(initialTcr, newTcr);
     }
 
-    function testRepayEBTCMustImproveTCR() public {
+    function testrepayDebtMustImproveTCR() public {
         uint collAmount = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
         uint borrowedAmount = 1;
         uint debtAmount = 28;
@@ -346,7 +346,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         collateral.deposit{value: 10 ether}();
 
         bytes32 _cdpId = borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
-        borrowerOperations.withdrawEBTC(_cdpId, debtAmount, _cdpId, _cdpId);
+        borrowerOperations.withdrawDebt(_cdpId, debtAmount, _cdpId, _cdpId);
         collateral.setEthPerShare(1.099408949270679030e18);
 
         uint256 _price = priceFeedMock.getPrice();
@@ -360,7 +360,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_named_uint("D", entireSystemDebt);
         emit log_named_uint("U", underlyingCollateral);
 
-        borrowerOperations.repayEBTC(_cdpId, repayAmount, HINT, HINT);
+        borrowerOperations.repayDebt(_cdpId, repayAmount, HINT, HINT);
 
         entireSystemColl = cdpManager.getSystemCollShares();
         entireSystemDebt = activePool.getSystemDebt();
@@ -376,7 +376,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         // assertGt(tcrAfter, tcrBefore, "TCR must increase after a repayment");
     }
 
-    function testRepayEBTCMustBurn() public {
+    function testrepayDebtMustBurn() public {
         uint collAmount = 2000000000000000033 + borrowerOperations.LIQUIDATOR_REWARD();
         uint borrowedAmount = 2;
         uint repayAmount = 1;
@@ -392,7 +392,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_named_uint("eBTC balance before", userEbtcBefore);
         emit log_named_uint("Repay amount", repayAmount);
 
-        borrowerOperations.repayEBTC(_cdpId, repayAmount, _cdpId, _cdpId);
+        borrowerOperations.repayDebt(_cdpId, repayAmount, _cdpId, _cdpId);
 
         uint256 userEbtcAfter = eBTCToken.balanceOf((address(user)));
         emit log_named_uint("eBTC balance after", userEbtcAfter);

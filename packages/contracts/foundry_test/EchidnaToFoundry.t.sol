@@ -152,46 +152,46 @@ contract EToFoundry is
      */
     function testBrokenLiquidationLoc() public {
         setEthPerShare(645326474426547203313410069153905908525362434357);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setPrice(200);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         bytes32 randomCdp = openCdp(
             15271506168544636618683946165347184908672584999956201311530805028234774281247,
             525600000
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setEthPerShare(
             34490286643335581993866445125615501807464041659106654042251963443032165120461
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setPrice(72100039377333553285200231852034304471788766724978643708968246258805481443120);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         openCdp(2, 999999999999999999);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setPrice(53613208255846312190970113690532613198662175001504036140235273976036627984403);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setEthPerShare(
             53885036727293763953039497818137962919540408473654007727202467955943039934842
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         withdrawColl(
             64613413140793438003392705322981884782961011222878036826703269533463170986176,
             9999999999744
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setEthPerShare(
             38654105012746982034204530442925091332196750429568734891400199507115192250853
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         partialLiquidate(
             51745835282927565687010251523416875790034155913406312339604760725754223914917,
             19
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setEthPerShare(
             79832022615203712424393490440177025697015516400034287083326403000335384151815
         );
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         bytes32 cdpToTrack = _getRandomCdp(257);
         // Accrue here (will trigger recovery mode due to index change)
         // cdpManager.syncGlobalAccountingAndGracePeriod(); /// @audit: Issue with invariants is we need this to change
@@ -559,9 +559,9 @@ contract EToFoundry is
         setPrice(115792089237316195423570985008687907853269984665640564039455484007913129639937);
         openCdp(115221720474780537866491969647886078644641607235938297017113192275671201037351, 13);
         setEthPerShare(10);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         liquidateCdps(81474231948216353665336502151292255308693665505215124358133307261506484044001);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         uint256 valueBeforeRedeem = _getValue();
         _before(firstCdp);
         redeemCollateral(
@@ -690,7 +690,7 @@ contract EToFoundry is
         );
         setPrice(115792089237316195423570985008687907853269984665640564039456584970154295856934);
         setEthPerShare(2);
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         console.log("B4 Liquidation");
         console.log("B4 Liquidation");
         console.log("B4 Liquidation");
@@ -767,7 +767,7 @@ contract EToFoundry is
         _before(targetCdpId);
         // // Trigger RM
         // cdpManager.syncGlobalAccountingAndGracePeriod();
-        // vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        // vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         partialLiquidate(1, 73813787571110962545934699418512877744225252688696);
         _after(targetCdpId);
 
@@ -799,7 +799,7 @@ contract EToFoundry is
         _before(targetCdpId);
         // // Trigger RM
         // cdpManager.syncGlobalAccountingAndGracePeriod();
-        // vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        // vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         partialLiquidate(1, 77);
         _after(targetCdpId);
 
@@ -913,7 +913,7 @@ contract EToFoundry is
          *     9) EchidnaTester.setEthPerShare(12) (block=220143, time=2920424, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
          *     10) EchidnaTester.setEthPerShare(12) (block=221483, time=3082487, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
          *     11) EchidnaTester.liquidate(115792089237316195423570985008687907853269984665640564039457334248473421194186) (block=277923, time=3372993, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
-         *     12) EchidnaTester.repayEBTC(9999999999993599, 48)
+         *     12) EchidnaTester.repayDebt(9999999999993599, 48)
          */
 
         // GENERAL-09:
@@ -945,7 +945,7 @@ contract EToFoundry is
         liquidate(115792089237316195423570985008687907853269984665640564039457334248473421194186);
         bytes32 cdpId = get_cdp(48);
         _before(cdpId);
-        repayEBTC(9999999999993599, 48);
+        repayDebt(9999999999993599, 48);
         _after(cdpId);
 
         console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
@@ -987,7 +987,7 @@ contract EToFoundry is
         bytes32 cdpId = get_cdp(1);
 
         _before(cdpId);
-        repayEBTC(1, 3664654876686139248533669277245093923727466555308247984199766471982047307);
+        repayDebt(1, 3664654876686139248533669277245093923727466555308247984199766471982047307);
         _after(cdpId);
 
         console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
@@ -1027,7 +1027,7 @@ contract EToFoundry is
     function testTcrMustIncreaseAfterRepayment() public {
         openCdp(13981380896748761892053706028661380888937876551972584966356379645, 23);
         setEthPerShare(55516200804822679866310029419499170992281118179349982013988952907);
-        repayEBTC(1, 509846657665200610349434642309205663062);
+        repayDebt(1, 509846657665200610349434642309205663062);
     }
 
     function testCDPM04Again() public {
@@ -1101,7 +1101,7 @@ contract EToFoundry is
     //     setEthPerShare(445556188509986934837462424);
     //     openCdp(12181230440821352134148880356120823470441483581757, 1);
     //     setEthPerShare(612268882000635712391494911936034158156169162782123690926313314401353750575);
-    //     vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+    //     vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
     //     bytes32 currentCdp = sortedCdps.getFirst();
     //     uint256 i = 0;
     //     uint256 _price = priceFeedMock.getPrice();
@@ -1135,7 +1135,7 @@ contract EToFoundry is
         openCdp(4875031885513970860143576544506802817390763544834983767953988765, 2);
         setEthPerShare(165751067651587426758928329439401399262641793);
         openCdp(0, 1);
-        repayEBTC(365894549068404535662610420582951074074566619457568347292095201808, 22293884342);
+        repayDebt(365894549068404535662610420582951074074566619457568347292095201808, 22293884342);
         _before(bytes32(0));
         console2.log(
             "CSP",

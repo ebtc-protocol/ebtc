@@ -485,8 +485,8 @@ contract eBTCBaseFixture is
         assertTrue(_liquidatorRewardShares == 0);
         assertTrue(_status == expectedStatus);
 
-        assertTrue(cdpManager.debtRedistributionIndex(cdpId) == 0);
-        assertTrue(cdpManager.stEthFeePerUnitIndex(cdpId) == 0);
+        assertTrue(cdpManager.cdpDebtRedistributionIndex(cdpId) == 0);
+        assertTrue(cdpManager.cdpStEthFeePerUnitIndex(cdpId) == 0);
     }
 
     function _printSystemState() internal {
@@ -565,7 +565,7 @@ contract eBTCBaseFixture is
     // Grace Period, check never reverts so it's safe to use
     function _waitUntilRMColldown() internal {
         cdpManager.syncGlobalAccountingAndGracePeriod();
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
     }
 
     function _getCdpStEthBalance(bytes32 _cdpId) public view returns (uint) {

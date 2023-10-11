@@ -3,17 +3,17 @@
 pragma solidity 0.8.17;
 
 import "./BaseMath.sol";
-import "./LiquityMath.sol";
+import "./EbtcMath.sol";
 import "../Interfaces/IActivePool.sol";
 import "../Interfaces/IPriceFeed.sol";
-import "../Interfaces/ILiquityBase.sol";
+import "../Interfaces/IEbtcBase.sol";
 import "../Dependencies/ICollateralToken.sol";
 
 /*
  * Base contract for CdpManager, BorrowerOperations. Contains global system constants and
  * common functions.
  */
-contract LiquityBase is BaseMath, ILiquityBase {
+contract EbtcBase is BaseMath, IEbtcBase {
     // Collateral Ratio applied for Liquidation Incentive
     // i.e., liquidator repay $1 worth of debt to get back $1.03 worth of collateral
     uint256 public constant LICR = 1030000000000000000; // 103%
@@ -81,13 +81,13 @@ contract LiquityBase is BaseMath, ILiquityBase {
     function _getTCRWithSystemDebtAndCollShares(
         uint256 _price
     ) internal view returns (uint256 TCR, uint256 _coll, uint256 _debt) {
-        uint256 entireSystemColl = getSystemCollShares();
-        uint256 entireSystemDebt = _getSystemDebt();
+        uint256 systemCollShares = getSystemCollShares();
+        uint256 systemDebt = _getSystemDebt();
 
-        uint256 _underlyingCollateral = collateral.getPooledEthByShares(entireSystemColl);
-        TCR = LiquityMath._computeCR(_underlyingCollateral, entireSystemDebt, _price);
+        uint256 _systemStEthBalance = collateral.getPooledEthByShares(systemCollShares);
+        TCR = EbtcMath._computeCR(_systemStEthBalance, systemDebt, _price);
 
-        return (TCR, entireSystemColl, entireSystemDebt);
+        return (TCR, systemCollShares, systemDebt);
     }
 
     function _checkRecoveryMode(uint256 _price) internal view returns (bool) {
@@ -115,5 +115,29 @@ contract LiquityBase is BaseMath, ILiquityBase {
         uint256 _price
     ) internal pure returns (uint256) {
         return (_debt * _price) / DECIMAL_PRECISION;
+    }
+
+    /// @dev return true if given ICR is qualified for liquidation compared to configured threshold
+    /// @dev this function ONLY checks numbers not check grace period switch for Recovery Mode
+    function _checkICRAgainstLiqThreshold(uint256 _icr, uint _tcr) internal view returns (bool) {
+        // Either undercollateralized
+        // OR, it's RM AND they meet the requirement
+        // Swapped Requirement && RM to save gas
+        return
+            _checkICRAgainstMCR(_icr) ||
+            (_checkICRAgainstTCR(_icr, _tcr) && _checkRecoveryModeForTCR(_tcr));
+    }
+
+    /// @dev return true if given ICR is qualified for liquidation compared to MCR
+    function _checkICRAgainstMCR(uint256 _icr) internal view returns (bool) {
+        return _icr < MCR;
+    }
+
+    /// @dev return true if given ICR is qualified for liquidation compared to TCR
+    /// @dev typically used in Recovery Mode
+    function _checkICRAgainstTCR(uint256 _icr, uint _tcr) internal view returns (bool) {
+        /// @audit is _icr <= _tcr more dangerous for overal system safety?
+        /// @audit Should we use _icr < CCR to allow any risky CDP being liquidated?
+        return _icr <= _tcr;
     }
 }

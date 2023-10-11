@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-library LiquityMath {
+library EbtcMath {
     uint256 internal constant DECIMAL_PRECISION = 1e18;
     uint256 public constant MAX_TCR = type(uint256).max;
 
@@ -89,9 +89,9 @@ library LiquityMath {
         return (_a >= _b) ? (_a - _b) : (_b - _a);
     }
 
-    function _computeNominalCR(uint256 _coll, uint256 _debt) internal pure returns (uint256) {
+    function _computeNominalCR(uint256 _collShares, uint256 _debt) internal pure returns (uint256) {
         if (_debt > 0) {
-            return (_coll * NICR_PRECISION) / _debt;
+            return (_collShares * NICR_PRECISION) / _debt;
         }
         // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
         else {
@@ -100,13 +100,14 @@ library LiquityMath {
         }
     }
 
+    /// @dev Compute collateralization ratio, given stETH balance, price, and debt balance
     function _computeCR(
-        uint256 _coll,
+        uint256 _stEthBalance,
         uint256 _debt,
         uint256 _price
     ) internal pure returns (uint256) {
         if (_debt > 0) {
-            uint256 newCollRatio = (_coll * _price) / _debt;
+            uint256 newCollRatio = (_stEthBalance * _price) / _debt;
 
             return newCollRatio;
         }
