@@ -47,7 +47,7 @@ List of properties of the eBTC protocol, following the categorization by [Certor
 | Property | Description | Category | Tested |
 | --- | --- | --- | --- |
 | CSP-01 | The collateral balance in the collSurplus pool is greater than or equal to its accounting number | High Level | ✅ |
-| CSP-02 | The sum of all surpluses is equal to the value of getTotalSurplusCollShares | High Level | TODO RUN |
+| CSP-02 | The sum of all surpluses is equal to the value of getTotalSurplusCollShares | High Level | ✅ |
 
 
 TODO: Recon
@@ -64,7 +64,7 @@ They can always retrieve the funds
 | SL-01 | The NICR ranking in the sorted list should follow descending order | High Level | ✅️ |
 | SL-02 | The the first(highest) ICR in the sorted list should be greater or equal to TCR | High Level | ✅️ |
 | SL-03 | All CDPs have status active and stake greater than zero | High Level | ✅ |
-| SL-05 | The CDPs should be sorted in descending order of new ICR (accrued) | Variable Transitions | ✅ | TODO: Bring back
+| SL-05 | The CDPs should be sorted in descending order of new ICR (accrued) | Variable Transitions | ❌ | Breaks in certain cases
 
 ## General
 
@@ -73,12 +73,11 @@ They can always retrieve the funds
 | GENERAL-01 | After any user operation, the system should not enter in Recovery Mode | High Level | ✅ |
 | GENERAL-02 | The dollar value of the locked stETH exceeds the dollar value of the issued eBTC if TCR is greater than 100% | High-Level | ✅ |
 | GENERAL-03 | CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations | Valid States | ✅ |
-| GENERAL-04 | stETH in the system lives in ththe ActivePool, the DefaultPool. When an operation is made, stETH is transferred in one of three ways: From a user to a Pool, From a Pool to a user, and From one Pool to another Pool. Except for Liquidations and Redemptions | Variable Transitions | | - IMO Scrap
 | GENERAL-05 | At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events | High Level |  |
 | GENERAL-06 | At all times, the total debt is greater than the sum of all debts from all CDPs | High Level | ✅ |
 
 | GENERAL-07 | Without a price change, a rebasing event, or a redistribution, my position can never reduce in absolute value | State Transitions | | - TODO: 
-Recon Attack IMO - And scrap here
+Recon Attack IMO
 
 | GENERAL-08 | At all times TCR = SUM(ICR) for all CDPs | High Level | ✅ |
 | GENERAL-09 | After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR | High Level | ✅ |
@@ -139,9 +138,9 @@ Recon Attack IMO - And scrap here
 
 | L-10 | As a Individual Leveraged to the maximum (110 CR), I can only be liquidated if: The oracle price changes in such a way that my CR goes below 110 or Other depositors bring the system CR to 125 (edge of Recovery Mode), then the Oracle Price updates to a lower value, causing every CDP below RM to be liquidatable | State Transitions |  |
 
-| L-12 | TCR must increase after liquidation with no redistributions | High Level | ✅ |
+| L-12 | TCR must increase after liquidation with no redistributions | High Level | ❌ | Breaks if all CDPs are underwater
 | L-14 | If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp | High Level | ✅ |
-| L-15 | The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR | High Level | ✅ |
+| L-15 | The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR | High Level | ❌ | Breaks if nobody calls to sync (known)
 | L-16 | The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR | High Level | ✅ |
 | L-17 |Partial Liquidations Cannot Close CDPs | High Level | ✅ |
 

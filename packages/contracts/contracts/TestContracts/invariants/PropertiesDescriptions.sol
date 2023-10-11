@@ -35,6 +35,8 @@ abstract contract PropertiesDescriptions {
 
     string constant CSP_01 =
         "CSP-01: The collateral balance in the collSurplus pool is greater than or equal to its accounting number";
+    string constant CSP_02 =
+        "CSP-01: The sum of all surpluses is equal to the value of getTotalSurplusCollShares";
 
     ///////////////////////////////////////////////////////
     // Sorted List

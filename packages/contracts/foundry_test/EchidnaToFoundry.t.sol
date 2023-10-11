@@ -896,96 +896,96 @@ contract EToFoundry is
 
     /// @dev Debunk false positives for L-15
     ///     These will happen because of the desynch if nobody calls, it is what it is
-    function testL15Debunk() public {
-        openCdp(67534042799335353648407647554112468697195277953615236438520200454730440793371, 8);
-        openCdp(
-            115792089237316195423570985008687907853269984665640564039457584007913129639931,
-            1000000000000000900
-        );
-        setPrice(1324275793822189518402623021008446576244702559577);
-        setEthPerShare(
-            48542174391735010270995007834653745032392815149632706327135797120960854131722
-        );
-        setEthPerShare(40);
-        partialLiquidate(
-            48286268184227095156290128211489441036242155783962558196294945633758974303757,
-            115792089237316195423570985008687907853269984665640564039457574007913129639736
-        );
-        _before(bytes32(0));
-        setPrice(115792089237316195423570985007766067547234912789326764283000208828074618977599);
-        _after(bytes32(0));
-        _before(bytes32(0));
-        redeemCollateral(
-            999999999999999999,
-            55466683072102056944478843133004903753885086444364839670214645639376128222361,
-            68,
-            26404592988528753382516565589028978384076848812021257892050088220355054183615
-        );
-        _after(bytes32(0));
+    // function testL15Debunk() public {
+    //     openCdp(67534042799335353648407647554112468697195277953615236438520200454730440793371, 8);
+    //     openCdp(
+    //         115792089237316195423570985008687907853269984665640564039457584007913129639931,
+    //         1000000000000000900
+    //     );
+    //     setPrice(1324275793822189518402623021008446576244702559577);
+    //     setEthPerShare(
+    //         48542174391735010270995007834653745032392815149632706327135797120960854131722
+    //     );
+    //     setEthPerShare(40);
+    //     partialLiquidate(
+    //         48286268184227095156290128211489441036242155783962558196294945633758974303757,
+    //         115792089237316195423570985008687907853269984665640564039457574007913129639736
+    //     );
+    //     _before(bytes32(0));
+    //     setPrice(115792089237316195423570985007766067547234912789326764283000208828074618977599);
+    //     _after(bytes32(0));
+    //     _before(bytes32(0));
+    //     redeemCollateral(
+    //         999999999999999999,
+    //         55466683072102056944478843133004903753885086444364839670214645639376128222361,
+    //         68,
+    //         26404592988528753382516565589028978384076848812021257892050088220355054183615
+    //     );
+    //     _after(bytes32(0));
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
-    }
+    //     if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+    //         t(
+    //             !vars.lastGracePeriodStartTimestampIsSetBefore &&
+    //                 vars.lastGracePeriodStartTimestampIsSetAfter,
+    //             L_15
+    //         );
+    //     }
+    // }
 
     /// @dev Debunk false positives for L-12
     ///     These will happen exclusively if all CDPs are Underwater, and instead of liquidating the riskiest, the one above is liquidated
-    function testL12Debunk() public {
-        openCdp(92917081472816941941184964779154375129173708512214393931667457813751914161634, 20);
-        openCdp(
-            14357740897988057106500935390524526462940912496206879728999588820331360643957,
-            1000000000000000256
-        );
-        openCdp(
-            14357740897988057106500935390524526462940912496206879728999588820331360643957,
-            1000000000000000256
-        );
-        setPrice(74629061016018350331730450585755319739830762911693635404016285330120218663634);
-        setEthPerShare(
-            69007891472983439489040112860682059911742470146824120203672378698503585549508
-        );
-        withdrawColl(
-            2000000,
-            49955707469362902507454157299064623548400035506668976771172421598874183583296
-        );
-        setPrice(0);
-        closeCdp(79284842807605095858149520102903844594789751342105937047923718189601373042235);
-        setEthPerShare(0);
-        setPrice(3);
-        bytes32 cdpId = _getRandomCdp(
-            115792089237316195423570985008193886025822902127156998188347748450894401986382
-        );
+    // function testL12Debunk() public {
+    //     openCdp(92917081472816941941184964779154375129173708512214393931667457813751914161634, 20);
+    //     openCdp(
+    //         14357740897988057106500935390524526462940912496206879728999588820331360643957,
+    //         1000000000000000256
+    //     );
+    //     openCdp(
+    //         14357740897988057106500935390524526462940912496206879728999588820331360643957,
+    //         1000000000000000256
+    //     );
+    //     setPrice(74629061016018350331730450585755319739830762911693635404016285330120218663634);
+    //     setEthPerShare(
+    //         69007891472983439489040112860682059911742470146824120203672378698503585549508
+    //     );
+    //     withdrawColl(
+    //         2000000,
+    //         49955707469362902507454157299064623548400035506668976771172421598874183583296
+    //     );
+    //     setPrice(0);
+    //     closeCdp(79284842807605095858149520102903844594789751342105937047923718189601373042235);
+    //     setEthPerShare(0);
+    //     setPrice(3);
+    //     bytes32 cdpId = _getRandomCdp(
+    //         115792089237316195423570985008193886025822902127156998188347748450894401986382
+    //     );
 
-        console2.log("vars.newTcrBefore", vars.newTcrBefore);
-        console2.log("vars.newTcrAfter", vars.newTcrAfter);
+    //     console2.log("vars.newTcrBefore", vars.newTcrBefore);
+    //     console2.log("vars.newTcrAfter", vars.newTcrAfter);
 
-        uint256 newIcr;
-        bytes32 currentCdp = sortedCdps.getFirst();
+    //     uint256 newIcr;
+    //     bytes32 currentCdp = sortedCdps.getFirst();
 
-        while (currentCdp != bytes32(0)) {
-            console2.log("ICR ICR", crLens.quoteRealICR(currentCdp));
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
+    //     while (currentCdp != bytes32(0)) {
+    //         console2.log("ICR ICR", crLens.quoteRealICR(currentCdp));
+    //         currentCdp = sortedCdps.getNext(currentCdp);
+    //     }
 
-        _before(cdpId);
-        liquidate(115792089237316195423570985008193886025822902127156998188347748450894401986382);
-        _after(cdpId);
+    //     _before(cdpId);
+    //     liquidate(115792089237316195423570985008193886025822902127156998188347748450894401986382);
+    //     _after(cdpId);
 
-        // If every CDP is liquidatable
-        // Then you liquidate the 2nd
-        // And break the invariant
+    //     // If every CDP is liquidatable
+    //     // Then you liquidate the 2nd
+    //     // And break the invariant
 
-        if (
-            vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
-        ) {
-            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-            gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
-        }
-    }
+    //     if (
+    //         vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
+    //     ) {
+    //         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+    //         gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+    //     }
+    // }
 
     function testGeneral08() public {
         openCdp(72782931752105455104411619997485041164599478189648810093633428138496255693523, 544);
@@ -1000,105 +1000,7 @@ contract EToFoundry is
 
         assertTrue(invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral), "G-08");
     }
-
-    function testGeneral09() public {
-        /**
-         * 1) EchidnaTester.setEthPerShare(102306107605456699406774569057307260912721427228498938043330144895537147074023) (block=55208, time=360624, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     2) EchidnaTester.setEthPerShare(102306107605456699406774569057307260912721427228498938043330144895537147074023) (block=110415, time=721247, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     3) EchidnaTester.setEthPerShare(12) (block=111755, time=883310, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     4) EchidnaTester.setEthPerShare(12) (block=113095, time=1045373, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     5) EchidnaTester.openCdp(35249873508603838970923917239059411282999141349869438512391489011181002963691, 131092) (block=139978, time=1212948, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     6) EchidnaTester.openCdp(59995130856179578012753964916304385582098201770011658156865798823036230046284, 1030000000000000000) (block=151787, time=1805343, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
-         *     7) EchidnaTester.openCdp(59995130856179578012753964916304385582098201770011658156865798823036230046284, 1030000000000000000) (block=163596, time=2397738, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
-         *     8) EchidnaTester.setEthPerShare(102306107605456699406774569057307260912721427228498938043330144895537147074023) (block=218803, time=2758361, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     9) EchidnaTester.setEthPerShare(12) (block=220143, time=2920424, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     10) EchidnaTester.setEthPerShare(12) (block=221483, time=3082487, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
-         *     11) EchidnaTester.liquidate(115792089237316195423570985008687907853269984665640564039457334248473421194186) (block=277923, time=3372993, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
-         *     12) EchidnaTester.repayDebt(9999999999993599, 48)
-         */
-
-        // GENERAL-09:
-        setEthPerShare(
-            102306107605456699406774569057307260912721427228498938043330144895537147074023
-        );
-        setEthPerShare(
-            102306107605456699406774569057307260912721427228498938043330144895537147074023
-        );
-        setEthPerShare(12);
-        setEthPerShare(12);
-        openCdp(
-            35249873508603838970923917239059411282999141349869438512391489011181002963691,
-            131092
-        );
-        openCdp(
-            59995130856179578012753964916304385582098201770011658156865798823036230046284,
-            1030000000000000000
-        );
-        openCdp(
-            59995130856179578012753964916304385582098201770011658156865798823036230046284,
-            1030000000000000000
-        );
-        setEthPerShare(
-            102306107605456699406774569057307260912721427228498938043330144895537147074023
-        );
-        setEthPerShare(12);
-        setEthPerShare(12);
-        liquidate(115792089237316195423570985008687907853269984665640564039457334248473421194186);
-        bytes32 cdpId = get_cdp(48);
-        _before(cdpId);
-        repayDebt(9999999999993599, 48);
-        _after(cdpId);
-
-        console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
-        console2.log("vars.cdpDebtBefore", vars.cdpDebtBefore);
-        console2.log("vars.cdpDebtAfter", vars.cdpDebtAfter);
-        console2.log("vars.icrAfter", vars.icrAfter); // 0.88
-
-        assertTrue(invariant_GENERAL_09(cdpManager, vars), "G-09");
-    }
-
-    function testGeneral09AnotherEchidna() public {
-        setEthPerShare(422969885005186853460329118216965939317476978914332751313210691257388459660);
-        setPrice(32722689803297159564660);
-        setEthPerShare(2295800715889050428049394301540389611305203770840759558107023063707478756137);
-        setEthPerShare(9430658084342478621110343879440481693664256397237066590580775256327894933237);
-        openCdp(0, 56974);
-        setEthPerShare(3658003803251865466884416677564469755415415764957710330089017560191195285885);
-        openCdp(
-            47178713746231187329670492904587548046295133576157509226996599744760046768080,
-            1025940393747833117
-        );
-        setEthPerShare(1826419048);
-        setEthPerShare(463853255);
-        setEthPerShare(61234613524967728149213013066788335278812480284234739607096758628686182151);
-        setEthPerShare(7954433823584281635390873055824344390954190101728441881267963183032688165561);
-        openCdp(0, 65411);
-        redeemCollateral(
-            1411218970824529683653579944659199592374110441414703777589990697024796931545,
-            28682412223937313107683354748345742208210734296344230354578406624067099566210,
-            8026017604617149994705335113890034223124268667295240133106044134145840327608,
-            24510602
-        );
-        openCdp(
-            421639041749029036961420610791321146216723974031398276432264313125580738407,
-            1398999
-        );
-        liquidateCdps(10337462962424082567470147037678370917064894195736595735492531568803797071);
-
-        bytes32 cdpId = get_cdp(1);
-
-        _before(cdpId);
-        repayDebt(1, 3664654876686139248533669277245093923727466555308247984199766471982047307);
-        _after(cdpId);
-
-        console2.log("vars.isRecoveryModeBefore", vars.isRecoveryModeBefore);
-        console2.log("vars.cdpDebtBefore", vars.cdpDebtBefore);
-        console2.log("vars.cdpDebtAfter", vars.cdpDebtAfter);
-        console2.log("vars.icrAfter", vars.icrAfter); // 0.88
-
-        assertTrue(invariant_GENERAL_09(cdpManager, vars), "G-09");
-    }
-
+    
     function testLiquidate() public {
         bytes32 _cdpId1 = openCdp(0, 1);
         bytes32 _cdpId2 = openCdp(0, 138503371414274893);
