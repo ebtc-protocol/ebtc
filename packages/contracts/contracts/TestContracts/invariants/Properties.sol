@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 
 import {ICollateralToken} from "../../Dependencies/ICollateralToken.sol";
-import {LiquityMath} from "../../Dependencies/LiquityMath.sol";
+import {EbtcMath} from "../../Dependencies/EbtcMath.sol";
 import {ActivePool} from "../../ActivePool.sol";
 import {EBTCToken} from "../../EBTCToken.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
@@ -324,7 +324,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
 
-        uint256 tcrFromSums = LiquityMath._computeCR(
+        uint256 tcrFromSums = EbtcMath._computeCR(
             collateral.getPooledEthByShares(sumOfColl),
             sumOfDebt,
             curentPrice

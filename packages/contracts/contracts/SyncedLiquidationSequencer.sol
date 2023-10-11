@@ -6,10 +6,10 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManagerData.sol";
-import "./Dependencies/LiquityBase.sol";
+import "./Dependencies/EbtcBase.sol";
 
 /// @notice Helper to turn a sequence into CDP id array for batch liquidation
-contract SyncedLiquidationSequencer is LiquityBase {
+contract SyncedLiquidationSequencer is EbtcBase {
     ICdpManager public immutable cdpManager;
     ISortedCdps public immutable sortedCdps;
 
@@ -19,7 +19,7 @@ contract SyncedLiquidationSequencer is LiquityBase {
         address _priceFeedAddress,
         address _activePoolAddress,
         address _collateralAddress
-    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
+    ) EbtcBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
         cdpManager = ICdpManager(_cdpManagerAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
     }

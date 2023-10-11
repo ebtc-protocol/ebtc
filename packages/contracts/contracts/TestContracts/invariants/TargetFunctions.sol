@@ -144,7 +144,7 @@ abstract contract TargetFunctions is Properties {
 
         _allTargets[4] = address(borrowerOperations);
         _allCalldatas[4] = abi.encodeWithSelector(
-            BorrowerOperations.withdrawEBTC.selector,
+            BorrowerOperations.withdrawDebt.selector,
             _cdpId,
             _EBTCAmount,
             _cdpId,
@@ -153,7 +153,7 @@ abstract contract TargetFunctions is Properties {
 
         _allTargets[5] = address(borrowerOperations);
         _allCalldatas[5] = abi.encodeWithSelector(
-            BorrowerOperations.repayEBTC.selector,
+            BorrowerOperations.repayDebt.selector,
             _cdpId,
             _EBTCAmount,
             _cdpId,
@@ -782,7 +782,7 @@ abstract contract TargetFunctions is Properties {
             emit L3(
                 block.timestamp,
                 cdpManager.lastGracePeriodStartTimestamp(),
-                cdpManager.recoveryModeGracePeriod()
+                cdpManager.recoveryModeGracePeriodDuration()
             );
 
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
@@ -900,7 +900,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawEBTC(uint _amount, uint256 _i) public setup {
+    function withdrawDebt(uint _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -920,7 +920,7 @@ abstract contract TargetFunctions is Properties {
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
-                BorrowerOperations.withdrawEBTC.selector,
+                BorrowerOperations.withdrawDebt.selector,
                 _cdpId,
                 _amount,
                 _cdpId,
@@ -933,11 +933,11 @@ abstract contract TargetFunctions is Properties {
         _after(_cdpId);
 
         eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-        gte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawEBTC must not decrease debt");
+        gte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawDebt must not decrease debt");
         eq(
             vars.actorEbtcAfter,
             vars.actorEbtcBefore + _amount,
-            "withdrawEBTC must increase debt by requested amount"
+            "withdrawDebt must increase debt by requested amount"
         );
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
@@ -971,7 +971,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) public setup {
+    function repayDebt(uint _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -990,7 +990,7 @@ abstract contract TargetFunctions is Properties {
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
-                BorrowerOperations.repayEBTC.selector,
+                BorrowerOperations.repayDebt.selector,
                 _cdpId,
                 _amount,
                 _cdpId,
