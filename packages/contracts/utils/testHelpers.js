@@ -300,7 +300,7 @@ class TestHelper {
   
   static async syncGlobalStateAndGracePeriod(contracts, provider){	  
     await contracts.cdpManager.syncGlobalAccountingAndGracePeriod();
-    let _gracePeriod = await contracts.cdpManager.recoveryModeGracePeriod();
+    let _gracePeriod = await contracts.cdpManager.recoveryModeGracePeriodDuration();
     await provider.send("evm_increaseTime", [_gracePeriod.add(web3.utils.toBN('1')).toNumber()]);
     await provider.send("evm_mine");
   }
@@ -381,10 +381,10 @@ class TestHelper {
 
         const EBTCAmount = redemptionTx.logs[i].args[0]
         const totalEBTCRedeemed = redemptionTx.logs[i].args[1]
-        const totalETHDrawn = redemptionTx.logs[i].args[2]
-        const ETHFee = redemptionTx.logs[i].args[3]
+        const collSharesDrawn = redemptionTx.logs[i].args[2]
+        const feeCollShares = redemptionTx.logs[i].args[3]
 
-        return [EBTCAmount, totalEBTCRedeemed, totalETHDrawn, ETHFee]
+        return [EBTCAmount, totalEBTCRedeemed, collSharesDrawn, feeCollShares]
       }
     }
     throw ("The transaction logs do not contain a redemption event")
@@ -574,7 +574,7 @@ class TestHelper {
     return { newColl, newDebt }
   }
 
-  static async getCollAndDebtFromWithdrawEBTC(contracts, account, amount) {
+  static async getCollAndDebtFromwithdrawDebt(contracts, account, amount) {
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
     const newColl = entireColl
@@ -583,7 +583,7 @@ class TestHelper {
     return { newColl, newDebt }
   }
 
-  static async getCollAndDebtFromRepayEBTC(contracts, account, amount) {
+  static async getCollAndDebtFromrepayDebt(contracts, account, amount) {
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
     const newColl = entireColl
@@ -819,7 +819,7 @@ class TestHelper {
     return tx;
   }
 
-  static async withdrawEBTC(contracts, {
+  static async withdrawDebt(contracts, {
     _cdpId,
     ebtcAmount,
     ICR,
@@ -845,7 +845,7 @@ class TestHelper {
       increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, ebtcAmount)
     }
 
-    await contracts.borrowerOperations.withdrawEBTC(_cdpId, ebtcAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawDebt(_cdpId, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
       ebtcAmount,
@@ -993,64 +993,64 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  static async withdrawEBTC_allAccounts(accounts, contracts, amount, cdpIds) {
+  static async withdrawDebt_allAccounts(accounts, contracts, amount, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
-      const { newColl, newDebt } = await this.getCollAndDebtFromWithdrawEBTC(contracts, cdpIds[i], amount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromwithdrawDebt(contracts, cdpIds[i], amount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.withdrawEBTC(cdpIds[i], amount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.withdrawDebt(cdpIds[i], amount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async withdrawEBTC_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
+  static async withdrawDebt_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
       const randEBTCAmount = this.randAmountInWei(min, max)
 
-      const { newColl, newDebt } = await this.getCollAndDebtFromWithdrawEBTC(contracts, cdpIds[i], randEBTCAmount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromwithdrawDebt(contracts, cdpIds[i], randEBTCAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.withdrawEBTC(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.withdrawDebt(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async repayEBTC_allAccounts(accounts, contracts, amount, cdpIds) {
+  static async repayDebt_allAccounts(accounts, contracts, amount, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
-      const { newColl, newDebt } = await this.getCollAndDebtFromRepayEBTC(contracts, cdpIds[i], amount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromrepayDebt(contracts, cdpIds[i], amount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.repayEBTC(cdpIds[i], amount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.repayDebt(cdpIds[i], amount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async repayEBTC_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
+  static async repayDebt_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
       const randEBTCAmount = this.randAmountInWei(min, max)
 		
-      const { newColl, newDebt } = await this.getCollAndDebtFromRepayEBTC(contracts, cdpIds[i], randEBTCAmount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromrepayDebt(contracts, cdpIds[i], randEBTCAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.repayEBTC(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.repayDebt(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }

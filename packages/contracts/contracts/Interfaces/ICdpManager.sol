@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.17;
 
-import "./ILiquityBase.sol";
+import "./IEbtcBase.sol";
 import "./ICdpManagerData.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManager is ILiquityBase, ICdpManagerData {
+interface ICdpManager is IEbtcBase, ICdpManagerData {
     // --- Functions ---
     function getActiveCdpsCount() external view returns (uint256);
 
@@ -40,8 +40,6 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
     function getTotalStakeForFeeTaken(uint256 _feeTaken) external view returns (uint256, uint256);
 
     function closeCdp(bytes32 _cdpId, address _borrower, uint256 _debt, uint256 _coll) external;
-
-    function removeStake(bytes32 _cdpId) external;
 
     function getRedemptionRate() external view returns (uint256);
 

@@ -6,7 +6,7 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/IFallbackCaller.sol";
 import "./Dependencies/AggregatorV3Interface.sol";
 import "./Dependencies/BaseMath.sol";
-import "./Dependencies/LiquityMath.sol";
+import "./Dependencies/EbtcMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
@@ -445,8 +445,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
     ) internal pure returns (bool) {
-        uint256 minPrice = LiquityMath._min(_currentResponse.answer, _prevResponse.answer);
-        uint256 maxPrice = LiquityMath._max(_currentResponse.answer, _prevResponse.answer);
+        uint256 minPrice = EbtcMath._min(_currentResponse.answer, _prevResponse.answer);
+        uint256 maxPrice = EbtcMath._max(_currentResponse.answer, _prevResponse.answer);
 
         /*
          * Use the larger price as the denominator:
@@ -454,7 +454,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
          * - If price increased, the percentage deviation is in relation to the current price.
          */
         uint256 percentDeviation = maxPrice > 0
-            ? ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice
+            ? ((maxPrice - minPrice) * EbtcMath.DECIMAL_PRECISION) / maxPrice
             : 0;
 
         // Return true if price has more than doubled, or more than halved.
@@ -527,10 +527,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         FallbackResponse memory _fallbackResponse
     ) internal pure returns (bool) {
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint256 minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint256 minPrice = EbtcMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
         if (minPrice == 0) return false;
-        uint256 maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
-        uint256 percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
+        uint256 maxPrice = EbtcMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint256 percentPriceDifference = ((maxPrice - minPrice) * EbtcMath.DECIMAL_PRECISION) /
             minPrice;
 
         /*
@@ -802,6 +802,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             (_scaledDecimal *
                 uint256(_ethBtcAnswer) *
                 uint256(_stEthEthAnswer) *
-                LiquityMath.DECIMAL_PRECISION) / 10 ** (_decimalDenominator * 2);
+                EbtcMath.DECIMAL_PRECISION) / 10 ** (_decimalDenominator * 2);
     }
 }

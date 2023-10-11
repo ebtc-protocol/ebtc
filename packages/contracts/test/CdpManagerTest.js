@@ -56,7 +56,7 @@ contract('CdpManager', async accounts => {
   const getActualDebtFromComposite = async (compositeDebt) => th.getActualDebtFromComposite(compositeDebt, contracts)
   const getNetBorrowingAmount = async (debtWithFee) => th.getNetBorrowingAmount(contracts, debtWithFee)
   const openCdp = async (params) => th.openCdp(contracts, params)
-  const withdrawEBTC = async (params) => th.withdrawEBTC(contracts, params)
+  const withdrawDebt = async (params) => th.withdrawDebt(contracts, params)
 
   before(async () => {	  
     await hre.network.provider.request({method: "hardhat_impersonateAccount", params: [beadp]}); 
@@ -123,7 +123,7 @@ contract('CdpManager', async accounts => {
     const A_EBTCWithdrawal = await getNetBorrowingAmount(dec(130, 18))
 
     const targetICR = toBN('1111111111111111111')
-    await withdrawEBTC({_cdpId: _aliceCdpId, ICR: targetICR, extraParams: { from: alice } })
+    await withdrawDebt({_cdpId: _aliceCdpId, ICR: targetICR, extraParams: { from: alice } })
 
     const ICR_AfterWithdrawal = await cdpManager.getICR(_aliceCdpId, price)
     assert.isAtMost(th.getDifference(ICR_AfterWithdrawal, targetICR), 100)
@@ -354,7 +354,7 @@ contract('CdpManager', async accounts => {
     assert.isAtMost(th.getDifference(L_EBTCDebt_AfterCarolLiquidated, L_EBTCDebt_expected_1), 100)
 
     // Bob now withdraws EBTC, bringing his ICR to 1.11
-    const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawEBTC({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
+    const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawDebt({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
     let _bobTotalDebt = (await cdpManager.getDebtAndCollShares(_bobCdpId))[0]
 
     // Confirm system is not in Recovery Mode
@@ -1098,8 +1098,8 @@ contract('CdpManager', async accounts => {
 
     // // All remaining cdps D and E repay a little debt, applying their pending rewards
     assert.isTrue((await sortedCdps.getSize()).eq(toBN('3')))
-    await borrowerOperations.repayEBTC(_dCdpId, _repayAmt, _dCdpId, _dCdpId, {from: D})
-    await borrowerOperations.repayEBTC(_eCdpId, _repayAmt, _eCdpId, _eCdpId, {from: E})
+    await borrowerOperations.repayDebt(_dCdpId, _repayAmt, _dCdpId, _dCdpId, {from: D})
+    await borrowerOperations.repayDebt(_eCdpId, _repayAmt, _eCdpId, _eCdpId, {from: E})
 
     // Check D & E pending rewards already applied
     assert.isTrue(await cdpManager.hasPendingRedistributedDebt(_cCdpId))
@@ -1870,8 +1870,8 @@ contract('CdpManager', async accounts => {
 
     // // All remaining cdps D and E repay a little debt, applying their pending rewards
     assert.isTrue((await sortedCdps.getSize()).eq(toBN('3')))
-    await borrowerOperations.repayEBTC(_dCdpId, dec(1, 15), _dCdpId, _dCdpId, {from: D})
-    await borrowerOperations.repayEBTC(_eCdpId, dec(1, 15), _eCdpId, _eCdpId, {from: E})
+    await borrowerOperations.repayDebt(_dCdpId, dec(1, 15), _dCdpId, _dCdpId, {from: D})
+    await borrowerOperations.repayDebt(_eCdpId, dec(1, 15), _eCdpId, _eCdpId, {from: E})
 
     // Check all pending rewards already applied
     assert.isTrue(await cdpManager.hasPendingRedistributedDebt(_cCdpId))
@@ -2428,7 +2428,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const feeCollShares = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2449,10 +2449,10 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(feeCollShares))
     
     // console.log("*********************************************************************************")
-    // console.log("ETHFee: " + ETHFee)
+    // console.log("feeCollShares: " + feeCollShares)
     // console.log("dennis_ETHBalance_Before: " + dennis_ETHBalance_Before)
     // console.log("GAS_USED: " + th.gasUsed(redemptionTx))
     // console.log("dennis_ETHBalance_After: " + dennis_ETHBalance_After)
@@ -2519,7 +2519,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const feeCollShares = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2540,7 +2540,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(feeCollShares))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2602,7 +2602,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const feeCollShares = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2623,7 +2623,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(feeCollShares))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -2692,7 +2692,7 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const feeCollShares = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const alice_Cdp_After = await cdpManager.Cdps(_aliceCdpId)
     const bob_Cdp_After = await cdpManager.Cdps(_bobCdpId)
@@ -2713,7 +2713,7 @@ contract('CdpManager', async accounts => {
     const receivedETH = dennis_ETHBalance_After.sub(dennis_ETHBalance_Before)
 
     const expectedTotalCollDrawn = redemptionAmount.mul(mv._1e18BN).div(price) // convert redemptionAmount EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(ETHFee))
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(toBN(feeCollShares))
 
     th.assertIsApproximatelyEqual(expectedReceivedETH, receivedETH)
 
@@ -3035,12 +3035,12 @@ contract('CdpManager', async accounts => {
       }
     )
 
-    const ETHFee = th.getEmittedRedemptionValues(redemptionTx)[3]
+    const feeCollShares = th.getEmittedRedemptionValues(redemptionTx)[3]
 
     const carol_ETHBalance_After = toBN(await web3.eth.getBalance(carol))
 
     const expectedTotalCollDrawn = toBN(amount).div(price) // convert 100 EBTC to collateral at given price
-    const expectedReceivedETH = expectedTotalCollDrawn.sub(ETHFee)
+    const expectedReceivedETH = expectedTotalCollDrawn.sub(feeCollShares)
 
     const receivedETH = carol_ETHBalance_After.sub(carol_ETHBalance_Before)
     assert.isTrue(expectedReceivedETH.eq(receivedETH))
@@ -3909,7 +3909,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(lastFeeOpTime_3.gt(lastFeeOpTime_1))
   })
 
-  it("redeemCollateral(): a redemption made at zero base rate send a non-zero ETHFee to FeeRecipient", async () => {
+  it("redeemCollateral(): a redemption made at zero base rate send a non-zero feeCollShares to FeeRecipient", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
@@ -4070,7 +4070,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(feeRecipientBalanceAfter.gt(feeRecipientBalanceBefore))
   })
 
-  it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - ETHFee) to the redeemer", async () => {
+  it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - feeCollShares) to the redeemer", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
@@ -4479,7 +4479,7 @@ contract('CdpManager', async accounts => {
     const current_L_EBTCDebt = await cdpManager.systemDebtRedistributionIndex()
     assert.isTrue(current_L_EBTCDebt.gt(toBN('0')))
 
-    const carolSnapshot_L_EBTCDebt = (await cdpManager.debtRedistributionIndex(_carolCdpId))
+    const carolSnapshot_L_EBTCDebt = (await cdpManager.cdpDebtRedistributionIndex(_carolCdpId))
     assert.equal(carolSnapshot_L_EBTCDebt, 0)
 
     const carol_PendingEBTCDebtReward = (await cdpManager.getPendingRedistributedDebt(_carolCdpId))

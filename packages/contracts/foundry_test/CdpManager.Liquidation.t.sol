@@ -667,10 +667,14 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.startPrank(users[0]);
 
         // Show it cannot be liquidated
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.liquidate(safeCdpId);
 
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
     }
 
@@ -712,10 +716,14 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.startPrank(users[0]);
 
         // Show it cannot be liquidated
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.liquidate(safeCdpId);
 
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
 
         uint256 liquidationCheckpoint = vm.snapshot();

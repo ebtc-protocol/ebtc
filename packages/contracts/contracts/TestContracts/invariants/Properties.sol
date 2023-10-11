@@ -91,7 +91,9 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (systemStEthFeePerUnitIndex < cdpManager.stEthFeePerUnitIndex(cdpManager.CdpIds(i))) {
+            if (
+                systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpManager.CdpIds(i))
+            ) {
                 return false;
             }
         }

@@ -15,7 +15,7 @@ const HintHelpers = artifacts.require("./HintHelpers.sol")
 
 const CommunityIssuanceTester = artifacts.require("./LQTY/CommunityIssuanceTester.sol")
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
-const LiquityMathTester = artifacts.require("./LiquityMathTester.sol")
+const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
@@ -46,7 +46,7 @@ const LQTYContractABIs = [
 const TesterContractABIs  = [
   CommunityIssuanceTester,
   ActivePoolTester,
-  LiquityMathTester,
+  EbtcMathTester,
   BorrowerOperationsTester,
   CdpManagerTester,
   EBTCTokenTester,

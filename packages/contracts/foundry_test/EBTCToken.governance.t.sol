@@ -2,11 +2,11 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 /*
- * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
+ * Test suite that tests opened CDPs with two different operations: repayDebt and withdrawDebt
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract EBTCTokenGovernanceTest is eBTCBaseFixture {

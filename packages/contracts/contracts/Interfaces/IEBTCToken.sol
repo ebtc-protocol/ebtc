@@ -6,9 +6,6 @@ import "../Dependencies/IERC20.sol";
 import "../Dependencies/IERC2612.sol";
 
 interface IEBTCToken is IERC20, IERC2612 {
-    // --- Events ---
-    event EBTCTokenBalanceUpdated(address _user, uint _amount);
-
     // --- Functions ---
 
     function mint(address _account, uint256 _amount) external;

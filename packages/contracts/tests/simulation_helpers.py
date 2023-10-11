@@ -678,7 +678,7 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
                 pending = get_ebtc_to_repay(accounts, contracts, active_accounts, inactive_accounts,
                                             account, repay_amount)
                 if pending == 0:
-                    contracts.borrowerOperations.repayEBTC(cdp_id, repay_amount, hints[0], hints[1],
+                    contracts.borrowerOperations.repayDebt(cdp_id, repay_amount, hints[0], hints[1],
                                                            {'from': account})
             elif check > 2 and not is_recovery_mode(contracts, price_ether_current):
                 # withdraw EBTC
@@ -686,7 +686,7 @@ def adjust_cdps(accounts, contracts, active_accounts, inactive_accounts, price_e
                 withdraw_amount_wei = floatToWei(withdraw_amount)
                 if is_new_tcr_above_ccr(contracts, 0, False, withdraw_amount_wei, True,
                                         floatToWei(price_ether_current)):
-                    contracts.borrowerOperations.withdrawEBTC(cdp_id, withdraw_amount_wei,
+                    contracts.borrowerOperations.withdrawDebt(cdp_id, withdraw_amount_wei,
                                                               hints[0], hints[1], {'from': account})
                     rate_issuance = contracts.cdpManager.getBorrowingRateWithDecay() / 1e18
                     issuance_ebtc_adjust = issuance_ebtc_adjust + rate_issuance * withdraw_amount

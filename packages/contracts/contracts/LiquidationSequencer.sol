@@ -6,7 +6,7 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManagerData.sol";
-import "./Dependencies/LiquityBase.sol";
+import "./Dependencies/EbtcBase.sol";
 
 /// @notice Helper to turn a sequence into CDP id array for batch liquidation
 /// @dev Note this sequencer only serves as an approximation tool to provide "best-effort"
@@ -14,7 +14,7 @@ import "./Dependencies/LiquityBase.sol";
 /// @dev It is possible that some of the returned CDPs might be skipped (not liquidatable any more)
 /// @dev during liquidation execution due to change of the system states
 /// @dev e.g., TCR brought back from Recovery Mode to Normal Mode
-contract LiquidationSequencer is LiquityBase {
+contract LiquidationSequencer is EbtcBase {
     ICdpManager public immutable cdpManager;
     ISortedCdps public immutable sortedCdps;
 
@@ -24,7 +24,7 @@ contract LiquidationSequencer is LiquityBase {
         address _priceFeedAddress,
         address _activePoolAddress,
         address _collateralAddress
-    ) LiquityBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
+    ) EbtcBase(_activePoolAddress, _priceFeedAddress, _collateralAddress) {
         cdpManager = ICdpManager(_cdpManagerAddress);
         sortedCdps = ISortedCdps(_sortedCdpsAddress);
     }

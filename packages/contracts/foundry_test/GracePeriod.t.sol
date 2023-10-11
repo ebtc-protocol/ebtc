@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "forge-std/console2.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 /*
@@ -197,7 +197,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertSuccessOnAllLiquidationsDegen(cdp);
 
         // Grace Period Ended, liquidations work
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         _assertSuccessOnAllLiquidationsDegen(cdp);
         return degenSnapshot;
     }
@@ -212,7 +212,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended, liquidations work
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         _assertAllLiquidationSuccess(cdps);
     }
 
@@ -360,9 +360,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, 1);
         } else if (action == 2) {
-            //adjustCdp: repayEBTC
+            //adjustCdp: repayDebt
             vm.prank(borrower);
-            borrowerOperations.repayEBTC(cdps[0], 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             uint256 toRedeem = 5e17;
             //redemption
@@ -409,12 +409,12 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, coll);
         } else if (action == 2) {
-            //adjustCdp: withdrawEBTC (reduce debt)
+            //adjustCdp: withdrawDebt (reduce debt)
             debt = cdpManager.getCdpDebt(cdps[0]);
             console.log(debt);
 
             vm.prank(borrower);
-            borrowerOperations.repayEBTC(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             //adjustCdp: adjustCdpWithColl (reduce debt + increase coll)
             debt = cdpManager.getCdpDebt(cdps[0]);
@@ -472,7 +472,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
 
         // Grace period timestamp hasn't changed
         assertEq(
@@ -497,7 +497,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _assertRevertOnAllLiquidations(cdps);
 
         // Grace Period Ended
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
 
         // Grace period timestamp hasn't changed
         assertEq(

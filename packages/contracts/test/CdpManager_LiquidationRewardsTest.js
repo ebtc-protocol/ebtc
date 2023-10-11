@@ -549,7 +549,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(7428, 13))
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawDebt(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)
@@ -911,7 +911,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(7428, 13))
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawDebt(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)	
