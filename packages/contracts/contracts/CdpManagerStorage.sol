@@ -807,10 +807,14 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
 
     // Can liquidate in RM if ICR < TCR AND Enough time has passed
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
-        // ICR < TCR and we have waited enough
+        return _checkICRAgainstTCR(icr, tcr) && _recoveryModeGracePeriodPassed();
+    }
+
+    /// @dev Check if enough time has passed for grace period after enabled
+    function _recoveryModeGracePeriodPassed() internal view returns (bool) {
+        // we have waited enough
         uint128 cachedLastGracePeriodStartTimestamp = lastGracePeriodStartTimestamp;
         return
-            icr < tcr &&
             cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
             block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod;
     }

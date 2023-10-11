@@ -70,7 +70,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         if (_ICR >= MCR) {
             // We must be in RM
             require(
-                _TCR < CCR && _ICR <= _TCR, /// @audit is <= more dangerous? Should we use _ICR <= CCR to allow any risky CDP being liquidated?
+                _checkICRAgainstLiqThreshold(_ICR, _TCR),
                 "CdpManager: ICR is not below liquidation threshold in current mode"
             );
 
@@ -722,7 +722,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
                 if (
                     !vars.backToNormalMode &&
-                    (vars.ICR < MCR || canLiquidateRecoveryMode(vars.ICR, _TCR))
+                    (_checkICRAgainstMCR(vars.ICR) || canLiquidateRecoveryMode(vars.ICR, _TCR))
                 ) {
                     vars.price = _price;
                     _syncAccounting(vars.cdpId);
@@ -753,7 +753,7 @@ contract LiquidationLibrary is CdpManagerStorage {
                     vars.backToNormalMode = _TCR < CCR ? false : true;
                     _liqFlags[vars.i] = true;
                     _liqCnt += 1;
-                } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                } else if (vars.backToNormalMode && _checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(
                         _price,
@@ -825,7 +825,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
                 vars.ICR = getSyncedICR(vars.cdpId, _price);
 
-                if (vars.ICR < MCR) {
+                if (_checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(
                         _price,
