@@ -149,9 +149,9 @@ TODO: Also do one that shows that it can NEVER revert
 
 | Property | Description | Category | Tested |
 | --- | --- | --- | --- |
-| F-01 | `claimFeeRecipientCollShares` claiming increases the balance of the fee recipient | Unit Tests | TODO |
-| F-02 | Fees From Redemptions are added to `claimFeeRecipientCollShares` | Unit Tests | IMPL |
-| F-03 | Fees From FlashLoans are sent to the fee Recipient | Unit Tests | IMPL |
+| F-01 | `claimFeeRecipientCollShares` claiming increases the balance of the fee recipient | Unit Tests | ✅ |
+| F-02 | Fees From Redemptions are added to `claimFeeRecipientCollShares` | Unit Tests | ✅ |
+| F-03 | Fees From FlashLoans are sent to the fee Recipient | Unit Tests | ✅ |
 
 
 
