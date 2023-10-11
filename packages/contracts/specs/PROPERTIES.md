@@ -143,10 +143,7 @@ Recon Attack IMO - And scrap here
 | L-14 | If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp | High Level | ✅ |
 | L-15 | The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR | High Level | ✅ |
 | L-16 | The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR | High Level | ✅ |
-| L-17 | Partial Liquidations do not close Cdps | High Level | TO TEST |
-
-
-## Fees - Antonio pls implement this one first
+| L-17 |Partial Liquidations Cannot Close CDPs | High Level | ✅ |
 
 TODO: Also do one that shows that it can NEVER revert
 
