@@ -71,7 +71,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             // We must be in RM
             require(
                 _checkICRAgainstLiqThreshold(_ICR, _TCR),
-                "CdpManager: ICR is not below liquidation threshold in current mode"
+                "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
             );
 
             // == Grace Period == //
@@ -749,7 +749,6 @@ contract LiquidationLibrary is CdpManagerStorage {
                     );
                     vars.backToNormalMode = _TCR < CCR ? false : true;
                     _liqFlags[vars.i] = true;
-                    _liqCnt += 1;
                 } else if (vars.backToNormalMode && _checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);

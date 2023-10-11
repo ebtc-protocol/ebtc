@@ -975,12 +975,12 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         uint256 _debtRedistributionError = cdpManager.lastEBTCDebtErrorRedistribution();
         console2.log("_debtRedistributionError:", _debtRedistributionError);
 
-        uint256 cdpDebtRedistributionIdx1 = cdpManager.debtRedistributionIndex(_cdp1);
+        uint256 cdpDebtRedistributionIdx1 = cdpManager.cdpDebtRedistributionIndex(_cdp1);
         uint256 pendingDebtRedistributed1 = cdpManager.getPendingRedistributedDebt(_cdp1);
         console2.log("cdpDebtRedistributionIdx1:", cdpDebtRedistributionIdx1);
         console2.log("pendingDebtRedistributed1:", pendingDebtRedistributed1);
 
-        uint256 cdpDebtRedistributionIdx3 = cdpManager.debtRedistributionIndex(_cdp3);
+        uint256 cdpDebtRedistributionIdx3 = cdpManager.cdpDebtRedistributionIndex(_cdp3);
         uint256 pendingDebtRedistributed3 = cdpManager.getPendingRedistributedDebt(_cdp3);
         console2.log("cdpDebtRedistributionIdx3:", cdpDebtRedistributionIdx3);
         console2.log("pendingDebtRedistributed3:", pendingDebtRedistributed3);
