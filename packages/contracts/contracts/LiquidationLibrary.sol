@@ -567,10 +567,9 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         if (_ICR > LICR) {
             _incentiveColl = (_totalDebtToBurn * (_ICR > MCR ? MCR : _ICR)) / _price;
-            
+
             // Convert back to shares
             toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
-
         } else {
             // for full liquidation, there would be some bad debt to redistribute
             _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
