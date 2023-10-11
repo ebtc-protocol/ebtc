@@ -61,7 +61,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getICR(_cdpId, _price);
+        uint256 _ICR = getICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
             _price
         );
@@ -70,8 +70,8 @@ contract LiquidationLibrary is CdpManagerStorage {
         if (_ICR >= MCR) {
             // We must be in RM
             require(
-                _TCR < CCR && _ICR <= _TCR, /// @audit is <= more dangerous? Should we use _ICR <= CCR to allow any risky CDP being liquidated?
-                "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+                _checkICRAgainstLiqThreshold(_ICR, _TCR),
+                "CdpManager: ICR is not below liquidation threshold in current mode"
             );
 
             // == Grace Period == //
@@ -551,13 +551,17 @@ contract LiquidationLibrary is CdpManagerStorage {
                 debtToRedistribute = _debtToRepay < _totalDebtToBurn
                     ? _totalDebtToBurn - _debtToRepay
                     : 0;
+                // now CDP owner should have zero surplus to claim
+                cappedColPortion = _totalColToSend;
             } else {
                 // for partial liquidation, new ICR would deteriorate
                 // since we give more incentive (103%) than current _ICR allowed
                 _incentiveColl = (_totalDebtToBurn * LICR) / _price;
             }
         }
-        cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
+        if (cappedColPortion == 0) {
+            cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
+        }
         cappedColPortion = cappedColPortion < _totalColToSend ? cappedColPortion : _totalColToSend;
         collSurplus = (cappedColPortion == _totalColToSend) ? 0 : _totalColToSend - cappedColPortion;
     }
@@ -712,11 +716,11 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getICR(vars.cdpId, _price);
+                vars.ICR = getSyncedICR(vars.cdpId, _price);
 
                 if (
                     !vars.backToNormalMode &&
-                    (vars.ICR < MCR || canLiquidateRecoveryMode(vars.ICR, _TCR))
+                    (_checkICRAgainstMCR(vars.ICR) || canLiquidateRecoveryMode(vars.ICR, _TCR))
                 ) {
                     vars.price = _price;
                     _syncAccounting(vars.cdpId);
@@ -745,7 +749,8 @@ contract LiquidationLibrary is CdpManagerStorage {
                     );
                     vars.backToNormalMode = _TCR < CCR ? false : true;
                     _liqFlags[vars.i] = true;
-                } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                    _liqCnt += 1;
+                } else if (vars.backToNormalMode && _checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
 
@@ -775,9 +780,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getICR(vars.cdpId, _price);
+                vars.ICR = getSyncedICR(vars.cdpId, _price);
 
-                if (vars.ICR < MCR) {
+                if (_checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
                     _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
 

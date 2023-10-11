@@ -855,6 +855,35 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
     }
 
+    function test_ZeroSurplus_WithFullLiq_ForICRLessThanLICR(uint256 ICR) public {
+        ICR = bound(ICR, cdpManager.MCR() + 1, cdpManager.CCR());
+
+        // ensure there is more than one CDP
+        _singleCdpSetup(users[0], 156e16);
+        (address user, bytes32 userCdpid) = _singleCdpSetup(users[0], ICR);
+
+        // price drop to trigger liquidation
+        uint256 _originalPrice = priceFeedMock.fetchPrice();
+        uint256 _newPrice = (_originalPrice * (cdpManager.LICR() - 1234567890123)) / ICR;
+        priceFeedMock.setPrice(_newPrice);
+        uint256 _currentICR = cdpManager.getICR(userCdpid, _newPrice);
+        assertTrue(cdpManager.getSyncedICR(userCdpid, _newPrice) < cdpManager.LICR());
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+
+        // ensure there is no surplus for full liquidation if bad debt generated
+        uint256 _surplusBalBefore = collSurplusPool.getSurplusCollShares(user);
+        uint256 _redistributedIndexBefore = cdpManager.systemDebtRedistributionIndex();
+        vm.prank(_liquidator);
+        cdpManager.liquidate(userCdpid);
+        uint256 _surplusBalAfter = collSurplusPool.getSurplusCollShares(user);
+        uint256 _redistributedIndexAfter = cdpManager.systemDebtRedistributionIndex();
+        assertTrue(_surplusBalBefore == _surplusBalAfter);
+        assertTrue(_redistributedIndexAfter > _redistributedIndexBefore);
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateIndividualCdpSetupCDP with the appropriate arguments

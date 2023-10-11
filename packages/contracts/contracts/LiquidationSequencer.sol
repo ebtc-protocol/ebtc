@@ -57,17 +57,15 @@ contract LiquidationSequencer is EbtcBase {
         uint256 _TCR
     ) internal view returns (bytes32[] memory _array) {
         if (_n > 0) {
-            bool _recoveryMode = _TCR < CCR ? true : false;
             // get count of liquidatable CDPs with 1st iteration
-            (uint256 _cnt, ) = _iterateOverSortedCdps(0, _TCR, _n, _price, _recoveryMode);
+            (uint256 _cnt, ) = _iterateOverSortedCdps(0, _TCR, _n, _price);
 
             // retrieve liquidatable CDPs with 2nd iteration
             (uint256 _j, bytes32[] memory _returnedArray) = _iterateOverSortedCdps(
                 _cnt,
                 _TCR,
                 _n,
-                _price,
-                _recoveryMode
+                _price
             );
             require(_j == _cnt, "LiquidationSequencer: wrong sequence conversion!");
             _array = _returnedArray;
@@ -78,8 +76,7 @@ contract LiquidationSequencer is EbtcBase {
         uint256 _realCount,
         uint256 _TCR,
         uint256 _n,
-        uint256 _price,
-        bool _recoveryMode
+        uint256 _price
     ) internal view returns (uint256 _cnt, bytes32[] memory _array) {
         // if there is already a count (calculated from previous iteration)
         // we use the value to initialize CDP id array for return
@@ -93,7 +90,10 @@ contract LiquidationSequencer is EbtcBase {
         bytes32 _cdpId = _last;
 
         for (uint256 i = 0; i < (_realCount > 0 ? _realCount : _n) && _cdpId != _first; ) {
-            bool _liquidatable = _checkCdpLiquidability(_cdpId, _TCR, _price, _recoveryMode);
+            bool _liquidatable = _checkICRAgainstLiqThreshold(
+                cdpManager.getSyncedICR(_cdpId, _price),
+                _TCR
+            );
             if (_liquidatable) {
                 if (_realCount > 0) {
                     _array[_realCount - _cnt - 1] = _cdpId;
@@ -110,26 +110,5 @@ contract LiquidationSequencer is EbtcBase {
                 ++i;
             }
         }
-    }
-
-    function _checkCdpLiquidability(
-        bytes32 _cdpId,
-        uint256 _TCR,
-        uint256 _price,
-        bool _recoveryMode
-    ) internal view returns (bool) {
-        uint256 _icr = cdpManager.getSyncedICR(_cdpId, _price);
-        bool _liquidatable = _canLiquidateInCurrentMode(_recoveryMode, _icr, _TCR);
-        return _liquidatable;
-    }
-
-    function _canLiquidateInCurrentMode(
-        bool _recovery,
-        uint256 _icr,
-        uint256 _TCR
-    ) internal view returns (bool) {
-        bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
-
-        return _liquidatable;
     }
 }

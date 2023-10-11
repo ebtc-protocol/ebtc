@@ -948,6 +948,53 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
+    function testGeneral08TargetRelease05WithCollSurplusCheck() public {
+        bytes32 _cdp1 = openCdp(
+            115792089237316195423570985008687907853269984665640564039456484007913129639936,
+            12
+        );
+        bytes32 _cdp2 = openCdp(
+            4307979874743388887727057720423052227999214014098409277147284423302521679450,
+            1100000000000000000
+        );
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640563039457584007913129639929
+        );
+        setEthPerShare(4);
+
+        // _cdp2 is liquidated and _cdp1 is the ONLY one taking the redistributed bad debt
+        // since _cdp3 is newly created after liquidation
+        uint256 _liquidatedICR = cdpManager.getSyncedICR(_cdp2, priceFeedMock.fetchPrice());
+        assertLt(_liquidatedICR, cdpManager.LICR(), "!LICR liquidation");
+        liquidate(39634669486238882012786710726155925241356167384823482087788348797598657572769);
+        bytes32 _cdp3 = openCdp(
+            34585782663900066849750391538624092671172457813683957854851982156581049990083,
+            7496
+        );
+
+        uint256 _debtRedistributionError = cdpManager.lastEBTCDebtErrorRedistribution();
+        console2.log("_debtRedistributionError:", _debtRedistributionError);
+
+        uint256 cdpDebtRedistributionIdx1 = cdpManager.debtRedistributionIndex(_cdp1);
+        uint256 pendingDebtRedistributed1 = cdpManager.getPendingRedistributedDebt(_cdp1);
+        console2.log("cdpDebtRedistributionIdx1:", cdpDebtRedistributionIdx1);
+        console2.log("pendingDebtRedistributed1:", pendingDebtRedistributed1);
+
+        uint256 cdpDebtRedistributionIdx3 = cdpManager.debtRedistributionIndex(_cdp3);
+        uint256 pendingDebtRedistributed3 = cdpManager.getPendingRedistributedDebt(_cdp3);
+        console2.log("cdpDebtRedistributionIdx3:", cdpDebtRedistributionIdx3);
+        console2.log("pendingDebtRedistributed3:", pendingDebtRedistributed3);
+
+        closeCdp(115792089237316195423570985008687907853269984665640564039457584007913129639868);
+
+        // confirm that liquidated CDP got zero surplus to claim
+        assertFalse(sortedCdps.contains(_cdp2), "!Liquidated CDP");
+        uint256 _availableClaim = collSurplusPool.getSurplusCollShares(
+            sortedCdps.getOwnerAddress(_cdp2)
+        );
+        assertEq(_availableClaim, 0, "!Available surplus to claim after liquidation");
+    }
+
     function clampBetween(uint256 value, uint256 low, uint256 high) internal returns (uint256) {
         if (value < low || value > high) {
             uint256 ans = low + (value % (high - low + 1));
