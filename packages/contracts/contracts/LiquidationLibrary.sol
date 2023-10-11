@@ -548,13 +548,13 @@ contract LiquidationLibrary is CdpManagerStorage {
             _incentiveColl = (_totalDebtToBurn * LICR) / _price;
         }
 
-        // NOTE: IT MAY BE TOO MUCH
-        // NOTE: IT SHOULD NEVER BE TOO MUCH CAUSE IT's PARTIAL!!!
         toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
-        toLiquidator = toLiquidator < _totalColToSend ? toLiquidator : _totalColToSend; // Cap the Coll (should never happen on partial)
-        collSurplus = (toLiquidator == _totalColToSend) ? 0 : _totalColToSend - toLiquidator; // Can use unchecked but w/e
 
-        // debtToRedistribute is 0 always // TO AUDIT
+        /// @audit MUST be like so, else we have debt redistribution, which we assume cannot happen in partial
+        assert(toLiquidator < _totalColToSend); // Assert is correct here for Echidna
+
+        /// Because of above we can subtract
+        collSurplus = _totalColToSend - toLiquidator; // Can use unchecked but w/e
     }
 
     function _calculateFullLiquidationSurplusAndCap(
@@ -567,6 +567,10 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         if (_ICR > LICR) {
             _incentiveColl = (_totalDebtToBurn * (_ICR > MCR ? MCR : _ICR)) / _price;
+            
+            // Convert back to shares
+            toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
+
         } else {
             // for full liquidation, there would be some bad debt to redistribute
             _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
@@ -586,9 +590,6 @@ contract LiquidationLibrary is CdpManagerStorage {
             toLiquidator = _totalColToSend;
         }
 
-        if (toLiquidator == 0) {
-            toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
-        }
         toLiquidator = toLiquidator < _totalColToSend ? toLiquidator : _totalColToSend;
         collSurplus = (toLiquidator == _totalColToSend) ? 0 : _totalColToSend - toLiquidator;
     }
