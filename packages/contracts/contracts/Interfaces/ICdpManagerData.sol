@@ -22,19 +22,19 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     event Liquidation(uint256 _liquidatedDebt, uint256 _liquidatedColl, uint256 _liqReward);
     event Redemption(
-        uint256 _attemptedEBTCAmount,
-        uint256 _actualEBTCAmount,
-        uint256 _ETHSent,
-        uint256 _ETHFee,
+        uint256 _debtToRedeemExpected,
+        uint256 _debtToRedeemActual,
+        uint256 _collSharesSent,
+        uint256 _feeCollShares,
         address indexed _redeemer
     );
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint256 _oldDebt,
-        uint256 _oldColl,
+        uint256 _oldCollShares,
         uint256 _debt,
-        uint256 _coll,
+        uint256 _collShares,
         uint256 _stake,
         CdpOperation _operation
     );
@@ -42,7 +42,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint _debt,
-        uint _coll,
+        uint _collShares,
         CdpOperation _operation,
         address indexed _liquidator,
         uint _premiumToLiquidator
@@ -51,7 +51,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 indexed _cdpId,
         address indexed _borrower,
         uint256 _debt,
-        uint256 _coll,
+        uint256 _collShares,
         CdpOperation operation,
         address indexed _liquidator,
         uint _premiumToLiquidator
@@ -70,7 +70,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _oldPerUnitCdp,
         uint256 _newPerUnitCdp,
         uint256 _collReduced,
-        uint256 collLeft
+        uint256 _collLeft
     );
 
     enum CdpOperation {
@@ -124,26 +124,24 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 lowerPartialHint;
         bool recoveryModeAtStart;
         uint256 TCR;
-        uint256 totalColSurplus;
-        uint256 totalColToSend;
+        uint256 totalSurplusCollShares;
+        uint256 totalCollSharesToSend;
         uint256 totalDebtToBurn;
         uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
-        bool sequenceLiq;
+        uint256 totalLiquidatorRewardCollShares;
     }
 
     struct LiquidationRecoveryModeLocals {
         uint256 entireSystemDebt;
         uint256 entireSystemColl;
         uint256 totalDebtToBurn;
-        uint256 totalColToSend;
-        uint256 totalColSurplus;
+        uint256 totalCollSharesToSend;
+        uint256 totalSurplusCollShares;
         bytes32 cdpId;
         uint256 price;
         uint256 ICR;
         uint256 totalDebtToRedistribute;
-        uint256 totalColReward;
-        bool sequenceLiq;
+        uint256 totalLiquidatorRewardCollShares;
     }
 
     struct LocalVariables_OuterLiquidationFunction {
@@ -179,7 +177,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 totalCollToSendToLiquidator;
         uint256 debtToRedistribute;
         uint256 collSurplus;
-        uint256 collReward;
+        uint256 liquidatorCollSharesReward;
     }
 
     struct LiquidationTotals {
@@ -194,22 +192,22 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Variable container structs for redemptions ---
 
     struct RedemptionTotals {
-        uint256 remainingEBTC;
-        uint256 totalEBTCToRedeem;
-        uint256 totalETHDrawn;
+        uint256 remainingDebtToRedeem;
+        uint256 debtToRedeem;
+        uint256 collSharesDrawn;
         uint256 totalCollSharesSurplus;
-        uint256 ETHFee;
-        uint256 ETHToSendToRedeemer;
+        uint256 feeCollShares;
+        uint256 collSharesToRedeemer;
         uint256 decayedBaseRate;
         uint256 price;
-        uint256 totalEBTCSupplyAtStart;
-        uint256 totalCollSharesAtStart;
+        uint256 systemDebtAtStart;
+        uint256 systemCollSharesAtStart;
         uint256 tcrAtStart;
     }
 
     struct SingleRedemptionValues {
-        uint256 eBtcToRedeem;
-        uint256 stEthToRecieve;
+        uint256 debtToRedeem;
+        uint256 collSharesDrawn;
         uint256 collSurplus;
         uint256 liquidatorRewardShares;
         bool cancelledPartial;

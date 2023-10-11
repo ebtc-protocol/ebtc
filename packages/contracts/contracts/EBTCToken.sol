@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "./Interfaces/IEBTCToken.sol";
 
 import "./Dependencies/AuthNoOwner.sol";
+import "./Dependencies/PermitNonce.sol";
 
 /*
  *
@@ -22,7 +23,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * core contract, when they should rather call the right function.
  */
 
-contract EBTCToken is IEBTCToken, AuthNoOwner {
+contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
     uint256 private _totalSupply;
     string internal constant _NAME = "EBTC Stablecoin";
     string internal constant _SYMBOL = "EBTC";
@@ -45,8 +46,6 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     bytes32 private immutable _HASHED_NAME;
     bytes32 private immutable _HASHED_VERSION;
-
-    mapping(address => uint256) private _nonces;
 
     // User data for EBTC token
     mapping(address => uint256) private _balances;
@@ -99,6 +98,17 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     function burn(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _burn(_account, _amount);
+    }
+
+    /**
+     * @notice Burn existing tokens from caller
+     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
+     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+     * @param _amount The amount of tokens to burn
+     */
+    function burn(uint256 _amount) external {
+        _requireCallerIsBOorCdpMOrAuth();
+        _burn(msg.sender, _amount);
     }
 
     // --- External functions ---
@@ -202,8 +212,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         _approve(owner, spender, amount);
     }
 
-    function nonces(address owner) external view override returns (uint256) {
-        // FOR EIP 2612
+    /// @dev Return current nonce for msg.sender fOR EIP-2612 compatibility
+    function nonces(address owner) external view override(IERC2612, PermitNonce) returns (uint256) {
         return _nonces[owner];
     }
 

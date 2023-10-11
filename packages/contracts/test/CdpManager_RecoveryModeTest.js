@@ -1731,9 +1731,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const bob_remainingCollateral = B_coll.sub(B_coll)
     th.assertIsApproximatelyEqual('0', bob_remainingCollateral.toString())
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // Bob re-opens the cdp, price 200, total debt 80 EBTC, ICR = 120% (lowest one)
     // Dennis redeems 30, so Bob has a surplus of (200 * 0.48 - 30) / 200 = 0.33 ETH
     await priceFeed.setPrice(dec(7428, 13))
@@ -1763,8 +1760,6 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_netDebt, extraParams: { from: dennis } })
 
     // --- TEST ---
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // Dennis redeems 40, so Bob has a surplus of (200 * 1 - 40) / 200 = 0.8 ETH	
     await th.redeemCollateral(dennis, contracts, B_netDebt, GAS_PRICE)
@@ -3589,9 +3584,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C.gt(mv._MCR) && ICR_C.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.syncGracePeriod();
-    await ethers.provider.send("evm_increaseTime", [901]);
-    await ethers.provider.send("evm_mine");
+    await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	
@@ -3920,9 +3913,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(ICR_C_Before.gt(mv._MCR) && ICR_C_Before.lt(TCR))	  
 	  	  
     // trigger cooldown and pass the liq wait
-    await cdpManager.syncGracePeriod();
-    await ethers.provider.send("evm_increaseTime", [901]);
-    await ethers.provider.send("evm_mine");
+    await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 
     const cdpsToLiquidate = [_aliceCdpId, _bobCdpId, _carolCdpId]
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(alice)).toString()), {from: alice});	

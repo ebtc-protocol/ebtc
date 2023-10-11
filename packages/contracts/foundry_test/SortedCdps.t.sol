@@ -13,37 +13,50 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         eBTCBaseFixture.connectLQTYContractsToCore();
     }
 
-    function testGetCdpsOfUser() public {
-        uint256 collAmount = 30 ether;
-        address user = _utils.getNextUserAddress();
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        uint256 borrowedAmount = _utils.calculateBorrowAmount(
-            collAmount,
-            priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+    function test_Fuzz_cdpCountOf(uint256 _cdpCount, uint256 _maxNodes) public {
+        _cdpCount = bound(_cdpCount, AMOUNT_OF_CDPS, 20);
+        _maxNodes = bound(_maxNodes, 1, type(uint256).max);
+        address user = _openSomeCDPs(_cdpCount);
+        (uint _cdpCountOfReturned, ) = sortedCdps.getCdpCountOf(
+            user,
+            sortedCdps.dummyId(),
+            _maxNodes
         );
-        // Open X amount of CDPs
-        for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
-            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+        // result should be capped by given maxNodes
+        assertTrue(_cdpCountOfReturned <= _maxNodes);
+        if (_maxNodes >= _cdpCount) {
+            assertTrue(_cdpCountOfReturned == _cdpCount);
+        } else {
+            assertTrue(_cdpCountOfReturned == _maxNodes);
         }
-        vm.stopPrank();
+
+        // check zero CDP return
+        bytes32[] memory cdpsNone = sortedCdps.getCdpsOf(_utils.getNextUserAddress());
+        (bytes32[] memory cdpsNone2, , ) = sortedCdps.getAllCdpsOf(
+            _utils.getNextUserAddress(),
+            sortedCdps.dummyId(),
+            _maxNodes
+        );
+        assertTrue(cdpsNone.length == 0, "getCdpsOf() should return zero if none is found");
+        assertTrue(cdpsNone2.length == 0, "getAllCdpsOf() should return zero if none is found");
+    }
+
+    function testGetCdpsOfUser() public {
+        address user = _openSomeCDPs(AMOUNT_OF_CDPS);
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
-        bytes32[] memory cdpsByMaxNode = sortedCdps.getCdpsOf(
+        (bytes32[] memory cdpsByMaxNode, , ) = sortedCdps.getAllCdpsOf(
             user,
             sortedCdps.dummyId(),
             AMOUNT_OF_CDPS
         );
-        bytes32[] memory cdpsByStartNode = sortedCdps.getCdpsOf(
+        (bytes32[] memory cdpsByStartNode, , ) = sortedCdps.getAllCdpsOf(
             user,
             sortedCdps.getLast(),
             AMOUNT_OF_CDPS
         );
         for (uint256 cdpIx = 0; cdpIx < AMOUNT_OF_CDPS; cdpIx++) {
             bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, cdpIx);
-            bytes32 _cdpId = sortedCdps.cdpOfOwnerByIdx(user, 0, cdpId, 1);
+            (bytes32 _cdpId, ) = sortedCdps.cdpOfOwnerByIdx(user, 0, cdpId, 1);
             assertEq(_cdpId, cdpId);
             assertEq(cdps[cdpIx], cdpId);
             assertEq(cdpsByMaxNode[cdpIx], cdpId);
@@ -51,12 +64,12 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         }
         // check count of CDP owned by the user
         uint _cdpCountOf = sortedCdps.cdpCountOf(user);
-        uint _cdpCountOfByMaxNode = sortedCdps.cdpCountOf(
+        (uint _cdpCountOfByMaxNode, ) = sortedCdps.getCdpCountOf(
             user,
             sortedCdps.dummyId(),
             AMOUNT_OF_CDPS
         );
-        uint _cdpCountOfByStartNode = sortedCdps.cdpCountOf(
+        (uint _cdpCountOfByStartNode, ) = sortedCdps.getCdpCountOf(
             user,
             sortedCdps.getLast(),
             AMOUNT_OF_CDPS
@@ -76,22 +89,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     // Keep amntOfCdps reasonable, as it will eat all the memory
     // Change to fuzzed uint16 with caution, as it can consume > 10Gb of Memory
     function testGetCdpsOfUserFuzz(uint8 amntOfCdps) public {
-        uint256 collAmount = 30 ether;
-        address user = _utils.getNextUserAddress();
-        vm.startPrank(user);
-        vm.deal(user, type(uint96).max);
-        collateral.approve(address(borrowerOperations), type(uint256).max);
-        collateral.deposit{value: 10000 ether}();
-        uint256 borrowedAmount = _utils.calculateBorrowAmount(
-            collAmount,
-            priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
-        );
-        // Open X amount of CDPs
-        for (uint256 cdpIx = 0; cdpIx < amntOfCdps; cdpIx++) {
-            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
-        }
-        vm.stopPrank();
+        address user = _openSomeCDPs(amntOfCdps);
         bytes32[] memory cdps = sortedCdps.getCdpsOf(user);
         // And check that amount of CDPs as expected
         assertEq(amntOfCdps, cdps.length);
@@ -158,5 +156,130 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
         assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), "SL-02");
+    }
+
+    function testSortedCdpsPaginationFuzz(uint256 _cdpOpened) public {
+        _cdpOpened = bound(_cdpOpened, 3, 20);
+        address _usr1 = _utils.getNextUserAddress();
+        address _usr2 = _utils.getNextUserAddress();
+
+        vm.deal(_usr1, type(uint96).max);
+        vm.deal(_usr2, type(uint96).max);
+
+        vm.startPrank(_usr1);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
+        vm.stopPrank();
+
+        vm.startPrank(_usr2);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
+        vm.stopPrank();
+
+        {
+            uint256 _icr = COLLATERAL_RATIO;
+            uint256 collAmount = 30 ether;
+
+            // Open some CDPs one by one for both users
+            for (uint256 cdpIx = 0; cdpIx < _cdpOpened; cdpIx++) {
+                // open CDP for user1
+                uint256 _firstICR = _icr + (cdpIx * 1e16);
+                uint256 borrowedAmount1 = _utils.calculateBorrowAmount(
+                    collAmount,
+                    priceFeedMock.fetchPrice(),
+                    _firstICR
+                );
+                vm.prank(_usr1);
+                borrowerOperations.openCdp(borrowedAmount1, HINT, HINT, collAmount);
+
+                // open another higher one for user2
+                uint256 _secondICR = _firstICR + 1e16;
+                uint256 borrowedAmount2 = _utils.calculateBorrowAmount(
+                    collAmount,
+                    priceFeedMock.fetchPrice(),
+                    _secondICR
+                );
+                vm.prank(_usr2);
+                borrowerOperations.openCdp(borrowedAmount2, HINT, HINT, collAmount);
+
+                // iterate to next round
+                _icr = _secondICR;
+            }
+        }
+
+        // now we use pagination to get all CDPs for user1
+        bytes32 _startNodeId = sortedCdps.dummyId();
+        uint256 _maxNodes = 2;
+        uint256 _cdpIndex = 0;
+
+        // firstly determine the count of CDPs
+        for (uint256 cdpIx = 0; cdpIx < _cdpOpened; cdpIx++) {
+            (uint256 _cdpCnt, bytes32 _nextStartId) = sortedCdps.getCdpCountOf(
+                _usr1,
+                _startNodeId,
+                _maxNodes
+            );
+            assertTrue(_cdpCnt == 1, "getCdpCountOf() should return correct count of (user1)!!!");
+            if (cdpIx < _cdpOpened - 1) {
+                assertTrue(
+                    sortedCdps.getOwnerAddress(_nextStartId) == _usr1,
+                    "getCdpCountOf() should return correct CDP id (user1) for next pagination!!!"
+                );
+            } else {
+                assertTrue(
+                    _nextStartId == sortedCdps.dummyId(),
+                    "getCdpCountOf() should correctly mark the end of list for next pagination!!!"
+                );
+            }
+
+            (bytes32[] memory _allCdps, uint256 _retrieved, bytes32 _nextStartId2) = sortedCdps
+                .getAllCdpsOf(_usr1, _startNodeId, _maxNodes);
+            assertTrue(
+                _retrieved == 1 && _allCdps.length == 1,
+                "getAllCdpsOf() should return correct slice of the all CDPs of (user1)!!!"
+            );
+            assertTrue(
+                sortedCdps.getOwnerAddress(_allCdps[0]) == _usr1,
+                "getAllCdpsOf() should return all CDPs of (user1) as specified!!!"
+            );
+            assertTrue(
+                _nextStartId2 == _nextStartId,
+                "getAllCdpsOf() should return correct CDP id (user2) for next pagination!!!"
+            );
+            {
+                (bytes32 _cdpIdx, bool _indicator) = sortedCdps.cdpOfOwnerByIdx(
+                    _usr1,
+                    _cdpIndex,
+                    _startNodeId,
+                    _maxNodes
+                );
+                assertTrue(_indicator, "cdpOfOwnerByIdx() should return correct CDP of (user1)!!!");
+                assertTrue(
+                    sortedCdps.getOwnerAddress(_cdpIdx) == _usr1,
+                    "cdpOfOwnerByIdx() should return correct CDP id of (user1)!!!"
+                );
+            }
+            // paginate with next user1 CDP
+            _startNodeId = _nextStartId;
+        }
+    }
+
+    function _openSomeCDPs(uint256 _cdpCount) internal returns (address user) {
+        uint256 collAmount = 30 ether;
+        user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+        vm.deal(user, type(uint96).max);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 10000 ether}();
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
+            collAmount,
+            priceFeedMock.fetchPrice(),
+            COLLATERAL_RATIO
+        );
+        // Open X amount of CDPs
+        for (uint256 cdpIx = 0; cdpIx < _cdpCount; cdpIx++) {
+            borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
+        }
+        vm.stopPrank();
     }
 }

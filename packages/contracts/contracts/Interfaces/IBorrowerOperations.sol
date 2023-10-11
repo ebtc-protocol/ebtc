@@ -46,14 +46,14 @@ interface IBorrowerOperations is IPositionManagers {
         bytes32 _lowerHint
     ) external;
 
-    function withdrawEBTC(
+    function withdrawDebt(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
 
-    function repayEBTC(
+    function repayDebt(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,

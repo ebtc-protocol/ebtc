@@ -141,14 +141,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) internal returns (SingleRedemptionValues memory singleRedemption) {
         // Determine the remaining amount (lot) to be redeemed,
         // capped by the entire debt of the Cdp minus the liquidation reserve
-        singleRedemption.eBtcToRedeem = EbtcMath._min(
+        singleRedemption.debtToRedeem = EbtcMath._min(
             _redeemColFromCdp.maxEBTCamount,
             Cdps[_redeemColFromCdp.cdpId].debt
         );
 
-        // Get the stEthToRecieve of equivalent value in USD
-        singleRedemption.stEthToRecieve = collateral.getSharesByPooledEth(
-            (singleRedemption.eBtcToRedeem * DECIMAL_PRECISION) / _redeemColFromCdp.price
+        singleRedemption.collSharesDrawn = collateral.getSharesByPooledEth(
+            (singleRedemption.debtToRedeem * DECIMAL_PRECISION) / _redeemColFromCdp.price
         );
 
         // Repurposing this struct here to avoid stack too deep.
@@ -159,8 +158,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
-        uint256 newDebt = _oldDebtAndColl.entireDebt - singleRedemption.eBtcToRedeem;
-        uint256 newColl = _oldDebtAndColl.entireColl - singleRedemption.stEthToRecieve;
+        uint256 newDebt = _oldDebtAndColl.entireDebt - singleRedemption.debtToRedeem;
+        uint256 newColl = _oldDebtAndColl.entireColl - singleRedemption.collSharesDrawn;
 
         if (newDebt == 0) {
             // No debt remains, close CDP
@@ -253,7 +252,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 _liquidatorRewardShares,
         address _borrower
     ) internal {
-        _removeStake(_cdpId);
         _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByRedemption);
 
         // Update Active Pool EBTC, and send ETH to account
@@ -282,20 +280,20 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         if (
             _firstRedemptionHint == sortedCdps.nonExistId() ||
             !sortedCdps.contains(_firstRedemptionHint) ||
-            getICR(_firstRedemptionHint, _price) < MCR
+            getSyncedICR(_firstRedemptionHint, _price) < MCR
         ) {
             return false;
         }
 
         bytes32 nextCdp = sortedCdps.getNext(_firstRedemptionHint);
-        return nextCdp == sortedCdps.nonExistId() || getICR(nextCdp, _price) < MCR;
+        return nextCdp == sortedCdps.nonExistId() || getSyncedICR(nextCdp, _price) < MCR;
     }
 
     /** 
-    redeems `_EBTCamount` of eBTC for stETH from the system. Decreases the caller’s eBTC balance, and sends them the corresponding amount of stETH. Executes successfully if the caller has sufficient eBTC to redeem. The number of Cdps redeemed from is capped by `_maxIterations`. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
+    redeems `_debt` of eBTC for stETH from the system. Decreases the caller’s eBTC balance, and sends them the corresponding amount of stETH. Executes successfully if the caller has sufficient eBTC to redeem. The number of Cdps redeemed from is capped by `_maxIterations`. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when another redemption transaction is processed first, driving up the redemption fee.
     */
 
-    /* Send _EBTCamount EBTC to the system and redeem the corresponding amount of collateral
+    /* Send _debt EBTC to the system and redeem the corresponding amount of collateral
      * from as many Cdps as are needed to fill the redemption
      * request.  Applies pending rewards to a Cdp before reducing its debt and coll.
      *
@@ -325,7 +323,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * remaining EBTC amount, which they can attempt to redeem later.
      */
     function redeemCollateral(
-        uint256 _EBTCamount,
+        uint256 _debt,
         bytes32 _firstRedemptionHint,
         bytes32 _upperPartialRedemptionHint,
         bytes32 _lowerPartialRedemptionHint,
@@ -339,7 +337,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         require(redemptionsPaused == false, "CdpManager: Redemptions Paused");
 
         _requireValidMaxFeePercentage(_maxFeePercentage);
-        _requireAfterBootstrapPeriod();
 
         _syncGlobalAccounting(); // Apply state, we will syncGracePeriod at end of function
 
@@ -347,25 +344,24 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         {
             (
                 uint256 tcrAtStart,
-                uint256 totalCollSharesAtStart,
-                uint256 totalEBTCSupplyAtStart
+                uint256 systemCollSharesAtStart,
+                uint256 systemDebtAtStart
             ) = _getTCRWithSystemDebtAndCollShares(totals.price);
             totals.tcrAtStart = tcrAtStart;
-            totals.totalCollSharesAtStart = totalCollSharesAtStart;
-            totals.totalEBTCSupplyAtStart = totalEBTCSupplyAtStart;
+            totals.systemCollSharesAtStart = systemCollSharesAtStart;
+            totals.systemDebtAtStart = systemDebtAtStart;
         }
 
-        _requireTCRoverMCR(totals.price, totals.tcrAtStart);
-        _requireAmountGreaterThanZero(_EBTCamount);
+        _requireTCRisNotBelowMCR(totals.price, totals.tcrAtStart);
+        _requireAmountGreaterThanZero(_debt);
 
-        _requireEBTCBalanceCoversRedemptionAndWithinSupply(
-            ebtcToken,
+        _requireEbtcBalanceCoversRedemptionAndWithinSupply(
             msg.sender,
-            _EBTCamount,
-            totals.totalEBTCSupplyAtStart
+            _debt,
+            totals.systemDebtAtStart
         );
 
-        totals.remainingEBTC = _EBTCamount;
+        totals.remainingDebtToRedeem = _debt;
         address currentBorrower;
         bytes32 _cId = _firstRedemptionHint;
 
@@ -375,7 +371,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             _cId = sortedCdps.getLast();
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
             // Find the first cdp with ICR >= MCR
-            while (currentBorrower != address(0) && getICR(_cId, totals.price) < MCR) {
+            while (currentBorrower != address(0) && getSyncedICR(_cId, totals.price) < MCR) {
                 _cId = sortedCdps.getPrev(_cId);
                 currentBorrower = sortedCdps.getOwnerAddress(_cId);
             }
@@ -394,14 +390,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         /**
             Core Redemption Loop
         */
-        while (currentBorrower != address(0) && totals.remainingEBTC > 0 && _maxIterations > 0) {
+        while (
+            currentBorrower != address(0) && totals.remainingDebtToRedeem > 0 && _maxIterations > 0
+        ) {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
                 _syncAccounting(_cId);
 
                 SingleRedemptionInputs memory _redeemColFromCdp = SingleRedemptionInputs(
                     _cId,
-                    totals.remainingEBTC,
+                    totals.remainingDebtToRedeem,
                     totals.price,
                     _upperPartialRedemptionHint,
                     _lowerPartialRedemptionHint,
@@ -414,9 +412,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 // therefore we could not redeem from the last Cdp
                 if (singleRedemption.cancelledPartial) break;
 
-                totals.totalEBTCToRedeem = totals.totalEBTCToRedeem + singleRedemption.eBtcToRedeem;
-                totals.totalETHDrawn = totals.totalETHDrawn + singleRedemption.stEthToRecieve;
-                totals.remainingEBTC = totals.remainingEBTC - singleRedemption.eBtcToRedeem;
+                totals.debtToRedeem = totals.debtToRedeem + singleRedemption.debtToRedeem;
+                totals.collSharesDrawn = totals.collSharesDrawn + singleRedemption.collSharesDrawn;
+                totals.remainingDebtToRedeem =
+                    totals.remainingDebtToRedeem -
+                    singleRedemption.debtToRedeem;
                 totals.totalCollSharesSurplus =
                     totals.totalCollSharesSurplus +
                     singleRedemption.collSurplus;
@@ -433,7 +433,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             }
             _maxIterations--;
         }
-        require(totals.totalETHDrawn > 0, "CdpManager: Unable to redeem any amount");
+        require(totals.collSharesDrawn > 0, "CdpManager: Unable to redeem any amount");
 
         // remove from sortedCdps
         if (_numCdpsFullyRedeemed == 1) {
@@ -450,43 +450,43 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Decay the baseRate due to time passed, and then increase it according to the size of this redemption.
         // Use the saved total EBTC supply value, from before it was reduced by the redemption.
         _updateBaseRateFromRedemption(
-            totals.totalETHDrawn,
+            totals.collSharesDrawn,
             totals.price,
-            totals.totalEBTCSupplyAtStart
+            totals.systemDebtAtStart
         );
 
         // Calculate the ETH fee
-        totals.ETHFee = _getRedemptionFee(totals.totalETHDrawn);
+        totals.feeCollShares = _getRedemptionFee(totals.collSharesDrawn);
 
-        _requireUserAcceptsFee(totals.ETHFee, totals.totalETHDrawn, _maxFeePercentage);
+        _requireUserAcceptsFee(totals.feeCollShares, totals.collSharesDrawn, _maxFeePercentage);
 
-        totals.ETHToSendToRedeemer = totals.totalETHDrawn - totals.ETHFee;
+        totals.collSharesToRedeemer = totals.collSharesDrawn - totals.feeCollShares;
 
         _syncGracePeriodForGivenValues(
-            totals.totalCollSharesAtStart - totals.totalETHDrawn - totals.totalCollSharesSurplus,
-            totals.totalEBTCSupplyAtStart - totals.totalEBTCToRedeem,
+            totals.systemCollSharesAtStart - totals.collSharesDrawn - totals.totalCollSharesSurplus,
+            totals.systemDebtAtStart - totals.debtToRedeem,
             totals.price
         );
 
         emit Redemption(
-            _EBTCamount,
-            totals.totalEBTCToRedeem,
-            totals.totalETHDrawn,
-            totals.ETHFee,
+            _debt,
+            totals.debtToRedeem,
+            totals.collSharesDrawn,
+            totals.feeCollShares,
             msg.sender
         );
 
         // Burn the total eBTC that is redeemed
-        ebtcToken.burn(msg.sender, totals.totalEBTCToRedeem);
+        ebtcToken.burn(msg.sender, totals.debtToRedeem);
 
         // Update Active Pool eBTC debt internal accounting
-        activePool.decreaseSystemDebt(totals.totalEBTCToRedeem);
+        activePool.decreaseSystemDebt(totals.debtToRedeem);
 
         // Allocate the stETH fee to the FeeRecipient
-        activePool.allocateSystemCollSharesToFeeRecipient(totals.ETHFee);
+        activePool.allocateSystemCollSharesToFeeRecipient(totals.feeCollShares);
 
         // CEI: Send the stETH drawn to the redeemer
-        activePool.transferSystemCollShares(msg.sender, totals.ETHToSendToRedeemer);
+        activePool.transferSystemCollShares(msg.sender, totals.collSharesToRedeemer);
     }
 
     // --- Helper functions ---
@@ -515,11 +515,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     function syncAccounting(bytes32 _cdpId) external override {
         // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
         return _syncAccounting(_cdpId);
-    }
-
-    function removeStake(bytes32 _cdpId) external override {
-        _requireCallerIsBorrowerOperations();
-        return _removeStake(_cdpId);
     }
 
     // get totalStakes after split fee taken removed
@@ -725,13 +720,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- 'require' wrapper functions ---
 
-    function _requireEBTCBalanceCoversRedemptionAndWithinSupply(
-        IEBTCToken _ebtcToken,
+    function _requireEbtcBalanceCoversRedemptionAndWithinSupply(
         address _redeemer,
         uint256 _amount,
         uint256 _totalSupply
     ) internal view {
-        uint256 callerBalance = _ebtcToken.balanceOf(_redeemer);
+        uint256 callerBalance = ebtcToken.balanceOf(_redeemer);
         require(
             callerBalance >= _amount,
             "CdpManager: Requested redemption amount must be <= user's EBTC token balance"
@@ -746,16 +740,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         require(_amount > 0, "CdpManager: Amount must be greater than zero");
     }
 
-    function _requireTCRoverMCR(uint256 _price, uint256 _TCR) internal view {
+    function _requireTCRisNotBelowMCR(uint256 _price, uint256 _TCR) internal view {
         require(_TCR >= MCR, "CdpManager: Cannot redeem when TCR < MCR");
-    }
-
-    function _requireAfterBootstrapPeriod() internal view {
-        uint256 systemDeploymentTime = getDeploymentStartTime();
-        require(
-            block.timestamp >= systemDeploymentTime + BOOTSTRAP_PERIOD,
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
     }
 
     function _requireValidMaxFeePercentage(uint256 _maxFeePercentage) internal view {

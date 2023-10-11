@@ -39,8 +39,6 @@ interface IPositionManagers {
         bytes32 s
     ) external;
 
-    function nonces(address owner) external view returns (uint256);
-
     function version() external view returns (string memory);
 
     function permitTypeHash() external view returns (bytes32);

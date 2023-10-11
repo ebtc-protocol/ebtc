@@ -67,6 +67,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
+    bytes4 public constant BURN2_SIG = bytes4(keccak256(bytes("burn(uint256)")));
 
     // PriceFeed
     bytes4 public constant SET_FALLBACK_CALLER_SIG =
@@ -331,6 +332,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
         authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+        authority.setRoleCapability(2, address(eBTCToken), BURN2_SIG, true);
 
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
@@ -554,7 +556,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
 
     // Grace Period, check never reverts so it's safe to use
     function _waitUntilRMColldown() internal {
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
     }
 

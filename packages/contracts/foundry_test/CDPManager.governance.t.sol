@@ -6,7 +6,7 @@ import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 /*
- * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
+ * Test suite that tests opened CDPs with two different operations: repayDebt and withdrawDebt
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract CDPManagerGovernanceTest is eBTCBaseFixture {
@@ -322,7 +322,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         bytes32 toLiquidateCdpId
     ) public {
         vm.startPrank(actor);
-        cdpManager.syncGracePeriod();
+        cdpManager.syncGlobalAccountingAndGracePeriod();
         uint256 startTimestamp = block.timestamp;
         uint256 expectedGracePeriodExpiration = cdpManager.recoveryModeGracePeriodDuration() +
             cdpManager.lastGracePeriodStartTimestamp();

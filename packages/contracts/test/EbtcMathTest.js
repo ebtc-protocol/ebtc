@@ -1,13 +1,13 @@
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 
 contract('EbtcMath', async accounts => {
-  let EbtcMathTester
+  
   beforeEach('deploy tester', async () => {
-    EbtcMathTester = await EbtcMathTester.new()
+    ebtcMathTester = await EbtcMathTester.new()
   })
 
   const checkFunction = async (func, cond, params) => {
-    assert.equal(await EbtcMathTester[func](...params), cond(...params))
+    assert.equal(await ebtcMathTester[func](...params), cond(...params))
   }
 
   it('max works if a > b', async () => {

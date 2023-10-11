@@ -143,7 +143,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         _allTargets[4] = address(borrowerOperations);
         _allCalldatas[4] = abi.encodeWithSelector(
-            BorrowerOperations.withdrawEBTC.selector,
+            BorrowerOperations.withdrawDebt.selector,
             _cdpId,
             _EBTCAmount,
             _cdpId,
@@ -152,7 +152,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         _allTargets[5] = address(borrowerOperations);
         _allCalldatas[5] = abi.encodeWithSelector(
-            BorrowerOperations.repayEBTC.selector,
+            BorrowerOperations.repayDebt.selector,
             _cdpId,
             _EBTCAmount,
             _cdpId,
@@ -458,11 +458,6 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         uint _maxFeePercentage,
         uint _maxIterations
     ) external {
-        require(
-            block.timestamp > cdpManager.getDeploymentStartTime() + cdpManager.BOOTSTRAP_PERIOD(),
-            "CdpManager: Redemptions are not allowed during bootstrap phase"
-        );
-
         actor = actors[msg.sender];
 
         bool success;
@@ -944,7 +939,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function withdrawEBTC(uint _amount, uint256 _i) external {
+    function withdrawDebt(uint _amount, uint256 _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -966,7 +961,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
-                BorrowerOperations.withdrawEBTC.selector,
+                BorrowerOperations.withdrawDebt.selector,
                 _cdpId,
                 _amount,
                 _cdpId,
@@ -979,11 +974,11 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         _after(_cdpId);
 
         assertEq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-        assertGte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawEBTC must not decrease debt");
+        assertGte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawDebt must not decrease debt");
         assertEq(
             vars.actorEbtcAfter,
             vars.actorEbtcBefore + _amount,
-            "withdrawEBTC must increase debt by requested amount"
+            "withdrawDebt must increase debt by requested amount"
         );
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         assertGte(
@@ -1017,7 +1012,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         }
     }
 
-    function repayEBTC(uint _amount, uint256 _i) external {
+    function repayDebt(uint _amount, uint256 _i) external {
         actor = actors[msg.sender];
 
         bool success;
@@ -1038,7 +1033,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
-                BorrowerOperations.repayEBTC.selector,
+                BorrowerOperations.repayDebt.selector,
                 _cdpId,
                 _amount,
                 _cdpId,
