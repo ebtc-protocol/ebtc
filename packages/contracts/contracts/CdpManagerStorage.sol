@@ -206,7 +206,6 @@ contract CdpManagerStorage is LiquityBase, ReentrancyGuard, ICdpManagerData, Aut
     bytes32[] public CdpIds;
 
     // Error trackers for the cdp redistribution calculation
-    uint256 public lastETHError_Redistribution;
     uint256 public lastEBTCDebtErrorRedistribution;
 
     constructor(
