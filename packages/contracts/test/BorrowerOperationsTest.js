@@ -1499,7 +1499,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Alice attempts an adjustment that repays half her debt BUT withdraws 1 wei collateral, and fails
       await assertRevert(borrowerOperations.adjustCdp(aliceIndex, 1, dec(5000, 18), false, aliceIndex, aliceIndex, { from: alice }),
-        "BorrowerOperations: Collateral withdrawal not permitted Recovery Mode")
+        "BorrowerOperations: Collateral withdrawal not permitted during Recovery Mode")
     })
 
     it("adjustCdp(): debt increase that would leave ICR < 150% reverts in Recovery Mode", async () => {
