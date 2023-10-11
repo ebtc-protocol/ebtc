@@ -316,7 +316,11 @@ abstract contract TargetFunctions is Properties {
                 L_01
             );
 
-            eq(vars.sortedCdpsSizeAfter, vars.sortedCdpsSizeBefore, "L-17 : Partial Liquidations do not close Cdps");
+            eq(
+                vars.sortedCdpsSizeAfter,
+                vars.sortedCdpsSizeBefore,
+                "L-17 : Partial Liquidations do not close Cdps"
+            );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             if (vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
@@ -1251,7 +1255,7 @@ abstract contract TargetFunctions is Properties {
             activePool.claimFeeRecipientCollShares(value);
             _after(bytes32(0));
             // If there was something to claim
-            if(value > 0) {
+            if (value > 0) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/22
                 // Claiming will increase the balance
                 gte(vars.feeRecipientCollSharesAfter, vars.feeRecipientCollSharesBefore, F_01);

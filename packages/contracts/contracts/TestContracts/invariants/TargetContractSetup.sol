@@ -410,7 +410,11 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         for (uint i = 0; i < addresses.length; i++) {
             (success, ) = actor.proxy(
                 address(eBTCToken),
-                abi.encodeWithSelector(eBTCToken.transfer.selector, actors[addresses[i]], _EBTCAmount / 3)
+                abi.encodeWithSelector(
+                    eBTCToken.transfer.selector,
+                    actors[addresses[i]],
+                    _EBTCAmount / 3
+                )
             );
             assert(success);
         }

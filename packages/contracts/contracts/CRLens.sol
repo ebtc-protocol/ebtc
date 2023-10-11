@@ -146,7 +146,7 @@ contract CRLens {
         }
     }
 
-    function quoteAnything(function() external anything ) external returns(uint256) {
+    function quoteAnything(function() external anything) external returns (uint256) {
         try anything() {} catch (bytes memory reason) {
             return parseRevertReason(reason);
         }

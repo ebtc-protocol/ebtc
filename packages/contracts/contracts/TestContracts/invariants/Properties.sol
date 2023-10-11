@@ -106,7 +106,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
     /** TODO: See EchidnaToFoundry._getValue */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-        return vars.valueInSystemAfter >= vars.valueInSystemBefore || isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
+        return
+            vars.valueInSystemAfter >= vars.valueInSystemBefore ||
+            isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
     }
 
     function invariant_CSP_01(
@@ -402,7 +404,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     }
 
     function invariant_GENERAL_15() internal returns (bool) {
-        return crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
+        return
+            crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
     }
 
     function invariant_LS_01(

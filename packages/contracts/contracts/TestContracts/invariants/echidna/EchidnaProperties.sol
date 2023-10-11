@@ -120,5 +120,4 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
                 priceFeedMock
             );
     }
-
 }
