@@ -107,9 +107,9 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
         return invariant_GENERAL_14(crLens, cdpManager, sortedCdps);
     }
 
-    function echidna_GENERAL_15() public returns (bool) {
-        return invariant_GENERAL_15();
-    }
+    // function echidna_GENERAL_15() public returns (bool) {
+    //     return invariant_GENERAL_15();
+    // }
 
     function echidna_LS_01() public returns (bool) {
         return

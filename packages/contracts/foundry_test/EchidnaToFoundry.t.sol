@@ -894,6 +894,99 @@ contract EToFoundry is
         assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), "G-14");
     }
 
+    /// @dev Debunk false positives for L-15
+    ///     These will happen because of the desynch if nobody calls, it is what it is
+    function testL15Debunk() public {
+        openCdp(67534042799335353648407647554112468697195277953615236438520200454730440793371, 8);
+        openCdp(
+            115792089237316195423570985008687907853269984665640564039457584007913129639931,
+            1000000000000000900
+        );
+        setPrice(1324275793822189518402623021008446576244702559577);
+        setEthPerShare(
+            48542174391735010270995007834653745032392815149632706327135797120960854131722
+        );
+        setEthPerShare(40);
+        partialLiquidate(
+            48286268184227095156290128211489441036242155783962558196294945633758974303757,
+            115792089237316195423570985008687907853269984665640564039457574007913129639736
+        );
+        _before(bytes32(0));
+        setPrice(115792089237316195423570985007766067547234912789326764283000208828074618977599);
+        _after(bytes32(0));
+        _before(bytes32(0));
+        redeemCollateral(
+            999999999999999999,
+            55466683072102056944478843133004903753885086444364839670214645639376128222361,
+            68,
+            26404592988528753382516565589028978384076848812021257892050088220355054183615
+        );
+        _after(bytes32(0));
+
+        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
+        }
+    }
+
+    /// @dev Debunk false positives for L-12
+    ///     These will happen exclusively if all CDPs are Underwater, and instead of liquidating the riskiest, the one above is liquidated
+    function testL12Debunk() public {
+        openCdp(92917081472816941941184964779154375129173708512214393931667457813751914161634, 20);
+        openCdp(
+            14357740897988057106500935390524526462940912496206879728999588820331360643957,
+            1000000000000000256
+        );
+        openCdp(
+            14357740897988057106500935390524526462940912496206879728999588820331360643957,
+            1000000000000000256
+        );
+        setPrice(74629061016018350331730450585755319739830762911693635404016285330120218663634);
+        setEthPerShare(
+            69007891472983439489040112860682059911742470146824120203672378698503585549508
+        );
+        withdrawColl(
+            2000000,
+            49955707469362902507454157299064623548400035506668976771172421598874183583296
+        );
+        setPrice(0);
+        closeCdp(79284842807605095858149520102903844594789751342105937047923718189601373042235);
+        setEthPerShare(0);
+        setPrice(3);
+        bytes32 cdpId = _getRandomCdp(
+            115792089237316195423570985008193886025822902127156998188347748450894401986382
+        );
+
+        console2.log("vars.newTcrBefore", vars.newTcrBefore);
+        console2.log("vars.newTcrAfter", vars.newTcrAfter);
+
+        uint256 newIcr;
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        while (currentCdp != bytes32(0)) {
+            console2.log("ICR ICR", crLens.quoteRealICR(currentCdp));
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        _before(cdpId);
+        liquidate(115792089237316195423570985008193886025822902127156998188347748450894401986382);
+        _after(cdpId);
+
+        // If every CDP is liquidatable
+        // Then you liquidate the 2nd
+        // And break the invariant
+
+        if (
+            vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
+        ) {
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
+            gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+        }
+    }
+
     function testGeneral08() public {
         openCdp(72782931752105455104411619997485041164599478189648810093633428138496255693523, 544);
         addColl(
