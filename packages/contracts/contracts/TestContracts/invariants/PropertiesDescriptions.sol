@@ -125,6 +125,8 @@ abstract contract PropertiesDescriptions {
     string constant F_01 = "F-01: `claimFeeRecipientCollShares` allows to claim at any time";
     string constant F_02 = "F-02: Fees From Redemptions are added to `claimFeeRecipientCollShares`";
     string constant F_03 = "F-03: Fees From FlashLoans are sent to the fee Recipient";
+    string constant F_04 = "F-04: `claimFeeRecipientCollShares` claiming increases the balance of the fee recipient";
+
     ///////////////////////////////////////////////////////
     // Price Feed
     ///////////////////////////////////////////////////////
