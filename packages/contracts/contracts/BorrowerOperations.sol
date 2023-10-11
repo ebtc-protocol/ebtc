@@ -522,8 +522,6 @@ contract BorrowerOperations is
         // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
         cdpManager.notifyEndGracePeriod(newTCR);
 
-        cdpManager.removeStake(_cdpId);
-
         // We already verified msg.sender is the borrower
         cdpManager.closeCdp(_cdpId, msg.sender, debt, coll);
 
