@@ -9,14 +9,14 @@ import "./SortedCdps.sol";
 contract MultiCdpGetter {
     struct CombinedCdpData {
         bytes32 id;
-        uint debt;
-        uint coll;
-        uint stake;
-        uint snapshotEBTCDebt;
+        uint256 debt;
+        uint256 coll;
+        uint256 stake;
+        uint256 snapshotEBTCDebt;
     }
 
-    CdpManager public cdpManager; // XXX Cdps missing from ICdpManager?
-    ISortedCdps public sortedCdps;
+    CdpManager public immutable cdpManager;
+    ISortedCdps public immutable sortedCdps;
 
     /// @notice Creates a new MultiCdpGetter contract
     /// @param _cdpManager The CdpManager contract
@@ -33,25 +33,25 @@ contract MultiCdpGetter {
     /// @return _cdps An array of CombinedCdpData structs
     function getMultipleSortedCdps(
         int _startIdx,
-        uint _count
+        uint256 _count
     ) external view returns (CombinedCdpData[] memory _cdps) {
-        uint startIdx;
+        uint256 startIdx;
         bool descend;
 
         if (_startIdx >= 0) {
-            startIdx = uint(_startIdx);
+            startIdx = uint256(_startIdx);
             descend = true;
         } else {
-            startIdx = uint(-(_startIdx + 1));
+            startIdx = uint256(-(_startIdx + 1));
             descend = false;
         }
 
-        uint sortedCdpsSize = sortedCdps.getSize();
+        uint256 sortedCdpsSize = sortedCdps.getSize();
 
         if (startIdx >= sortedCdpsSize) {
             _cdps = new CombinedCdpData[](0);
         } else {
-            uint maxCount = sortedCdpsSize - startIdx;
+            uint256 maxCount = sortedCdpsSize - startIdx;
 
             if (_count > maxCount) {
                 _count = maxCount;
@@ -70,18 +70,18 @@ contract MultiCdpGetter {
     /// @param _count The count of Cdps to retrieve
     /// @return _cdps An array of CombinedCdpData structs
     function _getMultipleSortedCdpsFromHead(
-        uint _startIdx,
-        uint _count
+        uint256 _startIdx,
+        uint256 _count
     ) internal view returns (CombinedCdpData[] memory _cdps) {
         bytes32 currentCdpId = sortedCdps.getFirst();
 
-        for (uint idx = 0; idx < _startIdx; ++idx) {
+        for (uint256 idx = 0; idx < _startIdx; ++idx) {
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
 
         _cdps = new CombinedCdpData[](_count);
 
-        for (uint idx = 0; idx < _count; ++idx) {
+        for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
             (
                 _cdps[idx].debt,
@@ -94,7 +94,7 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(currentCdpId);
+            (_cdps[idx].snapshotEBTCDebt) = cdpManager.debtRedistributionIndex(currentCdpId);
 
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
@@ -105,18 +105,18 @@ contract MultiCdpGetter {
     /// @param _count The count of Cdps to retrieve
     /// @return _cdps An array of CombinedCdpData structs
     function _getMultipleSortedCdpsFromTail(
-        uint _startIdx,
-        uint _count
+        uint256 _startIdx,
+        uint256 _count
     ) internal view returns (CombinedCdpData[] memory _cdps) {
         bytes32 currentCdpId = sortedCdps.getLast();
 
-        for (uint idx = 0; idx < _startIdx; ++idx) {
+        for (uint256 idx = 0; idx < _startIdx; ++idx) {
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }
 
         _cdps = new CombinedCdpData[](_count);
 
-        for (uint idx = 0; idx < _count; ++idx) {
+        for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
             (
                 _cdps[idx].debt,
@@ -129,7 +129,7 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotEBTCDebt) = cdpManager.rewardSnapshots(currentCdpId);
+            (_cdps[idx].snapshotEBTCDebt) = cdpManager.debtRedistributionIndex(currentCdpId);
 
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }

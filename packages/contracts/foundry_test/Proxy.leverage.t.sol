@@ -43,7 +43,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.deal(user, type(uint96).max);
 
         // check input
-        _checkInputFuzzParameters(netColl, 1000);
+        (netColl, ) = _checkInputFuzzParameters(netColl, 1000);
 
         // deploy proxy for user
         address proxyAddr = _createLeverageMacro(user);
@@ -53,13 +53,14 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         _openCDPViaProxy(user, netColl, proxyAddr);
     }
 
+    // TODO
     function test_AdjustLeveragedCDPHappy(uint256 netColl, uint256 adjustBps) public {
         address user = _utils.createUsers(1)[0];
 
         vm.deal(user, type(uint96).max);
 
         // check input
-        _checkInputFuzzParameters(netColl, adjustBps);
+        (netColl, adjustBps) = _checkInputFuzzParameters(netColl, adjustBps);
 
         // deploy proxy for user
         address proxyAddr = _createLeverageMacro(user);
@@ -119,7 +120,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         vm.deal(user, type(uint96).max);
 
         // check input
-        _checkInputFuzzParameters(netColl, 1000);
+        (netColl, ) = _checkInputFuzzParameters(netColl, 1000);
 
         // deploy proxy for user
         address proxyAddr = _createLeverageMacro(user);
@@ -138,9 +139,8 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 adjustBps
     ) public {
         // check input
-        _checkInputFuzzParameters(netColl, adjustBps);
-        vm.assume(userCnt > 1);
-        vm.assume(userCnt < 5);
+        (netColl, adjustBps) = _checkInputFuzzParameters(netColl, adjustBps);
+        userCnt = bound(userCnt, 2, 4);
 
         address payable[] memory users = _utils.createUsers(userCnt);
 
@@ -190,11 +190,12 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         }
     }
 
-    function _checkInputFuzzParameters(uint256 netColl, uint256 adjustBps) internal {
-        vm.assume(netColl < INITITAL_COLL * 5);
-        vm.assume(netColl > cdpManager.MIN_NET_COLL() * 2);
-        vm.assume(adjustBps < (MAX_SLIPPAGE / 2));
-        vm.assume(adjustBps > 100);
+    function _checkInputFuzzParameters(
+        uint256 netColl,
+        uint256 adjustBps
+    ) internal returns (uint256 _netColl, uint256 _adjustBps) {
+        _netColl = bound(netColl, cdpManager.MIN_NET_COLL() * 2 + 1, INITITAL_COLL * 5 - 1);
+        _adjustBps = bound(adjustBps, 100 + 1, (MAX_SLIPPAGE / 2) - 1);
     }
 
     function _openCDPViaProxy(
@@ -290,7 +291,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
         // prepare operation data
         {
-            (uint256 _debt, uint256 _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
+            (uint256 _debt, uint256 _totalColl, ) = cdpManager.getDebtAndCollShares(cdpId);
             _totalDebt = _debt;
             uint256 _flDebt = _getTotalAmountForFlashLoan(_totalDebt, true);
             LeverageMacroBase.CloseCdpOperation memory _opData = LeverageMacroBase.CloseCdpOperation(
@@ -360,7 +361,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
-        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
+        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getDebtAndCollShares(cdpId);
         // prepare operation data
         {
             _adjustVars = _increaseCdpSize(cdpId, _totalColl, _collAdded, _debt);
@@ -415,7 +416,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
         LocalVar_AdjustCdp memory _adjustVars;
-        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getEntireDebtAndColl(cdpId);
+        (uint256 _debt, uint256 _totalColl, ) = cdpManager.getDebtAndCollShares(cdpId);
         // prepare operation data
         {
             if (
@@ -487,7 +488,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _targetDebt = _utils.calculateBorrowAmount(
             _grossColl,
             _price,
-            cdpManager.getCurrentICR(cdpId, _price)
+            cdpManager.getICR(cdpId, _price)
         );
         require(_targetDebt > _debt, "!CDP debt already maximized thus can't increase any more");
         uint256 _totalDebt = _targetDebt - _debt;
@@ -542,7 +543,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 _targetDebt = _utils.calculateBorrowAmount(
             _grossColl,
             _price,
-            cdpManager.getCurrentICR(cdpId, _price)
+            cdpManager.getICR(cdpId, _price)
         );
         require(_targetDebt < _debt, "!CDP debt already minimized thus can't decrease any more");
         uint256 _totalDebt = _debt - _targetDebt;

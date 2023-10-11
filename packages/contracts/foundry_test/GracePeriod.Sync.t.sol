@@ -10,7 +10,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
   Tests around GracePeriod
  */
 contract GracePeriodBaseTests is eBTCBaseFixture {
-    event TCRNotified(uint TCR); /// NOTE: Mostly for debugging to ensure synch
+    event TCRNotified(uint256 TCR); /// NOTE: Mostly for debugging to ensure synch
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -120,6 +120,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _triggerRMViaSplit();
         cdpManager.syncGracePeriod();
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        vm.stopPrank();
 
         // Liquidate 4x
         vm.startPrank(safeUser);
@@ -135,6 +136,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             uint256 EXPECTED_TCR_FIRST_LIQ_TCR = cdpManager.getTCR(price);
             // Revert so we can verify Event
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             // Verify it worked
             vm.expectEmit(false, false, false, true);
@@ -148,11 +151,15 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
             // Re-revert for next Op
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             // Try liquidating a cdp partially
             cdpManager.partiallyLiquidate(cdps[0], 1e18, cdps[0], cdps[0]);
             uint256 EXPECTED_TCR_SECOND_LIQ_TCR = cdpManager.getTCR(price);
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             // Verify it worked
             vm.expectEmit(false, false, false, true);
@@ -166,16 +173,21 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
             // Re-revert for next Op
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             // Try liquidating a cdp via the list (1)
-            cdpManager.liquidateCdps(1);
+            _liquidateCdps(1);
             uint256 EXPECTED_TCR_THIRD_LIQ_TCR = cdpManager.getTCR(price);
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             // Verify it worked
+            bytes32[] memory batch = _sequenceLiqToBatchLiqWithPrice(1);
             vm.expectEmit(false, false, false, true);
             emit TCRNotified(EXPECTED_TCR_THIRD_LIQ_TCR);
-            cdpManager.liquidateCdps(1);
+            cdpManager.batchLiquidateCdps(batch);
         }
 
         // == Liquidate 4 == //
@@ -184,6 +196,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
             // Re-revert for next Op
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             // Try liquidating a cdp via the list (2)
             bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
@@ -191,6 +205,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
             uint256 EXPECTED_TCR_FOURTH_LIQ_TCR = cdpManager.getTCR(price);
             vm.revertTo(liquidationSnapshotId);
+            // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+            liquidationSnapshotId = vm.snapshot();
 
             vm.expectEmit(false, false, false, true);
             emit TCRNotified(EXPECTED_TCR_FOURTH_LIQ_TCR);
@@ -205,9 +221,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         //redemption
         (
             bytes32 firstRedemptionHint,
-            uint partialRedemptionHintNICR,
-            uint truncatedEBTCamount,
-            uint partialRedemptionNewColl
+            uint256 partialRedemptionHintNICR,
+            uint256 truncatedEBTCamount,
+            uint256 partialRedemptionNewColl
         ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
         cdpManager.redeemCollateral(
             toRedeem,
@@ -248,7 +264,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdps[i] = _openTestCDP(users[0], coll2, debt2);
         }
 
-        uint TCR = cdpManager.getTCR(_curPrice);
+        uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
 
         // Move past bootstrap phase to allow redemptions

@@ -23,10 +23,10 @@ contract PriceFeedTest is eBTCBaseFixture {
     uint80 internal latestRoundId = 321;
     int256 internal initEthBTCPrice = 7428000;
     int256 internal initStEthETHPrice = 9999e14;
-    uint internal initStEthBTCPrice = 7428e13;
-    uint internal tellorTimeout = 600;
+    uint256 internal initStEthBTCPrice = 7428e13;
+    uint256 internal tellorTimeout = 600;
     address internal authUser;
-    event FeedActionOption(uint _action);
+    event FeedActionOption(uint256 _action);
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -81,20 +81,19 @@ contract PriceFeedTest is eBTCBaseFixture {
         _mockFeed.setUpdateTime(block.timestamp);
     }
 
-    function _initMockTellor(uint _price) internal {
+    function _initMockTellor(uint256 _price) internal {
         _mockTellor.setPrice(_price);
         _mockTellor.setUpdateTime(block.timestamp);
     }
 
     function testRandomPriceFeedActions(int256 _actions, int128 _rnd) public {
-        vm.assume(_actions > 0);
-        vm.assume(_actions <= 5);
-        vm.assume(_rnd > 0);
+        _actions = int128(bound(_actions, 1, 5));
+        _rnd = int128(bound(_rnd, 1, type(int128).max));
 
         IPriceFeed.Status startStatus = priceFeedTester.status();
 
         for (int i = 0; i < _actions; i++) {
-            uint _choice = (
+            uint256 _choice = (
                 _utils.generateRandomNumber(
                     uint256(i),
                     uint256(int256(_rnd) + _actions),
@@ -393,18 +392,18 @@ contract PriceFeedTest is eBTCBaseFixture {
     function _makeFeedsDeviate() internal {
         int _clEthBTCPrice = _mockChainLinkEthBTC.getPrice();
         uint8 _clEthBTCDecimal = _mockChainLinkEthBTC.decimals();
-        uint _clAnswer = priceFeedTester.formatClAggregateAnswer(
+        uint256 _clAnswer = priceFeedTester.formatClAggregateAnswer(
             _clEthBTCPrice,
             _mockChainLinkStEthETH.getPrice(),
             _clEthBTCDecimal,
             _mockChainLinkStEthETH.decimals()
         );
-        uint _flAnswer = _mockTellor.retrieveData(0, 0);
+        uint256 _flAnswer = _mockTellor.retrieveData(0, 0);
         if (_clAnswer < _flAnswer && _clAnswer > 0) {
             _mockTellor.setPrice(_clAnswer * 2);
         } else if (_clAnswer > _flAnswer && _flAnswer > 0) {
             _mockChainLinkStEthETH.setPrice(
-                int256((_flAnswer * 2 * _clEthBTCDecimal) / uint(_clEthBTCPrice))
+                int256((_flAnswer * 2 * _clEthBTCDecimal) / uint256(_clEthBTCPrice))
             );
         }
     }
@@ -431,7 +430,7 @@ contract PriceFeedTest is eBTCBaseFixture {
         _mockFeed.setUpdateTime(block.timestamp);
     }
 
-    function _restoreFallbackPriceAndTimestamp(uint _price) internal {
+    function _restoreFallbackPriceAndTimestamp(uint256 _price) internal {
         _mockTellor.setPrice(_price);
         _mockTellor.setUpdateTime(block.timestamp);
     }

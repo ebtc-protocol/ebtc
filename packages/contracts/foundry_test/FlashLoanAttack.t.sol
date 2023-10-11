@@ -57,7 +57,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
@@ -72,7 +72,7 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testEBTCAttack(uint128 amount) public {
-        vm.assume(amount <= borrowerOperations.maxFlashLoan(address(eBTCToken)));
+        amount = uint128(bound(amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken))));
 
         uint256 fee = borrowerOperations.flashFee(address(eBTCToken), amount);
 
@@ -120,9 +120,9 @@ contract FlashLoanAttack is eBTCBaseFixture {
     }
 
     function testWethAttack(uint112 amount) public {
-        uint256 _maxAvailable = activePool.getStEthColl();
-        vm.assume(amount < (_maxAvailable / 2));
-        vm.assume(amount > cdpManager.LIQUIDATOR_REWARD());
+        uint256 _maxAvailable = activePool.getSystemCollShares();
+
+        amount = uint112(bound(amount, cdpManager.LIQUIDATOR_REWARD() + 1, _maxAvailable / 2 - 1));
 
         uint256 fee = activePool.flashFee(address(collateral), amount);
 
@@ -149,7 +149,9 @@ contract FlashLoanAttack is eBTCBaseFixture {
         dealCollateral(address(attacker), fee * 2);
 
         // Check is to ensure that we didn't donate too much
-        vm.assume(collateral.balanceOf(address(activePool)) - amount < activePool.getStEthColl());
+        vm.assume(
+            collateral.balanceOf(address(activePool)) - amount < activePool.getSystemCollShares()
+        );
         vm.expectRevert("ActivePool: Must repay Balance");
         activePool.flashLoan(
             IERC3156FlashBorrower(address(attacker)),

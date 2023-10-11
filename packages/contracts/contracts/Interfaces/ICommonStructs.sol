@@ -20,18 +20,18 @@ interface ICommonStructs {
      * @param newTCR  System TCR after adjustment operation, using current price.
      */
     struct AdjustCdpState {
-        uint price;
-        uint collChange;
+        uint256 price;
+        uint256 collChange;
         bool isCollIncrease;
-        uint netDebtChange;
+        uint256 netDebtChange;
         bool isDebtIncrease;
-        uint debt;
-        uint coll;
-        uint newDebt;
-        uint newColl;
-        uint oldICR;
-        uint newICR;
-        uint newNICR;
-        uint newTCR;
+        uint256 debt;
+        uint256 coll;
+        uint256 newDebt;
+        uint256 newColl;
+        uint256 oldICR;
+        uint256 newICR;
+        uint256 newNICR;
+        uint256 newTCR;
     }
 }

@@ -17,8 +17,8 @@ contract FlashWithDeposit {
     BorrowerOperations public borrowerOperations;
     address public collToken;
 
-    uint internal constant MIN_NET_DEBT = 2e18; // Subject to changes once CL is changed
-    uint private constant FEE = 5e17;
+    uint256 internal constant MIN_NET_DEBT = 2e18; // Subject to changes once CL is changed
+    uint256 private constant FEE = 5e17;
 
     constructor(
         IERC20 _want,
@@ -70,7 +70,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             30 ether,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
@@ -91,10 +91,11 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
 
         // TODO: Could change to w/e but this should be fine
         // Peer review and change accordingly
-        vm.assume(amountToDepositInCDP > 100 ether);
-
+        amountToDepositInCDP = uint128(
+            bound(amountToDepositInCDP, 100 ether + 1, type(uint128).max)
+        );
         // Avoid over borrowing
-        vm.assume(amount < amountToDepositInCDP);
+        amount = uint128(bound(amount, 1, amountToDepositInCDP - 1));
 
         FlashWithDeposit macroContract = new FlashWithDeposit(
             IERC20(address(collateral)),
@@ -108,7 +109,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         address payable[] memory users;
         users = _utils.createUsers(1);
         address user = users[0];
-        uint borrowedAmount = _utils.calculateBorrowAmount(
+        uint256 borrowedAmount = _utils.calculateBorrowAmount(
             amountToDepositInCDP,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO_DEFENSIVE

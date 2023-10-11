@@ -134,10 +134,10 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // Open CDP
         /**
-         * uint _EBTCAmount,
+         * uint256 _EBTCAmount,
          *         bytes32 _upperHint,
          *         bytes32 _lowerHint,
-         *         uint _collAmount
+         *         uint256 _collAmount
          */
         data[2] = SimplifiedDiamondLike.Operation({
             to: address(address(borrowerOperations)),
@@ -295,7 +295,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             data: getEncodedOpenCdpData()
         });
 
-        uint cdpCntBefore = sortedCdps.cdpCountOf(address(wallet));
+        uint256 cdpCntBefore = sortedCdps.cdpCountOf(address(wallet));
         _mock1Inch.setPrice(priceFeedMock.getPrice());
 
         wallet.execute(data);
@@ -320,13 +320,13 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         uint256 netColl = collateral.balanceOf(user) / 2; // TODO: Make generic
 
-        uint grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
+        uint256 grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
 
         // TODO: FIX THIS // Donation breaks invariants but ensures we have enough to pay without figuring out issue with swap
         deal(address(eBTCToken), address(wallet), 1e23);
 
         // leverage parameters
-        uint debt = _utils.calculateBorrowAmount(
+        uint256 debt = _utils.calculateBorrowAmount(
             grossColl,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO
@@ -398,14 +398,14 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         address _setupOwner = _utils.createUsers(1)[0];
         vm.deal(_setupOwner, INITITAL_COLL);
         dealCollateral(_setupOwner, type(uint128).max);
-        uint _coll = collateral.balanceOf(_setupOwner);
-        uint _debt = _utils.calculateBorrowAmount(
+        uint256 _coll = collateral.balanceOf(_setupOwner);
+        uint256 _debt = _utils.calculateBorrowAmount(
             _coll,
             priceFeedMock.fetchPrice(),
             COLLATERAL_RATIO * 2
         );
         _openTestCDP(_setupOwner, _coll, _debt);
-        uint _sugarDebt = eBTCToken.balanceOf(_setupOwner);
+        uint256 _sugarDebt = eBTCToken.balanceOf(_setupOwner);
         vm.prank(_setupOwner);
         eBTCToken.transfer(_dex, _sugarDebt);
 
@@ -418,7 +418,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         address _inToken,
         uint256 _inAmt,
         address _outToken,
-        uint _minOut
+        uint256 _minOut
     ) internal view returns (LeverageMacroBase.SwapOperation[] memory) {
         LeverageMacroBase.SwapOperation[] memory _oneStep = new LeverageMacroBase.SwapOperation[](1);
         _oneStep[0] = _generateCalldataSwapMock1Inch(_inToken, _inAmt, _outToken, _minOut);
@@ -429,7 +429,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         address _inToken,
         uint256 _inAmt,
         address _outToken,
-        uint _minOut
+        uint256 _minOut
     ) internal view returns (LeverageMacroBase.SwapOperation memory) {
         LeverageMacroBase.SwapCheck[] memory _swapChecks = new LeverageMacroBase.SwapCheck[](1);
         _swapChecks[0] = LeverageMacroBase.SwapCheck(_outToken, _minOut);

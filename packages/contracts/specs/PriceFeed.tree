@@ -1,0 +1,58 @@
+PriceFeed.fetchPrice
+├── CASE 1: the system fetched last price from chainlink (Status.chainlinkWorking)
+│  └── if Chainlink is broken, try Fallback
+│     └── if Fallback is broken then both oracles are untrusted, so return the last good price (Status.bothOraclesUntrusted)
+│     └── else if Fallback is only frozen but otherwise returning valid data, return the last good price (Status.usingFallbackChainlinkUntrusted)
+│     └── else Chainlink is broken and Fallback is working, switch to Fallback and return current Fallback price (Status.usingFallbackChainlinkUntrusted)
+│  └── else if Chainlink is frozen, try Fallback
+│     └── if Fallback is broken too, remember Fallback broke, and return last good price (Status.usingChainlinkFallbackUntrusted)
+│     └── else if Fallback is frozen or working, remember Chainlink froze, switch to Fallback, and return last good price (Status.usingFallbackChainlinkFrozen)
+│     └── else Fallback is working, use it (Status.usingFallbackChainlinkFrozen)
+│  └── else if Chainlink price has changed by > 50% between two consecutive rounds, compare it to Fallback's price
+│     └── if Fallback is broken, both oracles are untrusted, and return last good price (Status.bothOraclesUntrusted)
+│     └── else if Fallback is frozen, switch to Fallback and return last good price (Status.usingFallbackChainlinkUntrusted)
+│     └── else if Fallback is live and both oracles have a similar price, conclude that Chainlink's large price deviation between two consecutive rounds was likely a legitmate market price movement, and so continue using Chainlink
+│     └── else Fallback is live but the oracles differ too much in price, conclude that Chainlink's initial price deviation was an oracle failure. Switch to Fallback, and use Fallback price (Status.usingFallbackChainlinkUntrusted)
+│  └── else if Chainlink is working and Fallback is broken, remember Fallback is broken and return Chainlink current price (Status.usingChainlinkFallbackUntrusted)
+│  └── else Chainlink is working, return Chainlink current price (no status change)
+│
+│
+│
+├── CASE 2: The system fetched last price from Fallback (Status.usingFallbackChainlinkUntrusted)
+│  └── if both Fallback and Chainlink are live, unbroken, and reporting similar prices, switch back to Chainlink (Status.chainlinkWorking)
+│  └── else if Fallback is broken, remember that both are untrusted and return last good price (Status.bothOraclesUntrusted)
+│  └── else if Fallback is only frozen but otherwise returning valid data, just return the last good price
+│  └── else use Fallback price
+│
+│
+│
+├── CASE 3: both oracles were untrusted at the last price fetch (Status.bothOraclesUntrusted)
+│  └── if there's no fallback and CL has resumed working, only use Chainlink and return Chainlink current price (Status.usingChainlinkFallbackUntrusted)
+│  └── else if both oracles are now live, unbroken and similar price, we assume that they are reporting accurately, and so we switch back to Chainlink (Status.chainlinkWorking)
+│  └── else return the last good price - both oracles are still untrusted (no status change)
+│
+│
+│
+├── CASE 4: Using Fallback, and Chainlink is frozen (Status.usingFallbackChainlinkFrozen)
+│  └── if Chainlink is broken
+│     └── if both Oracles are broken, return last good price (Status.bothOraclesUntrusted)
+│     └── else Chainlink is broken, remember it and switch to using Fallback (Status.usingFallbackChainlinkUntrusted)
+│         └── if Fallback is frozen, return last good price
+│         └── else Fallback is working, return Fallback current price
+│  └── if Chainlink is frozen
+│     └── if Chainlink is frozen and Fallback is broken, remember Fallback broke, and return last good price (Status.usingChainlinkFallbackUntrusted)
+│     └── else if both are frozen, just use lastGoodPrice
+│     └── else Chainlink is frozen and Fallback is working, keep using Fallback (no status change)
+│  └── else if Chainlink is live and Fallback is broken, remember Fallback broke, and return Chainlink price (Status.usingChainlinkFallbackUntrusted)
+│  └── else Chainlink is live and Fallback is frozen, just use last good price (no status change) since we have no basis for comparison 
+│  └── else Chainlink is live and Fallback is working, compare prices. Switch to Chainlink if prices are within 5%, and return Chainlink price (Status.chainlinkWorking)
+│  └── else Otherwise if Chainlink is live but price not within 5% of Fallback, distrust Chainlink, and return Fallback price (Status.usingFallbackChainlinkUntrusted)
+│
+│
+│
+├── CASE 5: Using Chainlink, Fallback is untrusted (Status.usingChainlinkFallbackUntrusted)
+│  └── if Chainlink breaks, now both oracles are untrusted, return last good price (Status.bothOraclesUntrusted)
+│  └── else if Chainlink is frozen, return last good price (no status change)
+│  └── else if Chainlink and Fallback are both live, unbroken and similar price, switch back to chainlinkWorking and return Chainlink price (Status.chainlinkWorking)
+│  └── else if Chainlink is live but deviated >50% from it's previous price and Fallback is still untrusted, switch to bothOraclesUntrusted and return last good price (Status.bothOraclesUntrusted)
+│  └── else if Chainlink is live and deviated <50% from it's previous price and Fallback is still untrusted, return Chainlink price (no status change)

@@ -4,7 +4,7 @@ pragma solidity 0.8.17;
 
 interface IPriceFeed {
     // --- Events ---
-    event LastGoodPriceUpdated(uint _lastGoodPrice);
+    event LastGoodPriceUpdated(uint256 _lastGoodPrice);
     event PriceFeedStatusChanged(Status newStatus);
     event FallbackCallerChanged(address _oldFallbackCaller, address _newFallbackCaller);
     event UnhealthyFallbackCaller(address _fallbackCaller, uint256 timestamp);
@@ -37,5 +37,5 @@ interface IPriceFeed {
     }
 
     // --- Function ---
-    function fetchPrice() external returns (uint);
+    function fetchPrice() external returns (uint256);
 }

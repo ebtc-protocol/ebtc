@@ -8,10 +8,10 @@ import "./CollateralTokenTester.sol";
 
 contract Mock1Inch {
     // swap output slippage
-    uint public slippage = 50;
-    uint public constant MAX_SLIPPAGE = 10000;
+    uint256 public slippage = 50;
+    uint256 public constant MAX_SLIPPAGE = 10000;
     // collateral(stETH) to eBTC
-    uint public price = 7428 * 1e13;
+    uint256 public price = 7428 * 1e13;
 
     CollateralTokenTester public stETH;
     EBTCTokenTester public eBTCToken;
@@ -21,7 +21,7 @@ contract Mock1Inch {
         eBTCToken = EBTCTokenTester(_ebtcTester);
     }
 
-    function setPrice(uint _newPrice) external {
+    function setPrice(uint256 _newPrice) external {
         price = _newPrice;
     }
 

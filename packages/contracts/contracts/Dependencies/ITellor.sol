@@ -42,7 +42,7 @@ interface ITellor {
 
     /**
      * @dev This is called by the miner when they submit the PoW solution (proof of work and value)
-     * @param _nonce uint submitted by miner
+     * @param _nonce uint256 submitted by miner
      * @param _requestId the apiId being mined
      * @param _value of api query
      *
@@ -55,7 +55,7 @@ interface ITellor {
 
     /**
      * @dev This is called by the miner when they submit the PoW solution (proof of work and value)
-     * @param _nonce uint submitted by miner
+     * @param _nonce uint256 submitted by miner
      * @param _requestId is the array of the 5 PSR's being mined
      * @param _value is an array of 5 values
      */
@@ -188,7 +188,7 @@ interface ITellor {
     /**
      * @dev This function returns whether or not a given user is allowed to trade a given amount
      * @param _user address
-     * @param _amount uint of amount
+     * @param _amount uint256 of amount
      * @return true if the user is alloed to trade the amount specified
      */
     function allowedToTrade(address _user, uint256 _amount) external view returns (bool);
@@ -244,15 +244,15 @@ interface ITellor {
      * @return address of reportedMiner
      * @return address of reportingParty
      * @return address of proposedForkAddress
-     *    uint of requestId
-     *    uint of timestamp
-     *    uint of value
-     *    uint of minExecutionDate
-     *    uint of numberOfVotes
-     *    uint of blocknumber
-     *    uint of minerSlot
-     *    uint of quorum
-     *    uint of fee
+     *    uint256 of requestId
+     *    uint256 of timestamp
+     *    uint256 of value
+     *    uint256 of minExecutionDate
+     *    uint256 of numberOfVotes
+     *    uint256 of blocknumber
+     *    uint256 of minerSlot
+     *    uint256 of quorum
+     *    uint256 of fee
      * @return int count of the current tally
      */
     function getAllDisputeVars(
@@ -274,17 +274,17 @@ interface ITellor {
     /**
      * @dev Checks if a given hash of miner,requestId has been disputed
      * @param _hash is the sha256(abi.encodePacked(_miners[2],_requestId));
-     * @return uint disputeId
+     * @return uint256 disputeId
      */
     function getDisputeIdByDisputeHash(bytes32 _hash) external view returns (uint256);
 
     /**
-     * @dev Checks for uint variables in the disputeUintVars mapping based on the disuputeId
+     * @dev Checks for uint256 variables in the disputeUintVars mapping based on the disuputeId
      * @param _disputeId is the dispute id;
      * @param _data the variable to pull from the mapping. _data = keccak256("variable_name") where variable_name is
      * the variables/strings used to save the data in the mapping. The variables names are
      * commented out under the disputeUintVars under the Dispute struct
-     * @return uint value for the bytes32 data submitted
+     * @return uint256 value for the bytes32 data submitted
      */
     function getDisputeUintVars(uint256 _disputeId, bytes32 _data) external view returns (uint256);
 
@@ -306,7 +306,7 @@ interface ITellor {
      * @dev Gets blocknumber for mined timestamp
      * @param _requestId to look up
      * @param _timestamp is the timestamp to look up blocknumber
-     * @return uint of the blocknumber which the dispute was mined
+     * @return uint256 of the blocknumber which the dispute was mined
      */
     function getMinedBlockNum(
         uint256 _requestId,
@@ -329,28 +329,28 @@ interface ITellor {
      * if called for the currentRequest being mined it can tell you how many miners have submitted a value for that
      * request so far
      * @param _requestId the requestId to look up
-     * @return uint count of the number of values received for the requestId
+     * @return uint256 count of the number of values received for the requestId
      */
     function getNewValueCountbyRequestId(uint256 _requestId) external view returns (uint256);
 
     /**
      * @dev Getter function for the specified requestQ index
      * @param _index to look up in the requestQ array
-     * @return uint of reqeuestId
+     * @return uint256 of reqeuestId
      */
     function getRequestIdByRequestQIndex(uint256 _index) external view returns (uint256);
 
     /**
      * @dev Getter function for requestId based on timestamp
      * @param _timestamp to check requestId
-     * @return uint of reqeuestId
+     * @return uint256 of reqeuestId
      */
     function getRequestIdByTimestamp(uint256 _timestamp) external view returns (uint256);
 
     /**
      * @dev Getter function for requestId based on the queryHash
      * @param _request is the hash(of string api and granularity) to check if a request already exists
-     * @return uint requestId
+     * @return uint256 requestId
      */
     function getRequestIdByQueryHash(bytes32 _request) external view returns (uint256);
 
@@ -361,13 +361,13 @@ interface ITellor {
     function getRequestQ() external view returns (uint256[51] memory);
 
     /**
-     * @dev Allowes access to the uint variables saved in the apiUintVars under the requestDetails struct
+     * @dev Allowes access to the uint256 variables saved in the apiUintVars under the requestDetails struct
      * for the requestId specified
      * @param _requestId to look up
      * @param _data the variable to pull from the mapping. _data = keccak256("variable_name") where variable_name is
      * the variables/strings used to save the data in the mapping. The variables names are
      * commented out under the apiUintVars under the requestDetails struct
-     * @return uint value of the apiUintVars specified in _data for the requestId specified
+     * @return uint256 value of the apiUintVars specified in _data for the requestId specified
      */
     function getRequestUintVars(uint256 _requestId, bytes32 _data) external view returns (uint256);
 
@@ -378,8 +378,8 @@ interface ITellor {
      * @return string of symbol of api to query
      * @return bytes32 hash of string
      * @return bytes32 of the granularity(decimal places) requested
-     * @return uint of index in requestQ array
-     * @return uint of current payout/tip for this requestId
+     * @return uint256 of index in requestQ array
+     * @return uint256 of current payout/tip for this requestId
      */
     function getRequestVars(
         uint256 _requestId
@@ -388,8 +388,8 @@ interface ITellor {
     /**
      * @dev This function allows users to retireve all information about a staker
      * @param _staker address of staker inquiring about
-     * @return uint current state of staker
-     * @return uint startDate of staking
+     * @return uint256 current state of staker
+     * @return uint256 startDate of staking
      */
     function getStakerInfo(address _staker) external view returns (uint256, uint256);
 
@@ -408,7 +408,7 @@ interface ITellor {
      * @dev Gets the timestamp for the value based on their index
      * @param _requestID is the requestId to look up
      * @param _index is the value index to look up
-     * @return uint timestamp
+     * @return uint256 timestamp
      */
     function getTimestampbyRequestIDandIndex(
         uint256 _requestID,
@@ -422,7 +422,7 @@ interface ITellor {
      * commented out under the uintVars under the TellorStorageStruct struct
      * This is an example of how data is saved into the mapping within other functions:
      * self.uintVars[keccak256("stakerCount")]
-     * @return uint of specified variable
+     * @return uint256 of specified variable
      */
     function getUintVar(bytes32 _data) external view returns (uint256);
 
@@ -450,7 +450,7 @@ interface ITellor {
 
     /**
      * @dev Getter for the total_supply of oracle tokens
-     * @return uint total supply
+     * @return uint256 total supply
      */
     function totalSupply() external view returns (uint256);
 

@@ -9,21 +9,21 @@ interface ICdpManager {
 }
 
 interface IRebasableTokenTester {
-    function setEthPerShare(uint _ePerS) external;
+    function setEthPerShare(uint256 _ePerS) external;
 }
 
 contract SimpleLiquidationTester is IERC3156FlashBorrower {
-    uint public _onReceiveType; //0-nothing, 1-reenter, 2-revert
+    uint256 public _onReceiveType; //0-nothing, 1-reenter, 2-revert
     ICdpManager public _cdpManager;
     bytes32 public _reEnterLiqCdpId = bytes32(0); // only for _onReceiveType == 1
 
-    event EtherReceived(address, uint);
+    event EtherReceived(address, uint256);
 
     function setCdpManager(address _cdpMgr) external {
         _cdpManager = ICdpManager(_cdpMgr);
     }
 
-    function setReceiveType(uint _type) external {
+    function setReceiveType(uint256 _type) external {
         _onReceiveType = _type;
     }
 

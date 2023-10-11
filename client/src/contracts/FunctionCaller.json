@@ -36,7 +36,7 @@
           "type": "address"
         }
       ],
-      "name": "cdpManager_getCurrentICR",
+      "name": "cdpManager_getICR",
       "outputs": [
         {
           "internalType": "uint256",

@@ -11,11 +11,11 @@ contract EBTCTokenCaller {
         EBTC = _EBTC;
     }
 
-    function ebtcMint(address _account, uint _amount) external {
+    function ebtcMint(address _account, uint256 _amount) external {
         EBTC.mint(_account, _amount);
     }
 
-    function ebtcBurn(address _account, uint _amount) external {
+    function ebtcBurn(address _account, uint256 _amount) external {
         EBTC.burn(_account, _amount);
     }
 }

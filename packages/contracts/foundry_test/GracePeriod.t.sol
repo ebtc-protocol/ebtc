@@ -69,7 +69,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdps[1 + i] = _openTestCDP(users[1], coll2, debt2);
         }
 
-        uint TCR = cdpManager.getTCR(_curPrice);
+        uint256 TCR = cdpManager.getTCR(_curPrice);
         assertGt(TCR, CCR);
 
         // Move past bootstrap phase to allow redemptions
@@ -113,9 +113,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Trigger RM
         _triggerRMViaPrice();
 
-        uint256 degenSnapshot = vm.snapshot();
         // Do extra checks for Degen getting liquidated Etc..
-        _checkLiquidationsForDegen(degen);
+        uint256 degenSnapshot = _checkLiquidationsForDegen(degen);
         vm.revertTo(degenSnapshot);
 
         vm.startPrank(liquidator);
@@ -173,9 +172,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Trigger RM
         _triggerRMViaSplit();
 
-        uint256 degenSnapshot = vm.snapshot();
         // Do extra checks for Degen getting liquidated Etc..
-        _checkLiquidationsForDegen(degen);
+        uint256 degenSnapshot = _checkLiquidationsForDegen(degen);
         vm.revertTo(degenSnapshot);
 
         vm.startPrank(liquidator);
@@ -196,9 +194,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     /// Claim Fee Split prob doesn't
 
     /// @dev Verifies liquidations wrt Grace Period and Cdps that can be always be liquidated
-    function _checkLiquidationsForDegen(bytes32 cdp) internal {
+    function _checkLiquidationsForDegen(bytes32 cdp) internal returns (uint) {
         // Grace Period not started, expect reverts on liquidations
-        _assertSuccessOnAllLiquidationsDegen(cdp);
+        uint256 degenSnapshot = _assertSuccessOnAllLiquidationsDegen(cdp);
 
         cdpManager.syncGracePeriod();
         // 15 mins not elapsed, prove these cdps still revert
@@ -207,6 +205,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Grace Period Ended, liquidations work
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
         _assertSuccessOnAllLiquidationsDegen(cdp);
+        return degenSnapshot;
     }
 
     /// @dev Verifies liquidations wrt Grace Period and Cdps that can be liquidated only during RM
@@ -237,8 +236,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         - redemptions
     */
     function test_GracePeriodViaValidAction(uint8 priceDecreaseAction, uint8 action) public {
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(action <= 3);
         priceDecreaseAction = priceDecreaseAction % 2;
         action = action % 4;
 
@@ -268,8 +265,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 action
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(action <= 3);
         priceDecreaseAction = priceDecreaseAction % 2;
         action = action % 4;
 
@@ -298,8 +293,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 priceIncreaseAction
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(priceIncreaseAction <= 1);
         priceDecreaseAction = priceDecreaseAction % 2;
         priceIncreaseAction = priceIncreaseAction % 2;
 
@@ -330,8 +323,6 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint8 action
     ) public {
         // setup: create Cdps, enter RM via price change or rebase
-        // vm.assume(priceDecreaseAction <= 1);
-        // vm.assume(action <= 3);
         priceDecreaseAction = priceDecreaseAction % 2;
         action = action % 2;
 
@@ -379,13 +370,13 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             vm.prank(borrower);
             borrowerOperations.repayEBTC(cdps[0], 1, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
-            uint toRedeem = 5e17;
+            uint256 toRedeem = 5e17;
             //redemption
             (
                 bytes32 firstRedemptionHint,
-                uint partialRedemptionHintNICR,
-                uint truncatedEBTCamount,
-                uint partialRedemptionNewColl
+                uint256 partialRedemptionHintNICR,
+                uint256 truncatedEBTCamount,
+                uint256 partialRedemptionNewColl
             ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
 
             vm.prank(borrower);
@@ -476,7 +467,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     /// @dev Run these checks immediately after action that sets grace period
     function _postValidActionLiquidationChecks(bytes32[] memory cdps) internal {
         // Grace period timestamp is now
-        uint recoveryModeSetTimestamp = block.timestamp;
+        uint256 recoveryModeSetTimestamp = block.timestamp;
         assertEq(
             cdpManager.lastGracePeriodStartTimestamp(),
             block.timestamp,
@@ -535,8 +526,12 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         cdpManager.partiallyLiquidate(cdps[1], 1e18, cdps[1], cdps[1]);
 
         // Try liquidating a cdp via the list (1)
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            1,
+            priceFeedMock.getPrice()
+        );
         vm.expectRevert();
-        cdpManager.liquidateCdps(1);
+        cdpManager.batchLiquidateCdps(batch);
 
         // Try liquidating a cdp via the list (2)
         bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
@@ -545,33 +540,43 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
     }
 
-    function _assertSuccessOnAllLiquidationsDegen(bytes32 cdp) internal {
+    function _assertSuccessOnAllLiquidationsDegen(bytes32 cdp) internal returns (uint) {
         vm.startPrank(liquidator);
-        uint256 snapshotId = vm.snapshot();
+        // since revertTo() deletes the snapshot and all snapshots taken after the given snapshot id
+        uint256 snapshotId0 = vm.snapshot();
+        uint256 snapshotId1 = vm.snapshot();
+        uint256 snapshotId2 = vm.snapshot();
+        uint256 snapshotId3 = vm.snapshot();
+        uint256 snapshotId4 = vm.snapshot();
 
         // Try liquidating a cdp
         cdpManager.liquidate(cdp);
-        vm.revertTo(snapshotId);
+        vm.revertTo(snapshotId4);
 
         // Try liquidating a cdp partially
         cdpManager.partiallyLiquidate(cdp, 1e18, cdp, cdp);
-        vm.revertTo(snapshotId);
+        vm.revertTo(snapshotId3);
 
         // Try liquidating a cdp via the list (2)
         bytes32[] memory cdpsToLiquidateBatch = new bytes32[](1);
         cdpsToLiquidateBatch[0] = cdp;
         cdpManager.batchLiquidateCdps(cdpsToLiquidateBatch);
-        vm.revertTo(snapshotId);
+        vm.revertTo(snapshotId2);
 
         // Try liquidating a cdp via the list (1)
-        cdpManager.liquidateCdps(1);
-        vm.revertTo(snapshotId);
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            1,
+            priceFeedMock.getPrice()
+        );
+        cdpManager.batchLiquidateCdps(batch);
+        vm.revertTo(snapshotId1);
 
         console2.log("About to batchLiquidateCdps", uint256(cdp));
 
         console2.log("This log if batchLiquidateCdps didn't revert");
 
         vm.stopPrank();
+        return snapshotId0;
     }
 
     function _assertAllLiquidationSuccess(bytes32[] memory cdps) internal {
@@ -587,7 +592,11 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         vm.revertTo(snapshotId);
 
         // Try liquidating a cdp via the list (1)
-        cdpManager.liquidateCdps(1);
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            1,
+            priceFeedMock.getPrice()
+        );
+        cdpManager.batchLiquidateCdps(batch);
         vm.revertTo(snapshotId);
 
         // Try liquidating a cdp via the list (2)

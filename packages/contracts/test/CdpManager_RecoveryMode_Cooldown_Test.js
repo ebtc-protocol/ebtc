@@ -77,9 +77,9 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       // price drops to trigger RM	  
       let _newPrice = dec(6000, 13);
       await priceFeed.setPrice(_newPrice);
-      let _aliceICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
-      let _bobICRBefore = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
-      let _carolICRBefore = await cdpManager.getCurrentICR(_carolCdpId, _newPrice);
+      let _aliceICRBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
+      let _bobICRBefore = await cdpManager.getICR(_bobCdpId, _newPrice);
+      let _carolICRBefore = await cdpManager.getICR(_carolCdpId, _newPrice);
       let _tcrBefore = await cdpManager.getTCR(_newPrice);
       console.log('_aliceICRBefore=' + _aliceICRBefore + ', _bobICRBefore=' + _bobICRBefore + ', _carolICRBefore=' + _carolICRBefore + ', _tcrBefore=' + _tcrBefore);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
@@ -121,7 +121,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       // trigger RM cooldown by open a new CDP
       await openCdp({ ICR: _CCR.add(toBN('1234567890123456789')), extraParams: { from: bob } }) 
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-      let _bobICRBefore = await cdpManager.getCurrentICR(_bobCdpId, _newPrice);
+      let _bobICRBefore = await cdpManager.getICR(_bobCdpId, _newPrice);
       let _tcrInMiddle = await cdpManager.getTCR(_newPrice);
       console.log('_tcrInMiddle=' + _tcrInMiddle);
       assert.isTrue(toBN(_tcrInMiddle.toString()).lt(_CCR));
@@ -153,7 +153,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       let _newPrice = dec(5992, 13);
       await priceFeed.setPrice(_newPrice);
       let _tcrBefore = await cdpManager.getTCR(_newPrice);
-      let _aliceICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
+      let _aliceICRBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
       console.log('_tcrBefore=' + _tcrBefore + ',_aliceICRBefore=' + _aliceICRBefore);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
       await cdpManager.syncGracePeriod();
@@ -187,7 +187,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       let _newPrice = dec(5992, 13);
       await priceFeed.setPrice(_newPrice);
       let _tcrBefore = await cdpManager.getTCR(_newPrice);
-      let _aliceICRBefore = await cdpManager.getCurrentICR(_aliceCdpId, _newPrice);
+      let _aliceICRBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
       await cdpManager.syncGracePeriod();
       let _rmTriggerTimestamp = await cdpManager.lastGracePeriodStartTimestamp();

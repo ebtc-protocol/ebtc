@@ -9,10 +9,10 @@ import "./CollateralTokenTester.sol";
 
 contract MockDEXTester is IBalancerV2Vault {
     // swap output slippage
-    uint public slippage = 50;
-    uint public constant MAX_SLIPPAGE = 10000;
+    uint256 public slippage = 50;
+    uint256 public constant MAX_SLIPPAGE = 10000;
     // collateral(stETH) to eBTC
-    uint public price = 7428 * 1e13;
+    uint256 public price = 7428 * 1e13;
 
     CollateralTokenTester public collateral;
     EBTCTokenTester public ebtcToken;
@@ -22,13 +22,13 @@ contract MockDEXTester is IBalancerV2Vault {
         ebtcToken = EBTCTokenTester(ebtcToken);
     }
 
-    function setSlippage(uint _slippage) public {
+    function setSlippage(uint256 _slippage) public {
         require(_slippage < MAX_SLIPPAGE, "!max slippage");
         slippage = _slippage;
     }
 
     // price in decimal 18
-    function setPrice(uint _price) public {
+    function setPrice(uint256 _price) public {
         price = _price;
     }
 

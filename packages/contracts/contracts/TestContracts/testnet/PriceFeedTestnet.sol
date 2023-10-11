@@ -85,8 +85,8 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, AuthNoOwner {
         view
         returns (FallbackResponse memory fallbackResponse)
     {
-        uint stEthBtcValue;
-        uint stEthBtcTimestamp;
+        uint256 stEthBtcValue;
+        uint256 stEthBtcTimestamp;
         bool stEthBtcRetrieved;
 
         // Attempt to get the Fallback's stETH/BTC price

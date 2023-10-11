@@ -470,12 +470,12 @@ contract StETHMock is IERC20 {
     // -- Test Functions --
 
     // @notice Mint arbitrary shares to the specified address.
-    function submit(uint _sharesAmount) external {
+    function submit(uint256 _sharesAmount) external {
         _mintShares(msg.sender, _sharesAmount);
     }
 
     // @notice Admin function to arbitrarily set the pooled ETH per share
-    function setPooledEthPerShare(uint _pooledEthPerShare) external {
+    function setPooledEthPerShare(uint256 _pooledEthPerShare) external {
         pooledEthPerShare = _pooledEthPerShare;
     }
 

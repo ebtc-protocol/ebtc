@@ -5,8 +5,8 @@ import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
 contract CloseLastCdpTest is eBTCBaseInvariants {
-    uint public constant OPEN_COLL_SHARES = 10 ether;
-    uint public constant OPEN_DEBT = 5 ether;
+    uint256 public constant OPEN_COLL_SHARES = 10 ether;
+    uint256 public constant OPEN_DEBT = 5 ether;
 
     function setUp() public override {
         super.setUp();

@@ -64,7 +64,7 @@ contract PriceFeedTest is eBTCBaseFixture {
     // only fork test focus!
     function testMockedPrice() private {
         _priceFeed.fetchPrice();
-        uint price = _priceFeed.lastGoodPrice();
+        uint256 price = _priceFeed.lastGoodPrice();
         // Picks up scaled chainlink price
         assertEq(price, 70180000000000000);
     }

@@ -16,11 +16,12 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         mockToken = new WethMock();
     }
 
-    function test_AuthorizedUserCanSweepTokens(uint amountInActivePool, uint amountToSweep) public {
-        vm.assume(amountInActivePool > 0);
-        vm.assume(amountInActivePool <= type(uint96).max);
-
-        vm.assume(amountToSweep <= amountInActivePool);
+    function test_AuthorizedUserCanSweepTokens(
+        uint256 amountInActivePool,
+        uint256 amountToSweep
+    ) public {
+        amountInActivePool = bound(amountInActivePool, 1, type(uint96).max);
+        amountToSweep = bound(amountToSweep, 0, amountInActivePool);
 
         // Send a mock token for sweeping
         vm.prank(address(activePool));
@@ -45,13 +46,11 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
     }
 
     function test_UnauthorizedUserCannotSweepTokens(
-        uint amountInActivePool,
-        uint amountToSweep
+        uint256 amountInActivePool,
+        uint256 amountToSweep
     ) public {
-        vm.assume(amountInActivePool > 0);
-        vm.assume(amountInActivePool <= type(uint96).max);
-
-        vm.assume(amountToSweep <= amountInActivePool);
+        amountInActivePool = bound(amountInActivePool, 1, type(uint96).max);
+        amountToSweep = bound(amountToSweep, 0, amountInActivePool);
 
         // Send a mock token for sweeping
         vm.prank(address(activePool));
@@ -72,9 +71,9 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(mockToken.balanceOf(address(feeRecipientAddress)), 0);
     }
 
-    function test_AuthorizedUserCannotSweepCollateral(uint amountToSweep) public {
-        uint activePoolCollateralBefore = collateral.balanceOf(address(activePool));
-        vm.assume(amountToSweep >= activePoolCollateralBefore);
+    function test_AuthorizedUserCannotSweepCollateral(uint256 amountToSweep) public {
+        uint256 activePoolCollateralBefore = collateral.balanceOf(address(activePool));
+        amountToSweep = bound(amountToSweep, activePoolCollateralBefore, collateral.totalSupply());
 
         // grant random user role
         address user = _utils.getNextUserAddress();
@@ -90,9 +89,9 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), activePoolCollateralBefore);
     }
 
-    function test_UnauthorizedUserCannotSweepCollateral(uint amountToSweep) public {
-        uint activePoolCollateralBefore = collateral.balanceOf(address(activePool));
-        vm.assume(amountToSweep >= activePoolCollateralBefore);
+    function test_UnauthorizedUserCannotSweepCollateral(uint256 amountToSweep) public {
+        uint256 activePoolCollateralBefore = collateral.balanceOf(address(activePool));
+        amountToSweep = bound(amountToSweep, activePoolCollateralBefore, collateral.totalSupply());
 
         // random user cannot sweep collateral
         address user = _utils.getNextUserAddress();
@@ -104,9 +103,10 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(collateral.balanceOf(address(activePool)), activePoolCollateralBefore);
     }
 
-    function test_AuthorizedUserCanClaimOutstandingFeesToFeeRecipient(uint outstandingFees) public {
-        vm.assume(outstandingFees > 0);
-        vm.assume(outstandingFees <= type(uint64).max);
+    function test_AuthorizedUserCanClaimOutstandingFeesToFeeRecipient(
+        uint256 outstandingFees
+    ) public {
+        outstandingFees = bound(outstandingFees, 1, type(uint64).max);
         address feeRecipientAddress = activePool.feeRecipientAddress();
 
         _sendCollateralToActivePoolAndAllocateAsClaimableFee(outstandingFees);
@@ -117,12 +117,12 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         authority.setUserRole(user, 6, true);
 
         // user can call
-        uint availableFees = activePool.getFeeRecipientClaimableColl();
+        uint256 availableFees = activePool.getFeeRecipientClaimableCollShares();
 
         console.log("availableFees", availableFees);
         console.log(
-            "activePool.getFeeRecipientClaimableColl()1",
-            activePool.getFeeRecipientClaimableColl()
+            "activePool.getFeeRecipientClaimableCollShares()1",
+            activePool.getFeeRecipientClaimableCollShares()
         );
         console.log(
             "collateral.balanceOf(feeRecipientAddress)1",
@@ -130,12 +130,12 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         );
 
         vm.prank(user);
-        activePool.claimFeeRecipientColl(availableFees);
+        activePool.claimFeeRecipientCollShares(availableFees);
 
-        uint claimableColl = activePool.getFeeRecipientClaimableColl();
-        uint feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
+        uint256 claimableColl = activePool.getFeeRecipientClaimableCollShares();
+        uint256 feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
 
-        console.log("activePool.getFeeRecipientClaimableColl()2", claimableColl);
+        console.log("activePool.getFeeRecipientClaimableCollShares()2", claimableColl);
         console.log("collateral.balanceOf(feeRecipientAddress)2", feeRecipientColl);
 
         assertEq(claimableColl, 0, "claimable coll remaining should be 0");
@@ -143,10 +143,9 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
     }
 
     function test_UnauthorizedUserCannotClaimOutstandingFeesToFeeRecipient(
-        uint outstandingFees
+        uint256 outstandingFees
     ) public {
-        vm.assume(outstandingFees > 0);
-        vm.assume(outstandingFees <= type(uint64).max);
+        outstandingFees = bound(outstandingFees, 1, type(uint64).max);
         address feeRecipientAddress = activePool.feeRecipientAddress();
 
         _sendCollateralToActivePoolAndAllocateAsClaimableFee(outstandingFees);
@@ -155,14 +154,14 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         address user = _utils.getNextUserAddress();
 
         // user can call
-        uint availableFees = activePool.getFeeRecipientClaimableColl();
+        uint256 availableFees = activePool.getFeeRecipientClaimableCollShares();
 
         vm.prank(user);
         vm.expectRevert("Auth: UNAUTHORIZED");
-        activePool.claimFeeRecipientColl(availableFees);
+        activePool.claimFeeRecipientCollShares(availableFees);
 
-        uint claimableColl = activePool.getFeeRecipientClaimableColl();
-        uint feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
+        uint256 claimableColl = activePool.getFeeRecipientClaimableCollShares();
+        uint256 feeRecipientColl = collateral.sharesOf(feeRecipientAddress);
 
         assertEq(
             claimableColl,
@@ -228,9 +227,9 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
     }
 
-    function _sendCollateralToActivePoolAndAllocateAsClaimableFee(uint amount) internal {
+    function _sendCollateralToActivePoolAndAllocateAsClaimableFee(uint256 amount) internal {
         // send actual tokens to activePool
-        uint ethAmount = collateral.getPooledEthByShares(amount);
+        uint256 ethAmount = collateral.getPooledEthByShares(amount);
 
         vm.deal(address(activePool), ethAmount);
 
@@ -250,18 +249,18 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
 
         // allocate as system colalteral before allocating as fee
         vm.prank(address(borrowerOperations));
-        activePool.receiveColl(amount);
+        activePool.increaseSystemCollShares(amount);
         assertGe(
-            activePool.getStEthColl(),
+            activePool.getSystemCollShares(),
             amount,
             "at least amount of shares should be allocated as system coll"
         );
 
         // allocate from system -> claimable fee
         vm.prank(address(cdpManager));
-        activePool.allocateFeeRecipientColl(amount);
+        activePool.allocateSystemCollSharesToFeeRecipient(amount);
         assertGe(
-            activePool.getFeeRecipientClaimableColl(),
+            activePool.getFeeRecipientClaimableCollShares(),
             amount,
             "at lesat amount of shares should be allocated as claimable coll"
         );

@@ -14,7 +14,7 @@ import "./Dependencies/SafeERC20.sol";
 contract FeeRecipient is Ownable, AuthNoOwner {
     using SafeERC20 for IERC20;
     // --- Events ---
-    event SweepTokenSuccess(address indexed _token, uint _amount, address indexed _recipient);
+    event SweepTokenSuccess(address indexed _token, uint256 _amount, address indexed _recipient);
 
     // --- Data ---
     string public constant NAME = "FeeRecipient";
@@ -29,7 +29,7 @@ contract FeeRecipient is Ownable, AuthNoOwner {
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
-    function sweepToken(address token, uint amount) public requiresAuth {
+    function sweepToken(address token, uint256 amount) public requiresAuth {
         uint256 balance = IERC20(token).balanceOf(address(this));
         require(amount <= balance, "FeeRecipient: Attempt to sweep more than balance");
 

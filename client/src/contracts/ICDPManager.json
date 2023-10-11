@@ -314,7 +314,7 @@
           "type": "address"
         }
       ],
-      "name": "getCurrentICR",
+      "name": "getICR",
       "outputs": [
         {
           "internalType": "uint256",

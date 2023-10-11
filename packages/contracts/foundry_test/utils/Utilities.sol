@@ -7,7 +7,7 @@ import "../../contracts/Interfaces/ICdpManager.sol";
 
 //common utilities for forge tests
 contract Utilities is Test {
-    uint internal constant DECIMAL_PRECISION = 1e18;
+    uint256 internal constant DECIMAL_PRECISION = 1e18;
     uint256 internal constant MAX_UINT256 = 2 ** 256 - 1;
     bytes32 internal nextUser = keccak256(abi.encodePacked("user address"));
     bytes32 internal nextSpecial = keccak256(abi.encodePacked("special address"));
@@ -82,12 +82,18 @@ contract Utilities is Test {
      * It takes the minimum and maximum values of the range as arguments
      * and returns the random number. Use `seed` attr to randomize more
      */
-    function generateRandomNumber(uint min, uint max, address seed) public view returns (uint256) {
+    function generateRandomNumber(
+        uint256 min,
+        uint256 max,
+        address seed
+    ) public view returns (uint256) {
         // Generate a random number using the keccak256 hash function
-        uint randomNumber = uint(keccak256(abi.encodePacked(block.number, block.timestamp, seed)));
+        uint256 randomNumber = uint256(
+            keccak256(abi.encodePacked(block.number, block.timestamp, seed))
+        );
 
         // Use the modulo operator to constrain the random number to the desired range
-        uint result = (randomNumber % (max - min + 1)) + min;
+        uint256 result = (randomNumber % (max - min + 1)) + min;
         //        // Randomly shrink random number
         //        if (result % 4 == 0) {
         //            result /= 100;
@@ -112,8 +118,8 @@ contract Utilities is Test {
 
     function calculateBorrowAmountFromDebt(
         uint256 amount,
-        uint gasCompensation,
-        uint borrowingRate
+        uint256 gasCompensation,
+        uint256 borrowingRate
     ) public pure returns (uint256) {
         // Borrow amount = (Debt - Gas compensation) / (1 + Borrow Rate)
         return
@@ -125,9 +131,9 @@ contract Utilities is Test {
     }
 
     function assertApproximateEq(
-        uint _num1,
-        uint _num2,
-        uint _tolerance
+        uint256 _num1,
+        uint256 _num2,
+        uint256 _tolerance
     ) public pure returns (bool) {
         if (_num1 > _num2) {
             return _tolerance >= (_num1 - _num2);

@@ -7,10 +7,6 @@ import "../Dependencies/IERC2612.sol";
 
 interface IEBTCToken is IERC20, IERC2612 {
     // --- Events ---
-
-    event CdpManagerAddressChanged(address _cdpManagerAddress);
-    event BorrowerOperationsAddressChanged(address _newBorrowerOperationsAddress);
-
     event EBTCTokenBalanceUpdated(address _user, uint _amount);
 
     // --- Functions ---

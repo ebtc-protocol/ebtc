@@ -25,7 +25,7 @@ import {BytecodeReader} from "./utils/BytecodeReader.sol";
 contract EBTCDeployerTest is eBTCBaseFixture {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
-    uint public mintAmount = 1e18;
+    uint256 public mintAmount = 1e18;
 
     string public constant TEST_SALT_STRING = "salty";
     string public constant TEST_SALT_STRING_2 = "salty2";
@@ -105,7 +105,7 @@ contract EBTCDeployerTest is eBTCBaseFixture {
     }
 
     function _printAddresses(address[] memory addresses) internal view {
-        for (uint i = 0; i < addresses.length; i++) {
+        for (uint256 i = 0; i < addresses.length; i++) {
             console.log("address %s: %s", i, addresses[i]);
         }
     }

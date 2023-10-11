@@ -12,7 +12,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 contract EBTCTokenGovernanceTest is eBTCBaseFixture {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
-    uint public mintAmount = 1e18;
+    uint256 public mintAmount = 1e18;
 
     function setUp() public override {
         eBTCBaseFixture.setUp();
@@ -41,8 +41,8 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
         vm.prank(defaultGovernance);
         authority.setUserRole(user, 1, true);
 
-        uint totalSupply0 = eBTCToken.totalSupply();
-        uint balanceOfUser0 = eBTCToken.balanceOf(user);
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(user);
 
         // User mints
         vm.startPrank(user);
@@ -52,15 +52,15 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         vm.stopPrank();
 
-        uint totalSupply1 = eBTCToken.totalSupply();
-        uint balanceOfUser1 = eBTCToken.balanceOf(user);
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(user);
 
         assertEq(totalSupply1 - totalSupply0, mintAmount);
         assertEq(balanceOfUser1 - balanceOfUser0, mintAmount);
 
         // Ensure arbitrary user still cannot mint
         address secondUser = _utils.getNextUserAddress();
-        uint balanceOfSecondUser1 = eBTCToken.balanceOf(secondUser);
+        uint256 balanceOfSecondUser1 = eBTCToken.balanceOf(secondUser);
 
         vm.startPrank(secondUser);
         vm.deal(secondUser, type(uint96).max);
@@ -70,9 +70,9 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         vm.stopPrank();
 
-        uint totalSupply2 = eBTCToken.totalSupply();
-        uint balanceOfUser2 = eBTCToken.balanceOf(user);
-        uint balanceOfSecondUser2 = eBTCToken.balanceOf(secondUser);
+        uint256 totalSupply2 = eBTCToken.totalSupply();
+        uint256 balanceOfUser2 = eBTCToken.balanceOf(user);
+        uint256 balanceOfSecondUser2 = eBTCToken.balanceOf(secondUser);
 
         assertEq(totalSupply2, totalSupply1);
         assertEq(balanceOfUser2, balanceOfUser1);
@@ -88,8 +88,8 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
         vm.prank(defaultGovernance);
         eBTCToken.mint(user, mintAmount);
 
-        uint totalSupply0 = eBTCToken.totalSupply();
-        uint balanceOfUser0 = eBTCToken.balanceOf(user);
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(user);
 
         vm.startPrank(user);
 
@@ -99,8 +99,8 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         vm.stopPrank();
 
-        uint totalSupply1 = eBTCToken.totalSupply();
-        uint balanceOfUser1 = eBTCToken.balanceOf(user);
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(user);
 
         assertEq(totalSupply1 - totalSupply0, 0);
         assertEq(balanceOfUser1 - balanceOfUser0, 0);
@@ -115,8 +115,8 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
         authority.setUserRole(user, 2, true);
         vm.stopPrank();
 
-        uint totalSupply0 = eBTCToken.totalSupply();
-        uint balanceOfUser0 = eBTCToken.balanceOf(user);
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(user);
 
         vm.startPrank(user);
 
@@ -125,8 +125,8 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         vm.stopPrank();
 
-        uint totalSupply1 = eBTCToken.totalSupply();
-        uint balanceOfUser1 = eBTCToken.balanceOf(user);
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(user);
 
         assertEq(totalSupply0 - totalSupply1, mintAmount);
         assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
@@ -147,16 +147,16 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
     /// @dev ensure mint invariants are maintained on successful mint operation
     /// @dev totalSupply changes as expected
     /// @dev mint recipient balance changes as expected
-    function _mintMacro(address minter, address recipient, uint amount) internal {
-        uint totalSupply0 = eBTCToken.totalSupply();
-        uint balanceOfUser0 = eBTCToken.balanceOf(recipient);
+    function _mintMacro(address minter, address recipient, uint256 amount) internal {
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(recipient);
 
         vm.startPrank(minter);
         eBTCToken.mint(recipient, amount);
         vm.stopPrank();
 
-        uint totalSupply1 = eBTCToken.totalSupply();
-        uint balanceOfUser1 = eBTCToken.balanceOf(recipient);
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(recipient);
 
         assertEq(totalSupply1 - totalSupply0, amount);
         assertEq(balanceOfUser1 - balanceOfUser0, amount);
@@ -165,16 +165,16 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
     /// @dev ensure burn invariants are maintained on successful burn operation
     /// @dev totalSupply changes as expected
     /// @dev mint recipient balance changes as expected
-    function _burnMacro(address minter, address recipient, uint amount) internal {
-        uint totalSupply0 = eBTCToken.totalSupply();
-        uint balanceOfUser0 = eBTCToken.balanceOf(recipient);
+    function _burnMacro(address minter, address recipient, uint256 amount) internal {
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(recipient);
 
         vm.startPrank(minter);
         eBTCToken.mint(recipient, amount);
         vm.stopPrank();
 
-        uint totalSupply1 = eBTCToken.totalSupply();
-        uint balanceOfUser1 = eBTCToken.balanceOf(recipient);
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(recipient);
 
         assertEq(totalSupply0 - totalSupply1, mintAmount);
         assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
