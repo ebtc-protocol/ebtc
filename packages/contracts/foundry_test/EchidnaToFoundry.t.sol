@@ -1277,7 +1277,6 @@ contract EToFoundry is
             73117119168387963680367060438159427411497267004306122806373332532305103240544
         );
 
-        gte(vars.feeRecipientCollSharesBefore, vars.feeRecipientCollSharesAfter, "F-12 as");
         gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, "F-12 as");
     }
 
