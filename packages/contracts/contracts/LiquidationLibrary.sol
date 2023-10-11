@@ -237,12 +237,15 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
 
         {
-            (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
+            (
+                _cappedColPortion,
+                _collSurplus,
+                _debtToRedistribute
+            ) = _calculateFullLiquidationSurplusAndCap(
                 _liqState.ICR,
                 _liqState.price,
                 _totalDebtToBurn,
-                _totalColToSend,
-                true
+                _totalColToSend
             );
             if (_collSurplus > 0) {
                 // due to division precision loss, should be zero surplus in normal mode
@@ -308,12 +311,15 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // avoid stack too deep
         {
-            (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
+            (
+                _cappedColPortion,
+                _collSurplus,
+                _debtToRedistribute
+            ) = _calculateFullLiquidationSurplusAndCap(
                 _recoveryState.ICR,
                 _recoveryState.price,
                 _totalDebtToBurn,
-                _totalColToSend,
-                true
+                _totalColToSend
             );
             if (_collSurplus > 0) {
                 collSurplusPool.increaseSurplusCollShares(_borrower, _collSurplus);
@@ -389,12 +395,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 newDebt = _debtAndColl.entireDebt - _partialDebt;
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
-        (uint256 _partialColl, uint256 newColl, ) = _calculateSurplusAndCap(
+        (uint256 _partialColl, uint256 newColl, ) = _calculatePartialLiquidationSurplusAndCap(
             _partialState.ICR,
             _partialState.price,
             _partialDebt,
-            _debtAndColl.entireColl,
-            false
+            _debtAndColl.entireColl
         );
 
         // early return: if new collateral is zero, we have a full liqudiation
@@ -525,45 +530,67 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
     }
 
-    // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
-    function _calculateSurplusAndCap(
+    // Partial Liquidation Cap Logic
+    function _calculatePartialLiquidationSurplusAndCap(
         uint256 _ICR,
         uint256 _price,
         uint256 _totalDebtToBurn,
-        uint256 _totalColToSend,
-        bool _fullLiquidation
-    )
-        private
-        view
-        returns (uint256 cappedColPortion, uint256 collSurplus, uint256 debtToRedistribute)
-    {
-        // Calculate liquidation incentive for liquidator:
-        // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt * 103% / price
-        // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt * min(ICR, 110%) / price
+        uint256 _totalColToSend
+    ) private view returns (uint256 toLiquidator, uint256 collSurplus, uint256 debtToRedistribute) {
         uint256 _incentiveColl;
+
+        // CLAMP
+        if (_ICR > LICR) {
+            // Cap at 10%
+            _incentiveColl = (_totalDebtToBurn * (_ICR > MCR ? MCR : _ICR)) / _price;
+        } else {
+            // Min 103%
+            _incentiveColl = (_totalDebtToBurn * LICR) / _price;
+        }
+
+        // NOTE: IT MAY BE TOO MUCH
+        // NOTE: IT SHOULD NEVER BE TOO MUCH CAUSE IT's PARTIAL!!!
+        toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
+        toLiquidator = toLiquidator < _totalColToSend ? toLiquidator : _totalColToSend; // Cap the Coll (should never happen on partial)
+        collSurplus = (toLiquidator == _totalColToSend) ? 0 : _totalColToSend - toLiquidator; // Can use unchecked but w/e
+
+        // debtToRedistribute is 0 always // TO AUDIT
+    }
+
+    function _calculateFullLiquidationSurplusAndCap(
+        uint256 _ICR,
+        uint256 _price,
+        uint256 _totalDebtToBurn,
+        uint256 _totalColToSend
+    ) private view returns (uint256 toLiquidator, uint256 collSurplus, uint256 debtToRedistribute) {
+        uint256 _incentiveColl;
+
         if (_ICR > LICR) {
             _incentiveColl = (_totalDebtToBurn * (_ICR > MCR ? MCR : _ICR)) / _price;
         } else {
-            if (_fullLiquidation) {
-                // for full liquidation, there would be some bad debt to redistribute
-                _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
-                uint256 _debtToRepay = (_incentiveColl * _price) / LICR;
-                debtToRedistribute = _debtToRepay < _totalDebtToBurn
-                    ? _totalDebtToBurn - _debtToRepay
-                    : 0;
-                // now CDP owner should have zero surplus to claim
-                cappedColPortion = _totalColToSend;
-            } else {
-                // for partial liquidation, new ICR would deteriorate
-                // since we give more incentive (103%) than current _ICR allowed
-                _incentiveColl = (_totalDebtToBurn * LICR) / _price;
-            }
+            // for full liquidation, there would be some bad debt to redistribute
+            _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
+
+            // Since it's full and there's bad debt we use spot conversion to
+            // Determine the amount of debt that willl be repaid after adding the LICR discount
+            // Basically this is buying underwater Coll
+            // By repaying debt at 3% discount
+            // Can there be a rounding error where the _debtToRepay > debtToBurn?
+            uint256 _debtToRepay = (_incentiveColl * _price) / LICR;
+
+            debtToRedistribute = _debtToRepay < _totalDebtToBurn
+                ? _totalDebtToBurn - _debtToRepay //  Bad Debt (to be redistributed) is (CdpDebt - Repaid)
+                : 0; // Else 0 (note we may underpay per the comment above, althought that may be imaginary)
+
+            // now CDP owner should have zero surplus to claim
+            toLiquidator = _totalColToSend;
         }
-        if (cappedColPortion == 0) {
-            cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
+
+        if (toLiquidator == 0) {
+            toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
         }
-        cappedColPortion = cappedColPortion < _totalColToSend ? cappedColPortion : _totalColToSend;
-        collSurplus = (cappedColPortion == _totalColToSend) ? 0 : _totalColToSend - cappedColPortion;
+        toLiquidator = toLiquidator < _totalColToSend ? toLiquidator : _totalColToSend;
+        collSurplus = (toLiquidator == _totalColToSend) ? 0 : _totalColToSend - toLiquidator;
     }
 
     // --- Batch liquidation functions ---
