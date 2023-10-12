@@ -6,7 +6,7 @@ interface ICollSurplusPool {
     // --- Events ---
 
     event SurplusCollSharesUpdated(address indexed _account, uint256 _newBalance);
-    event CollSharesTransferred(address _to, uint256 _amount);
+    event CollSharesTransferred(address indexed _to, uint256 _amount);
 
     event SweepTokenSuccess(address indexed _token, uint256 _amount, address indexed _recipient);
 

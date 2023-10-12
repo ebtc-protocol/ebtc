@@ -5,9 +5,9 @@ pragma solidity 0.8.17;
 import "./IERC3156FlashBorrower.sol";
 
 interface IERC3156FlashLender {
-    event FlashFeeSet(address _setter, uint256 _oldFee, uint256 _newFee);
-    event MaxFlashFeeSet(address _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
-    event FlashLoansPaused(address _setter, bool _paused);
+    event FlashFeeSet(address indexed _setter, uint256 _oldFee, uint256 _newFee);
+    event MaxFlashFeeSet(address indexed _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
+    event FlashLoansPaused(address indexed _setter, bool _paused);
 
     /**
      * @dev The amount of currency available to be lent.
