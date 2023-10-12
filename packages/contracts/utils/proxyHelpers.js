@@ -255,8 +255,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getRedemptionFeeWithDecay', params)
   }
 
-  async getDebtAndCollShares(...params) {
-    return this.proxyFunction('getDebtAndCollShares', params)
+  async getSyncedDebtAndCollShares(...params) {
+    return this.proxyFunction('getSyncedDebtAndCollShares', params)
   }
 }
 

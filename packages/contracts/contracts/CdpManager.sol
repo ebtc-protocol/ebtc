@@ -153,13 +153,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Repurposing this struct here to avoid stack too deep.
         CdpDebtAndCollShares memory _oldDebtAndColl = CdpDebtAndCollShares(
             Cdps[_redeemColFromCdp.cdpId].debt,
-            Cdps[_redeemColFromCdp.cdpId].coll,
-            0
+            Cdps[_redeemColFromCdp.cdpId].coll
         );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
-        uint256 newDebt = _oldDebtAndColl.entireDebt - singleRedemption.debtToRedeem;
-        uint256 newColl = _oldDebtAndColl.entireColl - singleRedemption.collSharesDrawn;
+        uint256 newDebt = _oldDebtAndColl.debt - singleRedemption.debtToRedeem;
+        uint256 newColl = _oldDebtAndColl.collShares - singleRedemption.collSharesDrawn;
 
         if (newDebt == 0) {
             // No debt remains, close CDP
@@ -184,8 +183,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 emit CdpUpdated(
                     _redeemColFromCdp.cdpId,
                     _borrower,
-                    _oldDebtAndColl.entireDebt,
-                    _oldDebtAndColl.entireColl,
+                    _oldDebtAndColl.debt,
+                    _oldDebtAndColl.collShares,
                     0,
                     0,
                     0,
@@ -225,8 +224,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             emit CdpUpdated(
                 _redeemColFromCdp.cdpId,
                 _borrower,
-                _oldDebtAndColl.entireDebt,
-                _oldDebtAndColl.entireColl,
+                _oldDebtAndColl.debt,
+                _oldDebtAndColl.collShares,
                 newDebt,
                 newColl,
                 Cdps[_redeemColFromCdp.cdpId].stake,

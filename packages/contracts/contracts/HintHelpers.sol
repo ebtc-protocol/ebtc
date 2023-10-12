@@ -148,7 +148,7 @@ contract HintHelpers is EbtcBase {
                 _oldIndex
             );
         } else {
-            (, newCollShare, ) = cdpManager.getDebtAndCollShares(vars.currentCdpId);
+            (, newCollShare) = cdpManager.getSyncedDebtAndCollShares(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;

@@ -355,7 +355,7 @@ contract('CdpManager', async accounts => {
 
     // Bob now withdraws EBTC, bringing his ICR to 1.11
     const { increasedTotalDebt: B_increasedTotalDebt } = await withdrawDebt({_cdpId: _bobCdpId, ICR: toBN(dec(111, 16)), extraParams: { from: bob } })
-    let _bobTotalDebt = (await cdpManager.getDebtAndCollShares(_bobCdpId))[0]
+    let _bobTotalDebt = (await cdpManager.getSyncedDebtAndCollShares(_bobCdpId))[0]
 
     // Confirm system is not in Recovery Mode
     assert.isFalse(await th.checkRecoveryMode(contracts));
@@ -4861,7 +4861,7 @@ contract('CdpManager', async accounts => {
 
     const _leftColl = MIN_CDP_SIZE.mul(toBN("10001")).div(toBN("10000"))
     assert.isTrue((await collToken.getSharesByPooledEth(_leftColl)).lt(MIN_CDP_SIZE));
-    let _aColl = (await cdpManager.getDebtAndCollShares(_aCdpID))[1]
+    let _aColl = (await cdpManager.getSyncedDebtAndCollShares(_aCdpID))[1]
     const _partialRedeem_EBTC = (_aColl).sub(_leftColl).mul(price).div(mv._1e18BN)
 
     let firstRedemptionHint

@@ -643,7 +643,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     // Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint256) {
-        (uint256 currentEBTCDebt, uint256 currentCollShares, ) = getDebtAndCollShares(_cdpId);
+        (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
 
         uint256 NICR = EbtcMath._computeNominalCR(currentCollShares, currentEBTCDebt);
         return NICR;
@@ -652,7 +652,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
-        (uint256 currentEBTCDebt, uint256 currentCollShares, ) = getDebtAndCollShares(_cdpId);
+        (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
         uint256 ICR = _calculateCR(currentCollShares, currentEBTCDebt, _price);
         return ICR;
     }
@@ -680,28 +680,25 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     }
 
     // Return the Cdps entire debt and coll struct
-    function _getDebtAndCollShares(
+    function _getSyncedDebtAndCollShares(
         bytes32 _cdpId
     ) internal view returns (CdpDebtAndCollShares memory) {
-        (uint256 entireDebt, uint256 entireColl, uint256 pendingDebtReward) = getDebtAndCollShares(
-            _cdpId
-        );
-        return CdpDebtAndCollShares(entireDebt, entireColl, pendingDebtReward);
+        (uint256 entireDebt, uint256 entireColl) = getSyncedDebtAndCollShares(_cdpId);
+        return CdpDebtAndCollShares(entireDebt, entireColl);
     }
 
     // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
     /// @notice pending rewards are included in the debt and coll totals returned.
-    function getDebtAndCollShares(
+    function getSyncedDebtAndCollShares(
         bytes32 _cdpId
-    ) public view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) {
-        (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
+    ) public view returns (uint256 debt, uint256 coll) {
+        (uint256 _newColl, uint256 _newDebt, , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
             systemStEthFeePerUnitIndex
         );
         coll = _newColl;
         debt = _newDebt;
-        pendingEBTCDebtReward = _pendingDebt;
     }
 
     /// @dev calculate pending global state change to be applied:

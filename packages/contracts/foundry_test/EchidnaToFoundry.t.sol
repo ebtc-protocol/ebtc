@@ -1110,7 +1110,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
         _i = clampBetween(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(user, _i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _amount = clampBetween(_amount, 0, entireDebt);
 
         console2.log("repayDebt", _amount, _i);
@@ -1157,7 +1157,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
         _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         console2.log("liquidate", _i % cdpManager.getActiveCdpsCount());
@@ -1169,7 +1169,7 @@ contract EToFoundry is eBTCBaseFixture, Properties, IERC3156FlashBorrower {
 
         _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = clampBetween(_partialAmount, 1, entireDebt - 1);

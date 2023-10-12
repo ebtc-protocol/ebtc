@@ -213,7 +213,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         uint256 _price = priceFeedMock.getPrice();
@@ -285,7 +285,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = clampBetween(_partialAmount, 0, entireDebt);
@@ -1025,7 +1025,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _amount = clampBetween(_amount, 0, entireDebt);
 
         _before(_cdpId);
@@ -1188,7 +1188,7 @@ contract EchidnaTester is BeforeAfter, EchidnaProperties, EchidnaAssertionHelper
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         assertWithMsg(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _collWithdrawal = clampBetween(_collWithdrawal, 0, entireColl);
         _EBTCChange = clampBetween(_EBTCChange, 0, entireDebt);
 

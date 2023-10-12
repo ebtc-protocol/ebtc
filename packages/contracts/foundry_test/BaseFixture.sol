@@ -106,7 +106,6 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     struct CdpState {
         uint256 debt;
         uint256 coll;
-        uint256 pendingEBTCDebtReward;
     }
 
     /* setUp() - basic function to call when setting up new Foundry test suite
@@ -398,10 +397,9 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 
-    function _getDebtAndCollShares(bytes32 cdpId) internal view returns (CdpState memory) {
-        (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) = cdpManager
-            .getDebtAndCollShares(cdpId);
-        return CdpState(debt, coll, pendingEBTCDebtReward);
+    function _getSyncedDebtAndCollShares(bytes32 cdpId) internal view returns (CdpState memory) {
+        (uint256 debt, uint256 coll) = cdpManager.getSyncedDebtAndCollShares(cdpId);
+        return CdpState(debt, coll);
     }
 
     function dealCollateral(address _recipient, uint256 _amount) public virtual returns (uint256) {
