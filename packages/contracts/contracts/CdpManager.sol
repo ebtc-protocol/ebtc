@@ -143,7 +143,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // capped by the entire debt of the Cdp minus the liquidation reserve
         singleRedemption.debtToRedeem = EbtcMath._min(
             _redeemColFromCdp.maxEBTCamount,
-            Cdps[_redeemColFromCdp.cdpId].debt
+            Cdps[_redeemColFromCdp.cdpId].debt /// @audit Redeem everything
         );
 
         singleRedemption.collSharesDrawn = collateral.getSharesByPooledEth(
@@ -395,7 +395,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         ) {
             // Save the address of the Cdp preceding the current one, before potentially modifying the list
             {
-                _syncAccounting(_cId);
+                _syncAccounting(_cId); /// @audit This happens even if the re-insertion doesn't
 
                 SingleRedemptionInputs memory _redeemColFromCdp = SingleRedemptionInputs(
                     _cId,
@@ -513,7 +513,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function syncAccounting(bytes32 _cdpId) external override {
-        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues
+        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues | TODO: See Stermi Partial Liq
         return _syncAccounting(_cdpId);
     }
 
