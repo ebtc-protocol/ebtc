@@ -8,7 +8,7 @@ interface IPool {
 
     event ETHBalanceUpdated(uint256 _newBalance);
     event EBTCBalanceUpdated(uint256 _newBalance);
-    event CollSharesTransferred(address _to, uint256 _amount);
+    event CollSharesTransferred(address indexed _to, uint256 _amount);
 
     // --- Functions ---
 
