@@ -753,7 +753,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Governance Parameters ---
 
-    function setStakingRewardSplit(uint256 _stakingRewardSplit) external requiresAuth {
+    function setStakingRewardSplit(uint16 _stakingRewardSplit) external requiresAuth {
         require(
             _stakingRewardSplit <= MAX_REWARD_SPLIT,
             "CDPManager: new staking reward split exceeds max"
@@ -765,7 +765,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
 
-    function setRedemptionFeeFloor(uint256 _redemptionFeeFloor) external requiresAuth {
+    function setRedemptionFeeFloor(uint120 _redemptionFeeFloor) external requiresAuth {
         require(
             _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
             "CDPManager: new redemption fee floor is lower than minimum"
@@ -781,7 +781,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
     }
 
-    function setMinuteDecayFactor(uint256 _minuteDecayFactor) external requiresAuth {
+    function setMinuteDecayFactor(uint64 _minuteDecayFactor) external requiresAuth {
         require(
             _minuteDecayFactor >= MIN_MINUTE_DECAY_FACTOR,
             "CDPManager: new minute decay factor out of range"
@@ -801,7 +801,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit MinuteDecayFactorSet(_minuteDecayFactor);
     }
 
-    function setBeta(uint256 _beta) external requiresAuth {
+    function setBeta(uint64 _beta) external requiresAuth {
         syncGlobalAccountingAndGracePeriod();
 
         _decayBaseRate();

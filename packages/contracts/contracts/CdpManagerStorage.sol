@@ -141,16 +141,21 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     uint256 public constant SECONDS_IN_ONE_MINUTE = 60;
 
-    uint256 public constant MIN_REDEMPTION_FEE_FLOOR = (DECIMAL_PRECISION * 5) / 1000; // 0.5%
-    uint256 public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
-    bool public redemptionsPaused;
+    uint120 public constant MIN_REDEMPTION_FEE_FLOOR = (uint120(DECIMAL_PRECISION) * 5) / 1000; // 0.5%
+    // Slot X
+    uint120 public redemptionFeeFloor = MIN_REDEMPTION_FEE_FLOOR;
+    bool public redemptionsPaused; // Same as above
+    // 128 left
+
     /*
      * Half-life of 12h. 12h = 720 min
      * (1/2) = d^720 => d = (1/2)^(1/720)
      */
-    uint256 public minuteDecayFactor = 999037758833783000;
-    uint256 public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
-    uint256 public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
+    uint64 public minuteDecayFactor = 999037758833783000;
+    uint64 public constant MIN_MINUTE_DECAY_FACTOR = 1; // Non-zero
+
+    /// Log_2(MAX_MINUTE_DECAY_FACTOR+1) = 59
+    uint64 public constant MAX_MINUTE_DECAY_FACTOR = 999999999999999999; // Corresponds to a very fast decay rate, but not too extreme
 
     uint256 internal immutable deploymentStartTime;
 
@@ -159,11 +164,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      * in order to calc the new base rate from a redemption.
      * Corresponds to (1 / ALPHA) in the white paper.
      */
-    uint256 public beta = 2;
+    uint64 public beta = 2; /// TODO: Pretty sure this is also pretty small
 
-    uint256 public baseRate;
+    uint16 public stakingRewardSplit;
 
-    uint256 public stakingRewardSplit;
+    uint256 public baseRate; // TODO: Prob can pack but ned to understand system better
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
     uint256 public lastRedemptionTimestamp;

@@ -52,26 +52,21 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
 
     // -- Permissioned Function Signatures for Authority --
     // CDPManager
-    bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG =
-        bytes4(keccak256(bytes("setStakingRewardSplit(uint256)")));
-    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG =
-        bytes4(keccak256(bytes("setRedemptionFeeFloor(uint256)")));
-    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG =
-        bytes4(keccak256(bytes("setMinuteDecayFactor(uint256)")));
-    bytes4 private constant SET_BETA_SIG = bytes4(keccak256(bytes("setBeta(uint256)")));
-    bytes4 private constant SET_REDEMPETIONS_PAUSED_SIG =
-        bytes4(keccak256(bytes("setRedemptionsPaused(bool)")));
+    bytes4 public constant SET_STAKING_REWARD_SPLIT_SIG = CdpManager.setStakingRewardSplit.selector;
+    bytes4 private constant SET_REDEMPTION_FEE_FLOOR_SIG = CdpManager.setRedemptionFeeFloor.selector;
+    bytes4 private constant SET_MINUTE_DECAY_FACTOR_SIG = CdpManager.setMinuteDecayFactor.selector;
+    bytes4 private constant SET_BETA_SIG = CdpManager.setBeta.selector;
+    bytes4 private constant SET_REDEMPETIONS_PAUSED_SIG = CdpManager.setRedemptionsPaused.selector;
     bytes4 private constant SET_GRACE_PERIOD_SIG =
         bytes4(keccak256(bytes("setGracePeriod(uint128)")));
 
     // EBTCToken
-    bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
+    bytes4 public constant MINT_SIG = EBTCToken.mint.selector;
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
     bytes4 public constant BURN2_SIG = bytes4(keccak256(bytes("burn(uint256)")));
 
     // PriceFeed
-    bytes4 public constant SET_FALLBACK_CALLER_SIG =
-        bytes4(keccak256(bytes("setFallbackCaller(address)")));
+    bytes4 public constant SET_FALLBACK_CALLER_SIG = PriceFeedTestnet.setFallbackCaller.selector;
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));

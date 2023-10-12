@@ -330,7 +330,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], stEthBalance, debtAmt);
 
         // Set staking split fee to 100%
-        uint256 _maxSplit = cdpManager.MAX_REWARD_SPLIT();
+        uint16 _maxSplit = cdpManager.MAX_REWARD_SPLIT();
         vm.prank(defaultGovernance);
         cdpManager.setStakingRewardSplit(_maxSplit);
 

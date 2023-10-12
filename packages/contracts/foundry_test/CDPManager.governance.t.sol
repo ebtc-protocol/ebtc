@@ -31,11 +31,11 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetStakingRewardSplitWithPermission(
-        uint256 newStakingRewardSplit
-    ) public {
+    function testCDPManagerSetStakingRewardSplitWithPermission(uint16 newStakingRewardSplit) public {
         // TODO: Test the actual math from this works out
-        newStakingRewardSplit = bound(newStakingRewardSplit, 0, cdpManager.MAX_REWARD_SPLIT());
+        newStakingRewardSplit = uint16(
+            bound(newStakingRewardSplit, 0, cdpManager.MAX_REWARD_SPLIT())
+        );
 
         address user = _utils.getNextUserAddress();
 
@@ -55,12 +55,10 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetStakingRewardSplitValueLimits(
-        uint256 newInvalidStakingRewardSplit
+        uint16 newInvalidStakingRewardSplit
     ) public {
-        newInvalidStakingRewardSplit = bound(
-            newInvalidStakingRewardSplit,
-            cdpManager.MAX_REWARD_SPLIT() + 1,
-            type(uint256).max
+        newInvalidStakingRewardSplit = uint16(
+            bound(newInvalidStakingRewardSplit, cdpManager.MAX_REWARD_SPLIT() + 1, type(uint256).max)
         );
 
         address user = _utils.getNextUserAddress();
@@ -87,13 +85,15 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetRedemptionFeeFloorWithPermission(
-        uint256 newRedemptionFeeFloor
+        uint120 newRedemptionFeeFloor
     ) public {
         // TODO: Test the actual math from this works out
-        newRedemptionFeeFloor = bound(
-            newRedemptionFeeFloor,
-            cdpManager.MIN_REDEMPTION_FEE_FLOOR(),
-            cdpManager.DECIMAL_PRECISION()
+        newRedemptionFeeFloor = uint120(
+            bound(
+                newRedemptionFeeFloor,
+                cdpManager.MIN_REDEMPTION_FEE_FLOOR(),
+                cdpManager.DECIMAL_PRECISION()
+            )
         );
 
         address user = _utils.getNextUserAddress();
@@ -114,7 +114,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetRedemptionFeeFloorValueLimits(
-        uint256 newInvalidRedemptionFeeFloor
+        uint120 newInvalidRedemptionFeeFloor
     ) public {
         vm.assume(
             newInvalidRedemptionFeeFloor < cdpManager.MIN_REDEMPTION_FEE_FLOOR() ||
@@ -139,7 +139,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
     }
 
     function testCDPManagerSetRedemptionFeeFloorHigherThanMax() public {
-        uint256 newInvalidRedemptionFeeFloor = cdpManager.DECIMAL_PRECISION() + 1;
+        uint120 newInvalidRedemptionFeeFloor = uint120(cdpManager.DECIMAL_PRECISION() + 1);
 
         address user = _utils.getNextUserAddress();
 
@@ -163,11 +163,13 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetMinuteDecayFactorWithPermission(uint256 newMinuteDecayFactor) public {
-        newMinuteDecayFactor = bound(
-            newMinuteDecayFactor,
-            cdpManager.MIN_MINUTE_DECAY_FACTOR(),
-            cdpManager.MAX_MINUTE_DECAY_FACTOR()
+    function testCDPManagerSetMinuteDecayFactorWithPermission(uint64 newMinuteDecayFactor) public {
+        newMinuteDecayFactor = uint64(
+            bound(
+                newMinuteDecayFactor,
+                cdpManager.MIN_MINUTE_DECAY_FACTOR(),
+                cdpManager.MAX_MINUTE_DECAY_FACTOR()
+            )
         );
 
         address user = _utils.getNextUserAddress();
@@ -187,7 +189,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         assertEq(cdpManager.minuteDecayFactor(), newMinuteDecayFactor);
     }
 
-    function testCDPManagerSetMinuteDecayFactorLimits(uint256 newInvalidMinuteDecayFactor) public {
+    function testCDPManagerSetMinuteDecayFactorLimits(uint64 newInvalidMinuteDecayFactor) public {
         vm.assume(
             newInvalidMinuteDecayFactor < cdpManager.MIN_MINUTE_DECAY_FACTOR() ||
                 newInvalidMinuteDecayFactor > cdpManager.MAX_MINUTE_DECAY_FACTOR()
@@ -215,7 +217,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    function testCDPManagerSetBetaWithPermission(uint256 newBeta) public {
+    function testCDPManagerSetBetaWithPermission(uint64 newBeta) public {
         address user = _utils.getNextUserAddress();
 
         // Grant permission

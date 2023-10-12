@@ -34,13 +34,16 @@ contract EbtcBase is BaseMath, IEbtcBase {
 
     uint256 public constant BORROWING_FEE_FLOOR = 0; // 0.5%
 
-    uint256 public constant STAKING_REWARD_SPLIT = 5_000; // taking 50% cut from staking reward
+    uint16 public constant STAKING_REWARD_SPLIT = 5_000; // taking 50% cut from staking reward
 
-    uint256 public constant MAX_REWARD_SPLIT = 10_000;
+    uint16 public constant MAX_REWARD_SPLIT = 10_000;
 
     IActivePool public immutable activePool;
 
     IPriceFeed public immutable override priceFeed;
+
+    bytes32 public constant NON_EXIST_ID =
+        0x0000000000000000000000000000000000000000000000000000000000000000;
 
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;

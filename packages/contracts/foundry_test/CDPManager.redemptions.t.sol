@@ -20,7 +20,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     }
 
     function testCDPManagerSetMinuteDecayFactorDecaysBaseRate() public {
-        uint256 newMinuteDecayFactor = (500 + 999037758833783000);
+        uint64 newMinuteDecayFactor = (500 + 999037758833783000);
         uint256 timePassed = 600; // seconds/60 => minute
 
         address user = _utils.getNextUserAddress();
