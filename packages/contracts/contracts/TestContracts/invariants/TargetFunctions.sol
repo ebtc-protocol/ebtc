@@ -230,7 +230,6 @@ abstract contract TargetFunctions is Properties {
             // We could check that Liquidated is not above TCR
             if (
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
-                
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
