@@ -133,13 +133,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         bool flag
     ) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        ) = aggregator.latestRoundData();
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = aggregator.latestRoundData();
         latestRoundId = uint80(
             clampBetween(
                 uint256(latestRoundId),
@@ -167,13 +161,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         bool flag
     ) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        (
-            uint80 roundId,
-            int256 answer,
-            uint256 startedAt,
-            uint256 updatedAt,
-            uint80 answeredInRound
-        ) = aggregator.getRoundData(0);
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = aggregator.getRoundData(0);
         prevRoundId = uint80(
             clampBetween(
                 uint256(prevRoundId),

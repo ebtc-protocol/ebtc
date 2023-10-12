@@ -134,7 +134,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
         emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
-        assertTrue(invariant_SL_01(cdpManager, sortedCdps, 0.01e18), "SL-01");
+        assertTrue(invariant_SL_01(cdpManager, sortedCdps), "SL-01");
     }
 
     function testSortedCdpsICRgteTCRInvariant() public {
@@ -155,7 +155,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
         emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
-        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), "SL-02");
+        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock), "SL-02");
     }
 
     function testSortedCdpsPaginationFuzz(uint256 _cdpOpened) public {

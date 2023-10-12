@@ -8,6 +8,7 @@ import {SortedCdps} from "../SortedCdps.sol";
 import {CdpManager} from "../CdpManager.sol";
 import {LiquidationLibrary} from "../LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../LiquidationSequencer.sol";
+import {SyncedLiquidationSequencer} from "../SyncedLiquidationSequencer.sol";
 import {ActivePool} from "../ActivePool.sol";
 import {HintHelpers} from "../HintHelpers.sol";
 import {FeeRecipient} from "../FeeRecipient.sol";
@@ -19,6 +20,7 @@ import {Governor} from "../Governor.sol";
 import {EBTCDeployer} from "../EBTCDeployer.sol";
 import {Actor} from "./invariants/Actor.sol";
 import {CRLens} from "../CRLens.sol";
+import {Simulator} from "./invariants/Simulator.sol";
 
 abstract contract BaseStorageVariables {
     PriceFeedTestnet internal priceFeedMock;
@@ -35,6 +37,7 @@ abstract contract BaseStorageVariables {
     Governor internal authority;
     LiquidationLibrary internal liqudationLibrary;
     LiquidationSequencer internal liquidationSequencer;
+    SyncedLiquidationSequencer internal syncedLiquidationSequencer;
     EBTCDeployer internal ebtcDeployer;
     address internal defaultGovernance;
 
@@ -45,4 +48,14 @@ abstract contract BaseStorageVariables {
     Actor internal actor;
 
     CRLens internal crLens;
+    Simulator internal simulator;
+
+    uint internal constant NUMBER_OF_ACTORS = 3;
+    uint internal constant INITIAL_ETH_BALANCE = 1e24;
+    uint internal constant INITIAL_COLL_BALANCE = 1e21;
+
+    uint internal constant diff_tolerance = 0.000000000002e18; //compared to 1e18
+    uint internal constant MAX_PRICE_CHANGE_PERCENT = 1.05e18; //compared to 1e18
+    uint internal constant MAX_REBASE_PERCENT = 1.1e18; //compared to 1e18
+    uint internal constant MAX_FLASHLOAN_ACTIONS = 4;
 }

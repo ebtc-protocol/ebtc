@@ -8,7 +8,7 @@ abstract contract PropertiesDescriptions {
     string constant AP_01 =
         "AP-01: The collateral balance in the active pool is greater than or equal to its accounting number";
     string constant AP_02 =
-        "AP-06: The collateral balance of the ActivePool is positive if there is at least one CDP open";
+        "AP-02: The collateral balance of the ActivePool is positive if there is at least one CDP open";
     string constant AP_03 =
         "AP-03: The eBTC debt accounting number in active pool is greater than or equal to its accounting number";
     string constant AP_04 =
@@ -25,9 +25,9 @@ abstract contract PropertiesDescriptions {
     string constant CDPM_02 = "CDPM-02: The sum of active CDPs stake is equal to totalStakes";
     string constant CDPM_03 =
         "CDPM-03: The stFeePerUnit tracker for individual CDP is equal to or less than the global variable";
-    string constant CDPM_04 =
-        "CDPM-04: The total system Assets - Liabilities does not decrease during redemptions";
+    string constant CDPM_04 = "CDPM-04: The total system value does not decrease during redemptions";
     string constant CDPM_05 = "CDPM-05: Redemptions do not increase the total system debt";
+    string constant CDPM_06 = "CDPM-06: Redemptions do not increase the total system debt";
 
     ///////////////////////////////////////////////////////
     // Collateral Surplus Pool
@@ -35,6 +35,8 @@ abstract contract PropertiesDescriptions {
 
     string constant CSP_01 =
         "CSP-01: The collateral balance in the collSurplus pool is greater than or equal to its accounting number";
+    string constant CSP_02 =
+        "CSP-02: The sum of all surpluses is equal to the value of getTotalSurplusCollShares";
 
     ///////////////////////////////////////////////////////
     // Sorted List
@@ -71,14 +73,22 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_03 =
         "GENERAL-03: CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations";
     string constant GENERAL_05 =
-        "GENERAL-05: At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events";
+        "GENERAL-05: At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events"; /// NOTE this holds even with rebases
     string constant GENERAL_06 =
         "GENERAL-06: At all times, the total debt is greater than the sum of all debts from all CDPs";
+    string constant GENERAL_08 =
+        "GENERAL-08: At all times TCR = SUM(COLL)  * price / SUM(DEBT) of all CDPs";
     string constant GENERAL_09 =
         "GENERAL-09: After any operation, the ICR of a CDP must be above the MCR in Normal Mode, and after debt increase in Recovery Mode the ICR must be above the CCR";
     string constant GENERAL_10 = "GENERAL-10: All CDPs should maintain a minimum collateral size";
     string constant GENERAL_11 =
         "GENERAL-11: The TCR pre-computed (TCRNotified) is the same as the one after all calls";
+    string constant GENERAL_12 =
+        "GENERAL-12: The synchedTCR matches the TCR after accrual (as returned by CrLens)";
+    string constant GENERAL_13 =
+        "GENERAL-13: The SynchedICR of every CDP in the Linked List Matches the ICR the CDPs will have the call (as returned by CrLens)";
+    string constant GENERAL_14 =
+        "GENERAL-14: The NominalICR from `getNominalICR` matches `quoteRealNICR` (as returned by CrLens)";
 
     ///////////////////////////////////////////////////////
     // Redemptions
@@ -109,6 +119,16 @@ abstract contract PropertiesDescriptions {
 
     string constant EBTC_02 =
         "EBTC-02: Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC unless TCR is below MCR";
+
+    ///////////////////////////////////////////////////////
+    // Fee Recipient
+    ///////////////////////////////////////////////////////
+
+    string constant F_01 = "F-01: `claimFeeRecipientCollShares` allows to claim at any time";
+    string constant F_02 = "F-02: Fees From Redemptions are added to `claimFeeRecipientCollShares`";
+    string constant F_03 = "F-03: Fees From FlashLoans are sent to the fee Recipient";
+    string constant F_04 =
+        "F-04: `claimFeeRecipientCollShares` claiming increases the balance of the fee recipient";
 
     ///////////////////////////////////////////////////////
     // Price Feed

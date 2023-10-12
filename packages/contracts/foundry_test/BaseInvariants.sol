@@ -21,10 +21,11 @@ contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
         assertTrue(invariant_CDPM_03(cdpManager), CDPM_03);
         // CDPM_04 -> VARS
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
-        assertTrue(invariant_SL_01(cdpManager, sortedCdps, 0.01e18), SL_01);
-        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock, 0.01e18), SL_02);
+        // assertTrue(invariant_CSP_02(collSurplusPool), CSP_02); /// @audit Only on Echidna due to how is coded
+        assertTrue(invariant_SL_01(cdpManager, sortedCdps), SL_01);
+        assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock), SL_02);
         assertTrue(invariant_SL_03(cdpManager, priceFeedMock, sortedCdps), SL_03);
-        assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
 
         // invariant_GENERAL_01 -> Vars
         assertTrue(invariant_GENERAL_02(cdpManager, priceFeedMock, eBTCToken), GENERAL_02);
@@ -32,8 +33,17 @@ contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
             invariant_GENERAL_03(cdpManager, borrowerOperations, eBTCToken, collateral),
             GENERAL_03
         );
-        assertTrue(invariant_GENERAL_05(activePool, collateral), GENERAL_05);
+        assertTrue(invariant_GENERAL_05(activePool, cdpManager, collateral), GENERAL_05);
+        assertTrue(invariant_GENERAL_05_B(collSurplusPool, collateral), "GENERAL_05_B");
         assertTrue(invariant_GENERAL_06(eBTCToken, cdpManager, sortedCdps), GENERAL_06);
+        assertTrue(
+            invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_08
+        );
         // invariant_GENERAL_09 -> Vars
+
+        assertTrue(invariant_GENERAL_12(cdpManager, priceFeedMock, crLens), GENERAL_12);
+        assertTrue(invariant_GENERAL_13(crLens, cdpManager, priceFeedMock, sortedCdps), GENERAL_13);
+        assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), GENERAL_14);
     }
 }

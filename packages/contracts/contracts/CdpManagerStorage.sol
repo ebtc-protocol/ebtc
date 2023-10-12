@@ -640,12 +640,27 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // --- Helper functions ---
 
-    // Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
-    // Takes a cdp's pending coll and debt rewards from redistributions into account.
+    /// @notice Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
+    /// @dev Takes a cdp's pending coll and debt rewards from redistributions into account.
     function getNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
 
         uint256 NICR = EbtcMath._computeNominalCR(currentCollShares, currentEBTCDebt);
+        return NICR;
+    }
+
+    /// @notice Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
+    /// @dev Takes a cdp's pending coll and debt rewards as well as stETH Index into account.
+    function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+        (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt) = _calcSyncedAccounting(
+            _cdpId,
+            cdpStEthFeePerUnitIndex[_cdpId],
+            _newGlobalSplitIdx /// NOTE: This is latest index
+        );
+
+        uint256 NICR = EbtcMath._computeNominalCR(_newColl, _newDebt);
         return NICR;
     }
 
