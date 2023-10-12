@@ -680,9 +680,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
              const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmounts[i], _aliceCdpId, _aliceCdpId, {from: bob})
              _partialLiquidationTxs.push(tx);			  
           }else{			 
-             // pass 0 or a number bigger than (leftColl*price/LICR) for partialLiquidate equals to full liquidation
              let _leftColl = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[1]
-             const finalTx = await cdpManager.partiallyLiquidate(_aliceCdpId, (_leftColl.add(liqStipend).mul(toBN(_newPrice)).div(LICR)), _aliceCdpId, _aliceCdpId, {from: bob})
+             const finalTx = await cdpManager.liquidate(_aliceCdpId, {from: bob})
              _partialLiquidationTxs.push(finalTx);
           }			  
       } 
