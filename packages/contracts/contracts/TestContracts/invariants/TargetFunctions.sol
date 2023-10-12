@@ -496,7 +496,7 @@ abstract contract TargetFunctions is Properties {
         gt(vars.actorEbtcBefore, vars.actorEbtcAfter, R_08);
 
         // Verify Fee Recipient Received the Fee
-        gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_02);
+        gte(vars.feeRecipientCollSharesAfter, vars.feeRecipientCollSharesBefore, F_02);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -1261,7 +1261,8 @@ abstract contract TargetFunctions is Properties {
             if (value > 0) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/22
                 // Claiming will increase the balance
-                gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
+                // Strictly GT
+                gt(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
             }
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
