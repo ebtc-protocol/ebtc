@@ -212,7 +212,7 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _before(_cdpId);
@@ -283,7 +283,7 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = between(_partialAmount, 0, entireDebt);
@@ -989,7 +989,7 @@ abstract contract TargetFunctions is Properties {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _amount = between(_amount, 0, entireDebt);
 
         _before(_cdpId);
@@ -1148,7 +1148,7 @@ abstract contract TargetFunctions is Properties {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _collWithdrawal = between(_collWithdrawal, 0, entireColl);
         _EBTCChange = between(_EBTCChange, 0, entireDebt);
 
