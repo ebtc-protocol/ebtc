@@ -89,8 +89,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
         bytes4(keccak256(bytes("setFeeRecipientAddress(address)")));
 
-    event FlashFeeSet(address _setter, uint256 _oldFee, uint256 _newFee);
-    event MaxFlashFeeSet(address _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
+    event FlashFeeSet(address indexed _setter, uint256 _oldFee, uint256 _newFee);
+    event MaxFlashFeeSet(address indexed _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
