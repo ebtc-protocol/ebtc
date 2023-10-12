@@ -73,7 +73,7 @@ abstract contract PropertiesDescriptions {
     string constant GENERAL_03 =
         "GENERAL-03: CdpManager and BorrowerOperations do not hold value terms of stETH and eBTC unless there are donations";
     string constant GENERAL_05 =
-        "GENERAL-05: At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events";
+        "GENERAL-05: At all times, the total stETH shares of the system exceeds the deposits if there is no negative rebasing events"; /// NOTE this holds even with rebases
     string constant GENERAL_06 =
         "GENERAL-06: At all times, the total debt is greater than the sum of all debts from all CDPs";
     string constant GENERAL_08 =
