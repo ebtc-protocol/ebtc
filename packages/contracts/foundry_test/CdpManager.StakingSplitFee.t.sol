@@ -309,8 +309,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 expectedFeeRecipientBalance1 = activePool.getFeeRecipientClaimableCollShares();
 
         // accrue
-        vm.startPrank(users[0]);
-        cdpManager.syncAccounting(cdpId1);
+        _syncIndividualCdp(cdpId1);
 
         // fee recipient claimable balance should remain unchanged
         // entirety of rebase value increase should accrue to user cdp
@@ -347,8 +346,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _beforeFeeRecipientShare1 = activePool.getFeeRecipientClaimableCollShares();
 
         // accrue
-        vm.startPrank(users[0]);
-        cdpManager.syncAccounting(cdpId1);
+        _syncIndividualCdp(cdpId1);
 
         // entirety of rebase value increase should go to fee recipient claimable balance
         _utils.assertApproximateEq(
@@ -433,11 +431,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], stEthBalance, debtAmt);
         bytes32 cdpId2 = _openTestCDP(users[1], stEthBalance, debtAmt);
         return (cdpId1, cdpId2);
-    }
-
-    function _syncIndividualCdp(bytes32 _cdpId) internal {
-        vm.prank(users[2]);
-        cdpManager.syncAccounting(_cdpId);
     }
 
     function _checkCollShareAfterSplitFee(

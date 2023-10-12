@@ -209,7 +209,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 newIcrPrevious = type(uint256).max;
 
         while (currentCdp != bytes32(0)) {
-            uint256 newIcr = crLens.quoteRealICR(currentCdp);
+            uint256 newIcr = cdpManager.getSyncedICR(currentCdp, priceFeedMock.fetchPrice());
             if (newIcr > newIcrPrevious) {
                 /// @audit Precision Threshold to flag very scary scenarios
                 /// Innoquous scenario illustrated here: https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
@@ -370,7 +370,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
-            uint256 newIcr = crLens.quoteRealICR(currentCdp);
+            uint256 newIcr = cdpManager.getSyncedICR(currentCdp, _price);
             uint256 synchedICR = cdpManager.getSyncedICR(currentCdp, _price);
 
             if (newIcr != synchedICR) {
@@ -393,7 +393,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
-            uint256 newNICR = crLens.quoteRealNICR(currentCdp);
+            uint256 newNICR = cdpManager.getSyncedNominalICR(currentCdp);
             uint256 synchedNICR = cdpManager.getSyncedNominalICR(currentCdp); // Uses cached stETH index -> It's not the "real NICR"
 
             if (newNICR != synchedNICR) {

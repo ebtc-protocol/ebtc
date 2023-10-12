@@ -239,9 +239,9 @@ contract EToFoundry is
         setEthPerShare(
             115792089237316195423570985008687907853269984665640564039456334007913129639936
         );
-        uint256 beforeNICR = crLens.quoteRealNICR(cdpId);
+        uint256 beforeNICR = cdpManager.getSyncedNominalICR(cdpId);
         addColl(1, 10);
-        uint256 afterNICR = crLens.quoteRealNICR(cdpId);
+        uint256 afterNICR = cdpManager.getSyncedNominalICR(cdpId);
 
         assertGe(afterNICR, beforeNICR, "BO-03: Must increase NICR");
     }
@@ -406,7 +406,9 @@ contract EToFoundry is
         bytes32 currentCdp = sortedCdps.getFirst();
 
         while (currentCdp != bytes32(0)) {
-            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
+            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(
+                currentCdp
+            );
             console2.log("debtBefore", debtBefore);
             console2.log("collBefore", collBefore);
 
@@ -439,7 +441,9 @@ contract EToFoundry is
         currentCdp = sortedCdps.getFirst();
 
         while (currentCdp != bytes32(0)) {
-            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
+            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(
+                currentCdp
+            );
             console2.log("debtBefore", debtBefore);
             console2.log("collBefore", collBefore);
 
@@ -723,7 +727,9 @@ contract EToFoundry is
 
         // Accrue all cdps
         for (uint256 i; i < sortedCdps.cdpCountOf(address(actor)); i++) {
-            cdpManager.syncAccounting(_getRandomCdp(i));
+            // Syncronize Accounting for this CDP as actor
+            borrowerOperations.withdrawDebt(_getRandomCdp(i), 1, bytes32(0), bytes32(0));
+            borrowerOperations.repayDebt(_getRandomCdp(i), 1, bytes32(0), bytes32(0));
         }
 
         console.log("lastEBTCDebtErrorRedistribution", cdpManager.lastEBTCDebtErrorRedistribution());
@@ -765,11 +771,11 @@ contract EToFoundry is
         setEthPerShare(0);
         setPrice(0);
 
-        uint256 preCastTcr = crLens.quoteRealTCR();
+        uint256 preCastTcr = cdpManager.getSyncedTCR(priceFeedMock.fetchPrice());
         console2.log("preCastTcr", preCastTcr);
 
         bytes32 targetCdpId = _getRandomCdp(1);
-        uint256 precastIcr = crLens.quoteRealICR(targetCdpId);
+        uint256 precastIcr = cdpManager.getSyncedICR(targetCdpId, priceFeedMock.fetchPrice());
         console2.log("precastIcr", precastIcr);
 
         _before(targetCdpId);
@@ -967,7 +973,7 @@ contract EToFoundry is
     //     bytes32 currentCdp = sortedCdps.getFirst();
 
     //     while (currentCdp != bytes32(0)) {
-    //         console2.log("ICR ICR", crLens.quoteRealICR(currentCdp));
+    //         console2.log("ICR ICR", cdpManager.getSyncedICR(currentCdp));
     //         currentCdp = sortedCdps.getNext(currentCdp);
     //     }
 
@@ -1113,7 +1119,7 @@ contract EToFoundry is
     //     uint256 newIcr;
 
     //     while (currentCdp != bytes32(0)) {
-    //         newIcr = crLens.quoteRealICR(currentCdp);
+    //         newIcr = cdpManager.getSyncedICR(currentCdp);
 
     //         console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
     //         currentCdp = sortedCdps.getNext(currentCdp);
@@ -1126,7 +1132,7 @@ contract EToFoundry is
     //     i = 0;
     //     currentCdp = sortedCdps.getFirst();
     //     while (currentCdp != bytes32(0)) {
-    //         newIcr = crLens.quoteRealICR(currentCdp);
+    //         newIcr = cdpManager.getSyncedICR(currentCdp);
 
     //         console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
     //         currentCdp = sortedCdps.getNext(currentCdp);

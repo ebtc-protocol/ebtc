@@ -79,7 +79,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         (uint256 debtBefore, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
-        vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
+        vars.nicrBefore = _cdpId != bytes32(0) ? cdpManager.getSyncedNominalICR(_cdpId) : 0;
         vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceBefore) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
@@ -118,8 +118,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
         // TODO: Cleanup new vs old
-        vars.newTcrBefore = crLens.quoteRealTCR();
-        vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
+        vars.newTcrBefore = cdpManager.getSyncedTCR(priceFeedMock.fetchPrice());
+        vars.newIcrBefore = cdpManager.getSyncedICR(_cdpId, priceFeedMock.fetchPrice());
 
         vars.valueInSystemBefore ==
             (collateral.getPooledEthByShares(
@@ -134,7 +134,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _after(bytes32 _cdpId) internal {
         vars.priceAfter = priceFeedMock.fetchPrice();
 
-        vars.nicrAfter = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
+        vars.nicrAfter = _cdpId != bytes32(0) ? cdpManager.getSyncedNominalICR(_cdpId) : 0;
         vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceAfter) : 0;
         vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
@@ -174,8 +174,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexAfter = cdpManager.systemDebtRedistributionIndex();
 
-        vars.newTcrAfter = crLens.quoteRealTCR();
-        vars.newIcrAfter = crLens.quoteRealICR(_cdpId);
+        vars.newTcrAfter = cdpManager.getSyncedTCR(priceFeedMock.fetchPrice());
+        vars.newIcrAfter = cdpManager.getSyncedICR(_cdpId, priceFeedMock.fetchPrice());
 
         // Value in system after
         vars.valueInSystemAfter =

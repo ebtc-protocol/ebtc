@@ -465,6 +465,16 @@ contract eBTCBaseFixture is
         storedIndex = cdpManager.stEthIndex();
     }
 
+    /// @dev sync cdp by adding and removing debt
+    function _syncIndividualCdp(bytes32 _cdpId) internal {
+        address borrower = sortedCdps.getOwnerAddress(_cdpId);
+        vm.startPrank(borrower);
+        borrowerOperations.withdrawDebt(_cdpId, 1, bytes32(0), bytes32(0));
+        borrowerOperations.repayDebt(_cdpId, 1, bytes32(0), bytes32(0));
+
+        vm.stopPrank();
+    }
+
     /// @dev Ensure data fields for Cdp are in expected post-close state
     function _assertCdpClosed(bytes32 cdpId, uint256 expectedStatus) internal {
         (

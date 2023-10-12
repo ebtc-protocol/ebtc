@@ -42,7 +42,7 @@ contract NICRSortingTest is eBTCBaseInvariants {
 
         // Accure + fee split (A) -> A is 90 shares
         vm.prank(address(borrowerOperations));
-        cdpManager.syncAccounting(cdp0);
+        _syncIndividualCdp(cdp0);
 
         console.log("After syncAccounting");
         _printAllCdps();
