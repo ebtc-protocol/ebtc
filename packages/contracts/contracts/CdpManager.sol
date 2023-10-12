@@ -184,6 +184,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 emit CdpUpdated(
                     _redeemColFromCdp.cdpId,
                     _borrower,
+                    msg.sender,
                     _oldDebtAndColl.entireDebt,
                     _oldDebtAndColl.entireColl,
                     0,
@@ -221,10 +222,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             Cdps[_redeemColFromCdp.cdpId].coll = newColl;
             _updateStakeAndTotalStakes(_redeemColFromCdp.cdpId);
 
-            address _borrower = ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp.cdpId);
             emit CdpUpdated(
                 _redeemColFromCdp.cdpId,
-                _borrower,
+                ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp.cdpId),
+                msg.sender,
                 _oldDebtAndColl.entireDebt,
                 _oldDebtAndColl.entireColl,
                 newDebt,
@@ -538,7 +539,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 _coll
     ) external override {
         _requireCallerIsBorrowerOperations();
-        emit CdpUpdated(_cdpId, _borrower, _debt, _coll, 0, 0, 0, CdpOperation.closeCdp);
+        emit CdpUpdated(_cdpId, _borrower, msg.sender, _debt, _coll, 0, 0, 0, CdpOperation.closeCdp);
         return _closeCdp(_cdpId, Status.closedByOwner);
     }
 
@@ -883,7 +884,17 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 index = _addCdpIdToArray(_cdpId);
 
         // Previous debt and coll are by definition zero upon opening a new CDP
-        emit CdpUpdated(_cdpId, _borrower, 0, 0, _debt, _coll, stake, CdpOperation.openCdp);
+        emit CdpUpdated(
+            _cdpId,
+            _borrower,
+            msg.sender,
+            0,
+            0,
+            _debt,
+            _coll,
+            stake,
+            CdpOperation.openCdp
+        );
     }
 
     /**
@@ -914,6 +925,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit CdpUpdated(
             _cdpId,
             _borrower,
+            msg.sender,
             _debt,
             _coll,
             _newDebt,

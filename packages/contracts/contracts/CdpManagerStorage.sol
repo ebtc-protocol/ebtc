@@ -358,6 +358,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             emit CdpUpdated(
                 _cdpId,
                 ISortedCdps(sortedCdps).getOwnerAddress(_cdpId),
+                msg.sender,
                 prevDebt,
                 prevColl,
                 _newDebt,
