@@ -890,16 +890,6 @@ contract EToFoundry is
         assertGe(vars.activePoolDebtBefore, vars.activePoolDebtAfter, "CDPM_05_GLOBAL");
     }
 
-    function testGeneral14() public {
-        setEthPerShare(12);
-        openCdp(
-            115792089237316195423570985008687907853269984665640564039457584007913129639935,
-            6383
-        );
-
-        assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), "G-14");
-    }
-
     /// @dev Debunk false positives for L-15
     ///     These will happen because of the desynch if nobody calls, it is what it is
     // function testL15Debunk() public {

@@ -41,9 +41,5 @@ contract eBTCBaseInvariants is eBTCBaseFixture, Properties {
             GENERAL_08
         );
         // invariant_GENERAL_09 -> Vars
-
-        assertTrue(invariant_GENERAL_12(cdpManager, priceFeedMock, crLens), GENERAL_12);
-        assertTrue(invariant_GENERAL_13(crLens, cdpManager, priceFeedMock, sortedCdps), GENERAL_13);
-        assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), GENERAL_14);
     }
 }

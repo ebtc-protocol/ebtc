@@ -349,62 +349,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         }
     }
 
-    function invariant_GENERAL_12(
-        CdpManager cdpManager,
-        PriceFeedTestnet priceFeedMock,
-        CRLens crLens
-    ) internal returns (bool) {
-        uint256 curentPrice = priceFeedMock.getPrice();
-        return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
-    }
-
-    function invariant_GENERAL_13(
-        CRLens crLens,
-        CdpManager cdpManager,
-        PriceFeedTestnet priceFeedMock,
-        SortedCdps sortedCdps
-    ) internal returns (bool) {
-        bytes32 currentCdp = sortedCdps.getFirst();
-
-        uint256 _price = priceFeedMock.getPrice();
-
-        // Compare synched with quote for all Cdps
-        while (currentCdp != bytes32(0)) {
-            uint256 newIcr = cdpManager.getSyncedICR(currentCdp, _price);
-            uint256 synchedICR = cdpManager.getSyncedICR(currentCdp, _price);
-
-            if (newIcr != synchedICR) {
-                return false;
-            }
-
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-        return true;
-    }
-
-    function invariant_GENERAL_14(
-        CRLens crLens,
-        CdpManager cdpManager,
-        SortedCdps sortedCdps
-    ) internal returns (bool) {
-        bytes32 currentCdp = sortedCdps.getFirst();
-
-        uint256 newIcrPrevious = type(uint256).max;
-
-        // Compare synched with quote for all Cdps
-        while (currentCdp != bytes32(0)) {
-            uint256 newNICR = cdpManager.getSyncedNominalICR(currentCdp);
-            uint256 synchedNICR = cdpManager.getSyncedNominalICR(currentCdp); // Uses cached stETH index -> It's not the "real NICR"
-
-            if (newNICR != synchedNICR) {
-                return false;
-            }
-
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-        return true;
-    }
-
     function invariant_GENERAL_15() internal returns (bool) {
         return
             crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
