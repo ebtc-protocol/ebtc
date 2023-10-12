@@ -368,7 +368,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         (uint256 entireDebt, uint256 entireColl, ) = getDebtAndCollShares(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
-        _removeStake(_cdpId);
         uint256 _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
         _closeCdp(_cdpId, Status.closedByLiquidation);
 
