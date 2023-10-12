@@ -8,7 +8,7 @@ abstract contract PropertiesDescriptions {
     string constant AP_01 =
         "AP-01: The collateral balance in the active pool is greater than or equal to its accounting number";
     string constant AP_02 =
-        "AP-06: The collateral balance of the ActivePool is positive if there is at least one CDP open";
+        "AP-02: The collateral balance of the ActivePool is positive if there is at least one CDP open";
     string constant AP_03 =
         "AP-03: The eBTC debt accounting number in active pool is greater than or equal to its accounting number";
     string constant AP_04 =
