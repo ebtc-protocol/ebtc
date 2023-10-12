@@ -406,7 +406,9 @@ contract EToFoundry is
         bytes32 currentCdp = sortedCdps.getFirst();
 
         while (currentCdp != bytes32(0)) {
-            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
+            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(
+                currentCdp
+            );
             console2.log("debtBefore", debtBefore);
             console2.log("collBefore", collBefore);
 
@@ -439,7 +441,9 @@ contract EToFoundry is
         currentCdp = sortedCdps.getFirst();
 
         while (currentCdp != bytes32(0)) {
-            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
+            (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(
+                currentCdp
+            );
             console2.log("debtBefore", debtBefore);
             console2.log("collBefore", collBefore);
 
