@@ -315,8 +315,6 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // entirety of rebase value increase should accrue to user cdp
         assertEq(_getCdpStEthBalance(cdpId1), expectedUserCdpStEthBalance1);
         assertEq(activePool.getFeeRecipientClaimableCollShares(), expectedFeeRecipientBalance1);
-
-        vm.stopPrank();
     }
 
     function test_OneHundredPercentStakingSplitFee_CdpOperations(uint256 debtAmt) public {
