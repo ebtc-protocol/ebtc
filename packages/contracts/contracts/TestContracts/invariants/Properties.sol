@@ -1,20 +1,25 @@
 pragma solidity 0.8.17;
 
+import "@crytic/properties/contracts/util/PropertiesConstants.sol";
+
 import {ICollateralToken} from "../../Dependencies/ICollateralToken.sol";
+import {EbtcMath} from "../../Dependencies/EbtcMath.sol";
 import {ActivePool} from "../../ActivePool.sol";
 import {EBTCToken} from "../../EBTCToken.sol";
 import {BorrowerOperations} from "../../BorrowerOperations.sol";
 import {CdpManager} from "../../CdpManager.sol";
 import {SortedCdps} from "../../SortedCdps.sol";
-import {AssertionHelper} from "./AssertionHelper.sol";
+import {Asserts} from "./Asserts.sol";
 import {CollSurplusPool} from "../../CollSurplusPool.sol";
 import {PriceFeedTestnet} from "../testnet/PriceFeedTestnet.sol";
 import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
+import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
+import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
 
-abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescriptions {
+abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, PropertiesConstants {
     function invariant_AP_01(
         ICollateralToken collateral,
         ActivePool activePool
@@ -49,7 +54,6 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         }
         uint256 _activeColl = activePool.getSystemCollShares();
         uint256 _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
-        uint256 _divisor = _sum > _activeColl ? _sum : _activeColl;
         return (_diff * 1e18 <= diff_tolerance * _activeColl);
     }
 
@@ -102,19 +106,9 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     /** TODO: See EchidnaToFoundry._getValue */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-        uint256 beforeValue = ((vars.activePoolCollBefore +
-            vars.collSurplusPoolBefore +
-            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
-            1e18 -
-            vars.activePoolDebtBefore;
-
-        uint256 afterValue = ((vars.activePoolCollAfter +
-            vars.collSurplusPoolAfter +
-            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
-            1e18 -
-            vars.activePoolDebtAfter;
-
-        return afterValue >= beforeValue || isApproximateEq(afterValue, beforeValue, 0.01e18);
+        return
+            vars.valueInSystemAfter >= vars.valueInSystemBefore ||
+            isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
     }
 
     function invariant_CSP_01(
@@ -126,13 +120,19 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             collSurplusPool.getTotalSurplusCollShares();
     }
 
-    event L(string, uint);
+    function invariant_CSP_02(CollSurplusPool collSurplusPool) internal view returns (bool) {
+        uint256 sum;
 
-    function invariant_SL_01(
-        CdpManager cdpManager,
-        SortedCdps sortedCdps,
-        uint256 diff_tolerance
-    ) internal returns (bool) {
+        // NOTE: See PropertiesConstants
+        // We only have 3 actors so just set these up
+        sum += collSurplusPool.getSurplusCollShares(address(actors[USER1]));
+        sum += collSurplusPool.getSurplusCollShares(address(actors[USER2]));
+        sum += collSurplusPool.getSurplusCollShares(address(actors[USER3]));
+
+        return sum == collSurplusPool.getTotalSurplusCollShares();
+    }
+
+    function invariant_SL_01(CdpManager cdpManager, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
         bytes32 nextCdp = sortedCdps.getNext(currentCdp);
 
@@ -140,8 +140,7 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
             // TODO remove tolerance once proper fix has been applied
             uint256 nicrNext = cdpManager.getNominalICR(nextCdp);
             uint256 nicrCurrent = cdpManager.getNominalICR(currentCdp);
-            emit L("NICR next", nicrNext);
-            emit L("NICR curr", nicrCurrent);
+            emit L2(nicrNext, nicrCurrent);
             if (nicrNext > nicrCurrent && diffPercent(nicrNext, nicrCurrent) > 0.01e18) {
                 return false;
             }
@@ -156,11 +155,10 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
     function invariant_SL_02(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
-        PriceFeedTestnet priceFeedTestnet,
-        uint256 diff_tolerance
+        PriceFeedTestnet priceFeedMock
     ) internal view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         uint256 _firstICR = cdpManager.getICR(_first, _price);
         uint256 _TCR = cdpManager.getTCR(_price);
 
@@ -176,12 +174,12 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_SL_03(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         SortedCdps sortedCdps
     ) internal view returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedTestnet.getPrice();
+        uint256 _price = priceFeedMock.getPrice();
         if (_price == 0) return true;
 
         while (currentCdp != bytes32(0)) {
@@ -203,21 +201,21 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         return true;
     }
 
-    function invariant_SL_05(
-        CRLens crLens,
-        CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
-        SortedCdps sortedCdps
-    ) internal returns (bool) {
+    uint256 NICR_ERROR_THRESHOLD = 1e8;
+
+    function invariant_SL_05(CRLens crLens, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.getPrice();
         uint256 newIcrPrevious = type(uint256).max;
 
         while (currentCdp != bytes32(0)) {
             uint256 newIcr = crLens.quoteRealICR(currentCdp);
             if (newIcr > newIcrPrevious) {
-                return false;
+                /// @audit Precision Threshold to flag very scary scenarios
+                /// Innoquous scenario illustrated here: https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
+                if (newIcr - newIcrPrevious > NICR_ERROR_THRESHOLD) {
+                    return false;
+                }
             }
             newIcrPrevious = newIcr;
 
@@ -232,16 +230,16 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_02(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         EBTCToken eBTCToken
     ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getTCR(priceFeedTestnet.getPrice()) > collateral.getPooledEthByShares(1e18)
-                ? (cdpManager.getSystemCollShares() * priceFeedTestnet.getPrice()) / 1e18 >=
+            cdpManager.getTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
+                ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
                     eBTCToken.totalSupply()
-                : (cdpManager.getSystemCollShares() * priceFeedTestnet.getPrice()) / 1e18 <
+                : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <
                     eBTCToken.totalSupply();
     }
 
@@ -260,9 +258,32 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_05(
         ActivePool activePool,
+        CdpManager cdpManager,
         ICollateralToken collateral
     ) internal view returns (bool) {
-        return collateral.sharesOf(address(activePool)) >= activePool.getSystemCollShares();
+        uint256 totalStipendShares;
+
+        // Iterate over CDPs add the stipendShares
+        bytes32 currentCdp = sortedCdps.getFirst();
+        while (currentCdp != bytes32(0)) {
+            totalStipendShares += cdpManager.getCdpLiquidatorRewardShares(currentCdp);
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        return
+            collateral.sharesOf(address(activePool)) >=
+            (activePool.getSystemCollShares() +
+                activePool.getFeeRecipientClaimableCollShares() +
+                totalStipendShares);
+    }
+
+    function invariant_GENERAL_05_B(
+        CollSurplusPool surplusPool,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        return
+            collateral.sharesOf(address(surplusPool)) >= (surplusPool.getTotalSurplusCollShares());
     }
 
     function invariant_GENERAL_06(
@@ -275,12 +296,43 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
         bytes32 currentCdp = sortedCdps.getFirst();
         uint256 cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(currentCdp);
+            (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(currentCdp);
             cdpsBalance += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
         return totalSupply >= cdpsBalance;
+    }
+
+    function invariant_GENERAL_08(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        uint256 curentPrice = priceFeedTestnet.getPrice();
+
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfColl;
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireColl = cdpManager.getSyncedCdpCollShares(currentCdp);
+            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            sumOfColl += entireColl;
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
+
+        uint256 tcrFromSums = EbtcMath._computeCR(
+            collateral.getPooledEthByShares(sumOfColl),
+            sumOfDebt,
+            curentPrice
+        );
+        /// @audit 1e8 precision
+        return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
     }
 
     function invariant_GENERAL_09(
@@ -297,23 +349,22 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
     function invariant_GENERAL_12(
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         CRLens crLens
     ) internal returns (bool) {
-        uint256 curentPrice = priceFeedTestnet.getPrice();
+        uint256 curentPrice = priceFeedMock.getPrice();
         return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
     }
 
     function invariant_GENERAL_13(
         CRLens crLens,
         CdpManager cdpManager,
-        PriceFeedTestnet priceFeedTestnet,
+        PriceFeedTestnet priceFeedMock,
         SortedCdps sortedCdps
     ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 _price = priceFeedMock.getPrice();
-        uint256 newIcrPrevious = type(uint256).max;
 
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
@@ -326,6 +377,67 @@ abstract contract Properties is AssertionHelper, BeforeAfter, PropertiesDescript
 
             currentCdp = sortedCdps.getNext(currentCdp);
         }
+        return true;
+    }
+
+    function invariant_GENERAL_14(
+        CRLens crLens,
+        CdpManager cdpManager,
+        SortedCdps sortedCdps
+    ) internal returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 newIcrPrevious = type(uint256).max;
+
+        // Compare synched with quote for all Cdps
+        while (currentCdp != bytes32(0)) {
+            uint256 newNICR = crLens.quoteRealNICR(currentCdp);
+            uint256 synchedNICR = cdpManager.getSyncedNominalICR(currentCdp); // Uses cached stETH index -> It's not the "real NICR"
+
+            if (newNICR != synchedNICR) {
+                return false;
+            }
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        return true;
+    }
+
+    function invariant_GENERAL_15() internal returns (bool) {
+        return
+            crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
+    }
+
+    function invariant_LS_01(
+        CdpManager cdpManager,
+        LiquidationSequencer ls,
+        SyncedLiquidationSequencer syncedLs,
+        PriceFeedTestnet priceFeedTestnet
+    ) internal returns (bool) {
+        // Or just compare max lenght since that's the one with all of them
+        uint256 n = cdpManager.getActiveCdpsCount();
+
+        // Get
+        uint256 price = priceFeedTestnet.getPrice();
+
+        // Get lists
+        bytes32[] memory cdpsFromCurrent = ls.sequenceLiqToBatchLiqWithPrice(n, price);
+        bytes32[] memory cdpsSynced = syncedLs.sequenceLiqToBatchLiqWithPrice(n, price);
+
+        uint256 length = cdpsFromCurrent.length;
+        if (length != cdpsSynced.length) {
+            return false;
+        }
+
+        // Compare Lists
+        for (uint256 i; i < length; i++) {
+            // Find difference = broken
+            if (cdpsFromCurrent[i] != cdpsSynced[i]) {
+                return false;
+            }
+        }
+
+        // Implies we're good
         return true;
     }
 

@@ -10,6 +10,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
     using Pretty for bool;
 
     struct Vars {
+        uint256 valueInSystemBefore;
+        uint256 valueInSystemAfter;
         uint256 nicrBefore;
         uint256 nicrAfter;
         uint256 icrBefore;
@@ -20,6 +22,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 feeSplitAfter;
         uint256 feeRecipientTotalCollBefore;
         uint256 feeRecipientTotalCollAfter;
+        uint256 feeRecipientCollSharesBefore;
+        uint256 feeRecipientCollSharesAfter;
         uint256 actorCollBefore;
         uint256 actorCollAfter;
         uint256 actorEbtcBefore;
@@ -92,9 +96,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.stEthIndex()
             )
             : (0, 0, 0);
-        vars.feeRecipientTotalCollBefore =
-            activePool.getFeeRecipientClaimableCollShares() +
-            collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientTotalCollBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientCollSharesBefore = activePool.getFeeRecipientClaimableCollShares();
         vars.actorCollBefore = collateral.balanceOf(address(actor));
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
@@ -114,9 +117,18 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() +
                 cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
-
+        // TODO: Cleanup new vs old
         vars.newTcrBefore = crLens.quoteRealTCR();
         vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
+
+        vars.valueInSystemBefore ==
+            (collateral.getPooledEthByShares(
+                vars.activePoolCollBefore +
+                    vars.collSurplusPoolBefore +
+                    vars.feeRecipientTotalCollBefore
+            ) * vars.priceBefore) /
+                1e18 -
+                vars.activePoolDebtBefore;
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -139,9 +151,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.stEthIndex()
             )
             : (0, 0, 0);
-        vars.feeRecipientTotalCollAfter =
-            activePool.getFeeRecipientClaimableCollShares() +
-            collateral.balanceOf(activePool.feeRecipientAddress());
+
+        vars.feeRecipientTotalCollAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientCollSharesAfter = activePool.getFeeRecipientClaimableCollShares();
         vars.actorCollAfter = collateral.balanceOf(address(actor));
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));
@@ -164,6 +176,16 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         vars.newTcrAfter = crLens.quoteRealTCR();
         vars.newIcrAfter = crLens.quoteRealICR(_cdpId);
+
+        // Value in system after
+        vars.valueInSystemAfter =
+            (collateral.getPooledEthByShares(
+                vars.activePoolCollAfter +
+                    vars.collSurplusPoolAfter +
+                    vars.feeRecipientTotalCollAfter
+            ) * vars.priceAfter) /
+            1e18 -
+            vars.activePoolDebtAfter;
     }
 
     function _diff() internal view returns (string memory log) {

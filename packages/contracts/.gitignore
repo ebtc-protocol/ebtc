@@ -38,6 +38,9 @@ yarn-error.log
 # echidna
 /crytic-export
 
+# Medusa
+/medusa
+
 # brownie
 __pycache__
 .pytest_cache

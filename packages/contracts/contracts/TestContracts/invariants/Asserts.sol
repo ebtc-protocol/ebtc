@@ -1,6 +1,25 @@
 pragma solidity 0.8.17;
 
-abstract contract AssertionHelper {
+abstract contract Asserts {
+    event L1(uint256);
+    event L2(uint256, uint256);
+    event L3(uint256, uint256, uint256);
+    event L4(uint256, uint256, uint256, uint256);
+
+    function gt(uint256 a, uint256 b, string memory reason) internal virtual;
+
+    function gte(uint256 a, uint256 b, string memory reason) internal virtual;
+
+    function lt(uint256 a, uint256 b, string memory reason) internal virtual;
+
+    function lte(uint256 a, uint256 b, string memory reason) internal virtual;
+
+    function eq(uint256 a, uint256 b, string memory reason) internal virtual;
+
+    function t(bool b, string memory reason) internal virtual;
+
+    function between(uint256 value, uint256 low, uint256 high) internal virtual returns (uint256);
+
     function isApproximateEq(
         uint256 _num1,
         uint256 _num2,
@@ -67,5 +86,51 @@ abstract contract AssertionHelper {
 
     function min(uint256 a, uint256 b) internal pure returns (uint256) {
         return a < b ? a : b;
+    }
+
+    function assertRevertReasonNotEqual(bytes memory returnData, string memory reason) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason);
+        t(!isEqual, reason);
+    }
+
+    function assertRevertReasonEqual(bytes memory returnData, string memory reason) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason);
+        t(isEqual, reason);
+    }
+
+    function assertRevertReasonEqual(
+        bytes memory returnData,
+        string memory reason1,
+        string memory reason2
+    ) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason1) ||
+            _isRevertReasonEqual(returnData, reason2);
+        t(isEqual, string.concat(reason1, " OR ", reason2));
+    }
+
+    function assertRevertReasonEqual(
+        bytes memory returnData,
+        string memory reason1,
+        string memory reason2,
+        string memory reason3
+    ) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason1) ||
+            _isRevertReasonEqual(returnData, reason2) ||
+            _isRevertReasonEqual(returnData, reason3);
+        t(isEqual, string.concat(reason1, " OR ", reason2, " OR ", reason3));
+    }
+
+    function assertRevertReasonEqual(
+        bytes memory returnData,
+        string memory reason1,
+        string memory reason2,
+        string memory reason3,
+        string memory reason4
+    ) internal {
+        bool isEqual = _isRevertReasonEqual(returnData, reason1) ||
+            _isRevertReasonEqual(returnData, reason2) ||
+            _isRevertReasonEqual(returnData, reason3) ||
+            _isRevertReasonEqual(returnData, reason4);
+        t(isEqual, string.concat(reason1, " OR ", reason2, " OR ", reason3, " OR ", reason4));
     }
 }

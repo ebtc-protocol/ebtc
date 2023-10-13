@@ -6,9 +6,11 @@ import "./EchidnaAsserts.sol";
 import "./EchidnaProperties.sol";
 import "../TargetFunctions.sol";
 
-contract EchidnaTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
+contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
     constructor() payable {
-        _setUp();
+        _setUpFork();
         _setUpActors();
+        hevm.roll(4368824);
+        hevm.warp(1695742536);
     }
 }
