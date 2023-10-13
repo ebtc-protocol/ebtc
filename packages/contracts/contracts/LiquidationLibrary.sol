@@ -451,8 +451,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         _cdp.coll = _coll - _partialColl;
         _cdp.debt = _debt - _partialDebt;
         _updateStakeAndTotalStakes(_cdpId);
-
-        _updateRedistributedDebtSnapshot(_cdpId);
     }
 
     // Re-Insertion into SortedCdp list after partial liquidation
