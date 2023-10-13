@@ -107,7 +107,7 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         // In case borrowedAmount is less than MIN_NET_DEBT - expect revert
         if (collAmount < borrowerOperations.MIN_NET_STETH_BALANCE()) {
-            vm.expectRevert(bytes("BorrowerOperations: Cdp's net coll must not fall below minimum"));
+            vm.expectRevert(bytes("BorrowerOperations: Cdp's net stEth balance must not fall below minimum"));
             borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
             return;
         }
