@@ -174,11 +174,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.coll - cdpManager.MIN_NET_COLL()) <=
+                (_cdpState.coll - cdpManager.MIN_NET_STETH_BALANCE()) <=
                 ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)
             ) {
                 _partialLiq._repaidDebt =
-                    ((_cdpState.coll - cdpManager.MIN_NET_COLL() * 3) * _newPrice) /
+                    ((_cdpState.coll - cdpManager.MIN_NET_STETH_BALANCE() * 3) * _newPrice) /
                     _partialLiq._ratio;
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
@@ -904,7 +904,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _singleCdpSetup(address _usr, uint256 _icr) internal returns (address, bytes32) {
         uint256 _price = priceFeedMock.fetchPrice();
-        uint256 _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
         uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
