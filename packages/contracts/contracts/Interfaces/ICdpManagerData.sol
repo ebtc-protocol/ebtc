@@ -111,9 +111,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
      **/
 
     struct CdpDebtAndCollShares {
-        uint256 entireDebt;
-        uint256 entireColl;
-        uint256 pendingDebtReward;
+        uint256 debt;
+        uint256 collShares;
     }
 
     struct LiquidationLocals {
@@ -255,9 +254,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function hasPendingRedistributedDebt(bytes32 _cdpId) external view returns (bool);
 
-    function getDebtAndCollShares(
+    function getSyncedDebtAndCollShares(
         bytes32 _cdpId
-    ) external view returns (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward);
+    ) external view returns (uint256 debt, uint256 collShares);
 
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
 }

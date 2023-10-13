@@ -153,13 +153,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // Repurposing this struct here to avoid stack too deep.
         CdpDebtAndCollShares memory _oldDebtAndColl = CdpDebtAndCollShares(
             Cdps[_redeemColFromCdp.cdpId].debt,
-            Cdps[_redeemColFromCdp.cdpId].coll,
-            0
+            Cdps[_redeemColFromCdp.cdpId].coll
         );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
-        uint256 newDebt = _oldDebtAndColl.entireDebt - singleRedemption.debtToRedeem;
-        uint256 newColl = _oldDebtAndColl.entireColl - singleRedemption.collSharesDrawn;
+        uint256 newDebt = _oldDebtAndColl.debt - singleRedemption.debtToRedeem;
+        uint256 newColl = _oldDebtAndColl.collShares - singleRedemption.collSharesDrawn;
 
         if (newDebt == 0) {
             // No debt remains, close CDP
@@ -185,8 +184,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                     _redeemColFromCdp.cdpId,
                     _borrower,
                     msg.sender,
-                    _oldDebtAndColl.entireDebt,
-                    _oldDebtAndColl.entireColl,
+                    _oldDebtAndColl.debt,
+                    _oldDebtAndColl.collShares,
                     0,
                     0,
                     0,
@@ -205,7 +204,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              */
             if (
                 newNICR != _redeemColFromCdp.partialRedemptionHintNICR ||
-                collateral.getPooledEthByShares(newColl) < MIN_NET_COLL
+                collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
@@ -226,8 +225,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 _redeemColFromCdp.cdpId,
                 ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp.cdpId),
                 msg.sender,
-                _oldDebtAndColl.entireDebt,
-                _oldDebtAndColl.entireColl,
+                _oldDebtAndColl.debt,
+                _oldDebtAndColl.collShares,
                 newDebt,
                 newColl,
                 Cdps[_redeemColFromCdp.cdpId].stake,
@@ -514,7 +513,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function syncAccounting(bytes32 _cdpId) external override {
-        // _requireCallerIsBorrowerOperations(); /// @audit Please check this and let us know if opening this creates issues | TODO: See Stermi Partial Liq
+        // _requireCallerIsBorrowerOperations(); /// @audit Opening can cause invalid reordering of Cdps due to changing values without reInserting into sortedCdps
         return _syncAccounting(_cdpId);
     }
 

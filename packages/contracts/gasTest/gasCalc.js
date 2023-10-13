@@ -967,7 +967,7 @@ contract('Gas cost tests', async accounts => {
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 	let _first = await sortedCdps.getFirst();
-	let _firstDebtAndColl = await cdpManager.getDebtAndCollShares(_first);
+	let _firstDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_first);
     const gas = await th.redeemCollateral(_liquidator, contracts, _firstDebtAndColl[0])
     th.logGas(gas, message)
 

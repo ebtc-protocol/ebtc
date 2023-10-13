@@ -40,7 +40,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     debtToken = contracts.ebtcToken;
     activePool = contracts.activePool;
     defaultPool = contracts.defaultPool;
-    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
+    minDebt = await contracts.borrowerOperations.MIN_NET_STETH_BALANCE();
     liqReward = await contracts.cdpManager.LIQUIDATOR_REWARD();	
     _MCR = await cdpManager.MCR();
     LICR = await cdpManager.LICR();
@@ -680,7 +680,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
              const tx = await cdpManager.partiallyLiquidate(_aliceCdpId, _partialAmounts[i], _aliceCdpId, _aliceCdpId, {from: bob})
              _partialLiquidationTxs.push(tx);			  
           }else{			 
-             let _leftColl = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[1]
+             let _leftColl = (await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId))[1]
              const finalTx = await cdpManager.liquidate(_aliceCdpId, {from: bob})
              _partialLiquidationTxs.push(finalTx);
           }			  
@@ -750,7 +750,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
       await borrowerOperations.openCdp(_ebtcAmt1, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt1);
       let _cdpId1 = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
-      let _cdpDebtColl1 = await cdpManager.getDebtAndCollShares(_cdpId1);
+      let _cdpDebtColl1 = await cdpManager.getSyncedDebtAndCollShares(_cdpId1);
       let _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl1[0], _errorTolerance.toNumber());	  
 	  
@@ -766,7 +766,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.deposit({from: owner, value: _collAmt2});
       await borrowerOperations.openCdp(_ebtcAmt2, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt2);
       let _cdpId2 = await sortedCdps.cdpOfOwnerByIndex(owner, 1);
-      let _cdpDebtColl2 = await cdpManager.getDebtAndCollShares(_cdpId2);
+      let _cdpDebtColl2 = await cdpManager.getSyncedDebtAndCollShares(_cdpId2);
       _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_systemDebt, (_cdpDebtColl1[0].add(_cdpDebtColl2[0])), _errorTolerance.toNumber());	
 	  
@@ -787,7 +787,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // final check
       assert.isFalse(await sortedCdps.contains(_cdpId1));
-      _cdpDebtColl2 = await cdpManager.getDebtAndCollShares(_cdpId2);
+      _cdpDebtColl2 = await cdpManager.getSyncedDebtAndCollShares(_cdpId2);
       _systemDebt = await cdpManager.getSystemDebt();
       let _distributedError = (await cdpManager.lastEBTCDebtErrorRedistribution()).div(mv._1e18BN);
       th.assertIsApproximatelyEqual(_systemDebt, (_distributedError.add(_cdpDebtColl2[0])), _errorTolerance.toNumber());
@@ -813,7 +813,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
       await borrowerOperations.openCdp(_ebtcAmt1, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt1);
       let _cdpId1 = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
-      let _cdpDebtColl1 = await cdpManager.getDebtAndCollShares(_cdpId1);
+      let _cdpDebtColl1 = await cdpManager.getSyncedDebtAndCollShares(_cdpId1);
       let _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_systemDebt, (await debtToken.totalSupply()), _errorTolerance.toNumber());	  
 	  
@@ -835,7 +835,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       if (_totalSupplyDiff.lt(_partialAmount)) {
           await debtToken.unprotectedBurn(owner, _partialAmount.sub(_totalSupplyDiff));
       }
-      let _cdpDebtColl1After = await cdpManager.getDebtAndCollShares(_cdpId1);
+      let _cdpDebtColl1After = await cdpManager.getSyncedDebtAndCollShares(_cdpId1);
       assert.isTrue(_cdpDebtColl1After[0].lt(_cdpDebtColl1[1]));
 	  
       // final check

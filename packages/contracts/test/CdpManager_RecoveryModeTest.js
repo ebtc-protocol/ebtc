@@ -558,7 +558,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(toBN(alice_ICR).lt(mv._MCR))
     assert.isTrue(toBN(dennis_ICR).lt(mv._MCR))
 
-    let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+    let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
     let _bobDebt = _bobDebtAndColl[0];
     let _bobColl = _bobDebtAndColl[1];
 
@@ -1181,7 +1181,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     const recoveryMode = await th.checkRecoveryMode(contracts)
     assert.isTrue(recoveryMode)
 
-    let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+    let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
     let _bobDebt = _bobDebtAndColl[0];
     let _bobColl = _bobDebtAndColl[1];
 	
@@ -1216,7 +1216,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await _signer.sendTransaction({ to: carol, value: ethers.utils.parseEther("10000")});
     await openCdp({ ICR: toBN(dec(250, 16)), extraEBTCAmount: dec(240, 18), extraParams: { from: carol } })
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
-    let _carolDebtAndCollOriginal = await cdpManager.getDebtAndCollShares(_carolCdpId);
+    let _carolDebtAndCollOriginal = await cdpManager.getSyncedDebtAndCollShares(_carolCdpId);
     let _carolDebtOriginal = _carolDebtAndCollOriginal[0];
 
     // --- TEST ---
@@ -1268,7 +1268,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue((await cdpManager.getICR(_carolCdpId, price)).lt(mv._MCR))
 
     // get total debt with redistributed
-    let _carolDebtAndColl = await cdpManager.getDebtAndCollShares(_carolCdpId);
+    let _carolDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_carolCdpId);
     let _carolDebt = _carolDebtAndColl[0];
     let _carolColl = _carolDebtAndColl[1];
 

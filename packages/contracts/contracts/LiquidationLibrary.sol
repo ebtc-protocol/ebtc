@@ -374,7 +374,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     // without emmiting events
     function _closeCdpByLiquidation(bytes32 _cdpId) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, ) = getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, uint256 entireColl) = getSyncedDebtAndCollShares(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
         uint256 _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
@@ -392,16 +392,16 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _partialDebt = _partialState.partialAmount;
 
         // calculate entire debt to repay
-        CdpDebtAndCollShares memory _debtAndColl = _getDebtAndCollShares(_cdpId);
-        _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.entireDebt, _partialState.price);
-        uint256 newDebt = _debtAndColl.entireDebt - _partialDebt;
+        CdpDebtAndCollShares memory _debtAndColl = _getSyncedDebtAndCollShares(_cdpId);
+        _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.debt, _partialState.price);
+        uint256 newDebt = _debtAndColl.debt - _partialDebt;
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
         (uint256 _partialColl, uint256 newColl, ) = _calculatePartialLiquidationSurplusAndCap(
             _partialState.ICR,
             _partialState.price,
             _partialDebt,
-            _debtAndColl.entireColl
+            _debtAndColl.collShares
         );
 
         // early return: if new collateral is zero, we have a full liqudiation
@@ -420,8 +420,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             _reInsertPartialLiquidation(
                 _partialState,
                 EbtcMath._computeNominalCR(newColl, newDebt),
-                _debtAndColl.entireDebt,
-                _debtAndColl.entireColl
+                _debtAndColl.debt,
+                _debtAndColl.collShares
             );
             uint _debtToColl = (_partialDebt * DECIMAL_PRECISION) / _partialState.price;
             uint _cappedColl = collateral.getPooledEthByShares(_partialColl);
@@ -891,14 +891,15 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price
     ) internal view {
         require(
-            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_COLL, _price)) <= _entireDebt,
+            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_STETH_BALANCE, _price)) <=
+                _entireDebt,
             "LiquidationLibrary: Partial debt liquidated must be less than total debt"
         );
     }
 
     function _requirePartialLiqCollSize(uint256 _entireColl) internal pure {
         require(
-            _entireColl >= MIN_NET_COLL,
+            _entireColl >= MIN_NET_STETH_BALANCE,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"
         );
     }

@@ -138,7 +138,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
     }
 
     function testSortedCdpsICRgteTCRInvariant() public {
-        uint256 coll = borrowerOperations.MIN_NET_COLL() +
+        uint256 coll = borrowerOperations.MIN_NET_STETH_BALANCE() +
             borrowerOperations.LIQUIDATOR_REWARD() +
             16;
 

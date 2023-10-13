@@ -118,7 +118,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 _redeemNumber = _utils.generateRandomNumber(1, _cdpNumber - 1, _redeemer);
         uint256 _redeemDebt;
         for (uint256 i = 0; i < _redeemNumber; ++i) {
-            CdpState memory _state = _getDebtAndCollShares(_cdpIds[i]);
+            CdpState memory _state = _getSyncedDebtAndCollShares(_cdpIds[i]);
             _redeemDebt += _state.debt;
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             uint256 _sugar = eBTCToken.balanceOf(_owner);
@@ -364,7 +364,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
     function _singleCdpSetupWithICR(address _usr, uint256 _icr) internal returns (address, bytes32) {
         uint256 _price = priceFeedMock.fetchPrice();
-        uint256 _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
         uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);

@@ -28,7 +28,7 @@ contract EbtcBase is BaseMath, IEbtcBase {
     uint256 public constant LIQUIDATOR_REWARD = 2e17;
 
     // Minimum amount of stETH collateral a CDP must have
-    uint256 public constant MIN_NET_COLL = 2e18;
+    uint256 public constant MIN_NET_STETH_BALANCE = 2e18;
 
     uint256 public constant PERCENT_DIVISOR = 200; // dividing by 200 yields 0.5%
 
@@ -53,8 +53,8 @@ contract EbtcBase is BaseMath, IEbtcBase {
 
     // --- Gas compensation functions ---
 
-    function _getNetColl(uint256 _coll) internal pure returns (uint256) {
-        return _coll - LIQUIDATOR_REWARD;
+    function _calcNetStEthBalance(uint256 _stEthBalance) internal pure returns (uint256) {
+        return _stEthBalance - LIQUIDATOR_REWARD;
     }
 
     /**

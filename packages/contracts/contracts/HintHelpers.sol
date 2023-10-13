@@ -100,7 +100,10 @@ contract HintHelpers is EbtcBase {
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
                     // TODO: This seems to return the original coll? why?
-                    if (collateral.getPooledEthByShares(partialRedemptionNewColl) < MIN_NET_COLL) {
+                    if (
+                        collateral.getPooledEthByShares(partialRedemptionNewColl) <
+                        MIN_NET_STETH_BALANCE
+                    ) {
                         partialRedemptionHintNICR = 0; //reset to 0 as there is no partial redemption in this case
                         partialRedemptionNewColl = 0;
                         vars.remainingEbtcToRedeem = _cachedEbtcToRedeem;
@@ -148,7 +151,7 @@ contract HintHelpers is EbtcBase {
                 _oldIndex
             );
         } else {
-            (, newCollShare, ) = cdpManager.getDebtAndCollShares(vars.currentCdpId);
+            (, newCollShare) = cdpManager.getSyncedDebtAndCollShares(vars.currentCdpId);
         }
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
