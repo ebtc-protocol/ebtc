@@ -457,21 +457,23 @@ class TestHelper {
       // try rawLogs for CdpUpdated
       for (let i = 0; i < tx.receipt.rawLogs.length; i++) {
            //console.log('tx.receipt.rawLogs[' + i + '].topics[0]=' + tx.receipt.rawLogs[i].topics[0]);
-           if (tx.receipt.rawLogs[i].topics[0] === '0x7e042f3ac12649aab70b1f15fc844445c798d7b434140e6cce56fcbb5a7c0bf1') {
+           if (tx.receipt.rawLogs[i].topics[0] === '0x94bbf0bce1cd1f8f3842d4a02225a01ed47c14e2cece80bfc4fa9a66308a5f7e') {
                if (argName === '_cdpId'){
                    return tx.receipt.rawLogs[i].topics[1];
                } else if (argName === '_borrower'){
                    return web3.utils.toChecksumAddress('0x' + tx.receipt.rawLogs[i].topics[2].substring(26).toUpperCase());				   
+               } else if (argName === '_executor'){
+                   return web3.utils.toChecksumAddress('0x' + tx.receipt.rawLogs[i].topics[3].substring(26).toUpperCase());				   
                } else{
                    let parsedVal = web3.eth.abi.decodeParameters(['uint256','uint256','uint256','uint256','uint256','uint8'], tx.receipt.rawLogs[i].data);
                    //console.log('CdpUpdated event data parsed=' + JSON.stringify(parsedVal));
                    if (argName === '_oldDebt'){
                        return parsedVal['0'];
-                   } else if (argName === '_oldColl'){
+                   } else if (argName === '_oldColl'){//_oldCollShares
                        return parsedVal['1'];
                    } else if (argName === '_debt'){
                        return parsedVal['2'];
-                   } else if (argName === '_coll'){
+                   } else if (argName === '_coll'){//_collShares
                        return parsedVal['3'];
                    } else if (argName === '_stake'){
                        return parsedVal['4'];
@@ -491,6 +493,7 @@ class TestHelper {
 
     const emittedCdpId = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_cdpId")
     const emittedBorrower = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_borrower")
+    const emittedExecutor = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_executor")
 
     const emittedOldDebt = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldDebt"))
     const emittedOldColl = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldColl"))
@@ -501,9 +504,10 @@ class TestHelper {
     const emittedStake = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_stake"))
     const emittedOperation = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_operation")) //BorrowerOperation.openCdp = 0
 
-    return {
+    let _cdpUpdatedEvt = {
       "cdpId": emittedCdpId,
       "borrower": emittedBorrower,
+      "executor": emittedExecutor,
       "oldDebt": emittedOldDebt,
       "oldColl": emittedOldColl,
       "debt": emittedDebt,
@@ -511,6 +515,8 @@ class TestHelper {
       "stake": emittedStake,
       "operation": emittedOperation
     }
+    //console.log('CdpUpdated event data parsed=' + JSON.stringify(_cdpUpdatedEvt));
+    return _cdpUpdatedEvt;
   }
 
   static getAllEventsByName(tx, eventName) {
@@ -534,7 +540,7 @@ class TestHelper {
 
   static getDebtAndCollFromCdpUpdatedEvents(cdpUpdatedEvents, address) {
     const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
-    return [event.args[4], event.args[5]]
+    return [event.args[5], event.args[6]]
   }
 
   static async getBorrowerOpsListHint(contracts, newColl, newDebt) {
