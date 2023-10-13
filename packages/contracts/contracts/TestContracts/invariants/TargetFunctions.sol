@@ -212,7 +212,7 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _before(_cdpId);
@@ -283,7 +283,7 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = between(_partialAmount, 0, entireDebt);
@@ -330,7 +330,7 @@ abstract contract TargetFunctions is Properties {
                 // CDP was not fully liquidated
                 gte(
                     collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                    borrowerOperations.MIN_NET_COLL(),
+                    borrowerOperations.MIN_NET_STETH_BALANCE(),
                     GENERAL_10
                 );
             }
@@ -650,7 +650,7 @@ abstract contract TargetFunctions is Properties {
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
-            cdpManager.MIN_NET_COLL() + borrowerOperations.LIQUIDATOR_REWARD(),
+            cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(),
             requiredCollAmount
         );
         uint256 maxCollAmount = min(2 * minCollAmount, INITIAL_COLL_BALANCE / 10);
@@ -693,7 +693,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             gte(
                 collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
             eq(
@@ -799,7 +799,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             gte(
                 collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
 
@@ -875,7 +875,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             gte(
                 collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
 
@@ -949,7 +949,7 @@ abstract contract TargetFunctions is Properties {
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
+            borrowerOperations.MIN_NET_STETH_BALANCE(),
             GENERAL_10
         );
 
@@ -989,7 +989,7 @@ abstract contract TargetFunctions is Properties {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _amount = between(_amount, 0, entireDebt);
 
         _before(_cdpId);
@@ -1021,7 +1021,7 @@ abstract contract TargetFunctions is Properties {
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
+            borrowerOperations.MIN_NET_STETH_BALANCE(),
             GENERAL_10
         );
 
@@ -1148,7 +1148,7 @@ abstract contract TargetFunctions is Properties {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt, uint256 entireColl, ) = cdpManager.getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _collWithdrawal = between(_collWithdrawal, 0, entireColl);
         _EBTCChange = between(_EBTCChange, 0, entireDebt);
 
@@ -1179,7 +1179,7 @@ abstract contract TargetFunctions is Properties {
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
+            borrowerOperations.MIN_NET_STETH_BALANCE(),
             GENERAL_10
         );
 

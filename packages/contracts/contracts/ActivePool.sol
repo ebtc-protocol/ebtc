@@ -30,7 +30,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     uint256 internal systemCollShares; // deposited collateral tracker
     uint256 internal systemDebt;
     uint256 internal feeRecipientCollShares; // coll shares claimable by fee recipient
-    ICollateralToken public collateral;
+    ICollateralToken public immutable collateral;
 
     // --- Contract setters ---
 

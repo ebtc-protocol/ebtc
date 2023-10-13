@@ -49,7 +49,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (, uint256 _coll, ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
+            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _coll;
         }
         uint256 _activeColl = activePool.getSystemCollShares();
@@ -64,7 +64,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _debt;
         }
 
@@ -296,7 +296,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         bytes32 currentCdp = sortedCdps.getFirst();
         uint256 cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, , ) = cdpManager.getDebtAndCollShares(currentCdp);
+            (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(
+                currentCdp
+            );
             cdpsBalance += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }

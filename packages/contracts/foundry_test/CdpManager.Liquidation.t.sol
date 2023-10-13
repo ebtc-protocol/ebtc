@@ -81,7 +81,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getDebtAndCollShares(cdpId1);
+        CdpState memory _cdpState0 = _getSyncedDebtAndCollShares(cdpId1);
 
         // Price falls
         priceFeedMock.setPrice(price);
@@ -91,7 +91,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             uint256 _ICR = cdpManager.getICR(cdpId1, price);
@@ -156,7 +156,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getDebtAndCollShares(cdpId1);
+        CdpState memory _cdpState0 = _getSyncedDebtAndCollShares(cdpId1);
 
         // Price falls
         uint256 _newPrice = _curPrice / 2;
@@ -167,18 +167,18 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Partially Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.coll - cdpManager.MIN_NET_COLL()) <=
+                (_cdpState.coll - cdpManager.MIN_NET_STETH_BALANCE()) <=
                 ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)
             ) {
                 _partialLiq._repaidDebt =
-                    ((_cdpState.coll - cdpManager.MIN_NET_COLL() * 3) * _newPrice) /
+                    ((_cdpState.coll - cdpManager.MIN_NET_STETH_BALANCE() * 3) * _newPrice) /
                     _partialLiq._ratio;
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
@@ -281,7 +281,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // calc debt in system by summing up all CDPs debt
         uint256 _leftTotalDebt;
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            (uint256 _cdpDebt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _cdpDebt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
@@ -340,8 +340,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getDebtAndCollShares(cdpId1);
-            CdpState memory _cdpState2 = _getDebtAndCollShares(cdpId2);
+            CdpState memory _cdpState1 = _getSyncedDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getSyncedDebtAndCollShares(cdpId2);
 
             bytes32[] memory _emptyCdps;
             _multipleCDPsLiq(2, _emptyCdps, users[0]);
@@ -390,8 +390,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getDebtAndCollShares(cdpId1);
-            CdpState memory _cdpState2 = _getDebtAndCollShares(cdpId2);
+            CdpState memory _cdpState1 = _getSyncedDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getSyncedDebtAndCollShares(cdpId2);
 
             bytes32[] memory _cdps = new bytes32[](2);
             _cdps[0] = cdpId1;
@@ -904,7 +904,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _singleCdpSetup(address _usr, uint256 _icr) internal returns (address, bytes32) {
         uint256 _price = priceFeedMock.fetchPrice();
-        uint256 _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
         uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);

@@ -106,7 +106,7 @@ contract('BorrowerOperations', async accounts => {
 
       feeRecipient = contracts.feeRecipient
 
-      MIN_NET_DEBT = await borrowerOperations.MIN_NET_COLL()
+      MIN_NET_DEBT = await borrowerOperations.MIN_NET_STETH_BALANCE()
       BORROWING_FEE_FLOOR = await borrowerOperations.BORROWING_FEE_FLOOR()
 
       ownerSigner = await ethers.provider.getSigner(owner);
@@ -678,7 +678,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
 
-      const aliceColl = (await cdpManager.getDebtAndCollShares(aliceIndex))[1]
+      const aliceColl = (await cdpManager.getSyncedDebtAndCollShares(aliceIndex))[1]
 
       // Check Cdp is active
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
@@ -2561,7 +2561,7 @@ contract('BorrowerOperations', async accounts => {
       const bobIndex = await sortedCdps.cdpOfOwnerByIndex(bob,0)
       const carolIndex = await sortedCdps.cdpOfOwnerByIndex(carol,0)
 	  
-      let _carolDebtColl = await cdpManager.getDebtAndCollShares(carolIndex)
+      let _carolDebtColl = await cdpManager.getSyncedDebtAndCollShares(carolIndex)
       let _carolDebt = _carolDebtColl[0]
       let _carolColl = _carolDebtColl[1]
 
@@ -3767,11 +3767,11 @@ contract('BorrowerOperations', async accounts => {
         await priceFeed.setPrice(_newPrice)
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getDebtAndCollShares(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3811,11 +3811,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getDebtAndCollShares(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3857,11 +3857,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getDebtAndCollShares(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3902,11 +3902,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
 
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getDebtAndCollShares(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 		
@@ -3946,11 +3946,11 @@ contract('BorrowerOperations', async accounts => {
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: alice })
         await borrowerOperations.openCdp(cdpEBTCAmount, th.DUMMY_BYTES32, th.DUMMY_BYTES32, cdpColl, { from: bob })
         let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(alice, 0);
-        let _aliceDebtAndColl = await cdpManager.getDebtAndCollShares(_aliceCdpId);
+        let _aliceDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId);
         let _aliceDebt = _aliceDebtAndColl[0];
         let _aliceColl = _aliceDebtAndColl[1];
         let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-        let _bobDebtAndColl = await cdpManager.getDebtAndCollShares(_bobCdpId);
+        let _bobDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
         let _bobDebt = _bobDebtAndColl[0];
         let _bobColl = _bobDebtAndColl[1];
 

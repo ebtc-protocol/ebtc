@@ -139,8 +139,8 @@ class BorrowerOperationsProxy extends Proxy {
     return this.proxyFunction('LIQUIDATOR_REWARD', params)
   }
 
-  async MIN_NET_COLL(...params) {
-    return this.proxyFunction('MIN_NET_COLL', params)
+  async MIN_NET_STETH_BALANCE(...params) {
+    return this.proxyFunction('MIN_NET_STETH_BALANCE', params)
   }
 
   async BORROWING_FEE_FLOOR(...params) {
@@ -255,8 +255,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getRedemptionFeeWithDecay', params)
   }
 
-  async getDebtAndCollShares(...params) {
-    return this.proxyFunction('getDebtAndCollShares', params)
+  async getSyncedDebtAndCollShares(...params) {
+    return this.proxyFunction('getSyncedDebtAndCollShares', params)
   }
 }
 
