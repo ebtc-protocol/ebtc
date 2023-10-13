@@ -352,24 +352,32 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             Cdp storage _cdp = Cdps[_cdpId];
             uint256 prevDebt = _cdp.debt;
             if (prevDebt != _newDebt) {
-                uint256 prevColl = _cdp.coll;
-
-                // Apply pending debt redistribution to this CDP
-                _cdp.debt = _newDebt;
-
-                emit CdpUpdated(
-                    _cdpId,
-                    ISortedCdps(sortedCdps).getOwnerAddress(_cdpId),
-                    msg.sender,
-                    prevDebt,
-                    prevColl,
-                    _newDebt,
-                    prevColl,
-                    Cdps[_cdpId].stake,
-                    CdpOperation.syncAccounting
-                );
+                {
+                    // Apply pending debt redistribution to this CDP
+                    _cdp.debt = _newDebt;
+                    _emitCdpUpdatedEventForSyncAccounting(_cdpId, _cdp, _newDebt, _cdp.coll);
+                }
             }
         }
+    }
+
+    function _emitCdpUpdatedEventForSyncAccounting(
+        bytes32 _cdpId,
+        Cdp storage _cdp,
+        uint256 _newDebt,
+        uint256 _newColl
+    ) internal {
+        emit CdpUpdated(
+            _cdpId,
+            ISortedCdps(sortedCdps).getOwnerAddress(_cdpId),
+            msg.sender,
+            _cdp.debt,
+            _cdp.coll,
+            _newDebt,
+            _newColl,
+            _cdp.stake,
+            CdpOperation.syncAccounting
+        );
     }
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
