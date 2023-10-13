@@ -130,7 +130,9 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         assert(sortedCdps.getLast() == "");
 
         vm.startPrank(user);
-        vm.expectRevert(bytes("BorrowerOperations: Cdp's net stEth balance must not fall below minimum"));
+        vm.expectRevert(
+            bytes("BorrowerOperations: Cdp's net stEth balance must not fall below minimum")
+        );
         borrowerOperations.openCdp(1, "hint", "hint", collPlusLiquidatorReward);
         vm.stopPrank();
     }
