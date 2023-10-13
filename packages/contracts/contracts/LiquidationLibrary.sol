@@ -229,6 +229,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         emit CdpUpdated(
             _liqState.cdpId,
             _borrower,
+            msg.sender,
             _totalDebtToBurn,
             _totalColToSend,
             0,
@@ -302,6 +303,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         emit CdpUpdated(
             _recoveryState.cdpId,
             _borrower,
+            msg.sender,
             _totalDebtToBurn,
             _totalColToSend,
             0,
@@ -481,6 +483,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         emit CdpUpdated(
             _cdpId,
             sortedCdps.getOwnerAddress(_cdpId),
+            msg.sender,
             _oldDebt,
             _oldColl,
             Cdps[_cdpId].debt,

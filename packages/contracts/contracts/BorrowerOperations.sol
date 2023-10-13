@@ -531,8 +531,7 @@ contract BorrowerOperations is
         // By definition we are not in RM, notify CDPManager to ensure "Glass is on"
         cdpManager.notifyEndGracePeriod(newTCR);
 
-        // We already verified msg.sender is the borrower
-        cdpManager.closeCdp(_cdpId, msg.sender, debt, collShares);
+        cdpManager.closeCdp(_cdpId, _borrower, debt, coll);
 
         // Burn the repaid EBTC from the user's balance
         _repayDebt(msg.sender, debt);

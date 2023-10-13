@@ -31,6 +31,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     event CdpUpdated(
         bytes32 indexed _cdpId,
         address indexed _borrower,
+        address indexed _executor,
         uint256 _oldDebt,
         uint256 _oldCollShares,
         uint256 _debt,
