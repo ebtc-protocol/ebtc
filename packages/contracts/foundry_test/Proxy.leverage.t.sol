@@ -194,7 +194,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         uint256 netColl,
         uint256 adjustBps
     ) internal returns (uint256 _netColl, uint256 _adjustBps) {
-        _netColl = bound(netColl, cdpManager.MIN_NET_COLL() * 2 + 1, INITITAL_COLL * 5 - 1);
+        _netColl = bound(netColl, cdpManager.MIN_NET_STETH_BALANCE() * 2 + 1, INITITAL_COLL * 5 - 1);
         _adjustBps = bound(adjustBps, 100 + 1, (MAX_SLIPPAGE / 2) - 1);
     }
 
@@ -421,10 +421,10 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         {
             if (
                 collateral.getPooledEthByShares(_totalColl - _collRemoved) <=
-                cdpManager.MIN_NET_COLL()
+                cdpManager.MIN_NET_STETH_BALANCE()
             ) {
                 uint256 _minShare = collateral.getSharesByPooledEth(
-                    cdpManager.MIN_NET_COLL() + 123456789
+                    cdpManager.MIN_NET_STETH_BALANCE() + 123456789
                 );
                 require(_totalColl > _minShare, "!CDP is too small to decrease size");
                 _collRemoved = _totalColl - _minShare;

@@ -364,7 +364,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
     function _singleCdpSetupWithICR(address _usr, uint256 _icr) internal returns (address, bytes32) {
         uint256 _price = priceFeedMock.fetchPrice();
-        uint256 _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
         uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);

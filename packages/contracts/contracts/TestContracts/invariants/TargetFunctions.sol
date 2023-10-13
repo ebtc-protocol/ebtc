@@ -330,7 +330,7 @@ abstract contract TargetFunctions is Properties {
                 // CDP was not fully liquidated
                 gte(
                     collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                    borrowerOperations.MIN_NET_COLL(),
+                    borrowerOperations.MIN_NET_STETH_BALANCE(),
                     GENERAL_10
                 );
             }
@@ -650,7 +650,7 @@ abstract contract TargetFunctions is Properties {
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
-            cdpManager.MIN_NET_COLL() + borrowerOperations.LIQUIDATOR_REWARD(),
+            cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(),
             requiredCollAmount
         );
         uint256 maxCollAmount = min(2 * minCollAmount, INITIAL_COLL_BALANCE / 10);
@@ -693,7 +693,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             gte(
                 collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
             eq(
@@ -799,7 +799,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             gte(
                 collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
 
@@ -875,7 +875,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             gte(
                 collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-                borrowerOperations.MIN_NET_COLL(),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
 
@@ -949,7 +949,7 @@ abstract contract TargetFunctions is Properties {
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
+            borrowerOperations.MIN_NET_STETH_BALANCE(),
             GENERAL_10
         );
 
@@ -1021,7 +1021,7 @@ abstract contract TargetFunctions is Properties {
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
+            borrowerOperations.MIN_NET_STETH_BALANCE(),
             GENERAL_10
         );
 
@@ -1179,7 +1179,7 @@ abstract contract TargetFunctions is Properties {
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_COLL(),
+            borrowerOperations.MIN_NET_STETH_BALANCE(),
             GENERAL_10
         );
 
