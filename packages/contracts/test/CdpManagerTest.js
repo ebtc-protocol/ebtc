@@ -4482,8 +4482,8 @@ contract('CdpManager', async accounts => {
     const carolSnapshot_L_EBTCDebt = (await cdpManager.cdpDebtRedistributionIndex(_carolCdpId))
     assert.equal(carolSnapshot_L_EBTCDebt, 0)
 
-    const carol_PendingEBTCDebtReward = (await cdpManager.getPendingRedistributedDebt(_carolCdpId))
-    assert.isTrue(carol_PendingEBTCDebtReward.gt(toBN('0')))
+    const carol_PendingRedistributedDebt = (await cdpManager.getPendingRedistributedDebt(_carolCdpId))
+    assert.isTrue(carol_PendingRedistributedDebt.gt(toBN('0')))
   })
 
   it("getPendingETHReward(): Returns 0 if there is no pending ETH reward", async () => {

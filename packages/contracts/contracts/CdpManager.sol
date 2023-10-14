@@ -878,7 +878,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
 
         _applyAccumulatedFeeSplit(_cdpId);
-        _updateRedistributedDebtSnapshot(_cdpId);
+        _updateDebtRedistributionIndex(_cdpId);
         uint256 stake = _updateStakeAndTotalStakes(_cdpId);
         uint256 index = _addCdpIdToArray(_cdpId);
 

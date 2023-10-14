@@ -394,9 +394,9 @@ contract('BorrowerOperations', async accounts => {
       assert.equal(alice_EBTCDebtRewardSnapshot_Before, 0)
       assert.equal(bob_EBTCDebtRewardSnapshot_Before, 0)
 
-      const alicePendingEBTCDebtReward = (await cdpManager.getPendingRedistributedDebt(aliceIndex))
-      const bobPendingEBTCDebtReward = (await cdpManager.getPendingRedistributedDebt(bobIndex))
-      for (reward of [alicePendingEBTCDebtReward, bobPendingEBTCDebtReward]) {
+      const alicePendingRedistributedDebt = (await cdpManager.getPendingRedistributedDebt(aliceIndex))
+      const bobPendingRedistributedDebt = (await cdpManager.getPendingRedistributedDebt(bobIndex))
+      for (reward of [alicePendingRedistributedDebt, bobPendingRedistributedDebt]) {
         assert.isTrue(reward.gt(toBN('0')))
       }
 
@@ -414,9 +414,9 @@ contract('BorrowerOperations', async accounts => {
       const bobNewDebt = await getCdpEntireDebt(bobIndex)
 
       assert.isTrue(aliceNewColl.eq(aliceCollBefore.add(aliceTopUp)))
-      assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingEBTCDebtReward)))
+      assert.isTrue(aliceNewDebt.eq(aliceDebtBefore.add(alicePendingRedistributedDebt)))
       assert.isTrue(bobNewColl.eq(bobCollBefore.add(bobTopUp)))
-      assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingEBTCDebtReward)))
+      assert.isTrue(bobNewDebt.eq(bobDebtBefore.add(bobPendingRedistributedDebt)))
 
       /* Check that both Alice and Bob's snapshots of the rewards-per-unit-staked metrics should be updated
        to the latest values of L_STETHColl and systemDebtRedistributionIndex */
