@@ -205,6 +205,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
+    // Mapping of CdpId to position manager: cdpId -> positionManager
+    mapping(bytes32 => address) public positionManagerForCdp;
+
     // Error trackers for the cdp redistribution calculation
     uint256 public lastEBTCDebtErrorRedistribution;
 
@@ -272,6 +275,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         cdpDebtRedistributionIndex[_cdpId] = 0;
         cdpStEthFeePerUnitIndex[_cdpId] = 0;
+
+        _clearPositionManagerForCdpOnClose(_cdpId);
 
         _removeCdp(_cdpId, cdpIdsArrayLength);
     }
@@ -630,6 +635,45 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             // extreme unlikely case to skip fee split on this CDP to avoid revert
             return (0, _cdpCol);
         }
+    }
+    
+    /// @notice Set position manager address for Cdp
+    /// @notice Position manager can only be set during the opening of a Cdp and is fixed for it's lifetime
+    /// @dev assumes borrower address is correctly inputted
+    function setPositionManagerForCdp(
+        bytes32 _cdpId,
+        address _positionManager,
+        address _borrower
+    ) external {
+        _requireCallerIsBorrowerOperations();
+        _setPositionManagerForCdp(_cdpId, _positionManager, _borrower);
+    }
+
+    function getPositionManagerForCdp(bytes32 _cdpId) external view returns (address) {
+        return positionManagerForCdp[_cdpId];
+    }
+
+    /// @notice Clear position manager for a Cdp
+    /// @notice Trust assumptions are that function is only used during a close operation, by CdpManager
+    /// @param _cdpId CdpId to clear position manager for
+    function _clearPositionManagerForCdpOnClose(bytes32 _cdpId) internal {
+        
+        if (positionManagerForCdp[_cdpId] == address(0)) {
+            return;
+        }
+
+        delete positionManagerForCdp[_cdpId];
+        emit PositionManagerSetForCdp(sortedCdps.getOwnerAddress(_cdpId), address(0), _cdpId);
+    }
+
+    /// @dev assumes borrower address is correctly inputted
+    function _setPositionManagerForCdp(
+        bytes32 _cdpId,
+        address _positionManager,
+        address _borrower
+    ) internal {
+        positionManagerForCdp[_cdpId] = _positionManager;
+        emit PositionManagerSetForCdp(_borrower, _positionManager, _cdpId);
     }
 
     // -- Modifier functions --

@@ -60,7 +60,11 @@ contract PositionManagersTest is eBTCBaseInvariants {
         accounts.push(positionManager);
     }
 
-    function test_UserCanSetPositionManagersForThemselves() public {
+    function _positionManagerOpenCdp(address user, address positionManager) internal returns (bytes32 pmCdpId) {
+
+    }
+
+    function test_UserCanSetPositionManagerApprovalsForThemselves() public {
         address user = _utils.getNextUserAddress();
         address positionManager = _utils.getNextUserAddress();
 
@@ -113,7 +117,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
-    function test_UserCannotSetPositionManagersForOthers() public {
+    function test_UserCannotSetPositionManagerApprovalsForOthers() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         vm.startPrank(user);
@@ -136,7 +140,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         vm.stopPrank();
     }
 
-    function test_PositionManagerCanOpenCdpWithOneTimePermit() public {
+    function test_ApprovedPositionManagerCanOpenCdpWithOneTimePermit() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         vm.prank(user);
@@ -167,7 +171,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         );
     }
 
-    function test_PositionManagerCanOpenCdp() public {
+    function test_ApprovedPositionManagerCanOpenCdp() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
         uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
         vm.prank(positionManager);
@@ -189,9 +193,12 @@ contract PositionManagersTest is eBTCBaseInvariants {
             borrowerOperations.getPositionManagerApproval(user, positionManager) ==
                 IPositionManagers.PositionManagerApproval.Persistent
         );
+        assertTrue(borrowerOperations.getPositionManagerForCdp(_cdpOpenedByPositionManager) == positionManager);
     }
 
-    function test_PositionManagerCanWithdrawColl(uint collToWithdraw) public {
+    /// ===== Once position is opened, the cdp position manager can manage subsequent actions
+
+    function test_CdpPositionManagerCanWithdrawColl(uint collToWithdraw) public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         collToWithdraw = bound(
@@ -226,7 +233,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
 
     /// @dev PositionManager should be able to increase collateral of Cdp
     /// @dev coll should come from positionManager's account
-    function test_PositionManagerCanAddColl() public {
+    function test_CdpPositionManagerCanAddColl() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
         uint _cdpColl = cdpManager.getCdpCollShares(userCdpId);
         uint _collChange = 1e17;
@@ -263,7 +270,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
 
     /// @dev PositionManager should be able to increase debt of Cdp
     /// @dev eBTC should go to positionManager's account
-    function test_PositionManagerCanwithdrawDebt() public {
+    function test_CdpPositionManagerCanWithdrawDebt() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         // FIXME? debt withdrawn to positionManager instead CDP owner?
@@ -282,7 +289,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         );
     }
 
-    function test_PositionManagerCanrepayDebt() public {
+    function test_CdpPositionManagerCanRepayDebt() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         uint positionManagerBalanceBefore = eBTCToken.balanceOf(positionManager);
@@ -307,7 +314,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         );
     }
 
-    function test_PositionManagerCanAdjustCdp() public {
+    function test_CdpPositionManagerCanAdjustCdp() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         // FIXME? debt withdrawn to positionManager instead CDP owner?
@@ -326,7 +333,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         );
     }
 
-    function test_PositionManagerCanAdjustCdpWithColl() public {
+    function test_CdpPositionManagerCanAdjustCdpWithColl() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
@@ -363,7 +370,171 @@ contract PositionManagersTest is eBTCBaseInvariants {
         );
     }
 
-    function test_PositionManagerCanCloseCdp() public {
+    function test_CdpPositionManagerCanCloseCdp() public {
+        (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
+
+        // close Cdp
+        console.log("eBTCToken.balanceOf(positionManager): ", eBTCToken.balanceOf(positionManager));
+        console.log("cdpManager.getCdpDebt(userCdpId): ", cdpManager.getCdpDebt(userCdpId));
+        assertGe(eBTCToken.balanceOf(positionManager), cdpManager.getCdpDebt(userCdpId));
+
+        uint _cdpOfUserBefore = sortedCdps.cdpCountOf(user);
+        vm.prank(positionManager);
+        borrowerOperations.closeCdp(userCdpId);
+        assertFalse(sortedCdps.contains(userCdpId));
+        assertEq(
+            sortedCdps.cdpCountOf(user),
+            _cdpOfUserBefore - 1,
+            "CDP number mismatch for user after positionManager closeCdp()"
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) ==
+                IPositionManagers.PositionManagerApproval.Persistent
+        );
+    }
+    
+    /// ===== Position Manager Approvals only allow for opening - confirm other actions cannot be done by position managers with approval on Cdps they didn't open
+
+    /// @dev PositionManager should be able to increase collateral of Cdp
+    /// @dev coll should come from positionManager's account
+    function test_PositionManagerCannotAddColl_ForCdpNotOpenedByThem() public {
+        (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
+        uint _cdpColl = cdpManager.getCdpCollShares(userCdpId);
+        uint _collChange = 1e17;
+
+        BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
+
+        vm.prank(positionManager);
+        borrowerOperations.addColl(userCdpId, bytes32(0), bytes32(0), _collChange);
+
+        BalanceSnapshot b = new BalanceSnapshot(tokens, accounts);
+
+        assertEq(
+            cdpManager.getCdpCollShares(userCdpId),
+            _cdpColl + _collChange,
+            "collateral in CDP mismatch after positionManager addColl()"
+        );
+
+        assertEq(
+            a.get(address(collateral), positionManager),
+            b.get(address(collateral), positionManager) + _collChange,
+            "positionManager stEth balance should have decreased by increased stEth amount"
+        );
+
+        assertEq(
+            a.get(address(collateral), user),
+            b.get(address(collateral), user),
+            "user stEth balance should remain the same"
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) ==
+                IPositionManagers.PositionManagerApproval.Persistent
+        );
+    }
+
+    /// @dev PositionManager should be able to increase debt of Cdp
+    /// @dev eBTC should go to positionManager's account
+    function test_ApprovedPositionManagerCannotWithdrawDebt_ForCdpNotOpenedByThem() public {
+        (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
+
+        // FIXME? debt withdrawn to positionManager instead CDP owner?
+        uint _balBefore = eBTCToken.balanceOf(positionManager);
+        uint _debtChange = 1e17;
+        vm.prank(positionManager);
+        borrowerOperations.withdrawDebt(userCdpId, _debtChange, bytes32(0), bytes32(0));
+        assertEq(
+            eBTCToken.balanceOf(positionManager),
+            _balBefore + _debtChange,
+            "debt not sent to correct recipient after withdrawDebt()"
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) ==
+                IPositionManagers.PositionManagerApproval.Persistent
+        );
+    }
+
+    function test_ApprovedPositionManagerCannotRepayDebt_ForCdpNotOpenedByThem() public {
+        (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
+
+        uint positionManagerBalanceBefore = eBTCToken.balanceOf(positionManager);
+        uint userBalanceBefore = eBTCToken.balanceOf(user);
+
+        vm.prank(positionManager);
+        borrowerOperations.repayDebt(userCdpId, 1e17, bytes32(0), bytes32(0));
+
+        assertEq(
+            positionManagerBalanceBefore - eBTCToken.balanceOf(positionManager),
+            1e17,
+            "positionManager balance should be used to repay eBTC"
+        );
+        assertEq(
+            userBalanceBefore,
+            eBTCToken.balanceOf(user),
+            "user balance should remain unchanged"
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) ==
+                IPositionManagers.PositionManagerApproval.Persistent
+        );
+    }
+
+    function test_ApprovedPositionManagerCanAdjustCdp_ForCdpNotOpenedByThem() public {
+        (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
+
+        // FIXME? debt withdrawn to positionManager instead CDP owner?
+        uint _balBefore = eBTCToken.balanceOf(positionManager);
+        uint _debtChange = 1e17;
+        vm.prank(positionManager);
+        borrowerOperations.adjustCdp(userCdpId, 0, _debtChange, true, bytes32(0), bytes32(0));
+        assertEq(
+            eBTCToken.balanceOf(positionManager),
+            _balBefore + _debtChange,
+            "debt not sent to correct recipient after adjustCdp(_isDebtIncrease=true)"
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) ==
+                IPositionManagers.PositionManagerApproval.Persistent
+        );
+    }
+
+    function test_ApprovedPositionManagerCanAdjustCdpWithColl_ForCdpNotOpenedByThem() public {
+        (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
+
+        BalanceSnapshot a = new BalanceSnapshot(tokens, accounts);
+
+        uint positionManagerBalanceBefore = eBTCToken.balanceOf(positionManager);
+        uint userBalanceBefore = eBTCToken.balanceOf(user);
+
+        vm.prank(positionManager);
+        borrowerOperations.adjustCdpWithColl(
+            userCdpId,
+            0,
+            1e17,
+            false,
+            bytes32(0),
+            bytes32(0),
+            1e17
+        );
+
+        BalanceSnapshot b = new BalanceSnapshot(tokens, accounts);
+
+        assertEq(
+            a.get(address(eBTCToken), positionManager) - b.get(address(eBTCToken), positionManager),
+            1e17,
+            "positionManager balance should be used to repay eBTC"
+        );
+        assertEq(
+            a.get(address(eBTCToken), user),
+            b.get(address(eBTCToken), user),
+            "user balance should remain unchanged"
+        );
+        assertTrue(
+            borrowerOperations.getPositionManagerApproval(user, positionManager) ==
+                IPositionManagers.PositionManagerApproval.Persistent
+        );
+    }
+
+    function test_ApprovedPositionManagerCanCloseCdp_ForCdpNotOpenedByThem() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         // close Cdp

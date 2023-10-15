@@ -20,6 +20,8 @@ interface IPositionManagers {
         address _positionManager
     ) external view returns (PositionManagerApproval);
 
+    function getPositionManagerForCdp(bytes32 _cdpId) external view returns (address);
+
     function setPositionManagerApproval(
         address _positionManager,
         PositionManagerApproval _approval

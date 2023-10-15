@@ -73,6 +73,11 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _collReduced,
         uint256 _collLeft
     );
+    event PositionManagerSetForCdp(
+        address indexed _borrower,
+        address indexed _positionManager,
+        bytes32 indexed _cdpId
+    );
 
     enum CdpOperation {
         openCdp,
@@ -259,4 +264,13 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     ) external view returns (uint256 debt, uint256 collShares);
 
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
+
+    function getPositionManagerForCdp(bytes32 _cdpId) external view returns (address);
+
+        function setPositionManagerForCdp(
+        bytes32 _cdpId,
+        address _positionManager,
+        address _borrower
+    ) external;
+
 }

@@ -59,7 +59,8 @@ contract BorrowerOperations is
     ISortedCdps public immutable sortedCdps;
 
     // Mapping of borrowers to approved position managers, by approval status: cdpOwner(borrower) -> positionManager -> PositionManagerApproval (None, OneTime, Persistent)
-    mapping(address => mapping(address => PositionManagerApproval)) public positionManagers;
+    mapping(address => mapping(address => PositionManagerApproval)) public positionManagerApprovals;
+
 
     /* --- Variable container structs  ---
 
@@ -269,6 +270,10 @@ contract BorrowerOperations is
         );
     }
 
+    function getPositionManagerForCdp(bytes32 _cdpId) external view returns (address) {
+        return cdpManager.getPositionManagerForCdp(_cdpId);
+    }
+
     /*
      * _adjustCdpInternal(): Alongside a debt change, this function can perform either
      * a collateral top-up or a collateral withdrawal.
@@ -288,7 +293,7 @@ contract BorrowerOperations is
     ) internal {
         // Confirm the operation is the borrower or approved position manager adjusting its own cdp
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        _requireBorrowerOrPositionManagerAndUpdateManagerApproval(_borrower);
+        _requireBorrowerOrPositionManager(_borrower, _cdpId);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -396,7 +401,7 @@ contract BorrowerOperations is
         address _borrower
     ) internal returns (bytes32) {
         _requireNonZeroDebt(_debt);
-        _requireBorrowerOrPositionManagerAndUpdateManagerApproval(_borrower);
+        _requireBorrowerOrApprovedPositionManagerAndUpdateApproval(_borrower);
 
         OpenCdpLocals memory vars;
 
@@ -477,6 +482,11 @@ contract BorrowerOperations is
             _borrower
         );
 
+        // Set position manager on approval
+        if (msg.sender != _borrower) {
+            cdpManager.setPositionManagerForCdp(_cdpId, msg.sender, _borrower);
+        }
+
         // CEI: Mint the full debt amount, in eBTC tokens, to the caller
         _withdrawDebt(msg.sender, _debt);
 
@@ -503,7 +513,7 @@ contract BorrowerOperations is
     */
     function closeCdp(bytes32 _cdpId) external override {
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
-        _requireBorrowerOrPositionManagerAndUpdateManagerApproval(_borrower);
+        _requireBorrowerOrPositionManager(_borrower, _cdpId);
 
         _requireCdpisActive(cdpManager, _cdpId);
 
@@ -566,7 +576,7 @@ contract BorrowerOperations is
         address _borrower,
         address _positionManager
     ) internal view returns (PositionManagerApproval) {
-        return positionManagers[_borrower][_positionManager];
+        return positionManagerApprovals[_borrower][_positionManager];
     }
 
     /// @notice Approve an account to take arbitrary actions on your Cdps.
@@ -585,7 +595,7 @@ contract BorrowerOperations is
         address _positionManager,
         PositionManagerApproval _approval
     ) internal {
-        positionManagers[_borrower][_positionManager] = _approval;
+        positionManagerApprovals[_borrower][_positionManager] = _approval;
         emit PositionManagerApprovalSet(_borrower, _positionManager, _approval);
     }
 
@@ -889,7 +899,22 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireBorrowerOrPositionManagerAndUpdateManagerApproval(address _borrower) internal {
+    function _requireBorrowerOrPositionManager(address _borrower, bytes32 _cdpId) internal {
+        if (_borrower == msg.sender) {
+            return; // Early return, no delegation
+        }
+
+        // Position Managers can open and subsequently manage Cdps on borrower's behalf with full permissions.
+        if (cdpManager.getPositionManagerForCdp(_cdpId) == msg.sender) {
+            return;
+        }
+
+        revert("BorrowerOperations: Only borrower account or position manager can act on Cdp");
+    }
+
+    function _requireBorrowerOrApprovedPositionManagerAndUpdateApproval(
+        address _borrower
+    ) internal {
         if (_borrower == msg.sender) {
             return; // Early return, no delegation
         }
@@ -903,7 +928,7 @@ contract BorrowerOperations is
 
         // Conditional Adjustment
         /// @dev If this is a position manager operation with a one-time approval, clear that approval
-        /// @dev If the PositionManagerApproval was none, we should have failed with the check in _requireBorrowerOrPositionManagerAndUpdateManagerApproval
+        /// @dev If the PositionManagerApproval was none, we should have failed with the check in 
         if (_approval == PositionManagerApproval.OneTime) {
             _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
         }
