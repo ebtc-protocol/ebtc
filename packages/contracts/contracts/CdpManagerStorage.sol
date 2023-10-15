@@ -366,9 +366,15 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
             // Apply Fee Split
             if (_feeSplitDistributed > 0) {
-                _applyAccumulatedFeeSplit(_cdpId, _newColl, _feeSplitDistributed, _oldPerUnitCdp, _systemStEthFeePerUnitIndex);
+                _applyAccumulatedFeeSplit(
+                    _cdpId,
+                    _newColl,
+                    _feeSplitDistributed,
+                    _oldPerUnitCdp,
+                    _systemStEthFeePerUnitIndex
+                );
             }
-             
+
             // Apply Debt Redistribution
             if (_debtIndexDelta > 0) {
                 _updateRedistributedDebtIndex(_cdpId);
