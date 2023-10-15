@@ -332,52 +332,66 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return (cdpDebtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
-    function _updateRedistributedDebtSnapshot(bytes32 _cdpId) internal {
-        uint256 _L_EBTCDebt = systemDebtRedistributionIndex;
+    function _updateRedistributedDebtIndex(bytes32 _cdpId) internal {
+        uint256 _systemDebtRedistributionIndex = systemDebtRedistributionIndex;
 
-        cdpDebtRedistributionIndex[_cdpId] = _L_EBTCDebt;
-        emit CdpDebtRedistributionIndexUpdated(_cdpId, _L_EBTCDebt);
+        cdpDebtRedistributionIndex[_cdpId] = _systemDebtRedistributionIndex;
+        emit CdpDebtRedistributionIndexUpdated(_cdpId, _systemDebtRedistributionIndex);
     }
 
-    // Add the borrowers's coll and debt rewards earned from redistributions, to their Cdp
+    /// @dev Calculate the new collateral and debt values for a given CDP, based on pending state changes
     function _syncAccounting(bytes32 _cdpId) internal {
-        (, uint _newDebt, , uint _pendingDebt, uint256 _debtIndexDelta) = _applyAccumulatedFeeSplit(
-            _cdpId
-        );
+        // Ensure global states like systemStEthFeePerUnitIndex get updated in a timely fashion
+        // whenever there is a CDP modification operation,
+        // such as opening, closing, adding collateral, repaying debt, or liquidating
+        _syncGlobalAccounting();
 
-        // Update if there is a debt redistribution index delta
-        if (_debtIndexDelta > 0) {
-            _updateRedistributedDebtSnapshot(_cdpId);
+        uint256 _oldPerUnitCdp = cdpStEthFeePerUnitIndex[_cdpId];
+        uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
 
+        (
+            uint256 _newColl,
+            uint256 _newDebt,
+            uint256 _feeSplitDistributed,
+            uint _pendingDebt,
+            uint256 _debtIndexDelta
+        ) = _calcSyncedAccounting(_cdpId, _oldPerUnitCdp, _systemStEthFeePerUnitIndex);
+
+        // If any collShares or debt changes occured
+        if (_feeSplitDistributed > 0 || _debtIndexDelta > 0) {
             Cdp storage _cdp = Cdps[_cdpId];
+
+            uint prevCollShares = _cdp.coll;
             uint256 prevDebt = _cdp.debt;
-            if (prevDebt != _newDebt) {
-                {
-                    // Apply pending debt redistribution to this CDP
-                    _cdp.debt = _newDebt;
-                    _emitCdpUpdatedEventForSyncAccounting(_cdpId, _cdp, _newDebt, _cdp.coll);
+
+            // Apply Fee Split
+            if (_feeSplitDistributed > 0) {
+                _applyAccumulatedFeeSplit(_cdpId, _newColl, _feeSplitDistributed, _oldPerUnitCdp, _systemStEthFeePerUnitIndex);
+            }
+             
+            // Apply Debt Redistribution
+            if (_debtIndexDelta > 0) {
+                _updateRedistributedDebtIndex(_cdpId);
+
+                if (prevDebt != _newDebt) {
+                    {
+                        // Apply pending debt redistribution to this CDP
+                        _cdp.debt = _newDebt;
+                    }
                 }
             }
+            emit CdpUpdated(
+                _cdpId,
+                ISortedCdps(sortedCdps).getOwnerAddress(_cdpId),
+                msg.sender,
+                prevDebt,
+                prevCollShares,
+                _newDebt,
+                _newColl,
+                _cdp.stake,
+                CdpOperation.syncAccounting
+            );
         }
-    }
-
-    function _emitCdpUpdatedEventForSyncAccounting(
-        bytes32 _cdpId,
-        Cdp storage _cdp,
-        uint256 _newDebt,
-        uint256 _newColl
-    ) internal {
-        emit CdpUpdated(
-            _cdpId,
-            ISortedCdps(sortedCdps).getOwnerAddress(_cdpId),
-            msg.sender,
-            _cdp.debt,
-            _cdp.coll,
-            _newDebt,
-            _newColl,
-            _cdp.stake,
-            CdpOperation.syncAccounting
-        );
     }
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
@@ -560,44 +574,27 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     // Apply accumulated fee split distributed to the CDP
     // and update its accumulator tracker accordingly
     function _applyAccumulatedFeeSplit(
-        bytes32 _cdpId
+        bytes32 _cdpId,
+        uint256 _newColl,
+        uint256 _feeSplitDistributed,
+        uint256 _oldPerUnitCdp,
+        uint256 _systemStEthFeePerUnitIndex
     ) internal returns (uint256, uint256, uint256, uint256, uint256) {
-        // TODO Ensure global states like systemStEthFeePerUnitIndex get timely updated
-        // whenever there is a CDP modification operation,
-        // such as opening, closing, adding collateral, repaying debt, or liquidating
-        // OR Should we utilize some bot-keeper to work the routine job at fixed interval?
-        _syncGlobalAccounting();
-
-        uint256 _oldPerUnitCdp = cdpStEthFeePerUnitIndex[_cdpId];
-        uint256 _systemStEthFeePerUnitIndex = systemStEthFeePerUnitIndex;
-
-        (
-            uint256 _newColl,
-            uint256 _newDebt,
-            uint256 _feeSplitDistributed,
-            uint _pendingDebt,
-            uint256 _debtIndexDelta
-        ) = _calcSyncedAccounting(_cdpId, _oldPerUnitCdp, _systemStEthFeePerUnitIndex);
-
         // apply split fee to given CDP
-        if (_feeSplitDistributed > 0) {
-            Cdps[_cdpId].coll = _newColl;
+        Cdps[_cdpId].coll = _newColl;
 
-            emit CdpFeeSplitApplied(
-                _cdpId,
-                _oldPerUnitCdp,
-                _systemStEthFeePerUnitIndex,
-                _feeSplitDistributed,
-                _newColl
-            );
-        }
+        emit CdpFeeSplitApplied(
+            _cdpId,
+            _oldPerUnitCdp,
+            _systemStEthFeePerUnitIndex,
+            _feeSplitDistributed,
+            _newColl
+        );
 
         // sync per stake index for given CDP
         if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
             cdpStEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
         }
-
-        return (_newColl, _newDebt, _feeSplitDistributed, _pendingDebt, _debtIndexDelta);
     }
 
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
