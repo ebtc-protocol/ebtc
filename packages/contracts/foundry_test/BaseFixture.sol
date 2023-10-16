@@ -439,6 +439,20 @@ contract eBTCBaseFixture is
         return _cdpId;
     }
 
+    function _openTestCDPFromDelegate(
+        address _delegate,
+        address _user,
+        uint256 _coll,
+        uint256 _debt
+    ) internal returns (bytes32) {
+        dealCollateral(_delegate, _coll);
+        vm.startPrank(_delegate);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        bytes32 _cdpId = borrowerOperations.openCdpFor(_debt, bytes32(0), bytes32(0), _coll, _user);
+        vm.stopPrank();
+        return _cdpId;
+    }
+
     /// @dev Automatically adds liquidator gas stipend to the Cdp in addition to specified coll
     function _openTestCdpAtICR(
         address _usr,

@@ -61,7 +61,6 @@ contract BorrowerOperations is
     // Mapping of borrowers to approved position managers, by approval status: cdpOwner(borrower) -> positionManager -> PositionManagerApproval (None, OneTime, Persistent)
     mapping(address => mapping(address => PositionManagerApproval)) public positionManagerApprovals;
 
-
     /* --- Variable container structs  ---
 
     Used to hold, return and assign variables inside a function, in order to avoid the error:
@@ -912,9 +911,7 @@ contract BorrowerOperations is
         revert("BorrowerOperations: Only borrower account or position manager can act on Cdp");
     }
 
-    function _requireBorrowerOrApprovedPositionManagerAndUpdateApproval(
-        address _borrower
-    ) internal {
+    function _requireBorrowerOrApprovedPositionManagerAndUpdateApproval(address _borrower) internal {
         if (_borrower == msg.sender) {
             return; // Early return, no delegation
         }
@@ -928,7 +925,7 @@ contract BorrowerOperations is
 
         // Conditional Adjustment
         /// @dev If this is a position manager operation with a one-time approval, clear that approval
-        /// @dev If the PositionManagerApproval was none, we should have failed with the check in 
+        /// @dev If the PositionManagerApproval was none, we should have failed with the check in
         if (_approval == PositionManagerApproval.OneTime) {
             _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
         }

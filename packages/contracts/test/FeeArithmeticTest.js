@@ -372,7 +372,7 @@ contract('Fee arithmetic tests', async accounts => {
       await th.fastForwardTime(seconds, web3.currentProvider)
 
       const minutesPassed = await cdpManagerTester.minutesPassedSinceLastRedemption()
-      //console.log('seconds=' + seconds + ',expectedHoursPassed=' + expectedHoursPassed);
+      console.log('seconds=' + seconds + ',expectedHoursPassed=' + expectedHoursPassed);
       assert.equal(expectedHoursPassed.toString(), minutesPassed.toString())
     }
   })

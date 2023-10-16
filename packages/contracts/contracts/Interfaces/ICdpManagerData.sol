@@ -267,10 +267,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function getPositionManagerForCdp(bytes32 _cdpId) external view returns (address);
 
-        function setPositionManagerForCdp(
+    function setPositionManagerForCdp(
         bytes32 _cdpId,
         address _positionManager,
         address _borrower
     ) external;
-
 }

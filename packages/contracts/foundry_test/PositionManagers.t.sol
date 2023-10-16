@@ -38,19 +38,22 @@ contract PositionManagersTest is eBTCBaseInvariants {
         vm.prank(positionManager);
         collateral.approve(address(borrowerOperations), STANDARD_COLL * 10);
 
-        userCdpId = _openTestCDP(user, STANDARD_COLL, STANDARD_DEBT);
-
-        // open a second CDP so closing is possible
-        _openTestCDP(user, STANDARD_COLL, STANDARD_DEBT);
-
-        vm.prank(user);
-        eBTCToken.transfer(positionManager, STANDARD_DEBT);
-
-        // set positionManager
+        // set positionManager for open CDP approval
         vm.prank(user);
         borrowerOperations.setPositionManagerApproval(
             positionManager,
             IPositionManagers.PositionManagerApproval.Persistent
+        );
+
+        // open a CDP from postionManager on behalf of user
+        userCdpId = _openTestCDPFromDelegate(positionManager, user, STANDARD_COLL, STANDARD_DEBT);
+
+        // open a second CDP so closing is possible
+        bytes32 _secondCdpId = _openTestCDPFromDelegate(
+            positionManager,
+            user,
+            STANDARD_COLL,
+            STANDARD_DEBT
         );
 
         tokens.push(address(eBTCToken));
@@ -60,9 +63,10 @@ contract PositionManagersTest is eBTCBaseInvariants {
         accounts.push(positionManager);
     }
 
-    function _positionManagerOpenCdp(address user, address positionManager) internal returns (bytes32 pmCdpId) {
-
-    }
+    function _positionManagerOpenCdp(
+        address user,
+        address positionManager
+    ) internal returns (bytes32 pmCdpId) {}
 
     function test_UserCanSetPositionManagerApprovalsForThemselves() public {
         address user = _utils.getNextUserAddress();
@@ -193,7 +197,10 @@ contract PositionManagersTest is eBTCBaseInvariants {
             borrowerOperations.getPositionManagerApproval(user, positionManager) ==
                 IPositionManagers.PositionManagerApproval.Persistent
         );
-        assertTrue(borrowerOperations.getPositionManagerForCdp(_cdpOpenedByPositionManager) == positionManager);
+        assertTrue(
+            borrowerOperations.getPositionManagerForCdp(_cdpOpenedByPositionManager) ==
+                positionManager
+        );
     }
 
     /// ===== Once position is opened, the cdp position manager can manage subsequent actions
@@ -392,7 +399,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
                 IPositionManagers.PositionManagerApproval.Persistent
         );
     }
-    
+
     /// ===== Position Manager Approvals only allow for opening - confirm other actions cannot be done by position managers with approval on Cdps they didn't open
 
     /// @dev PositionManager should be able to increase collateral of Cdp

@@ -480,7 +480,7 @@ contract('BorrowerOperations', async accounts => {
         const txCarol = await borrowerOperations.addColl(bobIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: alice })
         assert.isFalse(txCarol.receipt.status)
       } catch (error) {
-        assert.include(error.message, "BorrowerOperations: Only borrower account or approved position manager can OpenCdp on borrower's behalf")
+        assert.include(error.message, "BorrowerOperations: Only borrower account or position manager can act on Cdp")
       }
     })
 

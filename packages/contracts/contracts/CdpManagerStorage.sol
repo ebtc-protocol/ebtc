@@ -636,7 +636,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             return (0, _cdpCol);
         }
     }
-    
+
     /// @notice Set position manager address for Cdp
     /// @notice Position manager can only be set during the opening of a Cdp and is fixed for it's lifetime
     /// @dev assumes borrower address is correctly inputted
@@ -657,7 +657,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @notice Trust assumptions are that function is only used during a close operation, by CdpManager
     /// @param _cdpId CdpId to clear position manager for
     function _clearPositionManagerForCdpOnClose(bytes32 _cdpId) internal {
-        
         if (positionManagerForCdp[_cdpId] == address(0)) {
             return;
         }
