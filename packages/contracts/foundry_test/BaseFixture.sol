@@ -469,8 +469,8 @@ contract eBTCBaseFixture is
     function _syncIndividualCdp(bytes32 _cdpId) internal {
         address borrower = sortedCdps.getOwnerAddress(_cdpId);
         vm.startPrank(borrower);
-        borrowerOperations.withdrawDebt(_cdpId, 1, bytes32(0), bytes32(0));
-        borrowerOperations.repayDebt(_cdpId, 1, bytes32(0), bytes32(0));
+        borrowerOperations.addColl(_cdpId, bytes32(0), bytes32(0), 1);
+        borrowerOperations.withdrawColl(_cdpId, 1, bytes32(0), bytes32(0));
 
         vm.stopPrank();
     }
