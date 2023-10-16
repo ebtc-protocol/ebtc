@@ -49,12 +49,12 @@ contract CDPOpsTest is eBTCBaseFixture {
         assertEq(netColl, collateral.getPooledEthByShares(coll));
 
         // Get ICR for CDP:
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
 
         // Add more collateral and make sure ICR changes
         borrowerOperations.addColl(cdpId, "hint", "hint", collAmount);
-        uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
 
         assertGt(newIcr, initialIcr);
 
@@ -122,23 +122,23 @@ contract CDPOpsTest is eBTCBaseFixture {
 
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Make TCR snapshot before increasing collateral
-        uint256 initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 initialTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Make sure collateral is as expected
         assertEq(netColl, cdpManager.getCdpCollShares(cdpId));
         // Get ICR for CDP:
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
         // Add more collateral and make sure ICR changes
         borrowerOperations.addColl(cdpId, "hint", "hint", increaseAmnt);
-        uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         // Make sure collateral increased by increaseAmnt
         assertEq((netColl + increaseAmnt), cdpManager.getCdpCollShares(cdpId));
 
         // Make sure TCR increased after collateral was added
-        uint256 newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 newTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         assertGt(newTcr, initialTcr);
         vm.stopPrank();
     }
@@ -183,24 +183,24 @@ contract CDPOpsTest is eBTCBaseFixture {
             _utils.mineBlocks(100);
         }
         // Make TCR snapshot before increasing collateral
-        uint256 initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 initialTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         // Now, add collateral for each CDP and make sure TCR improved
         for (uint256 cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             // Randomize collateral increase amount for each user
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
             uint256 randCollIncrease = _utils.generateRandomNumber(10 ether, 1000 ether, user);
             uint256 netColl = cdpManager.getCdpCollShares(cdpIds[cdpIx]);
-            uint256 initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 initialIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             borrowerOperations.addColl(cdpIds[cdpIx], "hint", "hint", randCollIncrease);
             assertEq(netColl + randCollIncrease, cdpManager.getCdpCollShares(cdpIds[cdpIx]));
-            uint256 newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 newIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
             _utils.mineBlocks(100);
         }
         // Make sure TCR increased after collateral was added
-        uint256 newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 newTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         assertGt(newTcr, initialTcr);
     }
 
@@ -226,10 +226,10 @@ contract CDPOpsTest is eBTCBaseFixture {
         // Get new CDP id
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         // Withdraw collateral and make sure ICR changes
         borrowerOperations.withdrawColl(cdpId, withdrawnColl, "hint", "hint");
-        uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure collateral was reduced by `withdrawnColl` amount
         assertEq(
@@ -272,7 +272,7 @@ contract CDPOpsTest is eBTCBaseFixture {
             _utils.mineBlocks(100);
         }
         // Make TCR snapshot before decreasing collateral
-        uint256 initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 initialTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         // Now, withdraw collateral for each CDP and make sure TCR decreased
         for (uint256 cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             // Randomize collateral increase amount for each user
@@ -283,17 +283,17 @@ contract CDPOpsTest is eBTCBaseFixture {
                 (cdpManager.getCdpCollShares(cdpIds[cdpIx]) / 5),
                 user
             );
-            uint256 initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 initialIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Withdraw
             vm.prank(user);
             borrowerOperations.withdrawColl(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
-            uint256 newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 newIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);
             _utils.mineBlocks(100);
         }
         // Make sure TCR increased after collateral was added
-        uint256 newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 newTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         assertGt(initialTcr, newTcr);
     }
 

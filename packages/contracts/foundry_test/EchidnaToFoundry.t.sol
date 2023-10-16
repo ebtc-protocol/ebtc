@@ -1014,20 +1014,20 @@ contract EToFoundry is
         uint256 _price = priceFeedMock.getPrice();
         console2.log(
             "\tCR before",
-            cdpManager.getTCR(_price),
-            cdpManager.getICR(_cdpId1, _price),
-            cdpManager.getICR(_cdpId2, _price)
+            cdpManager.getCachedTCR(_price),
+            cdpManager.getCachedICR(_cdpId1, _price),
+            cdpManager.getCachedICR(_cdpId2, _price)
         );
         console2.log(
             "CDP1",
             uint256(sortedCdps.getFirst()),
-            cdpManager.getICR(sortedCdps.getFirst(), _price)
+            cdpManager.getCachedICR(sortedCdps.getFirst(), _price)
         );
         liquidateCdps(18144554526834239235);
         console2.log(
             "CDP1",
             uint256(sortedCdps.getFirst()),
-            cdpManager.getICR(sortedCdps.getFirst(), _price)
+            cdpManager.getCachedICR(sortedCdps.getFirst(), _price)
         );
     }
 
@@ -1119,7 +1119,7 @@ contract EToFoundry is
     //     while (currentCdp != bytes32(0)) {
     //         newIcr = crLens.quoteRealICR(currentCdp);
 
-    //         console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
+    //         console2.log("\t", i++, cdpManager.getCachedICR(currentCdp, _price), newIcr);
     //         currentCdp = sortedCdps.getNext(currentCdp);
     //     }
     //     _before(bytes32(0));
@@ -1132,7 +1132,7 @@ contract EToFoundry is
     //     while (currentCdp != bytes32(0)) {
     //         newIcr = crLens.quoteRealICR(currentCdp);
 
-    //         console2.log("\t", i++, cdpManager.getICR(currentCdp, _price), newIcr);
+    //         console2.log("\t", i++, cdpManager.getCachedICR(currentCdp, _price), newIcr);
     //         currentCdp = sortedCdps.getNext(currentCdp);
     //     }
     //     assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);

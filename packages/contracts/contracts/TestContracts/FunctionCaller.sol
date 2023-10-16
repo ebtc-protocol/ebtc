@@ -38,8 +38,11 @@ contract FunctionCaller {
 
     // --- Non-view wrapper functions used for calculating gas ---
 
-    function cdpManager_getICR(bytes32 _cdpId, uint256 _price) external view returns (uint256) {
-        return cdpManager.getICR(_cdpId, _price);
+    function cdpManager_getCachedICR(
+        bytes32 _cdpId,
+        uint256 _price
+    ) external view returns (uint256) {
+        return cdpManager.getCachedICR(_cdpId, _price);
     }
 
     function sortedCdps_findInsertPosition(

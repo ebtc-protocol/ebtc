@@ -38,7 +38,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         uint256 balanceSnapshot = eBTCToken.balanceOf(user);
         // Repay eBTC
         borrowerOperations.repayDebt(
@@ -51,7 +51,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         // Make sure eBTC balance decreased
         assertLt(eBTCToken.balanceOf(user), balanceSnapshot);
         // Make sure ICR for CDP improved after eBTC was repaid
-        uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         vm.stopPrank();
     }
@@ -96,7 +96,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         uint256 balanceSnapshot = eBTCToken.balanceOf(user);
         // Repay eBTC
         borrowerOperations.repayDebt(cdpId, repayAmnt, HINT, HINT);
@@ -105,7 +105,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         // Make sure eBTC balance decreased by repayAmnt precisely
         assertEq(balanceSnapshot - eBTCToken.balanceOf(user), repayAmnt);
         // Make sure ICR for CDP improved after eBTC was repaid
-        uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
         vm.stopPrank();
     }
@@ -143,7 +143,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             _utils.mineBlocks(100);
         }
         // Make TCR snapshot before increasing collateral
-        uint256 initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 initialTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         // Now, repay eBTC and make sure ICR improved
         for (uint256 cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             address user = sortedCdps.getOwnerAddress(cdpIds[cdpIx]);
@@ -153,17 +153,17 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
                 eBTCToken.balanceOf(user) / AMOUNT_OF_CDPS,
                 user
             );
-            uint256 initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 initialIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Repay eBTC for each CDP
             borrowerOperations.repayDebt(cdpIds[cdpIx], randRepayAmnt, HINT, HINT);
-            uint256 newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 newIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP increased
             assertGt(newIcr, initialIcr);
             _utils.mineBlocks(100);
         }
         // Make sure TCR increased after eBTC was repaid
-        uint256 newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 newTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         assertGt(newTcr, initialTcr);
     }
 
@@ -187,13 +187,13 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         // Get initial Debt after opened CDP
         uint256 initialDebt = cdpManager.getCdpDebt(cdpId);
         // Withdraw 1 eBTC
         borrowerOperations.withdrawDebt(cdpId, 1e17, "hint", "hint");
         // Make sure ICR decreased
-        assertLt(cdpManager.getICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
+        assertLt(cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice()), initialIcr);
         // Make sure debt increased
         assertGt(cdpManager.getCdpDebt(cdpId), initialDebt);
         // Make sure eBTC balance of user increased
@@ -241,7 +241,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 balanceSnapshot = eBTCToken.balanceOf(user);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Get ICR for CDP:
-        uint256 initialIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         // Get initial Debt after opened CDP
         uint256 initialDebt = cdpManager.getCdpDebt(cdpId);
 
@@ -267,7 +267,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         // Withdraw
         borrowerOperations.withdrawDebt(cdpId, withdrawAmnt, "hint", "hint");
         // Make sure ICR decreased
-        uint256 newIcr = cdpManager.getICR(cdpId, priceFeedMock.fetchPrice());
+        uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertLt(newIcr, initialIcr);
         // Make sure eBTC balance increased by withdrawAmnt
         assertEq(eBTCToken.balanceOf(user) - balanceSnapshot, withdrawAmnt);
@@ -309,7 +309,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             _utils.mineBlocks(100);
         }
         // Make TCR snapshot before withdrawing eBTC
-        uint256 initialTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 initialTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         // Now, withdraw eBTC for each CDP and make sure TCR decreased
         for (uint256 cdpIx = 0; cdpIx < cdpIds.length; cdpIx++) {
             // Randomize collateral increase amount for each user
@@ -320,17 +320,17 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
                 cdpManager.getCdpDebt(cdpIds[cdpIx]) / 3,
                 user
             );
-            uint256 initialIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 initialIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             vm.prank(user);
             // Withdraw
             borrowerOperations.withdrawDebt(cdpIds[cdpIx], randCollWithdraw, "hint", "hint");
-            uint256 newIcr = cdpManager.getICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
+            uint256 newIcr = cdpManager.getCachedICR(cdpIds[cdpIx], priceFeedMock.fetchPrice());
             // Make sure ICR for CDP decreased
             assertGt(initialIcr, newIcr);
             _utils.mineBlocks(100);
         }
         // Make sure TCR increased after collateral was added
-        uint256 newTcr = cdpManager.getTCR(priceFeedMock.fetchPrice());
+        uint256 newTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
         assertGt(initialTcr, newTcr);
     }
 
@@ -350,7 +350,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         collateral.setEthPerShare(1.099408949270679030e18);
 
         uint256 _price = priceFeedMock.getPrice();
-        uint256 tcrBefore = cdpManager.getTCR(_price);
+        uint256 tcrBefore = cdpManager.getCachedTCR(_price);
 
         uint entireSystemColl = cdpManager.getSystemCollShares();
         uint entireSystemDebt = activePool.getSystemDebt();
@@ -370,7 +370,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_named_uint("D", entireSystemDebt);
         emit log_named_uint("U", underlyingCollateral);
 
-        uint256 tcrAfter = cdpManager.getTCR(_price);
+        uint256 tcrAfter = cdpManager.getCachedTCR(_price);
 
         // TODO uncomment after https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3 is fixed
         // assertGt(tcrAfter, tcrBefore, "TCR must increase after a repayment");

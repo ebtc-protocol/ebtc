@@ -69,7 +69,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             cdps[1 + i] = _openTestCDP(users[1], coll2, debt2);
         }
 
-        uint256 TCR = cdpManager.getTCR(_curPrice);
+        uint256 TCR = cdpManager.getCachedTCR(_curPrice);
         assertGt(TCR, CCR);
 
         return cdps;
@@ -126,7 +126,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 reducedPrice = priceFeedMock.getPrice();
 
         // Check if we are in RM
-        uint256 TCR = cdpManager.getTCR(reducedPrice);
+        uint256 TCR = cdpManager.getCachedTCR(reducedPrice);
         assertLt(TCR, 1.25e18, "!RM");
     }
 
@@ -143,7 +143,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 price = priceFeedMock.getPrice();
 
         // Check if we are in RM
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         assertLt(TCR, 1.25e18, "!RM");
     }
 
@@ -241,7 +241,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 price = priceFeedMock.getPrice();
 
         // Check if we are in RM
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         assertLt(TCR, 1.25e18, "!RM");
 
         // Pre valid
@@ -270,7 +270,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 price = priceFeedMock.getPrice();
 
         // Check if we are in RM
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         assertLt(TCR, 1.25e18, "!RM");
 
         _assertRevertOnAllLiquidations(cdps);
@@ -298,7 +298,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 price = priceFeedMock.getPrice();
 
         // Check if we are in RM
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         assertLt(TCR, 1.25e18, "!RM");
 
         _assertRevertOnAllLiquidations(cdps);
@@ -306,7 +306,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _execPriceIncreaseAction(priceIncreaseAction);
 
         // Confirm no longer in RM
-        TCR = cdpManager.getTCR(priceFeedMock.getPrice());
+        TCR = cdpManager.getCachedTCR(priceFeedMock.getPrice());
         assertGt(TCR, 1.25e18, "still in RM");
 
         _assertRevertOnAllLiquidations(cdps);
@@ -328,7 +328,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         uint256 price = priceFeedMock.getPrice();
 
         // Check if we are in RM
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         assertLt(TCR, 1.25e18, "!RM");
 
         // Set grace period before action which exits RM
@@ -385,7 +385,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             );
         }
 
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         assertLt(TCR, 1.25e18, "!RM");
     }
 
@@ -432,7 +432,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             );
         }
 
-        uint256 TCR = cdpManager.getTCR(price);
+        uint256 TCR = cdpManager.getCachedTCR(price);
         console.log(TCR);
         console.log(1.25e18);
         assertGt(TCR, 1.25e18, "!RM");

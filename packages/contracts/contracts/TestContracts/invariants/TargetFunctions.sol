@@ -44,7 +44,7 @@ abstract contract TargetFunctions is Properties {
         uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
-            if (cdpManager.getICR(currentCdp, _price) < cdpManager.MCR()) {
+            if (cdpManager.getCachedICR(currentCdp, _price) < cdpManager.MCR()) {
                 ++ans;
             }
 
@@ -177,7 +177,7 @@ abstract contract TargetFunctions is Properties {
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+            cdpManager.getCachedICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);

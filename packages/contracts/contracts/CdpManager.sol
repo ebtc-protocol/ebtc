@@ -569,8 +569,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     /**
     returns the total collateralization ratio (TCR) of the system.  The TCR is based on the the entire system debt and collateral (including pending rewards). */
-    function getTCR(uint256 _price) external view override returns (uint256) {
-        return _getTCR(_price);
+    function getCachedTCR(uint256 _price) external view override returns (uint256) {
+        return _getCachedTCR(_price);
     }
 
     /**

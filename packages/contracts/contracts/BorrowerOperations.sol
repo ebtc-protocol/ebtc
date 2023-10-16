@@ -333,7 +333,7 @@ contract BorrowerOperations is
         );
 
         // Check the adjustment satisfies all conditions for the current system mode
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
         _requireValidAdjustmentInCurrentMode(
             isRecoveryMode,
             _stEthBalanceDecrease,
@@ -430,7 +430,7 @@ contract BorrowerOperations is
             In normal mode, ICR must be greater thatn MCR
             Additionally, the new system TCR after the CDPs addition must be >CCR
         */
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
         uint256 newTCR = _getNewTCRFromCdpChange(
             vars.netStEthBalance,
             true,
@@ -510,7 +510,7 @@ contract BorrowerOperations is
         cdpManager.syncAccounting(_cdpId);
 
         uint256 price = priceFeed.fetchPrice();
-        _requireNotInRecoveryMode(_getTCR(price));
+        _requireNotInRecoveryMode(_getCachedTCR(price));
 
         uint256 collShares = cdpManager.getCdpCollShares(_cdpId);
         uint256 debt = cdpManager.getCdpDebt(_cdpId);

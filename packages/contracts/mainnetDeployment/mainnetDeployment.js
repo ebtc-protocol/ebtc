@@ -479,7 +479,7 @@ async function mainnetDeploy(configParams) {
   th.logBN("Entire system coll", entireSystemColl)
   
   // TCR
-  const TCR = await ebtcCore.cdpManager.getTCR(chainlinkPrice)
+  const TCR = await ebtcCore.cdpManager.getCachedTCR(chainlinkPrice)
   console.log(`TCR: ${TCR}`)
 
   // current borrowing rate

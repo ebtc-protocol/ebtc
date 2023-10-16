@@ -102,8 +102,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             bytes32 _cdpId = _openTestCDP(_borrowers[i], _collAmt, _debt);
             _cdpIds[i - 1] = _cdpId;
             if (i > 1) {
-                uint256 _icr = cdpManager.getICR(_cdpId, _price);
-                uint256 _prevICR = cdpManager.getICR(_cdpIds[i - 2], _price);
+                uint256 _icr = cdpManager.getCachedICR(_cdpId, _price);
+                uint256 _prevICR = cdpManager.getCachedICR(_cdpIds[i - 2], _price);
                 require(_icr > _prevICR, "!icr");
                 require(_icr > CCR, "!icr>ccr");
             }
@@ -367,7 +367,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
-        uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
+        uint256 _cdpICR = cdpManager.getCachedICR(_cdpId, _price);
         _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
         return (_usr, _cdpId);
     }
@@ -424,7 +424,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+            cdpManager.getCachedICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);

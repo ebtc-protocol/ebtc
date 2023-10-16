@@ -28,7 +28,7 @@ def logGlobalState(contracts):
     price_ether_current = contracts.priceFeedTestnet.getPrice()
     ETH_price = price_ether_current.to("ether")
     print('ETH price       ', ETH_price)
-    TCR = contracts.cdpManager.getTCR(price_ether_current).to("ether")
+    TCR = contracts.cdpManager.getCachedTCR(price_ether_current).to("ether")
     print('TCR             ', TCR)
     recovery_mode = contracts.cdpManager.checkRecoveryMode(price_ether_current)
     print('Rec. Mode       ', recovery_mode)
@@ -39,7 +39,7 @@ def logGlobalState(contracts):
     if stakes_snapshot > 0:
         print('Snapshot ratio  ', coll_snapshot / stakes_snapshot)
     last_cdp = contracts.sortedCdps.getLast()
-    last_ICR = contracts.cdpManager.getICR(last_cdp, price_ether_current).to("ether")
+    last_ICR = contracts.cdpManager.getCachedICR(last_cdp, price_ether_current).to("ether")
     #print('Last cdp      ', last_cdp)
     print('Last cdp’s ICR', last_ICR)
     print(' ----------------------\n')

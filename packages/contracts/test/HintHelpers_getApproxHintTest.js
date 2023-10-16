@@ -94,16 +94,16 @@ contract('HintHelpers', async accounts => {
   it("setup: makes accounts with nominal ICRs increasing by 1% consecutively", async () => {
     // check first 10 accounts
     const price = await priceFeed.getPrice()
-    const ICR_0 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[0],0), price)
-    const ICR_1 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[1],0), price)
-    const ICR_2 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[2],0), price)
-    const ICR_3 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[3],0), price)
-    const ICR_4 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[4],0), price)
-    const ICR_5 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[5],0), price)
-    const ICR_6 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[6],0), price)
-    const ICR_7 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[7],0), price)
-    const ICR_8 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[8],0), price)
-    const ICR_9 = await cdpManager.getICR(await sortedCdps.cdpOfOwnerByIndex(accounts[9],0), price)
+    const ICR_0 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[0],0), price)
+    const ICR_1 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[1],0), price)
+    const ICR_2 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[2],0), price)
+    const ICR_3 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[3],0), price)
+    const ICR_4 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[4],0), price)
+    const ICR_5 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[5],0), price)
+    const ICR_6 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[6],0), price)
+    const ICR_7 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[7],0), price)
+    const ICR_8 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[8],0), price)
+    const ICR_9 = await cdpManager.getCachedICR(await sortedCdps.cdpOfOwnerByIndex(accounts[9],0), price)
     assert.isTrue(ICR_0.eq(toBN('1999999999999999999')))
     assert.isTrue(ICR_1.eq(toBN('2009999999999999999')))
     assert.isTrue(ICR_2.eq(toBN('2019999999999999999')))
@@ -131,7 +131,7 @@ contract('HintHelpers', async accounts => {
     // const hintAddress_250 = await functionCaller.cdpManager_getApproxHint(CR_250, sqrtLength * 10)
     let _approxHints = await hintHelpers.getApproxHint(CR_250, sqrtLength * 10, latestRandomSeed)
 	
-    const ICR_hintAddress_250 = await cdpManager.getICR(_approxHints[0], price)
+    const ICR_hintAddress_250 = await cdpManager.getCachedICR(_approxHints[0], price)
     const ICRPercent_hintAddress_250 = Number(web3.utils.fromWei(ICR_hintAddress_250, 'ether')) * 100
 
     // check the hint position is at most sqrtLength positions away from the correct position
@@ -144,7 +144,7 @@ contract('HintHelpers', async accounts => {
 
     // const hintAddress_287 = await functionCaller.cdpManager_getApproxHint(CR_287, sqrtLength * 10)
     let _approxHints287 = await hintHelpers.getApproxHint(CR_287, sqrtLength * 10, latestRandomSeed)
-    const ICR_hintAddress_287 = await cdpManager.getICR(_approxHints287[0], price)
+    const ICR_hintAddress_287 = await cdpManager.getCachedICR(_approxHints287[0], price)
     const ICRPercent_hintAddress_287 = Number(web3.utils.fromWei(ICR_hintAddress_287, 'ether')) * 100
     
     // check the hint position is at most sqrtLength positions away from the correct position
@@ -157,7 +157,7 @@ contract('HintHelpers', async accounts => {
 
     // const hintAddress_213 = await functionCaller.cdpManager_getApproxHint(CR_213, sqrtLength * 10)
     let _approxHints213 = await hintHelpers.getApproxHint(CR_213, sqrtLength * 10, latestRandomSeed)
-    const ICR_hintAddress_213 = await cdpManager.getICR(_approxHints213[0], price)
+    const ICR_hintAddress_213 = await cdpManager.getCachedICR(_approxHints213[0], price)
     const ICRPercent_hintAddress_213 = Number(web3.utils.fromWei(ICR_hintAddress_213, 'ether')) * 100
     
     // check the hint position is at most sqrtLength positions away from the correct position
@@ -170,7 +170,7 @@ contract('HintHelpers', async accounts => {
  
     //  const hintAddress_201 = await functionCaller.cdpManager_getApproxHint(CR_201, sqrtLength * 10)
      let _approxHints201 = await hintHelpers.getApproxHint(CR_201, sqrtLength * 10, latestRandomSeed)
-     const ICR_hintAddress_201 = await cdpManager.getICR(_approxHints201[0], price)
+     const ICR_hintAddress_201 = await cdpManager.getCachedICR(_approxHints201[0], price)
      const ICRPercent_hintAddress_201 = Number(web3.utils.fromWei(ICR_hintAddress_201, 'ether')) * 100
      
      // check the hint position is at most sqrtLength positions away from the correct position
@@ -193,7 +193,7 @@ contract('HintHelpers', async accounts => {
   //     const ICR = web3.utils.toWei((ICR_Percent * 10).toString(), 'finney') 
   
   //     const hintAddress = await hintHelpers.getApproxHint(ICR, sqrtLength * 10)
-  //     const ICR_hintAddress = await cdpManager.getNominalICR(hintAddress)
+  //     const ICR_hintAddress = await cdpManager.getCachedNominalICR(hintAddress)
   //     const ICRPercent_hintAddress = Number(web3.utils.fromWei(ICR_hintAddress, 'ether')) * 100
       
   //     // check the hint position is at most sqrtLength positions away from the correct position
@@ -211,11 +211,11 @@ contract('HintHelpers', async accounts => {
     // const hintAddress_Max = await functionCaller.cdpManager_getApproxHint(CR_Max, sqrtLength * 10)
     let _approxHints = await hintHelpers.getApproxHint(CR_Max, sqrtLength * 10, latestRandomSeed)
 
-    const ICR_hintAddress_Max = await cdpManager.getNominalICR(_approxHints[0])
+    const ICR_hintAddress_Max = await cdpManager.getCachedNominalICR(_approxHints[0])
     const ICRPercent_hintAddress_Max = Number(web3.utils.fromWei(ICR_hintAddress_Max, 'ether')) * 100
 
      const firstCdp = await sortedCdps.getFirst()
-     const ICR_FirstCdp = await cdpManager.getNominalICR(firstCdp)
+     const ICR_FirstCdp = await cdpManager.getCachedNominalICR(firstCdp)
      const ICRPercent_FirstCdp = Number(web3.utils.fromWei(ICR_FirstCdp, 'ether')) * 100
  
      // check the hint position is at most sqrtLength positions away from the correct position
@@ -231,11 +231,11 @@ contract('HintHelpers', async accounts => {
 
     //  const hintAddress_Min = await functionCaller.cdpManager_getApproxHint(CR_Min, sqrtLength * 10)
     let _approxHints = await hintHelpers.getApproxHint(CR_Min, sqrtLength * 10, latestRandomSeed)
-    const ICR_hintAddress_Min = await cdpManager.getNominalICR(_approxHints[0])
+    const ICR_hintAddress_Min = await cdpManager.getCachedNominalICR(_approxHints[0])
     const ICRPercent_hintAddress_Min = Number(web3.utils.fromWei(ICR_hintAddress_Min, 'ether')) * 100
 
      const lastCdp = await sortedCdps.getLast()
-     const ICR_LastCdp = await cdpManager.getNominalICR(lastCdp)
+     const ICR_LastCdp = await cdpManager.getCachedNominalICR(lastCdp)
      const ICRPercent_LastCdp = Number(web3.utils.fromWei(ICR_LastCdp, 'ether')) * 100
  
      // check the hint position is at most sqrtLength positions away from the correct position

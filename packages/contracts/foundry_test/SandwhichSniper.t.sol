@@ -50,10 +50,10 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16); // Literally at the edge, for similicity
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
-        console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Base", cdpManager.getCachedTCR(_curPrice));
 
         // Get TCR
-        uint256 tcr = cdpManager.getTCR(_curPrice);
+        uint256 tcr = cdpManager.getCachedTCR(_curPrice);
 
         // Deposit and bring TCR to RM
 
@@ -65,7 +65,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         uint256 collVictim = _utils.calculateCollAmount(victimAmount, _curPrice, 124e16); // Liquidatable only in RM
         console.log("collVictim", collVictim);
         bytes32 cdpIdVictim = _openTestCDP(users[0], collVictim, victimAmount);
-        console.log("tcrAfterOpen Victim", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Victim", cdpManager.getCachedTCR(_curPrice));
 
         /** SANDWHICH 1 */
         // Attacker opens CDP to push to barely to RM
@@ -79,14 +79,14 @@ contract SandWhichSniperTest is eBTCBaseFixture {
             ((collAttacker - _utils.LIQUIDATOR_REWARD()) * _curPrice) / attackerDebtAmount
         );
         bytes32 cdpIdAttacker = _openTestCDP(users[0], collAttacker, attackerDebtAmount);
-        console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Attacker", cdpManager.getCachedTCR(_curPrice));
 
         /** SANDWHICH 2 */
         // 1% drawdown for simiplicity
         priceFeedMock.setPrice((_curPrice * 99) / 100);
         uint256 _newPrice = priceFeedMock.getPrice();
 
-        uint256 tcrAfter = cdpManager.getTCR(_newPrice);
+        uint256 tcrAfter = cdpManager.getCachedTCR(_newPrice);
         console.log("tcrAfter claim", tcrAfter);
 
         // We're in recovery mode
@@ -97,7 +97,7 @@ contract SandWhichSniperTest is eBTCBaseFixture {
         vm.startPrank(users[0]);
         vm.expectRevert("LiquidationLibrary: Recovery Mode grace period not started");
         cdpManager.liquidate(cdpIdVictim);
-        uint256 tcrEnd = cdpManager.getTCR(_newPrice);
+        uint256 tcrEnd = cdpManager.getCachedTCR(_newPrice);
         console.log("tcrEnd liquidation", tcrEnd);
         assertEq(cdpManager.getCdpStatus(cdpIdVictim), 1); //Still Open (And safe until end of Grace Period)
     }

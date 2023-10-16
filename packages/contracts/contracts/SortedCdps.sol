@@ -577,16 +577,16 @@ contract SortedCdps is ISortedCdps {
             return isEmpty();
         } else if (_prevId == dummyId) {
             // `(null, _nextId)` is a valid insert position if `_nextId` is the head of the list
-            return data.head == _nextId && _NICR >= cdpManager.getNominalICR(_nextId);
+            return data.head == _nextId && _NICR >= cdpManager.getCachedNominalICR(_nextId);
         } else if (_nextId == dummyId) {
             // `(_prevId, null)` is a valid insert position if `_prevId` is the tail of the list
-            return data.tail == _prevId && _NICR <= cdpManager.getNominalICR(_prevId);
+            return data.tail == _prevId && _NICR <= cdpManager.getCachedNominalICR(_prevId);
         } else {
             // `(_prevId, _nextId)` is a valid insert position if they are adjacent nodes and `_NICR` falls between the two nodes' NICRs
             return
                 data.nodes[_prevId].nextId == _nextId &&
-                cdpManager.getNominalICR(_prevId) >= _NICR &&
-                _NICR >= cdpManager.getNominalICR(_nextId);
+                cdpManager.getCachedNominalICR(_prevId) >= _NICR &&
+                _NICR >= cdpManager.getCachedNominalICR(_nextId);
         }
     }
 
@@ -597,7 +597,7 @@ contract SortedCdps is ISortedCdps {
      */
     function _descendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the head, check if the insert position is before the head
-        if (data.head == _startId && _NICR >= cdpManager.getNominalICR(_startId)) {
+        if (data.head == _startId && _NICR >= cdpManager.getCachedNominalICR(_startId)) {
             return (dummyId, _startId);
         }
 
@@ -620,7 +620,7 @@ contract SortedCdps is ISortedCdps {
      */
     function _ascendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the tail, check if the insert position is after the tail
-        if (data.tail == _startId && _NICR <= cdpManager.getNominalICR(_startId)) {
+        if (data.tail == _startId && _NICR <= cdpManager.getCachedNominalICR(_startId)) {
             return (_startId, dummyId);
         }
 
@@ -660,14 +660,14 @@ contract SortedCdps is ISortedCdps {
         bytes32 nextId = _nextId;
 
         if (prevId != dummyId) {
-            if (!contains(prevId) || _NICR > cdpManager.getNominalICR(prevId)) {
+            if (!contains(prevId) || _NICR > cdpManager.getCachedNominalICR(prevId)) {
                 // `prevId` does not exist anymore or now has a smaller NICR than the given NICR
                 prevId = dummyId;
             }
         }
 
         if (nextId != dummyId) {
-            if (!contains(nextId) || _NICR < cdpManager.getNominalICR(nextId)) {
+            if (!contains(nextId) || _NICR < cdpManager.getCachedNominalICR(nextId)) {
                 // `nextId` does not exist anymore or now has a larger NICR than the given NICR
                 nextId = dummyId;
             }
