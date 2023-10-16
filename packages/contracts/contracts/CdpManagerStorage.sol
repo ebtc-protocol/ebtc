@@ -398,6 +398,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
                 CdpOperation.syncAccounting
             );
         }
+
+        // sync per stake index for given CDP
+        if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
+            cdpStEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
+        }
     }
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
@@ -596,11 +601,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             _feeSplitDistributed,
             _newColl
         );
-
-        // sync per stake index for given CDP
-        if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
-            cdpStEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
-        }
     }
 
     // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
