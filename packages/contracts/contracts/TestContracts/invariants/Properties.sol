@@ -1,6 +1,7 @@
 pragma solidity 0.8.17;
 
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
+import "forge-std/console2.sol";
 
 import {ICollateralToken} from "../../Dependencies/ICollateralToken.sol";
 import {EbtcMath} from "../../Dependencies/EbtcMath.sol";
@@ -323,16 +324,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
             sumOfColl += entireColl;
             sumOfDebt += entireDebt;
+            console2.log("entireColl", entireColl);
+            console2.log("entireDebt", entireDebt);
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
+        console2.log("tcrFromSystem", tcrFromSystem);
 
         uint256 tcrFromSums = EbtcMath._computeCR(
             collateral.getPooledEthByShares(sumOfColl),
             sumOfDebt,
             curentPrice
         );
+        console2.log("tcrFromSums", tcrFromSums);
         /// @audit 1e8 precision
         return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
     }

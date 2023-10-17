@@ -32,6 +32,16 @@ contract EToFoundry is
         vm.startPrank(address(actor));
     }
 
+    // /// @dev Known bug from stETH transfer, causing 1 share to be lost in the transfer
+    // function testF01Debunk() public {
+    //     openCdp(0,1);
+    //     setEthPerShare(0);
+    //     openCdp(0,1);
+    //     redeemCollateral(1967126592928475763945305251,165779958852053,214901877426779915,0);
+    //     vm.stopPrank();
+    //     setGovernanceParameters(13047726864602929199140172729873978268677412001741944068694426645973,1);
+    // }
+
     /// @dev Example of test for invariant
     function testBO05() public {
         openCdp(0, 1);
@@ -991,6 +1001,22 @@ contract EToFoundry is
     //     }
     // }
 
+
+    function testGeneral08Debunk() public {
+        openCdp(0,1);
+        openCdp(0,131136193055529856);
+        setEthPerShare(0);
+        setEthPerShare(0);
+        liquidate(1028258791029385401);
+        openCdp(0,1);
+        closeCdp(0);
+
+        console2.log("activePool.getSystemCollShares()", activePool.getSystemCollShares());
+        console2.log("activePool.getSystemDebt()", activePool.getSystemDebt());
+
+        assertTrue(invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral), "G-08");
+    }
+
     function testGeneral08() public {
         openCdp(72782931752105455104411619997485041164599478189648810093633428138496255693523, 544);
         addColl(
@@ -1004,6 +1030,7 @@ contract EToFoundry is
 
         assertTrue(invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral), "G-08");
     }
+
 
     function testLiquidate() public {
         bytes32 _cdpId1 = openCdp(0, 1);
