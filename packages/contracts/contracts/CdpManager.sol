@@ -512,9 +512,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _toRemoveIds;
     }
 
-    
-    function syncAccounting(bytes32 _cdpId) external override {
-        /// @audit Syncing without re-inserting causes the CDP to be in the wrong position
+    /// @dev Virtual to be overridden by the test contracts
+    function syncAccounting(bytes32 _cdpId) external virtual override {
+        /// @audit Opening can cause invalid reordering of Cdps due to changing values without reInserting into sortedCdps
         _requireCallerIsBorrowerOperations(); 
         return _syncAccounting(_cdpId);
     }
@@ -879,8 +879,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].status = Status.active;
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
 
-        cdpStEthFeePerUnitIndex[_cdpId] = systemStEthFeePerUnitIndex; /// @audit We critically assume global accounting is synced here
-        _updateRedistributedDebtIndex(_cdpId);
+        _applyAccumulatedFeeSplit(_cdpId);
+        _updateRedistributedDebtSnapshot(_cdpId);
         uint256 stake = _updateStakeAndTotalStakes(_cdpId);
         uint256 index = _addCdpIdToArray(_cdpId);
 

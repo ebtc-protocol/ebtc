@@ -6,6 +6,7 @@ import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
+import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
@@ -187,7 +188,8 @@ contract eBTCBaseFixture is
             );
 
             // CDP Manager
-            creationCode = type(CdpManager).creationCode;
+            /// @audit NOTE: This is the DEV VERSION!!!!!
+            creationCode = type(AccruableCdpManager).creationCode;
             args = abi.encode(
                 addr.liquidationLibraryAddress,
                 addr.authorityAddress,
