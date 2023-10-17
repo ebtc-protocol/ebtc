@@ -67,7 +67,7 @@ contract HintHelpers is EbtcBase {
 
             while (
                 vars.currentCdpUser != address(0) &&
-                cdpManager.getICR(vars.currentCdpId, _price) < MCR
+                cdpManager.getCachedICR(vars.currentCdpId, _price) < MCR
             ) {
                 vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
                 vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
@@ -217,7 +217,7 @@ contract HintHelpers is EbtcBase {
         }
 
         hint = sortedCdps.getLast();
-        diff = EbtcMath._getAbsoluteDifference(_CR, cdpManager.getNominalICR(hint));
+        diff = EbtcMath._getAbsoluteDifference(_CR, cdpManager.getCachedNominalICR(hint));
         latestRandomSeed = _inputRandomSeed;
 
         uint256 i = 1;
@@ -227,7 +227,7 @@ contract HintHelpers is EbtcBase {
 
             uint256 arrayIndex = latestRandomSeed % arrayLength;
             bytes32 _cId = cdpManager.getIdFromCdpIdsArray(arrayIndex);
-            uint256 currentNICR = cdpManager.getNominalICR(_cId);
+            uint256 currentNICR = cdpManager.getCachedNominalICR(_cId);
 
             // check if abs(current - CR) > abs(closest - CR), and update closest if current is closer
             uint256 currentDiff = EbtcMath._getAbsoluteDifference(currentNICR, _CR);

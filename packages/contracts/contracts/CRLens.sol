@@ -26,7 +26,7 @@ contract CRLens {
 
         // Return latest
         uint price = priceFeed.fetchPrice();
-        uint256 tcr = cdpManager.getTCR(price);
+        uint256 tcr = cdpManager.getCachedTCR(price);
 
         if (revertValue) {
             assembly {
@@ -44,7 +44,7 @@ contract CRLens {
     function getRealICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
         cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
-        uint256 icr = cdpManager.getICR(cdpId, price);
+        uint256 icr = cdpManager.getCachedICR(cdpId, price);
 
         if (revertValue) {
             assembly {
@@ -62,7 +62,7 @@ contract CRLens {
     function getRealNICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
         cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
-        uint256 icr = cdpManager.getNominalICR(cdpId);
+        uint256 icr = cdpManager.getCachedNominalICR(cdpId);
 
         if (revertValue) {
             assembly {

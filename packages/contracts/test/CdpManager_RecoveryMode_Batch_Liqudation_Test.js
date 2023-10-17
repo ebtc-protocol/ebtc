@@ -53,15 +53,15 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       // Price drops
       await priceFeed.setPrice(dec(3000, 13))
       const price = await priceFeed.getPrice()
-      const TCR = await th.getTCR(contracts)
+      const TCR = await th.getCachedTCR(contracts)
 
       // Check Recovery Mode is active
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
-      const ICR_C = await cdpManager.getICR(_carolCdpId, price)
+      const ICR_A = await cdpManager.getCachedICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getCachedICR(_bobCdpId, price)
+      const ICR_C = await cdpManager.getCachedICR(_carolCdpId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -87,7 +87,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       const tx = await cdpManager.batchLiquidateCdps([_aliceCdpId])
 
-      const TCR = await th.getTCR(contracts)
+      const TCR = await th.getCachedTCR(contracts)
       assert.isTrue(await th.checkRecoveryMode(contracts))
     })
 
@@ -153,15 +153,15 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       // Price drops
       await priceFeed.setPrice(dec(3000, 13))
       const price = await priceFeed.getPrice()
-      const TCR = await th.getTCR(contracts)
+      const TCR = await th.getCachedTCR(contracts)
 
       // Check Recovery Mode is active
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
-      const ICR_C = await cdpManager.getICR(_carolCdpId, price)
+      const ICR_A = await cdpManager.getCachedICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getCachedICR(_bobCdpId, price)
+      const ICR_C = await cdpManager.getCachedICR(_carolCdpId, price)
 
       assert.isTrue(ICR_A.gt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -214,14 +214,14 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       // Price drops
       await priceFeed.setPrice(dec(3000, 13))
       const price = await priceFeed.getPrice()
-      const TCR = await th.getTCR(contracts)
+      const TCR = await th.getCachedTCR(contracts)
 
       // Check Recovery Mode is active
       assert.isTrue(await th.checkRecoveryMode(contracts))
 
       // Check cdps A, B are in range 110% < ICR < TCR, C is below 100%
-      const ICR_A = await cdpManager.getICR(_aliceCdpId, price)
-      const ICR_B = await cdpManager.getICR(_bobCdpId, price)
+      const ICR_A = await cdpManager.getCachedICR(_aliceCdpId, price)
+      const ICR_B = await cdpManager.getCachedICR(_bobCdpId, price)
 
       assert.isTrue(ICR_A.gt(mv._MCR) && ICR_A.lt(TCR))
       assert.isTrue(ICR_B.gt(mv._MCR) && ICR_B.lt(TCR))
@@ -246,7 +246,7 @@ contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async ac
       await debtToken.transfer(owner, toBN((await debtToken.balanceOf(bob)).toString()), {from: bob});
       const tx = await th.liquidateCdps(1, _setups['price'], contracts, {extraParams: {from: owner}})
 
-      const TCR = await th.getTCR(contracts)
+      const TCR = await th.getCachedTCR(contracts)
       assert.isTrue(await th.checkRecoveryMode(contracts))
     })
 

@@ -75,7 +75,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     function _syncGracePeriod() internal {
         uint256 price = priceFeed.fetchPrice();
-        uint256 tcr = _getTCR(price);
+        uint256 tcr = _getCachedTCR(price);
         bool isRecoveryMode = _checkRecoveryModeForTCR(tcr);
 
         if (isRecoveryMode) {
@@ -655,7 +655,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     /// @notice Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
     /// @dev Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getNominalICR(bytes32 _cdpId) external view returns (uint256) {
+    function getCachedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
 
         uint256 NICR = EbtcMath._computeNominalCR(currentCollShares, currentEBTCDebt);
@@ -679,7 +679,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // Return the current collateral ratio (ICR) of a given Cdp.
     //Takes a cdp's pending coll and debt rewards from redistributions into account.
-    function getICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
+    function getCachedICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
         uint256 ICR = _calculateCR(currentCollShares, currentEBTCDebt, _price);
         return ICR;

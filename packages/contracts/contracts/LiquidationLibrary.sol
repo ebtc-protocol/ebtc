@@ -62,7 +62,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
+        uint256 _ICR = getCachedICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
             _price
         );
@@ -466,7 +466,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         // if original ICR is above LICR
         if (_partialState.ICR > LICR) {
             require(
-                getICR(_cdpId, _partialState.price) >= _partialState.ICR,
+                getCachedICR(_cdpId, _partialState.price) >= _partialState.ICR,
                 "LiquidationLibrary: !_newICR>=_ICR"
             );
         }

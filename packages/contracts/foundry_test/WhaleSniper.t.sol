@@ -50,14 +50,14 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         collateral.setEthPerShare(_newIndex);
 
         // Get TCR
-        uint256 tcr = cdpManager.getTCR(_curPrice);
+        uint256 tcr = cdpManager.getCachedTCR(_curPrice);
 
         console.log("tcr b4", tcr);
 
         // And show that the TCR goes down once you claim
         cdpManager.syncGlobalAccountingAndGracePeriod();
 
-        uint256 tcrAfter = cdpManager.getTCR(_curPrice);
+        uint256 tcrAfter = cdpManager.getCachedTCR(_curPrice);
         console.log("tcrAfter", tcrAfter);
 
         assertLt(tcrAfter, tcr, "TCR didn't decrease");
@@ -98,10 +98,10 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint256 coll1 = _utils.calculateCollAmount(systemDebtAmount, _curPrice, 126e16); // Literally at the edge
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, systemDebtAmount);
-        console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Base", cdpManager.getCachedTCR(_curPrice));
 
         // Get TCR
-        uint256 tcr = cdpManager.getTCR(_curPrice);
+        uint256 tcr = cdpManager.getCachedTCR(_curPrice);
 
         // Deposit and bring TCR to RM
 
@@ -115,7 +115,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             uint256 collVictim = _utils.calculateCollAmount(victimAmount, _curPrice, 111e16);
             console.log("collVictim", collVictim);
             bytes32 cdpIdVictm = _openTestCDP(users[0], collVictim, victimAmount);
-            console.log("tcrAfterOpen Victim", cdpManager.getTCR(_curPrice));
+            console.log("tcrAfterOpen Victim", cdpManager.getCachedTCR(_curPrice));
         }
 
         // Once a CDP is open
@@ -125,7 +125,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             uint256 _curIndex = collateral.getPooledEthByShares(1e18);
             uint256 _newIndex = _curIndex + 5e16;
             collateral.setEthPerShare(_newIndex);
-            uint256 _tcr = cdpManager.getTCR(_curPrice);
+            uint256 _tcr = cdpManager.getCachedTCR(_curPrice);
 
             // reference https://github.com/Badger-Finance/ebtc/pull/456#issuecomment-1566821518
             uint256 _requiredDeltaIdxTriggeRM = (((_newIndex * (_tcr - cdpManager.CCR())) / _tcr) *
@@ -151,13 +151,13 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
                 125005e13
             );
             bytes32 cdpIdAttacker = _tryOpenCdp(users[0], collAttacker, (systemDebtAmount / 100000));
-            console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
+            console.log("tcrAfterOpen Attacker", cdpManager.getCachedTCR(_curPrice));
         }
 
         // Now we take the split
         cdpManager.syncGlobalAccountingAndGracePeriod();
 
-        uint256 tcrAfter = cdpManager.getTCR(_curPrice);
+        uint256 tcrAfter = cdpManager.getCachedTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);
 
         // Now we're in recovery mode so there exist a value such that a liquidation can be triggered willingly by the attacker
@@ -177,10 +177,10 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint256 coll1 = _utils.calculateCollAmount(debtAmt, _curPrice, 126e16); // Literally at the edge
 
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
-        console.log("tcrAfterOpen Base", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Base", cdpManager.getCachedTCR(_curPrice));
 
         // Get TCR
-        uint256 tcr = cdpManager.getTCR(_curPrice);
+        uint256 tcr = cdpManager.getCachedTCR(_curPrice);
 
         // Deposit and bring TCR to RM
 
@@ -192,7 +192,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         uint256 collVictim = _utils.calculateCollAmount(victimAmount, _curPrice, 111e16);
         console.log("collVictim", collVictim);
         bytes32 cdpIdVictm = _openTestCDP(users[0], collVictim, victimAmount);
-        console.log("tcrAfterOpen Victim", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Victim", cdpManager.getCachedTCR(_curPrice));
 
         // Once a CDP is open
         // Just take some yield
@@ -207,12 +207,12 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         // 1215e15 is safe but the liquidation reverts
         uint256 collAttacker = _utils.calculateCollAmount(attackerDebtAmount, _curPrice, 1215e15); // NOTE: This fails
         bytes32 cdpIdAttacker = _openTestCDP(users[0], collAttacker, attackerDebtAmount);
-        console.log("tcrAfterOpen Attacker", cdpManager.getTCR(_curPrice));
+        console.log("tcrAfterOpen Attacker", cdpManager.getCachedTCR(_curPrice));
 
         // Now we take the split
         cdpManager.syncGlobalAccountingAndGracePeriod();
 
-        uint256 tcrAfter = cdpManager.getTCR(_curPrice);
+        uint256 tcrAfter = cdpManager.getCachedTCR(_curPrice);
         console.log("tcrAfter claim", tcrAfter);
 
         // We're not in recovery mode
@@ -221,7 +221,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         vm.startPrank(users[0]);
         vm.expectRevert(); // NOTE: We expect revert here, meaning the operation is safe
         cdpManager.liquidate(cdpIdVictm);
-        uint256 tcrEnd = cdpManager.getTCR(_curPrice);
+        uint256 tcrEnd = cdpManager.getCachedTCR(_curPrice);
         console.log("tcrEnd liquidation", tcrEnd);
         assertGt(tcrEnd, 1250000000000000000);
     }

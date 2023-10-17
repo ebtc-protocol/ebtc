@@ -375,14 +375,14 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         /// @audit this is an edge case where _ICR == _TCR and liquidation is in RM
         toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 10e18);
 
-        assertEq(cdpManager.getICR(whaleCdpId, price), 220e16, "unexpected ICR");
-        assertEq(cdpManager.getTCR(price), 220e16, "unexpected TCR");
+        assertEq(cdpManager.getCachedICR(whaleCdpId, price), 220e16, "unexpected ICR");
+        assertEq(cdpManager.getCachedTCR(price), 220e16, "unexpected TCR");
 
         // original price
         priceFeedMock.setPrice(1 ether);
         price = priceFeedMock.fetchPrice();
 
-        assertEq(cdpManager.getICR(whaleCdpId, price), 110e16, "unexpected ICR");
-        assertEq(cdpManager.getTCR(price), 110e16, "unexpected TCR");
+        assertEq(cdpManager.getCachedICR(whaleCdpId, price), 110e16, "unexpected ICR");
+        assertEq(cdpManager.getCachedTCR(price), 110e16, "unexpected TCR");
     }
 }

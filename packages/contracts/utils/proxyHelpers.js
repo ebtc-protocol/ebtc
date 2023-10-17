@@ -207,12 +207,12 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunctionWithUser('liquidate', user)
   }
 
-  async getTCR(...params) {
+  async getCachedTCR(...params) {
     return this.proxyFunction('getTCR', params)
   }
 
-  async getICR(user, price) {
-    return this.contract.getICR(this.getProxyAddressFromUser(user), price)
+  async getCachedICR(user, price) {
+    return this.contract.getCachedICR(this.getProxyAddressFromUser(user), price)
   }
 
   async checkRecoveryMode(...params) {

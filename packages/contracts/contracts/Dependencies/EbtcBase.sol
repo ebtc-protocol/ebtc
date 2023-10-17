@@ -74,7 +74,7 @@ contract EbtcBase is BaseMath, IEbtcBase {
         return (activePool.getSystemDebt());
     }
 
-    function _getTCR(uint256 _price) internal view returns (uint256 TCR) {
+    function _getCachedTCR(uint256 _price) internal view returns (uint256 TCR) {
         (TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
     }
 
@@ -91,7 +91,7 @@ contract EbtcBase is BaseMath, IEbtcBase {
     }
 
     function _checkRecoveryMode(uint256 _price) internal view returns (bool) {
-        return _checkRecoveryModeForTCR(_getTCR(_price));
+        return _checkRecoveryModeForTCR(_getCachedTCR(_price));
     }
 
     function _checkRecoveryModeForTCR(uint256 _tcr) internal view returns (bool) {

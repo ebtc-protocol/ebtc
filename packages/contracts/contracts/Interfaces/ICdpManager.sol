@@ -76,7 +76,7 @@ interface ICdpManager is IEbtcBase, ICdpManagerData {
         uint256 _newDebt
     ) external;
 
-    function getTCR(uint256 _price) external view returns (uint256);
+    function getCachedTCR(uint256 _price) external view returns (uint256);
 
     function checkRecoveryMode(uint256 _price) external view returns (bool);
 }
