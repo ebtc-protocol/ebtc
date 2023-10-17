@@ -29,7 +29,7 @@ contract AccruableCdpManager is CdpManager {
         )
     {
         /// @audit Based on the idea that Foundry and Echidna will not fork mainnet
-        // require(block.chainid != 1, "No prod!!!!");
+        // require(block.chainid != 1, "No prod!!!!"); /// @audit CANNOT SET, PLS HAAAALP
     }
 
     function syncAccounting(bytes32 _cdpId) external virtual override {
