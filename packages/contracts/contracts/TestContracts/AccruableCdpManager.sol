@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "../CdpManager.sol";
 
 contract AccruableCdpManager is CdpManager {
-constructor(
+    constructor(
         address _liquidationLibraryAddress,
         address _authorityAddress,
         address _borrowerOperationsAddress,
@@ -28,11 +28,11 @@ constructor(
             _collTokenAddress
         )
     {
-      /// @audit Based on the idea that Foundry and Echidna will not fork mainnet
-      // require(block.chainid != 1, "No prod!!!!");
+        /// @audit Based on the idea that Foundry and Echidna will not fork mainnet
+        // require(block.chainid != 1, "No prod!!!!");
     }
 
     function syncAccounting(bytes32 _cdpId) external virtual override {
-      return _syncAccounting(_cdpId);
+        return _syncAccounting(_cdpId);
     }
 }

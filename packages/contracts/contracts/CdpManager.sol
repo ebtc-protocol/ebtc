@@ -515,7 +515,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @dev Virtual to be overridden by the test contracts
     function syncAccounting(bytes32 _cdpId) external virtual override {
         /// @audit Opening can cause invalid reordering of Cdps due to changing values without reInserting into sortedCdps
-        _requireCallerIsBorrowerOperations(); 
+        _requireCallerIsBorrowerOperations();
         return _syncAccounting(_cdpId);
     }
 
