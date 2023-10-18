@@ -18,7 +18,7 @@ const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
-const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
+const EbtcTokenTester = artifacts.require("./EbtcTokenTester.sol")
 
 const { TestHelper: th } = require("../utils/testHelpers.js")
 
@@ -49,7 +49,7 @@ const TesterContractABIs  = [
   EbtcMathTester,
   BorrowerOperationsTester,
   CdpManagerTester,
-  EBTCTokenTester,
+  EbtcTokenTester,
 ]
 
 const getGasFromContractDeployment = async (contractObject, name) => {

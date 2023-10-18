@@ -24,7 +24,7 @@ const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
-const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
+const EbtcTokenTester = artifacts.require("./EbtcTokenTester.sol")
 const CollateralTokenTester = artifacts.require("./CollateralTokenTester.sol")
 
 // Proxy scripts
@@ -294,14 +294,14 @@ class DeploymentHelper {
     return await HintHelpers.at(_deployedAddr);
   }
 
-  static async deployEBTCTokenTester(ebtcDeployer, _expectedAddr) {
+  static async deployEbtcTokenTester(ebtcDeployer, _expectedAddr) {
     const _argTypes = ['address', 'address', 'address'];
     const _argValues = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
 
     const _salt = await ebtcDeployer.EBTC_TOKEN();
-    const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, EBTCTokenTester, _salt);
+    const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, EbtcTokenTester, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[9]);
-    return await EBTCTokenTester.at(_deployedAddr);
+    return await EbtcTokenTester.at(_deployedAddr);
 
   }
   static async deployFeeRecipient(ebtcDeployer, _expectedAddr, ownerAddress) {
@@ -354,7 +354,7 @@ class DeploymentHelper {
     return await ActivePool.at(_deployedAddr);
   }
 
-  static async deployEBTCToken(ebtcDeployer, _expectedAddr){
+  static async deployEbtcToken(ebtcDeployer, _expectedAddr){
     const _argTypes = ['address', 'address', 'address'];
     const _argValues = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
 
@@ -370,7 +370,7 @@ class DeploymentHelper {
     return collateral;
   }
   
-  static async deployEBTCDeployer(){  
+  static async deployEbtcDeployer(){  
     let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
     const eBTCDeployer = await EbtcDeployer.new({gasLimit: await EbtcDeployer.new.estimateGas(), nonce: _nonce});
     return eBTCDeployer;
@@ -383,7 +383,7 @@ class DeploymentHelper {
   static async deployLiquityCoreHardhat() {
     const accounts = await web3.eth.getAccounts()
 
-    const ebtcDeployer = await DeploymentHelper.deployEBTCDeployer();
+    const ebtcDeployer = await DeploymentHelper.deployEbtcDeployer();
     let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();
 
     const collateral = await DeploymentHelper.deployCollateralTestnet();
@@ -395,7 +395,7 @@ class DeploymentHelper {
 
     const cdpManager = await DeploymentHelper.deployCdpManager(ebtcDeployer, _expectedAddr, collateral.address);
     const borrowerOperations = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateral.address);
-    const ebtcToken = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
+    const ebtcToken = await DeploymentHelper.deployEbtcToken(ebtcDeployer, _expectedAddr);
 
     const priceFeedTestnet = await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr);
 
@@ -460,12 +460,12 @@ class DeploymentHelper {
     CdpManagerTester
     BorrowOperationsTester
     ActivePoolTester
-    EBTCTokenTester
+    EbtcTokenTester
   */
   static async deployTesterContractsHardhat() {
     const accounts = await web3.eth.getAccounts()
 
-    const ebtcDeployer = await DeploymentHelper.deployEBTCDeployer();
+    const ebtcDeployer = await DeploymentHelper.deployEbtcDeployer();
     let _expectedAddr = await ebtcDeployer.getFutureEbtcAddresses();
 
     const collateral = await DeploymentHelper.deployCollateralTestnet();
@@ -498,7 +498,7 @@ class DeploymentHelper {
 
     testerContracts.cdpManager = await DeploymentHelper.deployCdpManagerTester(ebtcDeployer, _expectedAddr, collateral.address);
     testerContracts.borrowerOperations = await DeploymentHelper.deployBorrowerOperationsTester(ebtcDeployer, _expectedAddr, collateral.address);
-    testerContracts.ebtcToken = await DeploymentHelper.deployEBTCTokenTester(ebtcDeployer, _expectedAddr);
+    testerContracts.ebtcToken = await DeploymentHelper.deployEbtcTokenTester(ebtcDeployer, _expectedAddr);
 
     testerContracts.priceFeedTestnet = await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr);
     

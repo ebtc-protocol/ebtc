@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "./ICollSurplusPool.sol";
-import "./IEBTCToken.sol";
+import "./IEbtcToken.sol";
 import "./ISortedCdps.sol";
 import "./IActivePool.sol";
 import "./IRecoveryModeGracePeriod.sol";
@@ -216,7 +216,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function totalStakes() external view returns (uint256);
 
-    function ebtcToken() external view returns (IEBTCToken);
+    function ebtcToken() external view returns (IEbtcToken);
 
     function systemStEthFeePerUnitIndex() external view returns (uint256);
 

@@ -20,9 +20,9 @@ import "./CDPManagerTester.sol";
 import "./BorrowerOperationsTester.sol";
 import "./testnet/PriceFeedTestnet.sol";
 import "./ActivePoolTester.sol";
-import "./EBTCTokenTester.sol";
+import "./EbtcTokenTester.sol";
 
-contract EBTCDeployerTester is EbtcDeployer {
+contract EbtcDeployerTester is EbtcDeployer {
     // core contracts creation code
     bytes public authority_creationCode = type(Governor).creationCode;
     bytes public liquidationLibrary_creationCode = type(LiquidationLibrary).creationCode;
@@ -41,5 +41,5 @@ contract EBTCDeployerTester is EbtcDeployer {
     bytes public borrowerOperationsTester_creationCode = type(BorrowerOperationsTester).creationCode;
     bytes public priceFeedTestnet_creationCode = type(PriceFeedTestnet).creationCode;
     bytes public activePoolTester_creationCode = type(ActivePoolTester).creationCode;
-    bytes public ebtcTokenTester_creationCode = type(EBTCTokenTester).creationCode;
+    bytes public ebtcTokenTester_creationCode = type(EbtcTokenTester).creationCode;
 }

@@ -1,7 +1,7 @@
 const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
-const EBTCTokenTester = artifacts.require("./EBTCTokenTester.sol")
+const EbtcTokenTester = artifacts.require("./EbtcTokenTester.sol")
 
 const th = testHelpers.TestHelper
 const dec = th.dec

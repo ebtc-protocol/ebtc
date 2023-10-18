@@ -26,7 +26,7 @@ const chalk = require('chalk');
 
 let configParams;
 
-class EBTCDeployerScript {
+class EbtcDeployerScript {
     constructor(useMockCollateral, useMockPriceFeed, mainnetDeploymentHelper, deploymentState, configParams, deployerWallet) {
         this.useMockCollateral = useMockCollateral;
         this.useMockPriceFeed = useMockPriceFeed;
@@ -75,7 +75,7 @@ class EBTCDeployerScript {
         } else if (_stateName == BORROWER_OPERATIONS_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == EBTC_TOKEN_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
+            _deployedState = await DeploymentHelper.deployEbtcToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
             _deployedState = useMockPriceFeed ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
                                                 await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
@@ -90,7 +90,7 @@ class EBTCDeployerScript {
         } else if (_stateName == FEE_RECIPIENT_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, feeRecipientOwner)
         } else if (_stateName == EBTC_DEPLOYER_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployEBTCDeployer();
+            _deployedState = await DeploymentHelper.deployEbtcDeployer();
         } else if (_stateName == COLLATERAL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCollateralTestnet();
         } else if (_stateName == MULTI_CDP_GETTER_STATE_NAME) {
@@ -139,7 +139,7 @@ class EBTCDeployerScript {
             _deployedState = await (await ethers.getContractFactory("FeeRecipient")).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: feeRecipient.NAME()=' + (await _deployedState.NAME()));
         } else if (_stateName == EBTC_DEPLOYER_STATE_NAME) {
-            _deployedState = await (await ethers.getContractFactory("EBTCDeployerTester")).attach(deploymentState[EBTC_DEPLOYER_STATE_NAME]["address"])
+            _deployedState = await (await ethers.getContractFactory("EbtcDeployerTester")).attach(deploymentState[EBTC_DEPLOYER_STATE_NAME]["address"])
         }
         return _deployedState;
     }
@@ -156,7 +156,7 @@ class EBTCDeployerScript {
         return _deployedState;
     }
 
-    async loadOrDeployEBTCDeployer() {
+    async loadOrDeployEbtcDeployer() {
         console.log(chalk.cyan("[EbtcDeployer]"))
         this.ebtcDeployer = await this.deployOrLoadState(EBTC_DEPLOYER_STATE_NAME, [])
     }
@@ -340,8 +340,8 @@ async function main() {
     await DeploymentHelper.setDeployGasPrice(_gasPrice);
     await DeploymentHelper.setDeployWait(_deployWaitMilliSeonds);
 
-    let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer)
-    await eds.loadOrDeployEBTCDeployer();
+    let eds = new EbtcDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer)
+    await eds.loadOrDeployEbtcDeployer();
     await eds.loadOrDeployCollateral();
     await eds.eBTCDeployCore();
 }

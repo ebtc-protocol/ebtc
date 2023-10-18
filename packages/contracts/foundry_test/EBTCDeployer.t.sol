@@ -22,7 +22,7 @@ import {EbtcDeployer} from "../contracts/EbtcDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 
-contract EBTCDeployerTest is eBTCBaseFixture {
+contract EbtcDeployerTest is eBTCBaseFixture {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
     uint256 public mintAmount = 1e18;

@@ -74,7 +74,7 @@ const connectContracts = async (contracts, addresses) => {
   await contracts.priceFeedTestnet.setCdpManagerAddress(addresses.CdpManager)
 
   // set contracts in the Cdp Manager
-  await contracts.cdpManager.setEBTCToken(addresses.EbtcToken)
+  await contracts.cdpManager.setEbtcToken(addresses.EbtcToken)
   await contracts.cdpManager.setSortedCdps(addresses.SortedCdps)
   await contracts.cdpManager.setPriceFeed(addresses.PriceFeedTestnet)
   await contracts.cdpManager.setActivePool(addresses.ActivePool)

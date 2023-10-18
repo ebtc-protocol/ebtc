@@ -2,7 +2,7 @@
 
 pragma solidity 0.8.17;
 
-import "./Interfaces/IEBTCToken.sol";
+import "./Interfaces/IEbtcToken.sol";
 
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/PermitNonce.sol";
@@ -23,7 +23,7 @@ import "./Dependencies/PermitNonce.sol";
  * core contract, when they should rather call the right function.
  */
 
-contract EbtcToken is IEBTCToken, AuthNoOwner, PermitNonce {
+contract EbtcToken is IEbtcToken, AuthNoOwner, PermitNonce {
     uint256 private _totalSupply;
     string internal constant _NAME = "EBTC Stablecoin";
     string internal constant _SYMBOL = "EBTC";

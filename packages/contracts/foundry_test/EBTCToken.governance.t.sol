@@ -9,7 +9,7 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
  * Test suite that tests opened CDPs with two different operations: repayDebt and withdrawDebt
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
-contract EBTCTokenGovernanceTest is eBTCBaseFixture {
+contract EbtcTokenGovernanceTest is eBTCBaseFixture {
     // Storage array of cdpIDs when impossible to calculate array size
     bytes32[] cdpIds;
     uint256 public mintAmount = 1e18;

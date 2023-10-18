@@ -14,7 +14,7 @@ import "../../HintHelpers.sol";
 import "../../FeeRecipient.sol";
 import "../testnet/PriceFeedTestnet.sol";
 import "../CollateralTokenTester.sol";
-import "../EBTCTokenTester.sol";
+import "../EbtcTokenTester.sol";
 import "../../Governor.sol";
 import "../../EbtcDeployer.sol";
 
@@ -185,14 +185,14 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
 
             // eBTC Token
-            creationCode = type(EBTCTokenTester).creationCode;
+            creationCode = type(EbtcTokenTester).creationCode;
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.borrowerOperationsAddress,
                 addr.authorityAddress
             );
 
-            eBTCToken = EBTCTokenTester(
+            eBTCToken = EbtcTokenTester(
                 ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
             );
 
@@ -333,7 +333,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             activePool = ActivePool(0x55abdfb760dd032627D531f7cF3DAa72549CEbA2);
             collSurplusPool = CollSurplusPool(0x7b4D951D7b8090f62bD009b371abd7Fe04aB7e1A);
             hintHelpers = HintHelpers(0xCaBdBc4218dd4b9E3fB9842232aD0aFc7c431693);
-            eBTCToken = EBTCTokenTester(0x9Aa69Db8c53E504EF22615390EE9Eb72cb8bE498);
+            eBTCToken = EbtcTokenTester(0x9Aa69Db8c53E504EF22615390EE9Eb72cb8bE498);
             feeRecipient = FeeRecipient(0x40FF68eaE525233950B63C2BCEa39770efDE52A4);
 
             crLens = new CRLens(address(cdpManager), address(priceFeedMock));
