@@ -12,6 +12,7 @@ The redemption and liquidation mechanisms help ensure that stability is maintain
 ## eBTC Audit - What's in scope
 The following contracts in `/packages/contracts/contracts` (base contracts directory)
 
+#### Core Protocol
 `/packages/contracts/contracts/Dependencies/ActivePool.sol`
 `/packages/contracts/contracts/Dependencies/BorrowerOperations.sol`
 `/packages/contracts/contracts/CdpManager.sol`
@@ -23,13 +24,26 @@ The following contracts in `/packages/contracts/contracts` (base contracts direc
 `/packages/contracts/contracts/PriceFeed.sol`
 `/packages/contracts/contracts/SortedCdps.sol`
 
+#### Lens / Helper Contracts
+`/packages/contracts/contracts/HintHelpers.sol`
+`/packages/contracts/contracts/CRLens.sol`
+`/packages/contracts/contracts/MultiCdpGetter.sol`
+`/packages/contracts/contracts/SyncedLiquidationSequencer.sol`
+
+#### Leverage Macros & Smart Wallets
+`/packages/contracts/contracts/LeverageMacroBase.sol`
+`/packages/contracts/contracts/LeverageMacroDelegateTarget.sol`
+`/packages/contracts/contracts/LeverageMacroFactory.sol`
+`/packages/contracts/contracts/LeverageMacroReference.sol`
+`/packages/contracts/contracts/SimplifiedDiamondLike.sol`
+
 Most of the `/Dependency` files are copy-pastes, but the following are custom or modified and are worthy of review:
 
 `/packages/contracts/contracts/Dependencies/Auth.sol`
 `/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
 `/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
-`/packages/contracts/contracts/Dependencies/LiquityBase.sol`
-`/packages/contracts/contracts/Dependencies/LiquityMath.sol`
+`/packages/contracts/contracts/Dependencies/EbtcBase.sol`
+`/packages/contracts/contracts/Dependencies/EbtcMath.sol`
 `/packages/contracts/contracts/Dependencies/ReentrancyGuard.sol`
 `/packages/contracts/contracts/Dependencies/RolesAuthority.sol`
 
@@ -239,7 +253,7 @@ The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold th
 
 `CdpManager.sol` - contains functionality for liquidations and redemptions. It sends redemption fees to the `FeeRecipient` contract. Also contains the state of each CDP - i.e. a record of the CDP’s collateral and debt. CdpManager does not hold value (i.e. Ether / other tokens). CdpManager functions call in to the various Pools to tell them to move Ether/tokens between Pools, where necessary.
 
-`LiquityBase.sol` - Both CdpManager and BorrowerOperations inherit from the parent contract LiquityBase, which contains global constants and some common functions.
+`EbtcBase.sol` - Both CdpManager and BorrowerOperations inherit from the parent contract EbtcBase, which contains global constants and some common functions.
 
 `EBTCToken.sol` - the eBTC token contract, which implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers. The contract mints, burns and transfers eBTC tokens.
 
@@ -394,8 +408,8 @@ Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the 
 | Function                      | eBTC Quantity | ERC20 Operation                      |
 |-------------------------------|---------------|--------------------------------------|
 | openCdp                     | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| withdrawEBTC                  | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| repayEBTC                     | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
+| withdrawDebt                  | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
+| repayDebt                     | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | adjustCdp: withdrawing eBTC | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
 | adjustCdp: repaying eBTC    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
 | closeCdp                    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount) |
@@ -505,8 +519,8 @@ All data structures with the ‘public’ visibility specifier are ‘gettable�
 - `openCdp`
 - `addColl`
 - `withdrawColl`
-- `withdrawEBTC`
-- `repayEBTC`
+- `withdrawDebt`
+- `repayDebt`
 - `_adjustCdp`
 - `closeCdp()`
 - `claimCollateral`
@@ -621,7 +635,7 @@ Hints allow cheaper CDP operations for the user, at the expense of a slightly lo
   const EBTCRepayment = toBN(toWei('230')) // borrower wants to repay 230 eBTC
 
   // Get CDP's current debt and coll
-  const {0: debt, 1: coll} = await cdpManager.getDebtAndCollShares(borrower)
+  const {0: debt, 1: coll} = await cdpManager.getSyncedDebtAndCollShares(borrower)
   
   const newDebt = debt.sub(EBTCRepayment)
   const newColl = coll.add(collIncrease)
@@ -738,7 +752,7 @@ If the redemption causes a CDP's full debt to be cancelled, the CDP is then clos
 
 ### Gas compensation helper functions
 
-Gas compensation functions are found in the parent _LiquityBase.sol_ contract:
+Gas compensation functions are found in the parent _EbtcBase.sol_ contract:
 
 `_getCompositeDebt(uint _debt)` returns the composite debt (drawn debt + gas compensation) of a CDP, for the purpose of ICR calculation.
 

@@ -15,14 +15,14 @@ interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }
 
-/**
- * @title Base implementation of the LeverageMacro
- * @notice Do not use this contract as a end users
- * @dev You must extend this contract and override `owner()` to allow this to work:
- *      - As a Clone / Proxy (Not done, prob you'd read `owner` from calldata when using clones-with-immutable-args)
- *      - As a deployed copy (LeverageMacroReference)
- *      - Via delegate call (LeverageMacroDelegateTarget)
- */
+/// @title Base implementation of the LeverageMacro
+/// @notice Do not use this contract as a end users
+/// @dev You must extend this contract and override `owner()` to allow this to work:
+/// - As a Clone / Proxy (Not done, prob you'd read `owner` from calldata when using clones-with-immutable-args)
+/// - As a deployed copy (LeverageMacroReference)
+/// - Via delegate call (LeverageMacroDelegateTarget)
+/// @custom:known-issue Due to slippage some dust amounts for all intermediary tokens can be left, since there's no way to ask to sell all available
+
 contract LeverageMacroBase {
     using SafeERC20 for IERC20;
 
@@ -114,6 +114,7 @@ contract LeverageMacroBase {
      *
      *         - Sweep
      */
+    /// @notice Entry point for the Macro
     function doOperation(
         FlashLoanType flType,
         uint256 borrowAmount,
@@ -209,7 +210,7 @@ contract LeverageMacroBase {
         }
     }
 
-    // Make this public so you can delegate call to it and sweep to self
+    /// @notice Sweep away tokens if they are stuck here
     function sweepToCaller() public {
         _assertOwner();
         /**
@@ -228,6 +229,8 @@ contract LeverageMacroBase {
         }
     }
 
+    /// @notice Transfer an arbitrary token back to you
+    /// @dev If you delegatecall into this, this will transfer the tokens to the caller of the DiamondLike (and not the contract)
     function sweepToken(address token, uint256 amount) public {
         _assertOwner();
 
@@ -249,7 +252,7 @@ contract LeverageMacroBase {
         } else if (check.operator == Operator.equal) {
             require(check.value == valueToCheck, "!LeverageMacroReference: equal post check");
         } else {
-            // TODO: If proof OOB enum, then we can remove this
+            /// @audit If proof OOB enum, then we can remove this
             revert("Operator not found");
         }
     }
@@ -332,11 +335,13 @@ contract LeverageMacroBase {
         bytes32 _cdpId;
     }
 
+    /// @notice Convenience function to parse bytes into LeverageMacroOperation data
     function decodeFLData(bytes calldata data) public view returns (LeverageMacroOperation memory) {
         LeverageMacroOperation memory leverageMacroData = abi.decode(data, (LeverageMacroOperation));
         return leverageMacroData;
     }
 
+    /// @notice Proper Flashloan Callback handler
     function onFlashLoan(
         address initiator,
         address token,
@@ -386,6 +391,11 @@ contract LeverageMacroBase {
         }
     }
 
+    /// @dev Given a SwapOperation
+    ///     Approves the `addressForApprove` for the exact amount
+    ///     Calls `addressForSwap`
+    ///     Resets the approval of `addressForApprove`
+    ///     Performs validation via `_doSwapChecks`
     function _doSwap(SwapOperation memory swapData) internal {
         // Ensure call is safe
         // Block all system contracts
@@ -421,6 +431,8 @@ contract LeverageMacroBase {
         _doSwapChecks(swapData.swapChecks);
     }
 
+    /// @dev Given `SwapCheck` performs validation on the state of this contract
+    ///     A minOut Check
     function _doSwapChecks(SwapCheck[] memory swapChecks) internal {
         uint256 length = swapChecks.length;
         unchecked {
@@ -435,8 +447,9 @@ contract LeverageMacroBase {
         }
     }
 
-    // TODO: Check and add more if you think it's better
+    /// @dev Prevents doing arbitrary calls to protected targets
     function _ensureNotSystem(address addy) internal {
+        /// @audit Check and add more if you think it's better
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
         require(addy != address(activePool));
@@ -481,10 +494,8 @@ contract LeverageMacroBase {
         );
     }
 
-    /**
-     * excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
-     */
-    // Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
+    /// @dev excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
+    /// @notice Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
     function excessivelySafeCall(
         address _target,
         uint256 _gas,

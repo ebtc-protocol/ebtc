@@ -103,12 +103,12 @@ class BorrowerOperationsProxy extends Proxy {
     return this.forwardFunction(params, 'withdrawColl(uint256,bytes32,bytes32)')
   }
 
-  async withdrawEBTC(...params) {
-    return this.forwardFunction(params, 'withdrawEBTC(uint256,bytes32,bytes32)')
+  async withdrawDebt(...params) {
+    return this.forwardFunction(params, 'withdrawDebt(uint256,bytes32,bytes32)')
   }
 
-  async repayEBTC(...params) {
-    return this.forwardFunction(params, 'repayEBTC(uint256,bytes32,bytes32)')
+  async repayDebt(...params) {
+    return this.forwardFunction(params, 'repayDebt(uint256,bytes32,bytes32)')
   }
 
   async closeCdp(...params) {
@@ -139,8 +139,8 @@ class BorrowerOperationsProxy extends Proxy {
     return this.proxyFunction('LIQUIDATOR_REWARD', params)
   }
 
-  async MIN_NET_COLL(...params) {
-    return this.proxyFunction('MIN_NET_COLL', params)
+  async MIN_NET_STETH_BALANCE(...params) {
+    return this.proxyFunction('MIN_NET_STETH_BALANCE', params)
   }
 
   async BORROWING_FEE_FLOOR(...params) {
@@ -207,12 +207,12 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunctionWithUser('liquidate', user)
   }
 
-  async getTCR(...params) {
+  async getCachedTCR(...params) {
     return this.proxyFunction('getTCR', params)
   }
 
-  async getICR(user, price) {
-    return this.contract.getICR(this.getProxyAddressFromUser(user), price)
+  async getCachedICR(user, price) {
+    return this.contract.getCachedICR(this.getProxyAddressFromUser(user), price)
   }
 
   async checkRecoveryMode(...params) {
@@ -235,8 +235,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('systemDebtRedistributionIndex', [])
   }
 
-  async debtRedistributionIndex(user) {
-    return this.proxyFunctionWithUser('debtRedistributionIndex', user)
+  async cdpDebtRedistributionIndex(user) {
+    return this.proxyFunctionWithUser('cdpDebtRedistributionIndex', user)
   }
 
   async lastRedemptionTimestamp() {
@@ -255,8 +255,8 @@ class CdpManagerProxy extends Proxy {
     return this.proxyFunction('getRedemptionFeeWithDecay', params)
   }
 
-  async getDebtAndCollShares(...params) {
-    return this.proxyFunction('getDebtAndCollShares', params)
+  async getSyncedDebtAndCollShares(...params) {
+    return this.proxyFunction('getSyncedDebtAndCollShares', params)
   }
 }
 

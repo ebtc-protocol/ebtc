@@ -177,12 +177,12 @@ class TestHelper {
   }
 
   static async ICRbetween100and110(cdpId, cdpManager, price) {
-    const ICR = await cdpManager.getICR(cdpId, price)
+    const ICR = await cdpManager.getCachedICR(cdpId, price)
     return (ICR.gt(MoneyValues._ICR100)) && (ICR.lt(MoneyValues._MCR))
   }
 
   static async isUndercollateralized(account, cdpManager, price) {
-    const ICR = await cdpManager.getICR(account, price)
+    const ICR = await cdpManager.getCachedICR(account, price)
     return ICR.lt(MoneyValues._MCR)
   }
 
@@ -240,7 +240,7 @@ class TestHelper {
       const squeezedAddr = this.squeezeAddr(account)
       const coll = (await contracts.cdpManager.Cdps(account))[1]
       const debt = (await contracts.cdpManager.Cdps(account))[0]
-      const ICR = await contracts.cdpManager.getICR(account, price)
+      const ICR = await contracts.cdpManager.getCachedICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
 
@@ -266,7 +266,7 @@ class TestHelper {
       const squeezedAddr = this.squeezeAddr(account)
       const coll = (await cdpManager.Cdps(account))[1]
       const debt = (await cdpManager.Cdps(account))[0]
-      const ICR = await cdpManager.getICR(account, price)
+      const ICR = await cdpManager.getCachedICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
     }
@@ -293,9 +293,16 @@ class TestHelper {
     return contracts.cdpManager.checkRecoveryMode(price)
   }
 
-  static async getTCR(contracts) {
+  static async getCachedTCR(contracts) {
     const price = await contracts.priceFeedTestnet.getPrice()
-    return contracts.cdpManager.getTCR(price)
+    return contracts.cdpManager.getCachedTCR(price)
+  }
+  
+  static async syncGlobalStateAndGracePeriod(contracts, provider){	  
+    await contracts.cdpManager.syncGlobalAccountingAndGracePeriod();
+    let _gracePeriod = await contracts.cdpManager.recoveryModeGracePeriodDuration();
+    await provider.send("evm_increaseTime", [_gracePeriod.add(web3.utils.toBN('1')).toNumber()]);
+    await provider.send("evm_mine");
   }
 
   // --- Gas compensation calculation functions ---
@@ -313,11 +320,11 @@ class TestHelper {
   }
 
   static async getCdpEntireColl(contracts, cdp) {
-    return this.toBN((await contracts.cdpManager.getDebtAndCollShares(cdp))[1])
+    return this.toBN((await contracts.cdpManager.getSyncedDebtAndCollShares(cdp))[1])
   }
 
   static async getCdpEntireDebt(contracts, cdp) {
-    return this.toBN((await contracts.cdpManager.getDebtAndCollShares(cdp))[0])
+    return this.toBN((await contracts.cdpManager.getSyncedDebtAndCollShares(cdp))[0])
   }
 
   static async getCdpStake(contracts, cdp) {
@@ -374,10 +381,10 @@ class TestHelper {
 
         const EBTCAmount = redemptionTx.logs[i].args[0]
         const totalEBTCRedeemed = redemptionTx.logs[i].args[1]
-        const totalETHDrawn = redemptionTx.logs[i].args[2]
-        const ETHFee = redemptionTx.logs[i].args[3]
+        const collSharesDrawn = redemptionTx.logs[i].args[2]
+        const feeCollShares = redemptionTx.logs[i].args[3]
 
-        return [EBTCAmount, totalEBTCRedeemed, totalETHDrawn, ETHFee]
+        return [EBTCAmount, totalEBTCRedeemed, collSharesDrawn, feeCollShares]
       }
     }
     throw ("The transaction logs do not contain a redemption event")
@@ -450,21 +457,23 @@ class TestHelper {
       // try rawLogs for CdpUpdated
       for (let i = 0; i < tx.receipt.rawLogs.length; i++) {
            //console.log('tx.receipt.rawLogs[' + i + '].topics[0]=' + tx.receipt.rawLogs[i].topics[0]);
-           if (tx.receipt.rawLogs[i].topics[0] === '0x7e042f3ac12649aab70b1f15fc844445c798d7b434140e6cce56fcbb5a7c0bf1') {
+           if (tx.receipt.rawLogs[i].topics[0] === '0x94bbf0bce1cd1f8f3842d4a02225a01ed47c14e2cece80bfc4fa9a66308a5f7e') {
                if (argName === '_cdpId'){
                    return tx.receipt.rawLogs[i].topics[1];
                } else if (argName === '_borrower'){
                    return web3.utils.toChecksumAddress('0x' + tx.receipt.rawLogs[i].topics[2].substring(26).toUpperCase());				   
+               } else if (argName === '_executor'){
+                   return web3.utils.toChecksumAddress('0x' + tx.receipt.rawLogs[i].topics[3].substring(26).toUpperCase());				   
                } else{
                    let parsedVal = web3.eth.abi.decodeParameters(['uint256','uint256','uint256','uint256','uint256','uint8'], tx.receipt.rawLogs[i].data);
                    //console.log('CdpUpdated event data parsed=' + JSON.stringify(parsedVal));
                    if (argName === '_oldDebt'){
                        return parsedVal['0'];
-                   } else if (argName === '_oldColl'){
+                   } else if (argName === '_oldColl'){//_oldCollShares
                        return parsedVal['1'];
                    } else if (argName === '_debt'){
                        return parsedVal['2'];
-                   } else if (argName === '_coll'){
+                   } else if (argName === '_coll'){//_collShares
                        return parsedVal['3'];
                    } else if (argName === '_stake'){
                        return parsedVal['4'];
@@ -484,6 +493,7 @@ class TestHelper {
 
     const emittedCdpId = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_cdpId")
     const emittedBorrower = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_borrower")
+    const emittedExecutor = TestHelper.getEventArgByName(transaction, "CdpUpdated", "_executor")
 
     const emittedOldDebt = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldDebt"))
     const emittedOldColl = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_oldColl"))
@@ -494,9 +504,10 @@ class TestHelper {
     const emittedStake = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_stake"))
     const emittedOperation = toBN(TestHelper.getEventArgByName(transaction, "CdpUpdated", "_operation")) //BorrowerOperation.openCdp = 0
 
-    return {
+    let _cdpUpdatedEvt = {
       "cdpId": emittedCdpId,
       "borrower": emittedBorrower,
+      "executor": emittedExecutor,
       "oldDebt": emittedOldDebt,
       "oldColl": emittedOldColl,
       "debt": emittedDebt,
@@ -504,6 +515,8 @@ class TestHelper {
       "stake": emittedStake,
       "operation": emittedOperation
     }
+    //console.log('CdpUpdated event data parsed=' + JSON.stringify(_cdpUpdatedEvt));
+    return _cdpUpdatedEvt;
   }
 
   static getAllEventsByName(tx, eventName) {
@@ -527,7 +540,7 @@ class TestHelper {
 
   static getDebtAndCollFromCdpUpdatedEvents(cdpUpdatedEvents, address) {
     const event = cdpUpdatedEvents.filter(event => event.args[0] === address)[0]
-    return [event.args[4], event.args[5]]
+    return [event.args[5], event.args[6]]
   }
 
   static async getBorrowerOpsListHint(contracts, newColl, newDebt) {
@@ -543,8 +556,8 @@ class TestHelper {
     // console.log(`account: ${account}`)
     const rawColl = (await contracts.cdpManager.Cdps(account))[1]
     const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
-    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingRedistributedDebt(account))
-    const entireDebt = rawDebt.add(pendingEBTCDebtReward)
+    const pendingRedistributedDebt = (await contracts.cdpManager.getPendingRedistributedDebt(account))
+    const entireDebt = rawDebt.add(pendingRedistributedDebt)
     let entireColl = rawColl;
     return { entireColl, entireDebt }
   }
@@ -567,7 +580,7 @@ class TestHelper {
     return { newColl, newDebt }
   }
 
-  static async getCollAndDebtFromWithdrawEBTC(contracts, account, amount) {
+  static async getCollAndDebtFromwithdrawDebt(contracts, account, amount) {
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
     const newColl = entireColl
@@ -576,7 +589,7 @@ class TestHelper {
     return { newColl, newDebt }
   }
 
-  static async getCollAndDebtFromRepayEBTC(contracts, account, amount) {
+  static async getCollAndDebtFromrepayDebt(contracts, account, amount) {
     const { entireColl, entireDebt } = await this.getEntireCollAndDebt(contracts, account)
 
     const newColl = entireColl
@@ -674,7 +687,7 @@ class TestHelper {
 
       if (logging && tx.receipt.status) {
         i++
-        const ICR = await contracts.cdpManager.getICR(account, price)
+        const ICR = await contracts.cdpManager.getCachedICR(account, price)
         // console.log(`${i}. Cdp opened. addr: ${this.squeezeAddr(account)} coll: ${randCollAmount} debt: ${proportionalEBTC} ICR: ${ICR}`)
       }
       const gas = this.gasUsed(tx)
@@ -744,7 +757,7 @@ class TestHelper {
     if (!upperHint) upperHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     if (!lowerHint) lowerHint = this.DUMMY_BYTES32 //this.ZERO_ADDRESS
     const price = await contracts.priceFeedTestnet.getPrice()
-    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_COLL()
+    const minNetDebtEth = await contracts.borrowerOperations.MIN_NET_STETH_BALANCE()
     const securityDeposit = await contracts.borrowerOperations.LIQUIDATOR_REWARD()
     const minNetDebt = minNetDebtEth.mul(price).div(MoneyValues._1e18BN)
     const MIN_DEBT = (
@@ -798,14 +811,21 @@ class TestHelper {
     }
   }
   
-  static async liquidateCdps(_n, _price, contracts, {extraParams}) {
-    let _batchArray = await contracts.liquidationSequencer.sequenceLiqToBatchLiqWithPrice(_n, _price);
+  static async liqSequencerCallWithPrice(_n, _price, contracts, {extraParams}){
+    const sequenceLiqToBatchLiqWithPriceFuncABI = '[{"inputs":[{"internalType":"uint256","name":"_n","type":"uint256"},{"internalType":"uint256","name":"_price","type":"uint256"}],"name":"sequenceLiqToBatchLiqWithPrice","outputs":[{"internalType":"bytes32[]","name":"_array","type":"bytes32[]"}],"stateMutability":"nonpayable","type":"function"}]';
+    const liqSequencerContract = new ethers.Contract(contracts.liquidationSequencer.address, sequenceLiqToBatchLiqWithPriceFuncABI, (await ethers.provider.getSigner(extraParams.from)));
+    let _batchArray = await liqSequencerContract.callStatic.sequenceLiqToBatchLiqWithPrice(_n, _price);
     //console.log("coverting " + _n + " sequential liquidation to batch liquidation:" + JSON.stringify(_batchArray));
+    return _batchArray
+  }
+  
+  static async liquidateCdps(_n, _price, contracts, {extraParams}) {
+    let _batchArray = await this.liqSequencerCallWithPrice(_n, _price.toString(), contracts, {extraParams});
     const tx = await contracts.cdpManager.batchLiquidateCdps(_batchArray, {from: extraParams.from});
     return tx;
   }
 
-  static async withdrawEBTC(contracts, {
+  static async withdrawDebt(contracts, {
     _cdpId,
     ebtcAmount,
     ICR,
@@ -821,7 +841,7 @@ class TestHelper {
     let increasedTotalDebt
     if (ICR) {
       assert(extraParams.from, "A from account is needed")
-      const { debt, coll } = await contracts.cdpManager.getDebtAndCollShares(_cdpId)
+      const { debt, coll } = await contracts.cdpManager.getSyncedDebtAndCollShares(_cdpId)
       const price = await contracts.priceFeedTestnet.getPrice()
       const targetDebt = coll.mul(price).div(ICR)
       assert(targetDebt > debt, "ICR is already greater than or equal to target")
@@ -831,7 +851,7 @@ class TestHelper {
       increasedTotalDebt = await this.getAmountWithBorrowingFee(contracts, ebtcAmount)
     }
 
-    await contracts.borrowerOperations.withdrawEBTC(_cdpId, ebtcAmount, upperHint, lowerHint, extraParams)
+    await contracts.borrowerOperations.withdrawDebt(_cdpId, ebtcAmount, upperHint, lowerHint, extraParams)
 
     return {
       ebtcAmount,
@@ -979,64 +999,64 @@ class TestHelper {
     return this.getGasMetrics(gasCostList)
   }
 
-  static async withdrawEBTC_allAccounts(accounts, contracts, amount, cdpIds) {
+  static async withdrawDebt_allAccounts(accounts, contracts, amount, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
-      const { newColl, newDebt } = await this.getCollAndDebtFromWithdrawEBTC(contracts, cdpIds[i], amount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromwithdrawDebt(contracts, cdpIds[i], amount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.withdrawEBTC(cdpIds[i], amount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.withdrawDebt(cdpIds[i], amount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async withdrawEBTC_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
+  static async withdrawDebt_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
       const randEBTCAmount = this.randAmountInWei(min, max)
 
-      const { newColl, newDebt } = await this.getCollAndDebtFromWithdrawEBTC(contracts, cdpIds[i], randEBTCAmount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromwithdrawDebt(contracts, cdpIds[i], randEBTCAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.withdrawEBTC(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.withdrawDebt(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async repayEBTC_allAccounts(accounts, contracts, amount, cdpIds) {
+  static async repayDebt_allAccounts(accounts, contracts, amount, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
-      const { newColl, newDebt } = await this.getCollAndDebtFromRepayEBTC(contracts, cdpIds[i], amount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromrepayDebt(contracts, cdpIds[i], amount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.repayEBTC(cdpIds[i], amount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.repayDebt(cdpIds[i], amount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
     return this.getGasMetrics(gasCostList)
   }
 
-  static async repayEBTC_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
+  static async repayDebt_allAccounts_randomAmount(min, max, accounts, contracts, cdpIds) {
     const gasCostList = []
 
     for (let i = 0;i < accounts.length;i++) {
       const account = accounts[i];
       const randEBTCAmount = this.randAmountInWei(min, max)
 		
-      const { newColl, newDebt } = await this.getCollAndDebtFromRepayEBTC(contracts, cdpIds[i], randEBTCAmount)
+      const { newColl, newDebt } = await this.getCollAndDebtFromrepayDebt(contracts, cdpIds[i], randEBTCAmount)
       const {upperHint, lowerHint} = await this.getBorrowerOpsListHint(contracts, newColl, newDebt)
 
-      const tx = await contracts.borrowerOperations.repayEBTC(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
+      const tx = await contracts.borrowerOperations.repayDebt(cdpIds[i], randEBTCAmount, upperHint, lowerHint, { from: account })
       const gas = this.gasUsed(tx)
       gasCostList.push(gas)
     }
@@ -1048,7 +1068,7 @@ class TestHelper {
     const price = await contracts.priceFeedTestnet.getPrice()
 
     for (const account of accounts) {
-      const tx = await functionCaller.cdpManager_getICR(account, price)
+      const tx = await functionCaller.cdpManager_getCachedICR(account, price)
       const gas = this.gasUsed(tx) - 21000
       gasCostList.push(gas)
     }

@@ -7,8 +7,13 @@ import "./IPositionManagers.sol";
 interface IBorrowerOperations is IPositionManagers {
     // --- Events ---
 
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
-    event FlashLoanSuccess(address _receiver, address _token, uint256 _amount, uint256 _fee);
+    event FeeRecipientAddressChanged(address indexed _feeRecipientAddress);
+    event FlashLoanSuccess(
+        address indexed _receiver,
+        address indexed _token,
+        uint256 _amount,
+        uint256 _fee
+    );
 
     // --- Functions ---
 
@@ -41,14 +46,14 @@ interface IBorrowerOperations is IPositionManagers {
         bytes32 _lowerHint
     ) external;
 
-    function withdrawEBTC(
+    function withdrawDebt(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,
         bytes32 _lowerHint
     ) external;
 
-    function repayEBTC(
+    function repayDebt(
         bytes32 _cdpId,
         uint256 _amount,
         bytes32 _upperHint,

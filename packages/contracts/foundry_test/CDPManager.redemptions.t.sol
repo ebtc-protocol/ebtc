@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 
 contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
@@ -102,8 +102,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             bytes32 _cdpId = _openTestCDP(_borrowers[i], _collAmt, _debt);
             _cdpIds[i - 1] = _cdpId;
             if (i > 1) {
-                uint256 _icr = cdpManager.getICR(_cdpId, _price);
-                uint256 _prevICR = cdpManager.getICR(_cdpIds[i - 2], _price);
+                uint256 _icr = cdpManager.getCachedICR(_cdpId, _price);
+                uint256 _prevICR = cdpManager.getCachedICR(_cdpIds[i - 2], _price);
                 require(_icr > _prevICR, "!icr");
                 require(_icr > CCR, "!icr>ccr");
             }
@@ -118,7 +118,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 _redeemNumber = _utils.generateRandomNumber(1, _cdpNumber - 1, _redeemer);
         uint256 _redeemDebt;
         for (uint256 i = 0; i < _redeemNumber; ++i) {
-            CdpState memory _state = _getDebtAndCollShares(_cdpIds[i]);
+            CdpState memory _state = _getSyncedDebtAndCollShares(_cdpIds[i]);
             _redeemDebt += _state.debt;
             address _owner = sortedCdps.getOwnerAddress(_cdpIds[i]);
             uint256 _sugar = eBTCToken.balanceOf(_owner);
@@ -364,10 +364,10 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
     function _singleCdpSetupWithICR(address _usr, uint256 _icr) internal returns (address, bytes32) {
         uint256 _price = priceFeedMock.fetchPrice();
-        uint256 _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
-        uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
+        uint256 _cdpICR = cdpManager.getCachedICR(_cdpId, _price);
         _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
         return (_usr, _cdpId);
     }
@@ -424,7 +424,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+            cdpManager.getCachedICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -433,8 +433,6 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     }
 
     function test_RedemptionMustSatisfyAccountingEquation() public {
-        vm.warp(block.timestamp + cdpManager.BOOTSTRAP_PERIOD());
-
         //   openCdp 2200000000000000067 4
         //   openCdp 2293234842987251430 136273187309674429
         //   setEthPerShare 909090909090909090

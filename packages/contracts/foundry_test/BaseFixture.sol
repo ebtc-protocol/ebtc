@@ -6,6 +6,7 @@ import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
+import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
@@ -27,8 +28,16 @@ import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariab
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
 import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
+import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 
-contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeReader, LogUtils {
+contract eBTCBaseFixture is
+    Test,
+    BaseStorageVariables,
+    BeforeAfter,
+    FoundryAsserts,
+    BytecodeReader,
+    LogUtils
+{
     uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint256 public constant CCR = 125e16; // 125%
@@ -67,6 +76,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     // EBTCToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
+    bytes4 public constant BURN2_SIG = bytes4(keccak256(bytes("burn(uint256)")));
 
     // PriceFeed
     bytes4 public constant SET_FALLBACK_CALLER_SIG =
@@ -88,8 +98,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
         bytes4(keccak256(bytes("setFeeRecipientAddress(address)")));
 
-    event FlashFeeSet(address _setter, uint256 _oldFee, uint256 _newFee);
-    event MaxFlashFeeSet(address _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
+    event FlashFeeSet(address indexed _setter, uint256 _oldFee, uint256 _newFee);
+    event MaxFlashFeeSet(address indexed _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
@@ -105,7 +115,6 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     struct CdpState {
         uint256 debt;
         uint256 coll;
-        uint256 pendingEBTCDebtReward;
     }
 
     /* setUp() - basic function to call when setting up new Foundry test suite
@@ -179,7 +188,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
             );
 
             // CDP Manager
-            creationCode = type(CdpManager).creationCode;
+            /// @audit NOTE: This is the DEV VERSION!!!!!
+            creationCode = type(AccruableCdpManager).creationCode;
             args = abi.encode(
                 addr.liquidationLibraryAddress,
                 addr.authorityAddress,
@@ -331,6 +341,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
 
         authority.setRoleCapability(1, address(eBTCToken), MINT_SIG, true);
         authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
+        authority.setRoleCapability(2, address(eBTCToken), BURN2_SIG, true);
 
         authority.setRoleCapability(3, address(cdpManager), SET_STAKING_REWARD_SPLIT_SIG, true);
         authority.setRoleCapability(3, address(cdpManager), SET_REDEMPTION_FEE_FLOOR_SIG, true);
@@ -396,10 +407,9 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
     // Helper functions
     ////////////////////////////////////////////////////////////////////////////
 
-    function _getDebtAndCollShares(bytes32 cdpId) internal view returns (CdpState memory) {
-        (uint256 debt, uint256 coll, uint256 pendingEBTCDebtReward) = cdpManager
-            .getDebtAndCollShares(cdpId);
-        return CdpState(debt, coll, pendingEBTCDebtReward);
+    function _getSyncedDebtAndCollShares(bytes32 cdpId) internal view returns (CdpState memory) {
+        (uint256 debt, uint256 coll) = cdpManager.getSyncedDebtAndCollShares(cdpId);
+        return CdpState(debt, coll);
     }
 
     function dealCollateral(address _recipient, uint256 _amount) public virtual returns (uint256) {
@@ -440,7 +450,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         uint256 _price = priceFeedMock.fetchPrice();
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
-        uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
+        uint256 _cdpICR = cdpManager.getCachedICR(_cdpId, _price);
         _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
         return (_usr, _cdpId);
     }
@@ -475,8 +485,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         assertTrue(_liquidatorRewardShares == 0);
         assertTrue(_status == expectedStatus);
 
-        assertTrue(cdpManager.debtRedistributionIndex(cdpId) == 0);
-        assertTrue(cdpManager.stEthFeePerUnitIndex(cdpId) == 0);
+        assertTrue(cdpManager.cdpDebtRedistributionIndex(cdpId) == 0);
+        assertTrue(cdpManager.cdpStEthFeePerUnitIndex(cdpId) == 0);
     }
 
     function _printSystemState() internal {
@@ -488,16 +498,16 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
             collateral.getPooledEthByShares(activePool.getSystemCollShares())
         );
         console.log("systemDebt         :", activePool.getSystemDebt());
-        console.log("TCR                :", cdpManager.getTCR(price));
+        console.log("TCR                :", cdpManager.getCachedTCR(price));
         console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
         console.log("stEthGlobalIndex   :", cdpManager.stEthIndex());
         console.log("price              :", price);
         console.log("");
     }
 
-    function _getICR(bytes32 cdpId) internal returns (uint256) {
+    function _getCachedICR(bytes32 cdpId) internal returns (uint256) {
         uint256 price = priceFeedMock.fetchPrice();
-        return cdpManager.getICR(cdpId, price);
+        return cdpManager.getCachedICR(cdpId, price);
     }
 
     function _printAllCdps() internal {
@@ -510,7 +520,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
             console.log("=== ", bytes32ToString(node));
             console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
             console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
-            console.log("ICR                   :", cdpManager.getICR(node, price));
+            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
             console.log(
                 "Percent of System     :",
                 (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
@@ -528,7 +538,7 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
         uint counter = 0;
 
         while (_currentCdpId != sortedCdps.dummyId()) {
-            uint NICR = cdpManager.getNominalICR(_currentCdpId);
+            uint NICR = cdpManager.getCachedNominalICR(_currentCdpId);
             console.log(counter, bytes32ToString(_currentCdpId));
             console.log(NICR);
             _currentCdpId = sortedCdps.getPrev(_currentCdpId);
@@ -554,8 +564,8 @@ contract eBTCBaseFixture is Test, BaseStorageVariables, BeforeAfter, BytecodeRea
 
     // Grace Period, check never reverts so it's safe to use
     function _waitUntilRMColldown() internal {
-        cdpManager.syncGracePeriod();
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        cdpManager.syncGlobalAccountingAndGracePeriod();
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
     }
 
     function _getCdpStEthBalance(bytes32 _cdpId) public view returns (uint) {

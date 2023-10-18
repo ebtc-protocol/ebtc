@@ -23,11 +23,11 @@ contract SortedCdpsTester {
         sortedCdps.reInsert(_id, _newNICR, _prevId, _nextId);
     }
 
-    function getNominalICR(bytes32) external pure returns (uint256) {
+    function getCachedNominalICR(bytes32) external pure returns (uint256) {
         return 1;
     }
 
-    function getICR(bytes32, uint256) external pure returns (uint256) {
+    function getCachedICR(bytes32, uint256) external pure returns (uint256) {
         return 1;
     }
 

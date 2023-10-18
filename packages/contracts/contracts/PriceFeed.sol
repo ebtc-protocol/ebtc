@@ -6,7 +6,7 @@ import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/IFallbackCaller.sol";
 import "./Dependencies/AggregatorV3Interface.sol";
 import "./Dependencies/BaseMath.sol";
-import "./Dependencies/LiquityMath.sol";
+import "./Dependencies/EbtcMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
@@ -54,7 +54,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _authorityAddress The address of the Authority contract
     /// @param _collEthCLFeed The address of the collateral-ETH ChainLink feed
     /// @param _ethBtcCLFeed The address of the ETH-BTC ChainLink feed
-    /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
     constructor(
         address _fallbackCallerAddress,
         address _authorityAddress,
@@ -92,8 +91,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // --- Functions ---
 
     /// @notice Returns the latest price obtained from the Oracle
-    /// @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
-    /// @dev Non-view function - it stores the last good price seen by eBTC.
+    /// @dev Called by eBTC functions that require a current price. Also callable permissionlessly.
+    /// @dev Non-view function - it updates and stores the last good price seen by eBTC.
     /// @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
     /// @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
     /// @return The latest price fetched from the Oracle
@@ -445,8 +444,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         ChainlinkResponse memory _currentResponse,
         ChainlinkResponse memory _prevResponse
     ) internal pure returns (bool) {
-        uint256 minPrice = LiquityMath._min(_currentResponse.answer, _prevResponse.answer);
-        uint256 maxPrice = LiquityMath._max(_currentResponse.answer, _prevResponse.answer);
+        uint256 minPrice = EbtcMath._min(_currentResponse.answer, _prevResponse.answer);
+        uint256 maxPrice = EbtcMath._max(_currentResponse.answer, _prevResponse.answer);
 
         /*
          * Use the larger price as the denominator:
@@ -454,7 +453,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
          * - If price increased, the percentage deviation is in relation to the current price.
          */
         uint256 percentDeviation = maxPrice > 0
-            ? ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / maxPrice
+            ? ((maxPrice - minPrice) * EbtcMath.DECIMAL_PRECISION) / maxPrice
             : 0;
 
         // Return true if price has more than doubled, or more than halved.
@@ -527,10 +526,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         FallbackResponse memory _fallbackResponse
     ) internal pure returns (bool) {
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint256 minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint256 minPrice = EbtcMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
         if (minPrice == 0) return false;
-        uint256 maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
-        uint256 percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) /
+        uint256 maxPrice = EbtcMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
+        uint256 percentPriceDifference = ((maxPrice - minPrice) * EbtcMath.DECIMAL_PRECISION) /
             minPrice;
 
         /*
@@ -602,7 +601,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
-
     function _getCurrentChainlinkResponse()
         internal
         view
@@ -684,7 +682,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _currentRoundEthBtcId The current round ID for the ETH-BTC price feed.
     /// @param _currentRoundStEthEthId The current round ID for the stETH-ETH price feed.
     /// @return prevChainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
-
     function _getPrevChainlinkResponse(
         uint80 _currentRoundEthBtcId,
         uint80 _currentRoundStEthEthId
@@ -802,6 +799,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             (_scaledDecimal *
                 uint256(_ethBtcAnswer) *
                 uint256(_stEthEthAnswer) *
-                LiquityMath.DECIMAL_PRECISION) / 10 ** (_decimalDenominator * 2);
+                EbtcMath.DECIMAL_PRECISION) / 10 ** (_decimalDenominator * 2);
     }
 }

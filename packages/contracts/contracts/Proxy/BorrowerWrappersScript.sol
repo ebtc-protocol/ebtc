@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "../Dependencies/SafeMath.sol";
-import "../Dependencies/LiquityMath.sol";
+import "../Dependencies/EbtcMath.sol";
 import "../Dependencies/IERC20.sol";
 import "../Interfaces/IBorrowerOperations.sol";
 import "../Interfaces/ICdpManager.sol";
@@ -113,12 +113,10 @@ contract BorrowerWrappersScript is BorrowerOperationsScript, ETHTransferScript, 
 
     function _getNetEBTCAmount(bytes32 _cdpId, uint256 _collateral) internal returns (uint256) {
         uint256 price = priceFeed.fetchPrice();
-        uint256 ICR = cdpManager.getICR(_cdpId, price);
+        uint256 ICR = cdpManager.getCachedICR(_cdpId, price);
 
         uint256 EBTCAmount = _collateral.mul(price).div(ICR);
-        uint256 netDebt = EBTCAmount.mul(LiquityMath.DECIMAL_PRECISION).div(
-            LiquityMath.DECIMAL_PRECISION
-        );
+        uint256 netDebt = EBTCAmount.mul(EbtcMath.DECIMAL_PRECISION).div(EbtcMath.DECIMAL_PRECISION);
 
         return netDebt;
     }

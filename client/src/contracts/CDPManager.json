@@ -684,7 +684,7 @@
           "type": "address"
         }
       ],
-      "name": "debtRedistributionIndex",
+      "name": "cdpDebtRedistributionIndex",
       "outputs": [
         {
           "internalType": "uint256",

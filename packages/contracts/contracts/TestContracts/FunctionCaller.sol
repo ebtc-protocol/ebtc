@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "../Interfaces/ICdpManager.sol";
 import "../Interfaces/ISortedCdps.sol";
 import "../Interfaces/IPriceFeed.sol";
-import "../Dependencies/LiquityMath.sol";
+import "../Dependencies/EbtcMath.sol";
 
 /* Wrapper contract - used for calculating gas of read-only and internal functions. 
 Not part of the Liquity application. */
@@ -38,8 +38,11 @@ contract FunctionCaller {
 
     // --- Non-view wrapper functions used for calculating gas ---
 
-    function cdpManager_getICR(bytes32 _cdpId, uint256 _price) external view returns (uint256) {
-        return cdpManager.getICR(_cdpId, _price);
+    function cdpManager_getCachedICR(
+        bytes32 _cdpId,
+        uint256 _price
+    ) external view returns (uint256) {
+        return cdpManager.getCachedICR(_cdpId, _price);
     }
 
     function sortedCdps_findInsertPosition(

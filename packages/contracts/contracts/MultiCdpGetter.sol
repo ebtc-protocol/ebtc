@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./CdpManager.sol";
 import "./SortedCdps.sol";
 
-/*  Helper contract for grabbing Cdp data for the front end. Not part of the core Liquity system. */
+/*  Helper contract for grabbing Cdp data for the front end. Not part of the core Ebtc system. */
 contract MultiCdpGetter {
     struct CombinedCdpData {
         bytes32 id;
@@ -21,7 +21,7 @@ contract MultiCdpGetter {
     /// @notice Creates a new MultiCdpGetter contract
     /// @param _cdpManager The CdpManager contract
     /// @param _sortedCdps The ISortedCdps contract
-    constructor(CdpManager _cdpManager, ISortedCdps _sortedCdps) public {
+    constructor(CdpManager _cdpManager, ISortedCdps _sortedCdps) {
         cdpManager = _cdpManager;
         sortedCdps = _sortedCdps;
     }
@@ -29,7 +29,7 @@ contract MultiCdpGetter {
     /// @notice Retrieves multiple sorted Cdps
     /// @param _startIdx The start index for the linked list. The sign determines whether to start from the head or tail of the list.
     /// @dev Positive values start from the _head_ of the list and walk towards the _tail_, negative values start from the _tail_ of the list and walk towards the _head_
-    /// @param _count The count of Cdps to retrieve. If the requested count exceeds the number of available CDPs starting from the _startIdx, the function will only retrieve the available CDPs.
+    /// @param _count The count of Cdps to retrieve. If the requested count exceeds the number of available Cdps starting from the _startIdx, the function will only retrieve the available Cdps.
     /// @return _cdps An array of CombinedCdpData structs
     function getMultipleSortedCdps(
         int _startIdx,
@@ -84,8 +84,8 @@ contract MultiCdpGetter {
         for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
             (
-                _cdps[idx].debt,
-                _cdps[idx].coll,
+                ,
+                ,
                 _cdps[idx].stake,
                 /* status */
                 /* arrayIndex */
@@ -94,7 +94,8 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotEBTCDebt) = cdpManager.debtRedistributionIndex(currentCdpId);
+            (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
+            (_cdps[idx].snapshotEBTCDebt) = cdpManager.cdpDebtRedistributionIndex(currentCdpId);
 
             currentCdpId = sortedCdps.getNext(currentCdpId);
         }
@@ -119,8 +120,8 @@ contract MultiCdpGetter {
         for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
             (
-                _cdps[idx].debt,
-                _cdps[idx].coll,
+                ,
+                ,
                 _cdps[idx].stake,
                 /* status */
                 /* arrayIndex */
@@ -129,7 +130,8 @@ contract MultiCdpGetter {
 
             ) = cdpManager.Cdps(currentCdpId);
 
-            (_cdps[idx].snapshotEBTCDebt) = cdpManager.debtRedistributionIndex(currentCdpId);
+            (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
+            (_cdps[idx].snapshotEBTCDebt) = cdpManager.cdpDebtRedistributionIndex(currentCdpId);
 
             currentCdpId = sortedCdps.getPrev(currentCdpId);
         }

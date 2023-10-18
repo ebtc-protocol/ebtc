@@ -1,15 +1,19 @@
 ## This Dockerfile is here to help you make Echidna work if you have issues with the installation of it or slither
 
-## Built with docker build -t my/fuzzy:latest .
+## Built with
+## docker build -t my/fuzzy:latest .
 
 ## Run image with
 ## docker run -it --rm -v $PWD:/code my/fuzzy
 
-## Run with (if you have already ran tests and compilation)
+## Run ECHIDNA with (if you have already ran tests and compilation)
 ## cd code && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
 
+## Run MEDUSA with (if you have already ran tests and compilation)
+## cd code && solc-select use 0.8.17 && cd packages/contracts/ && medusa fuzz
+
 ## If you've never built the repo
-## Run with
+## Run ECHIDNA with
 ## yarn && git submodule init && git submodule update && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 100000
 
 FROM ubuntu:20.04
@@ -61,10 +65,11 @@ RUN pip3 install slither-analyzer
 
 
 RUN echo "[$(date)] Install echidna"
-RUN wget https://github.com/crytic/echidna/releases/download/v2.2.0/echidna-2.2.0-Ubuntu-22.04.tar.gz -O echidna.tar.gz
+RUN wget https://github.com/crytic/echidna/releases/download/v2.2.1/echidna-2.2.1-Linux.zip -O echidna.zip
+RUN unzip echidna.zip
 RUN tar -xvkf echidna.tar.gz
 RUN mv echidna /usr/bin/
-RUN rm echidna.tar.gz
+RUN rm echidna.zip echidna.tar.gz
 
 
 RUN echo "[$(date)] Install foundry"
@@ -79,25 +84,27 @@ RUN PATH="$PATH:$HOME/.foundry/bin" foundryup
 
 RUN echo "[$(date)] Finish setup"
 
+## GO
+## NOTE: For some reason we need to re-get else sometimes glibc throws error
+RUN apt-get update
+RUN apt install -y glibc-source
+RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
+RUN export PATH="$PATH:/usr/local/go/bin"
+ENV PATH="$PATH:/usr/local/go/bin"
 
-## TODO: MEDUSA
-```
-# ## INSTALL MEDUSA
+RUN git config --global user.email "you@example.com"
+RUN git config --global user.name "Your Name"
 
-# ## GO
-# RUN wget https://go.dev/dl/go1.21.1.linux-arm64.tar.gz && tar -C /usr/local -xzf go1.21.1.linux-arm64.tar.gz
-# RUN export PATH="$PATH:/usr/local/go/bin"
-# ENV PATH="$PATH:/usr/local/go/bin"
+RUN echo "Downloading and building Medusa..."
+RUN git clone https://github.com/crytic/medusa
+RUN cd medusa && git checkout ac99e78ee38df86a8afefb21f105be9e4eae46ee && git pull origin dev/merge-assertion-and-property-mode && git pull origin dev/no-multi-abi
 
-# ## MEDUSA:  h/t: https://github.com/Deivitto/auditor-docker/blob/main/scripts/medusa_fuzzer.sh
-# RUN echo "Downloading and building Medusa..."
-# RUN git clone https://github.com/crytic/medusa && cd medusa && git pull origin dev/merge-assertion-and-property-mode && git pull origin dev/no-multi-abi && go build
+## WARNING!!!!
+## Comment this line on Silicon, the line below is for Intel!
+RUN cd medusa && GOOS=linux GOARCH=amd64 go build
 
-# # Move the Binary to /usr/local/bin/
-# RUN echo "Moving Medusa binary to /usr/local/bin/"
-# RUN mv medusa /usr/local/bin/
+RUN cd medusa && mv medusa /usr/local/bin/ 
 
-# # Make the Binary Executable
-# RUN echo "Making Medusa executable..."
-# RUN chmod +x /usr/local/bin/medusa
-# ```
+RUN chmod +x /usr/local/bin/medusa
+
+RUN export PATH="$PATH:/usr/local/bin/medusa"

@@ -13,10 +13,11 @@ import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/BaseMath.sol";
 
 /**
- * The Active Pool holds the collateral and EBTC debt (but not EBTC tokens) for all active cdps.
+ * @title The Active Pool holds the collateral and EBTC debt (only accounting but not EBTC tokens) for all active cdps.
  *
- * When a cdp is liquidated, it's collateral and EBTC debt are transferred from the Active Pool, to either the
- * Stability Pool, the Default Pool, or both, depending on the liquidation conditions.
+ * @notice When a cdp is liquidated, it's collateral will be transferred from the Active Pool
+ * @notice (destination may vary depending on the liquidation conditions).
+ * @dev ActivePool also allows ERC3156 compatible flashloan of stETH token
  */
 contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMath, AuthNoOwner {
     using SafeERC20 for IERC20;
@@ -30,7 +31,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     uint256 internal systemCollShares; // deposited collateral tracker
     uint256 internal systemDebt;
     uint256 internal feeRecipientCollShares; // coll shares claimable by fee recipient
-    ICollateralToken public collateral;
+    ICollateralToken public immutable collateral;
 
     // --- Contract setters ---
 
@@ -134,7 +135,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         uint256 cachedSystemCollShares = systemCollShares;
         require(cachedSystemCollShares >= _shares, "ActivePool: Insufficient collateral shares");
-        uint256 totalShares = _shares + _liquidatorRewardShares; // TODO: Is this safe?
+        uint256 totalShares = _shares + _liquidatorRewardShares; /// @audit Is this safe?
         unchecked {
             // Safe per the check above
             cachedSystemCollShares -= _shares;
@@ -311,7 +312,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @notice Calculate the flash loan fee for a given token and amount loaned
     /// @param token The address of the token to calculate the fee for
     /// @param amount The amount of tokens to calculate the fee for
-    /// @return The amount of the flash loan fee
+    /// @return The flashloan fee calcualted for given token and loan amount
 
     function flashFee(address token, uint256 amount) public view override returns (uint256) {
         require(token == address(collateral), "ActivePool: collateral Only");
@@ -323,7 +324,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @notice Get the maximum flash loan amount for a specific token
     /// @dev Exclusively used here for stETH collateral, equal to the current balance of the pool
     /// @param token The address of the token to get the maximum flash loan amount for
-    /// @return The maximum flash loan amount for the token
+    /// @return The maximum available flashloan amount for the token
     function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(collateral)) {
             return 0;
@@ -364,6 +365,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
     /// @dev Function to move unintended dust that are not protected
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
+    /// @param token The token address to be swept
+    /// @param amount The token amount to be swept
 
     function sweepToken(address token, uint256 amount) public nonReentrant requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
@@ -380,6 +383,10 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit SweepTokenSuccess(token, amount, cachedFeeRecipientAddress);
     }
 
+    /// @notice Set new FeeRecipient
+    /// @dev Previous fees are forfeited, if you wish to claim to previous address
+    ///       call `claimFeeRecipientCollShares` first
+    /// @param _feeRecipientAddress The new fee recipient address to be set
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 
@@ -392,6 +399,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
+    /// @notice Sets new Fee for FlashLoans
+    /// @param _newFee The new flashloan fee to be set
     function setFeeBps(uint256 _newFee) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 
@@ -403,6 +412,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }
 
+    /// @notice Should Flashloans be paused?
+    /// @param _paused The flag (true or false) whether flashloan will be paused
     function setFlashLoansPaused(bool _paused) external requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Accrue State First
 

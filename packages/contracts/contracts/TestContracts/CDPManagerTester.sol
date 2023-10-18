@@ -44,7 +44,7 @@ contract CdpManagerTester is CdpManager {
         uint256 _debt,
         uint256 _price
     ) external pure returns (uint256) {
-        return LiquityMath._computeCR(_coll, _debt, _price);
+        return EbtcMath._computeCR(_coll, _debt, _price);
     }
 
     function getDeltaIndexToTriggerRM(
@@ -52,10 +52,10 @@ contract CdpManagerTester is CdpManager {
         uint256 _price,
         uint256 _stakingRewardSplit
     ) external view returns (uint256) {
-        uint256 _tcr = _getTCR(_price);
+        uint256 _tcr = _getCachedTCR(_price);
         if (_tcr <= CCR) {
             return 0;
-        } else if (_tcr == LiquityMath.MAX_TCR) {
+        } else if (_tcr == EbtcMath.MAX_TCR) {
             return type(uint256).max;
         } else {
             uint256 _splitIndex = (_currentIndex * MAX_REWARD_SPLIT) / _stakingRewardSplit;
@@ -85,7 +85,7 @@ contract CdpManagerTester is CdpManager {
 
     function getDecayedBaseRate() external view returns (uint256) {
         uint256 minutesPassed = _minutesPassedSinceLastRedemption();
-        uint256 _mulFactor = LiquityMath._decPow(minuteDecayFactor, minutesPassed);
+        uint256 _mulFactor = EbtcMath._decPow(minuteDecayFactor, minutesPassed);
         return (baseRate * _mulFactor) / DECIMAL_PRECISION;
     }
 
@@ -111,7 +111,7 @@ contract CdpManagerTester is CdpManager {
         uint256 redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;
         uint256 newBaseRate = decayedBaseRate + (redeemedEBTCFraction / beta);
-        return LiquityMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
+        return EbtcMath._min(newBaseRate, DECIMAL_PRECISION); // cap baseRate at a maximum of 100%
     }
 
     function activePoolIncreaseSystemDebt(uint256 _amount) external {
@@ -128,6 +128,10 @@ contract CdpManagerTester is CdpManager {
 
     function sortedCdpsBatchRemove(bytes32[] memory _cdpIds) external {
         sortedCdps.batchRemove(_cdpIds);
+    }
+
+    function syncGracePeriod() external {
+        _syncGracePeriod();
     }
 
     function forward(address _dest, bytes calldata _data) external payable {

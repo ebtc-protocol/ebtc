@@ -8,6 +8,8 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 
+/// @title LiquidationLibrary mainly provide necessary logic to fulfill liquidation for eBTC Cdps.
+/// @dev This contract shares same base and storage layout with CdpManager and is the delegatecall destination from CdpManager
 contract LiquidationLibrary is CdpManagerStorage {
     constructor(
         address _borrowerOperationsAddress,
@@ -31,19 +33,27 @@ contract LiquidationLibrary is CdpManagerStorage {
         )
     {}
 
-    /// @notice Single CDP liquidation function (fully).
+    /// @notice Fully liquidate a single Cdp by ID. Cdp must meet the criteria for liquidation at the time of execution.
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpId ID of the Cdp to liquidate.
     function liquidate(bytes32 _cdpId) external nonReentrantSelfAndBOps {
         _liquidateIndividualCdpSetup(_cdpId, 0, _cdpId, _cdpId);
     }
 
-    // Single CDP liquidation function (partially).
+    /// @notice Partially liquidate a single Cdp.
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpId ID of the Cdp to partially liquidate.
+    /// @param _partialAmount Amount to partially liquidate.
+    /// @param _upperPartialHint Upper hint for reinsertion of the Cdp into the linked list.
+    /// @param _lowerPartialHint Lower hint for reinsertion of the Cdp into the linked list.
     function partiallyLiquidate(
         bytes32 _cdpId,
         uint256 _partialAmount,
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
     ) external nonReentrantSelfAndBOps {
+        require(_partialAmount != 0, "LiquidationLibrary: use `liquidate` for 100%");
         _liquidateIndividualCdpSetup(_cdpId, _partialAmount, _upperPartialHint, _lowerPartialHint);
     }
 
@@ -61,7 +71,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getICR(_cdpId, _price);
+        uint256 _ICR = getCachedICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
             _price
         );
@@ -70,19 +80,20 @@ contract LiquidationLibrary is CdpManagerStorage {
         if (_ICR >= MCR) {
             // We must be in RM
             require(
-                _TCR < CCR && _ICR <= _TCR, /// @audit is <= more dangerous? Should we use _ICR <= CCR to allow any risky CDP being liquidated?
-                "CdpManager: ICR is not below liquidation threshold in current mode"
+                _checkICRAgainstLiqThreshold(_ICR, _TCR),
+                "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
             );
 
             // == Grace Period == //
             uint128 cachedLastGracePeriodStartTimestamp = lastGracePeriodStartTimestamp;
             require(
                 cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP,
-                "CdpManager: Recovery Mode grace period not started"
+                "LiquidationLibrary: Recovery Mode grace period not started"
             );
             require(
-                block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriod,
-                "CdpManager: Recovery mode grace period still in effect"
+                block.timestamp >
+                    cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriodDuration,
+                "LiquidationLibrary: Recovery mode grace period still in effect"
             );
         } // Implicit Else Case, Implies ICR < MRC, meaning the CDP is liquidatable
 
@@ -100,8 +111,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             0,
             0,
             0,
-            0,
-            false
+            0
         );
 
         LiquidationRecoveryModeLocals memory _rs = LiquidationRecoveryModeLocals(
@@ -114,8 +124,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             _price,
             _ICR,
             0,
-            0,
-            false
+            0
         );
 
         _liquidateIndividualCdpSetupCDP(_liqState, _rs);
@@ -134,37 +143,37 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         if (_liqState.partialAmount == 0) {
             (
-                liquidationValues.debtToOffset,
+                liquidationValues.debtToBurn,
                 liquidationValues.totalCollToSendToLiquidator,
                 liquidationValues.debtToRedistribute,
-                liquidationValues.collReward,
+                liquidationValues.liquidatorCollSharesReward,
                 liquidationValues.collSurplus
             ) = _liquidateCdpInGivenMode(_liqState, _recoveryState);
         } else {
             (
-                liquidationValues.debtToOffset,
+                liquidationValues.debtToBurn,
                 liquidationValues.totalCollToSendToLiquidator
             ) = _liquidateCDPPartially(_liqState);
             if (
                 liquidationValues.totalCollToSendToLiquidator == 0 &&
-                liquidationValues.debtToOffset == 0
+                liquidationValues.debtToBurn == 0
             ) {
                 // retry with fully liquidation
                 (
-                    liquidationValues.debtToOffset,
+                    liquidationValues.debtToBurn,
                     liquidationValues.totalCollToSendToLiquidator,
                     liquidationValues.debtToRedistribute,
-                    liquidationValues.collReward,
+                    liquidationValues.liquidatorCollSharesReward,
                     liquidationValues.collSurplus
                 ) = _liquidateCdpInGivenMode(_liqState, _recoveryState);
             }
         }
 
         _finalizeLiquidation(
-            liquidationValues.debtToOffset,
+            liquidationValues.debtToBurn,
             liquidationValues.totalCollToSendToLiquidator,
             liquidationValues.debtToRedistribute,
-            liquidationValues.collReward,
+            liquidationValues.liquidatorCollSharesReward,
             liquidationValues.collSurplus,
             startingSystemColl,
             startingSystemDebt,
@@ -183,19 +192,19 @@ contract LiquidationLibrary is CdpManagerStorage {
                 memory _outputState = _liquidateIndividualCdpSetupCDPInRecoveryMode(_recoveryState);
 
             // housekeeping leftover collateral for liquidated CDP
-            if (_outputState.totalColSurplus > 0) {
+            if (_outputState.totalSurplusCollShares > 0) {
                 activePool.transferSystemCollShares(
                     address(collSurplusPool),
-                    _outputState.totalColSurplus
+                    _outputState.totalSurplusCollShares
                 );
             }
 
             return (
                 _outputState.totalDebtToBurn,
-                _outputState.totalColToSend,
+                _outputState.totalCollSharesToSend,
                 _outputState.totalDebtToRedistribute,
-                _outputState.totalColReward,
-                _outputState.totalColSurplus
+                _outputState.totalLiquidatorRewardCollShares,
+                _outputState.totalSurplusCollShares
             );
         } else {
             LiquidationLocals memory _outputState = _liquidateIndividualCdpSetupCDPInNormalMode(
@@ -203,10 +212,10 @@ contract LiquidationLibrary is CdpManagerStorage {
             );
             return (
                 _outputState.totalDebtToBurn,
-                _outputState.totalColToSend,
+                _outputState.totalCollSharesToSend,
                 _outputState.totalDebtToRedistribute,
-                _outputState.totalColReward,
-                _outputState.totalColSurplus
+                _outputState.totalLiquidatorRewardCollShares,
+                _outputState.totalSurplusCollShares
             );
         }
     }
@@ -219,7 +228,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 _totalDebtToBurn,
             uint256 _totalColToSend,
             uint256 _liquidatorReward
-        ) = _closeCdpByLiquidation(_liqState.cdpId, _liqState.sequenceLiq);
+        ) = _closeCdpByLiquidation(_liqState.cdpId);
         uint256 _cappedColPortion;
         uint256 _collSurplus;
         uint256 _debtToRedistribute;
@@ -229,6 +238,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         emit CdpUpdated(
             _liqState.cdpId,
             _borrower,
+            msg.sender,
             _totalDebtToBurn,
             _totalColToSend,
             0,
@@ -238,12 +248,15 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
 
         {
-            (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
+            (
+                _cappedColPortion,
+                _collSurplus,
+                _debtToRedistribute
+            ) = _calculateFullLiquidationSurplusAndCap(
                 _liqState.ICR,
                 _liqState.price,
                 _totalDebtToBurn,
-                _totalColToSend,
-                true
+                _totalColToSend
             );
             if (_collSurplus > 0) {
                 // due to division precision loss, should be zero surplus in normal mode
@@ -255,18 +268,21 @@ contract LiquidationLibrary is CdpManagerStorage {
             }
         }
         _liqState.totalDebtToBurn = _liqState.totalDebtToBurn + _totalDebtToBurn;
-        _liqState.totalColToSend = _liqState.totalColToSend + _cappedColPortion;
+        _liqState.totalCollSharesToSend = _liqState.totalCollSharesToSend + _cappedColPortion;
         _liqState.totalDebtToRedistribute = _liqState.totalDebtToRedistribute + _debtToRedistribute;
-        _liqState.totalColReward = _liqState.totalColReward + _liquidatorReward;
+        _liqState.totalLiquidatorRewardCollShares =
+            _liqState.totalLiquidatorRewardCollShares +
+            _liquidatorReward;
 
         // Emit events
-        uint _debtToColl = (_totalDebtToBurn * 1e18) / _liqState.price;
+        uint _debtToColl = (_totalDebtToBurn * DECIMAL_PRECISION) / _liqState.price;
         uint _cappedColl = collateral.getPooledEthByShares(_cappedColPortion + _liquidatorReward);
 
         emit CdpLiquidated(
             _liqState.cdpId,
             _borrower,
             _totalDebtToBurn,
+            // please note this is the collateral share of the liquidated CDP
             _cappedColPortion,
             CdpOperation.liquidateInNormalMode,
             msg.sender,
@@ -284,7 +300,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             uint256 _totalDebtToBurn,
             uint256 _totalColToSend,
             uint256 _liquidatorReward
-        ) = _closeCdpByLiquidation(_recoveryState.cdpId, _recoveryState.sequenceLiq);
+        ) = _closeCdpByLiquidation(_recoveryState.cdpId);
 
         // cap the liquidated collateral if required
         uint256 _cappedColPortion;
@@ -296,6 +312,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         emit CdpUpdated(
             _recoveryState.cdpId,
             _borrower,
+            msg.sender,
             _totalDebtToBurn,
             _totalColToSend,
             0,
@@ -306,27 +323,36 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // avoid stack too deep
         {
-            (_cappedColPortion, _collSurplus, _debtToRedistribute) = _calculateSurplusAndCap(
+            (
+                _cappedColPortion,
+                _collSurplus,
+                _debtToRedistribute
+            ) = _calculateFullLiquidationSurplusAndCap(
                 _recoveryState.ICR,
                 _recoveryState.price,
                 _totalDebtToBurn,
-                _totalColToSend,
-                true
+                _totalColToSend
             );
             if (_collSurplus > 0) {
                 collSurplusPool.increaseSurplusCollShares(_borrower, _collSurplus);
-                _recoveryState.totalColSurplus = _recoveryState.totalColSurplus + _collSurplus;
+                _recoveryState.totalSurplusCollShares =
+                    _recoveryState.totalSurplusCollShares +
+                    _collSurplus;
             }
             if (_debtToRedistribute > 0) {
                 _totalDebtToBurn = _totalDebtToBurn - _debtToRedistribute;
             }
         }
         _recoveryState.totalDebtToBurn = _recoveryState.totalDebtToBurn + _totalDebtToBurn;
-        _recoveryState.totalColToSend = _recoveryState.totalColToSend + _cappedColPortion;
+        _recoveryState.totalCollSharesToSend =
+            _recoveryState.totalCollSharesToSend +
+            _cappedColPortion;
         _recoveryState.totalDebtToRedistribute =
             _recoveryState.totalDebtToRedistribute +
             _debtToRedistribute;
-        _recoveryState.totalColReward = _recoveryState.totalColReward + _liquidatorReward;
+        _recoveryState.totalLiquidatorRewardCollShares =
+            _recoveryState.totalLiquidatorRewardCollShares +
+            _liquidatorReward;
 
         // check if system back to normal mode
         _recoveryState.entireSystemDebt = _recoveryState.entireSystemDebt > _totalDebtToBurn
@@ -336,12 +362,13 @@ contract LiquidationLibrary is CdpManagerStorage {
             ? _recoveryState.entireSystemColl - _totalColToSend
             : 0;
 
-        uint _debtToColl = (_totalDebtToBurn * 1e18) / _recoveryState.price;
+        uint _debtToColl = (_totalDebtToBurn * DECIMAL_PRECISION) / _recoveryState.price;
         uint _cappedColl = collateral.getPooledEthByShares(_cappedColPortion + _liquidatorReward);
         emit CdpLiquidated(
             _recoveryState.cdpId,
             _borrower,
             _totalDebtToBurn,
+            // please note this is the collateral share of the liquidated CDP
             _cappedColPortion,
             CdpOperation.liquidateInRecoveryMode,
             msg.sender,
@@ -354,21 +381,13 @@ contract LiquidationLibrary is CdpManagerStorage {
     // liquidate (and close) the CDP from an external liquidator
     // this function would return the liquidated debt and collateral of the given CDP
     // without emmiting events
-    function _closeCdpByLiquidation(
-        bytes32 _cdpId,
-        bool _sequenceLiq
-    ) private returns (uint256, uint256, uint256) {
+    function _closeCdpByLiquidation(bytes32 _cdpId) private returns (uint256, uint256, uint256) {
         // calculate entire debt to repay
-        (uint256 entireDebt, uint256 entireColl, ) = getDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, uint256 entireColl) = getSyncedDebtAndCollShares(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
-        _removeStake(_cdpId);
         uint256 _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
-        if (_sequenceLiq) {
-            _closeCdpWithoutRemovingSortedCdps(_cdpId, Status.closedByLiquidation);
-        } else {
-            _closeCdp(_cdpId, Status.closedByLiquidation);
-        }
+        _closeCdp(_cdpId, Status.closedByLiquidation);
 
         return (entireDebt, entireColl, _liquidatorReward);
     }
@@ -382,17 +401,16 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _partialDebt = _partialState.partialAmount;
 
         // calculate entire debt to repay
-        CdpDebtAndCollShares memory _debtAndColl = _getDebtAndCollShares(_cdpId);
-        _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.entireDebt, _partialState.price);
-        uint256 newDebt = _debtAndColl.entireDebt - _partialDebt;
+        CdpDebtAndCollShares memory _debtAndColl = _getSyncedDebtAndCollShares(_cdpId);
+        _requirePartialLiqDebtSize(_partialDebt, _debtAndColl.debt, _partialState.price);
+        uint256 newDebt = _debtAndColl.debt - _partialDebt;
 
         // credit to https://arxiv.org/pdf/2212.07306.pdf for details
-        (uint256 _partialColl, uint256 newColl, ) = _calculateSurplusAndCap(
+        (uint256 _partialColl, uint256 newColl, ) = _calculatePartialLiquidationSurplusAndCap(
             _partialState.ICR,
             _partialState.price,
             _partialDebt,
-            _debtAndColl.entireColl,
-            false
+            _debtAndColl.collShares
         );
 
         // early return: if new collateral is zero, we have a full liqudiation
@@ -410,11 +428,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         {
             _reInsertPartialLiquidation(
                 _partialState,
-                LiquityMath._computeNominalCR(newColl, newDebt),
-                _debtAndColl.entireDebt,
-                _debtAndColl.entireColl
+                EbtcMath._computeNominalCR(newColl, newDebt),
+                _debtAndColl.debt,
+                _debtAndColl.collShares
             );
-            uint _debtToColl = (_partialDebt * 1e18) / _partialState.price;
+            uint _debtToColl = (_partialDebt * DECIMAL_PRECISION) / _partialState.price;
             uint _cappedColl = collateral.getPooledEthByShares(_partialColl);
             emit CdpPartiallyLiquidated(
                 _cdpId,
@@ -442,8 +460,6 @@ contract LiquidationLibrary is CdpManagerStorage {
         _cdp.coll = _coll - _partialColl;
         _cdp.debt = _debt - _partialDebt;
         _updateStakeAndTotalStakes(_cdpId);
-
-        _updateRedistributedDebtSnapshot(_cdpId);
     }
 
     // Re-Insertion into SortedCdp list after partial liquidation
@@ -458,7 +474,10 @@ contract LiquidationLibrary is CdpManagerStorage {
         // ensure new ICR does NOT decrease due to partial liquidation
         // if original ICR is above LICR
         if (_partialState.ICR > LICR) {
-            require(getICR(_cdpId, _partialState.price) >= _partialState.ICR, "!_newICR>=_ICR");
+            require(
+                getCachedICR(_cdpId, _partialState.price) >= _partialState.ICR,
+                "LiquidationLibrary: !_newICR>=_ICR"
+            );
         }
 
         // reInsert into sorted CDP list
@@ -471,6 +490,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         emit CdpUpdated(
             _cdpId,
             sortedCdps.getOwnerAddress(_cdpId),
+            msg.sender,
             _oldDebt,
             _oldColl,
             Cdps[_cdpId].debt,
@@ -482,21 +502,21 @@ contract LiquidationLibrary is CdpManagerStorage {
 
     function _finalizeLiquidation(
         uint256 totalDebtToBurn,
-        uint256 totalColToSend,
+        uint256 totalCollSharesToSend,
         uint256 totalDebtToRedistribute,
-        uint256 totalColReward,
-        uint256 totalColSurplus,
+        uint256 totalLiquidatorRewardCollShares,
+        uint256 totalSurplusCollShares,
         uint256 systemInitialCollShares,
         uint256 systemInitialDebt,
         uint256 price
     ) internal {
         // update the staking and collateral snapshots
-        _updateSystemSnapshotsExcludeCollRemainder(totalColToSend);
+        _updateSystemSnapshotsExcludeCollRemainder(totalCollSharesToSend);
 
-        emit Liquidation(totalDebtToBurn, totalColToSend, totalColReward);
+        emit Liquidation(totalDebtToBurn, totalCollSharesToSend, totalLiquidatorRewardCollShares);
 
         _syncGracePeriodForGivenValues(
-            systemInitialCollShares - totalColToSend - totalColSurplus,
+            systemInitialCollShares - totalCollSharesToSend - totalSurplusCollShares,
             systemInitialDebt - totalDebtToBurn,
             price
         );
@@ -515,46 +535,72 @@ contract LiquidationLibrary is CdpManagerStorage {
         // CEI: ensure sending back collateral to liquidator is last thing to do
         activePool.transferSystemCollSharesAndLiquidatorReward(
             msg.sender,
-            totalColToSend,
-            totalColReward
+            totalCollSharesToSend,
+            totalLiquidatorRewardCollShares
         );
     }
 
-    // Function that calculates the amount of collateral to send to liquidator (plus incentive) and the amount of collateral surplus
-    function _calculateSurplusAndCap(
+    // Partial Liquidation Cap Logic
+    function _calculatePartialLiquidationSurplusAndCap(
         uint256 _ICR,
         uint256 _price,
         uint256 _totalDebtToBurn,
-        uint256 _totalColToSend,
-        bool _fullLiquidation
-    )
-        private
-        view
-        returns (uint256 cappedColPortion, uint256 collSurplus, uint256 debtToRedistribute)
-    {
-        // Calculate liquidation incentive for liquidator:
-        // If ICR is less than 103%: give away 103% worth of collateral to liquidator, i.e., repaidDebt * 103% / price
-        // If ICR is more than 103%: give away min(ICR, 110%) worth of collateral to liquidator, i.e., repaidDebt * min(ICR, 110%) / price
+        uint256 _totalColToSend
+    ) private view returns (uint256 toLiquidator, uint256 collSurplus, uint256 debtToRedistribute) {
         uint256 _incentiveColl;
+
+        // CLAMP
         if (_ICR > LICR) {
+            // Cap at 10%
             _incentiveColl = (_totalDebtToBurn * (_ICR > MCR ? MCR : _ICR)) / _price;
         } else {
-            if (_fullLiquidation) {
-                // for full liquidation, there would be some bad debt to redistribute
-                _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
-                uint256 _debtToRepay = (_incentiveColl * _price) / LICR;
-                debtToRedistribute = _debtToRepay < _totalDebtToBurn
-                    ? _totalDebtToBurn - _debtToRepay
-                    : 0;
-            } else {
-                // for partial liquidation, new ICR would deteriorate
-                // since we give more incentive (103%) than current _ICR allowed
-                _incentiveColl = (_totalDebtToBurn * LICR) / _price;
-            }
+            // Min 103%
+            _incentiveColl = (_totalDebtToBurn * LICR) / _price;
         }
-        cappedColPortion = collateral.getSharesByPooledEth(_incentiveColl);
-        cappedColPortion = cappedColPortion < _totalColToSend ? cappedColPortion : _totalColToSend;
-        collSurplus = (cappedColPortion == _totalColToSend) ? 0 : _totalColToSend - cappedColPortion;
+
+        toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
+
+        /// @audit MUST be like so, else we have debt redistribution, which we assume cannot happen in partial
+        assert(toLiquidator < _totalColToSend); // Assert is correct here for Echidna
+
+        /// Because of above we can subtract
+        collSurplus = _totalColToSend - toLiquidator; // Can use unchecked but w/e
+    }
+
+    function _calculateFullLiquidationSurplusAndCap(
+        uint256 _ICR,
+        uint256 _price,
+        uint256 _totalDebtToBurn,
+        uint256 _totalColToSend
+    ) private view returns (uint256 toLiquidator, uint256 collSurplus, uint256 debtToRedistribute) {
+        uint256 _incentiveColl;
+
+        if (_ICR > LICR) {
+            _incentiveColl = (_totalDebtToBurn * (_ICR > MCR ? MCR : _ICR)) / _price;
+
+            // Convert back to shares
+            toLiquidator = collateral.getSharesByPooledEth(_incentiveColl);
+        } else {
+            // for full liquidation, there would be some bad debt to redistribute
+            _incentiveColl = collateral.getPooledEthByShares(_totalColToSend);
+
+            // Since it's full and there's bad debt we use spot conversion to
+            // Determine the amount of debt that willl be repaid after adding the LICR discount
+            // Basically this is buying underwater Coll
+            // By repaying debt at 3% discount
+            // Can there be a rounding error where the _debtToRepay > debtToBurn?
+            uint256 _debtToRepay = (_incentiveColl * _price) / LICR;
+
+            debtToRedistribute = _debtToRepay < _totalDebtToBurn
+                ? _totalDebtToBurn - _debtToRepay //  Bad Debt (to be redistributed) is (CdpDebt - Repaid)
+                : 0; // Else 0 (note we may underpay per the comment above, althought that may be imaginary)
+
+            // now CDP owner should have zero surplus to claim
+            toLiquidator = _totalColToSend;
+        }
+
+        toLiquidator = toLiquidator < _totalColToSend ? toLiquidator : _totalColToSend;
+        collSurplus = (toLiquidator == _totalColToSend) ? 0 : _totalColToSend - toLiquidator;
     }
 
     // --- Batch liquidation functions ---
@@ -563,8 +609,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price,
         uint256 _TCR,
         LocalVariables_LiquidationSequence memory vars,
-        LiquidationValues memory singleLiquidation,
-        bool sequenceLiq
+        LiquidationValues memory singleLiquidation
     ) internal {
         LiquidationLocals memory _liqState = LiquidationLocals(
             vars.cdpId,
@@ -579,8 +624,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             0,
             0,
             0,
-            0,
-            sequenceLiq
+            0
         );
 
         LiquidationLocals memory _outputState = _liquidateIndividualCdpSetupCDPInNormalMode(
@@ -588,11 +632,11 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
 
         singleLiquidation.entireCdpDebt = _outputState.totalDebtToBurn;
-        singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
-        singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
-        singleLiquidation.collSurplus = _outputState.totalColSurplus;
+        singleLiquidation.debtToBurn = _outputState.totalDebtToBurn;
+        singleLiquidation.totalCollToSendToLiquidator = _outputState.totalCollSharesToSend;
+        singleLiquidation.collSurplus = _outputState.totalSurplusCollShares;
         singleLiquidation.debtToRedistribute = _outputState.totalDebtToRedistribute;
-        singleLiquidation.collReward = _outputState.totalColReward;
+        singleLiquidation.liquidatorCollSharesReward = _outputState.totalLiquidatorRewardCollShares;
     }
 
     function _getLiquidationValuesRecoveryMode(
@@ -600,8 +644,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _systemDebt,
         uint256 _systemCollShares,
         LocalVariables_LiquidationSequence memory vars,
-        LiquidationValues memory singleLiquidation,
-        bool sequenceLiq
+        LiquidationValues memory singleLiquidation
     ) internal {
         LiquidationRecoveryModeLocals memory _recState = LiquidationRecoveryModeLocals(
             _systemDebt,
@@ -613,26 +656,26 @@ contract LiquidationLibrary is CdpManagerStorage {
             _price,
             vars.ICR,
             0,
-            0,
-            sequenceLiq
+            0
         );
 
         LiquidationRecoveryModeLocals
             memory _outputState = _liquidateIndividualCdpSetupCDPInRecoveryMode(_recState);
 
         singleLiquidation.entireCdpDebt = _outputState.totalDebtToBurn;
-        singleLiquidation.debtToOffset = _outputState.totalDebtToBurn;
-        singleLiquidation.totalCollToSendToLiquidator = _outputState.totalColToSend;
-        singleLiquidation.collSurplus = _outputState.totalColSurplus;
+        singleLiquidation.debtToBurn = _outputState.totalDebtToBurn;
+        singleLiquidation.totalCollToSendToLiquidator = _outputState.totalCollSharesToSend;
+        singleLiquidation.collSurplus = _outputState.totalSurplusCollShares;
         singleLiquidation.debtToRedistribute = _outputState.totalDebtToRedistribute;
-        singleLiquidation.collReward = _outputState.totalColReward;
+        singleLiquidation.liquidatorCollSharesReward = _outputState.totalLiquidatorRewardCollShares;
     }
 
-    /*
-     * Attempt to liquidate a custom list of cdps provided by the caller.
-
-     callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
-     */
+    /// @notice Attempt to liquidate a custom list of Cdps provided by the caller
+    /// @notice Callable by anyone, accepts a custom list of Cdps addresses as an argument.
+    /// @notice Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas.
+    /// @notice A Cdp is liquidated only if it meets the conditions for liquidation.
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpArray Array of Cdps to liquidate.
     function batchLiquidateCdps(bytes32[] memory _cdpArray) external nonReentrantSelfAndBOps {
         require(
             _cdpArray.length != 0,
@@ -651,18 +694,17 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
         vars.recoveryModeAtStart = _TCR < CCR ? true : false;
 
-        // Perform the appropriate liquidation sequence - tally values and obtain their totals.
+        // Perform the appropriate batch liquidation - tally values and obtain their totals.
         if (vars.recoveryModeAtStart) {
             totals = _getTotalFromBatchLiquidate_RecoveryMode(
                 vars.price,
                 systemColl,
                 systemDebt,
-                _cdpArray,
-                false
+                _cdpArray
             );
         } else {
             //  if !vars.recoveryModeAtStart
-            totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _cdpArray, false);
+            totals = _getTotalsFromBatchLiquidate_NormalMode(vars.price, _TCR, _cdpArray);
         }
 
         require(totals.totalDebtInSequence > 0, "LiquidationLibrary: nothing to liquidate");
@@ -673,7 +715,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         }
 
         _finalizeLiquidation(
-            totals.totalDebtToOffset,
+            totals.totalDebtToBurn,
             totals.totalCollToSendToLiquidator,
             totals.totalDebtToRedistribute,
             totals.totalCollReward,
@@ -685,15 +727,14 @@ contract LiquidationLibrary is CdpManagerStorage {
     }
 
     /*
-     * This function is used when the batch liquidation sequence starts during Recovery Mode. However, it
-     * handle the case where the system *leaves* Recovery Mode, part way through the liquidation sequence
+     * This function is used when the batch liquidation starts during Recovery Mode. However, it
+     * handle the case where the system *leaves* Recovery Mode, part way through the liquidation processing
      */
     function _getTotalFromBatchLiquidate_RecoveryMode(
         uint256 _price,
         uint256 _systemCollShares,
         uint256 _systemDebt,
-        bytes32[] memory _cdpArray,
-        bool sequenceLiq
+        bytes32[] memory _cdpArray
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
@@ -708,17 +749,16 @@ contract LiquidationLibrary is CdpManagerStorage {
         );
         uint256 _cnt = _cdpArray.length;
         bool[] memory _liqFlags = new bool[](_cnt);
-        uint256 _liqCnt;
-        uint256 _start = sequenceLiq ? _cnt - 1 : 0;
+        uint256 _start;
         for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getICR(vars.cdpId, _price);
+                vars.ICR = getSyncedICR(vars.cdpId, _price);
 
                 if (
                     !vars.backToNormalMode &&
-                    (vars.ICR < MCR || canLiquidateRecoveryMode(vars.ICR, _TCR))
+                    (_checkICRAgainstMCR(vars.ICR) || canLiquidateRecoveryMode(vars.ICR, _TCR))
                 ) {
                     vars.price = _price;
                     _syncAccounting(vars.cdpId);
@@ -727,12 +767,11 @@ contract LiquidationLibrary is CdpManagerStorage {
                         vars.entireSystemDebt,
                         vars.entireSystemColl,
                         vars,
-                        singleLiquidation,
-                        sequenceLiq
+                        singleLiquidation
                     );
 
                     // Update aggregate trackers
-                    vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToOffset;
+                    vars.entireSystemDebt = vars.entireSystemDebt - singleLiquidation.debtToBurn;
                     vars.entireSystemColl =
                         vars.entireSystemColl -
                         singleLiquidation.totalCollToSendToLiquidator -
@@ -748,58 +787,19 @@ contract LiquidationLibrary is CdpManagerStorage {
                     );
                     vars.backToNormalMode = _TCR < CCR ? false : true;
                     _liqFlags[vars.i] = true;
-                    _liqCnt += 1;
-                } else if (vars.backToNormalMode && vars.ICR < MCR) {
+                } else if (vars.backToNormalMode && _checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
-                    _getLiquidationValuesNormalMode(
-                        _price,
-                        _TCR,
-                        vars,
-                        singleLiquidation,
-                        sequenceLiq
-                    );
+                    _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
 
                     // Add liquidation values to their respective running totals
                     totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
                     _liqFlags[vars.i] = true;
-                    _liqCnt += 1;
                 }
                 // In Normal Mode skip cdps with ICR >= MCR
             }
-            if (sequenceLiq) {
-                if (vars.i == 0) {
-                    break;
-                }
-                --vars.i;
-            } else {
-                ++vars.i;
-                if (vars.i == _cnt) {
-                    break;
-                }
-            }
-        }
-
-        // remove from sortedCdps for sequence liquidation
-        if (sequenceLiq) {
-            bytes32[] memory _toRemoveIds = _cdpArray;
-            if (_liqCnt > 0 && _liqCnt != _cnt) {
-                _toRemoveIds = new bytes32[](_liqCnt);
-                uint256 _j;
-                for (uint256 i = 0; i < _cnt; ++i) {
-                    if (_liqFlags[i]) {
-                        _toRemoveIds[_j] = _cdpArray[i];
-                        _j += 1;
-                    }
-                }
-                require(
-                    _j == _liqCnt,
-                    "LiquidationLibrary: sequence liquidation (recovery mode) count error!"
-                );
-            }
-            if (_liqCnt > 1) {
-                sortedCdps.batchRemove(_toRemoveIds);
-            } else if (_liqCnt == 1) {
-                sortedCdps.remove(_toRemoveIds[0]);
+            ++vars.i;
+            if (vars.i == _cnt) {
+                break;
             }
         }
     }
@@ -807,58 +807,29 @@ contract LiquidationLibrary is CdpManagerStorage {
     function _getTotalsFromBatchLiquidate_NormalMode(
         uint256 _price,
         uint256 _TCR,
-        bytes32[] memory _cdpArray,
-        bool sequenceLiq
+        bytes32[] memory _cdpArray
     ) internal returns (LiquidationTotals memory totals) {
         LocalVariables_LiquidationSequence memory vars;
         LiquidationValues memory singleLiquidation;
         uint256 _cnt = _cdpArray.length;
-        uint256 _liqCnt;
-        uint256 _start = sequenceLiq ? _cnt - 1 : 0;
+        uint256 _start;
         for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
             if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
-                vars.ICR = getICR(vars.cdpId, _price);
+                vars.ICR = getSyncedICR(vars.cdpId, _price);
 
-                if (vars.ICR < MCR) {
+                if (_checkICRAgainstMCR(vars.ICR)) {
                     _syncAccounting(vars.cdpId);
-                    _getLiquidationValuesNormalMode(
-                        _price,
-                        _TCR,
-                        vars,
-                        singleLiquidation,
-                        sequenceLiq
-                    );
+                    _getLiquidationValuesNormalMode(_price, _TCR, vars, singleLiquidation);
 
                     // Add liquidation values to their respective running totals
                     totals = _addLiquidationValuesToTotals(totals, singleLiquidation);
-                    _liqCnt += 1;
                 }
             }
-            if (sequenceLiq) {
-                if (vars.i == 0) {
-                    break;
-                }
-                --vars.i;
-            } else {
-                ++vars.i;
-                if (vars.i == _cnt) {
-                    break;
-                }
-            }
-        }
-
-        // remove from sortedCdps for sequence liquidation
-        if (sequenceLiq) {
-            require(
-                _liqCnt == _cnt,
-                "LiquidationLibrary: sequence liquidation (normal mode) count error!"
-            );
-            if (_cnt > 1) {
-                sortedCdps.batchRemove(_cdpArray);
-            } else if (_cnt == 1) {
-                sortedCdps.remove(_cdpArray[0]);
+            ++vars.i;
+            if (vars.i == _cnt) {
+                break;
             }
         }
     }
@@ -873,7 +844,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         newTotals.totalDebtInSequence =
             oldTotals.totalDebtInSequence +
             singleLiquidation.entireCdpDebt;
-        newTotals.totalDebtToOffset = oldTotals.totalDebtToOffset + singleLiquidation.debtToOffset;
+        newTotals.totalDebtToBurn = oldTotals.totalDebtToBurn + singleLiquidation.debtToBurn;
         newTotals.totalCollToSendToLiquidator =
             oldTotals.totalCollToSendToLiquidator +
             singleLiquidation.totalCollToSendToLiquidator;
@@ -881,7 +852,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             oldTotals.totalDebtToRedistribute +
             singleLiquidation.debtToRedistribute;
         newTotals.totalCollSurplus = oldTotals.totalCollSurplus + singleLiquidation.collSurplus;
-        newTotals.totalCollReward = oldTotals.totalCollReward + singleLiquidation.collReward;
+        newTotals.totalCollReward =
+            oldTotals.totalCollReward +
+            singleLiquidation.liquidatorCollSharesReward;
 
         return newTotals;
     }
@@ -926,14 +899,15 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price
     ) internal view {
         require(
-            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_COLL, _price)) <= _entireDebt,
+            (_partialDebt + _convertDebtDenominationToBtc(MIN_NET_STETH_BALANCE, _price)) <=
+                _entireDebt,
             "LiquidationLibrary: Partial debt liquidated must be less than total debt"
         );
     }
 
     function _requirePartialLiqCollSize(uint256 _entireColl) internal pure {
         require(
-            _entireColl >= MIN_NET_COLL,
+            _entireColl >= MIN_NET_STETH_BALANCE,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"
         );
     }

@@ -15,7 +15,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     string public override symbol = "CollTester";
     uint8 public override decimals = 18;
 
-    event Transfer(address indexed src, address indexed dst, uint256 wad, uint256 _share);
+    event TransferShares(address indexed from, address indexed to, uint256 sharesValue);
     event Deposit(address indexed dst, uint256 wad, uint256 _share);
     event Withdrawal(address indexed src, uint256 wad, uint256 _share);
     event UncappedMinterAdded(address indexed account);
@@ -135,7 +135,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         balances[src] -= _share;
         balances[dst] += _share;
 
-        emit Transfer(src, dst, wad, _share);
+        _emitTransferEvents(src, dst, wad, _share);
 
         return true;
     }
@@ -169,7 +169,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         balances[msg.sender] -= _sharesAmount;
         balances[_recipient] += _sharesAmount;
 
-        emit Transfer(msg.sender, _recipient, _tknAmt, _sharesAmount);
+        _emitTransferEvents(msg.sender, _recipient, _tknAmt, _sharesAmount);
 
         return _tknAmt;
     }
@@ -245,5 +245,18 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
 
     function authority() external view returns (address) {
         return address(this);
+    }
+
+    /**
+     * @dev Emits {Transfer} and {TransferShares} events
+     */
+    function _emitTransferEvents(
+        address _from,
+        address _to,
+        uint _tokenAmount,
+        uint256 _sharesAmount
+    ) internal {
+        emit Transfer(_from, _to, _tokenAmount);
+        emit TransferShares(_from, _to, _sharesAmount);
     }
 }

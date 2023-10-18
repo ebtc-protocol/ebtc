@@ -2,11 +2,11 @@
 
 pragma solidity 0.8.17;
 
-import "./ILiquityBase.sol";
+import "./IEbtcBase.sol";
 import "./ICdpManagerData.sol";
 
 // Common interface for the Cdp Manager.
-interface ICdpManager is ILiquityBase, ICdpManagerData {
+interface ICdpManager is IEbtcBase, ICdpManagerData {
     // --- Functions ---
     function getActiveCdpsCount() external view returns (uint256);
 
@@ -37,19 +37,13 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
 
     function syncAccounting(bytes32 _cdpId) external;
 
-    function getTotalStakeForFeeTaken(uint256 _feeTaken) external view returns (uint256, uint256);
-
     function closeCdp(bytes32 _cdpId, address _borrower, uint256 _debt, uint256 _coll) external;
-
-    function removeStake(bytes32 _cdpId) external;
 
     function getRedemptionRate() external view returns (uint256);
 
     function getRedemptionRateWithDecay() external view returns (uint256);
 
-    function getRedemptionFeeWithDecay(uint256 _ETHDrawn) external view returns (uint256);
-
-    function decayBaseRateFromBorrowing() external;
+    function getRedemptionFeeWithDecay(uint256 _stETHToRedeem) external view returns (uint256);
 
     function getCdpStatus(bytes32 _cdpId) external view returns (uint256);
 
@@ -78,7 +72,7 @@ interface ICdpManager is ILiquityBase, ICdpManagerData {
         uint256 _newDebt
     ) external;
 
-    function getTCR(uint256 _price) external view returns (uint256);
+    function getCachedTCR(uint256 _price) external view returns (uint256);
 
     function checkRecoveryMode(uint256 _price) external view returns (bool);
 }

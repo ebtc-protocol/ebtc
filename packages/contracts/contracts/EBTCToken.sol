@@ -5,6 +5,7 @@ pragma solidity 0.8.17;
 import "./Interfaces/IEBTCToken.sol";
 
 import "./Dependencies/AuthNoOwner.sol";
+import "./Dependencies/PermitNonce.sol";
 
 /*
  *
@@ -17,12 +18,12 @@ import "./Dependencies/AuthNoOwner.sol";
  *
  * --- Functionality added specific to the EBTCToken ---
  *
- * 1) Transfer protection: blacklist of addresses that are invalid recipients (i.e. core Liquity contracts) in external
- * transfer() and transferFrom() calls. The purpose is to protect users from losing tokens by mistakenly sending EBTC directly to a Liquity
+ * 1) Transfer protection: blocklist of addresses that are invalid recipients (i.e. core Ebtc contracts) in external transfer() and transferFrom() calls.
+ * The purpose is to protect users from losing tokens by mistakenly sending EBTC directly to a Liquity.
  * core contract, when they should rather call the right function.
  */
 
-contract EBTCToken is IEBTCToken, AuthNoOwner {
+contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
     uint256 private _totalSupply;
     string internal constant _NAME = "EBTC Stablecoin";
     string internal constant _SYMBOL = "EBTC";
@@ -46,8 +47,6 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     bytes32 private immutable _HASHED_NAME;
     bytes32 private immutable _HASHED_VERSION;
 
-    mapping(address => uint256) private _nonces;
-
     // User data for EBTC token
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -56,6 +55,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
     address public immutable cdpManagerAddress;
     address public immutable borrowerOperationsAddress;
 
+    /// @param _cdpManagerAddress Address of the CDP Manager
+    /// @param _borrowerOperationsAddress Address of the Borrower Operations
+    /// @param _authorityAddress Address of the authority for the contract
     constructor(
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
@@ -75,30 +77,33 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
     }
 
-    // --- Functions for intra-Liquity calls ---
-
-    /**
-     * @notice Mint new tokens
-     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
-     * @dev Governance can also expand the list of approved minters to enable other systems to mint tokens
-     * @param _account The address to receive the newly minted tokens
-     * @param _amount The amount of tokens to mint
-     */
+    /// @notice Mint new tokens
+    /// @dev Internal system function - only callable by BorrowerOperations or CDPManager
+    /// @dev Governance can also expand the list of approved minters to enable other systems to mint tokens
+    /// @param _account The address to receive the newly minted tokens
+    /// @param _amount The amount of tokens to mint
     function mint(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _mint(_account, _amount);
     }
 
-    /**
-     * @notice Burn existing tokens
-     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
-     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
-     * @param _account The address to burn tokens from
-     * @param _amount The amount of tokens to burn
-     */
+    /// @notice Burn existing tokens
+    /// @dev Internal system function - only callable by BorrowerOperations or CDPManager
+    /// @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+    /// @param _account The address to burn tokens from
+    /// @param _amount The amount of tokens to burn
     function burn(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _burn(_account, _amount);
+    }
+
+    /// @notice Burn existing tokens from caller
+    /// @dev Internal system function - only callable by BorrowerOperations or CDPManager
+    /// @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+    /// @param _amount The amount of tokens to burn
+    function burn(uint256 _amount) external {
+        _requireCallerIsBOorCdpMOrAuth();
+        _burn(msg.sender, _amount);
     }
 
     // --- External functions ---
@@ -166,10 +171,14 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- EIP 2612 Functionality (https://eips.ethereum.org/EIPS/eip-2612) ---
 
+    /// @notice This function returns the domain separator for current chain
+    /// @return EIP712 compatible Domain definition
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return domainSeparator();
     }
 
+    /// @notice This function returns the domain separator for current chain
+    /// @return EIP712 compatible Domain definition
     function domainSeparator() public view override returns (bytes32) {
         if (_chainID() == _CACHED_CHAIN_ID) {
             return _CACHED_DOMAIN_SEPARATOR;
@@ -178,6 +187,15 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         }
     }
 
+    /// @notice This function approve given amount for specified owner and spender
+    /// @notice by verifying the validity of given deadline and signature parameters (v, r, s).
+    /// @param owner The token owner
+    /// @param spender The consumer to which owner want to grant approval
+    /// @param amount The token expenditure budget to be set
+    /// @param deadline The permit valid deadline
+    /// @param v The v part of signature from owner
+    /// @param r The r part of signature from owner
+    /// @param s The s part of signature from owner
     function permit(
         address owner,
         address spender,
@@ -202,8 +220,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
         _approve(owner, spender, amount);
     }
 
-    function nonces(address owner) external view override returns (uint256) {
-        // FOR EIP 2612
+    /// @dev Return current nonce for specified owner fOR EIP-2612 compatibility
+    /// @param owner The address whose nonce to be queried
+    function nonces(address owner) external view override(IERC2612, PermitNonce) returns (uint256) {
         return _nonces[owner];
     }
 
@@ -307,22 +326,32 @@ contract EBTCToken is IEBTCToken, AuthNoOwner {
 
     // --- Optional functions ---
 
+    /// @notice Returns the name of the token
+    /// @return Name of the token
     function name() external pure override returns (string memory) {
         return _NAME;
     }
 
+    /// @notice Returns the symbol of the token
+    /// @return Symbol of the token
     function symbol() external pure override returns (string memory) {
         return _SYMBOL;
     }
 
+    /// @notice Returns the number of decimals used to represent token amounts
+    /// @return Number of decimals used by the token
     function decimals() external pure override returns (uint8) {
         return _DECIMALS;
     }
 
+    /// @notice Returns the version of the token
+    /// @return Version of the token
     function version() external pure override returns (string memory) {
         return _VERSION;
     }
 
+    /// @notice Returns the type hash used for permit() function as per EIP-2612
+    /// @return EIP-2612 permit type hash
     function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_TYPEHASH;
     }

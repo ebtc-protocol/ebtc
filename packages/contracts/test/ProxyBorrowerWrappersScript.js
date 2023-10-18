@@ -151,9 +151,6 @@ contract('BorrowerWrappers', async accounts => {
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // alice claims collateral and re-opens the cdp
     await assertRevert(
       borrowerWrappers.claimCollateralAndOpenCdp(ebtcAmount, alice, alice, { from: alice }),
@@ -177,9 +174,6 @@ contract('BorrowerWrappers', async accounts => {
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
-
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // whale redeems 150 EBTC
     await th.redeemCollateral(whale, contracts, redeemAmount, GAS_PRICE)
@@ -211,9 +205,6 @@ contract('BorrowerWrappers', async accounts => {
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
-
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
 
     // whale redeems 150 EBTC
     await th.redeemCollateral(whale, contracts, redeemAmount, GAS_PRICE)
@@ -303,7 +294,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
     const cdpDebtBefore = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getICR(_aliceCdpId, price)
+    const ICRBefore = await cdpManager.getCachedICR(_aliceCdpId, price)
 
     const proportionalEBTC = expectedETHGain_A.mul(price).div(ICRBefore)
 
@@ -318,7 +309,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
     const cdpDebtAfter = await cdpManager.getCdpDebt(_aliceCdpId)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getICR(_aliceCdpId, price)
+    const ICRAfter = await cdpManager.getCachedICR(_aliceCdpId, price)
     const stakeAfter = await feeRecipient.stakes(alice)
 
     // check proxy balances remain the same
@@ -360,9 +351,6 @@ contract('BorrowerWrappers', async accounts => {
     // Defaulter Cdp opened
     const { ebtcAmount, netDebt, totalDebt, collateral } = await openCdp({ ICR: toBN(dec(210, 16)), extraParams: { from: defaulter_1, usrProxy: borrowerWrappers.getProxyAddressFromUser(defaulter_1) } })
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // whale redeems 100 EBTC
     const redeemedAmount = toBN(dec(100, 18))
     await th.redeemCollateral(whale, contracts, redeemedAmount, GAS_PRICE)
@@ -396,9 +384,6 @@ contract('BorrowerWrappers', async accounts => {
     // Alice EBTC gain is ((150/2000) * borrowingFee)
     const expectedEBTCGain_A = borrowingFee.mul(toBN(dec(150, 18))).div(toBN(dec(2000, 18)))
 
-    // skip bootstrapping phase
-    await th.fastForwardTime(timeValues.SECONDS_IN_ONE_WEEK * 2, web3.currentProvider)
-
     // whale redeems 100 EBTC
     const redeemedAmount = toBN(dec(100, 18))
     await th.redeemCollateral(whale, contracts, redeemedAmount, GAS_PRICE)
@@ -408,7 +393,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceBefore = await ebtcToken.balanceOf(alice)
     const cdpDebtBefore = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceBefore = await lqtyToken.balanceOf(alice)
-    const ICRBefore = await cdpManager.getICR(th.DUMMY_BYTES32, price)
+    const ICRBefore = await cdpManager.getCachedICR(th.DUMMY_BYTES32, price)
     const stakeBefore = await feeRecipient.stakes(alice)
 
     // Alice claims staking rewards and puts them back in the system through the proxy
@@ -422,7 +407,7 @@ contract('BorrowerWrappers', async accounts => {
     const ebtcBalanceAfter = await ebtcToken.balanceOf(alice)
     const cdpDebtAfter = await cdpManager.getCdpDebt(th.DUMMY_BYTES32)
     const lqtyBalanceAfter = await lqtyToken.balanceOf(alice)
-    const ICRAfter = await cdpManager.getICR(th.DUMMY_BYTES32, price)
+    const ICRAfter = await cdpManager.getCachedICR(th.DUMMY_BYTES32, price)
     const stakeAfter = await feeRecipient.stakes(alice)
 
     // check everything remains the same

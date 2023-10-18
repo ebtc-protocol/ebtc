@@ -58,8 +58,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     }
 
     function _checkAvailableToLiq(bytes32 _cdpId, uint256 _price) internal view returns (bool) {
-        uint256 _TCR = cdpManager.getTCR(_price);
-        uint256 _ICR = cdpManager.getICR(_cdpId, _price);
+        uint256 _TCR = cdpManager.getCachedTCR(_price);
+        uint256 _ICR = cdpManager.getCachedICR(_cdpId, _price);
         bool _recoveryMode = _TCR < cdpManager.CCR();
         return (_ICR < cdpManager.MCR() || (_recoveryMode && _ICR < _TCR));
     }
@@ -81,7 +81,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getDebtAndCollShares(cdpId1);
+        CdpState memory _cdpState0 = _getSyncedDebtAndCollShares(cdpId1);
 
         // Price falls
         priceFeedMock.setPrice(price);
@@ -91,10 +91,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, price);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
-            uint256 _ICR = cdpManager.getICR(cdpId1, price);
+            uint256 _ICR = cdpManager.getCachedICR(cdpId1, price);
             uint256 _expectedLiqDebt = _ICR > cdpManager.LICR()
                 ? _cdpState.debt
                 : ((_cdpState.coll * price) / cdpManager.LICR());
@@ -156,7 +156,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32 cdpId1 = _openTestCDP(users[0], coll1, debtAmt);
 
         // get original debt upon CDP open
-        CdpState memory _cdpState0 = _getDebtAndCollShares(cdpId1);
+        CdpState memory _cdpState0 = _getSyncedDebtAndCollShares(cdpId1);
 
         // Price falls
         uint256 _newPrice = _curPrice / 2;
@@ -167,18 +167,18 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // Partially Liquidate cdp1
         bool _availableToLiq1 = _checkAvailableToLiq(cdpId1, _newPrice);
         if (_availableToLiq1) {
-            CdpState memory _cdpState = _getDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpId1);
             assertEq(_cdpState.debt, _cdpState0.debt, "!interest should not accrue");
 
             LocalVar_PartialLiq memory _partialLiq;
             _partialLiq._ratio = _icrGtLICR ? cdpManager.MCR() : cdpManager.LICR();
             _partialLiq._repaidDebt = (_cdpState.debt * partialRatioBps) / 10000;
             if (
-                (_cdpState.coll - cdpManager.MIN_NET_COLL()) <=
+                (_cdpState.coll - cdpManager.MIN_NET_STETH_BALANCE()) <=
                 ((_partialLiq._repaidDebt * _partialLiq._ratio) / _newPrice)
             ) {
                 _partialLiq._repaidDebt =
-                    ((_cdpState.coll - cdpManager.MIN_NET_COLL() * 3) * _newPrice) /
+                    ((_cdpState.coll - cdpManager.MIN_NET_STETH_BALANCE() * 3) * _newPrice) /
                     _partialLiq._ratio;
                 if (_partialLiq._repaidDebt >= 2) {
                     _partialLiq._repaidDebt = _partialLiq._repaidDebt - 1;
@@ -281,7 +281,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // calc debt in system by summing up all CDPs debt
         uint256 _leftTotalDebt;
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            (uint256 _cdpDebt, , ) = cdpManager.getDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _cdpDebt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
             _cdpLeftActive[cdpManager.CdpIds(i)] = true;
         }
@@ -340,8 +340,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getDebtAndCollShares(cdpId1);
-            CdpState memory _cdpState2 = _getDebtAndCollShares(cdpId2);
+            CdpState memory _cdpState1 = _getSyncedDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getSyncedDebtAndCollShares(cdpId2);
 
             bytes32[] memory _emptyCdps;
             _multipleCDPsLiq(2, _emptyCdps, users[0]);
@@ -390,8 +390,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bool _availableToLiq2 = _checkAvailableToLiq(cdpId2, price);
         if (_availableToLiq1 || _availableToLiq2) {
             // get original debt
-            CdpState memory _cdpState1 = _getDebtAndCollShares(cdpId1);
-            CdpState memory _cdpState2 = _getDebtAndCollShares(cdpId2);
+            CdpState memory _cdpState1 = _getSyncedDebtAndCollShares(cdpId1);
+            CdpState memory _cdpState2 = _getSyncedDebtAndCollShares(cdpId2);
 
             bytes32[] memory _cdps = new bytes32[](2);
             _cdps[0] = cdpId1;
@@ -414,7 +414,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         (bytes32[] memory cdpIds, uint256 _newPrice) = _sequenceRecoveryModeSwitchSetup();
 
         // ensure we are in RM now
-        uint256 _currentTCR = cdpManager.getTCR(_newPrice);
+        uint256 _currentTCR = cdpManager.getCachedTCR(_newPrice);
         assertTrue(_currentTCR < cdpManager.CCR());
 
         // prepare sequence liquidation
@@ -425,7 +425,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _liquidatorBalBefore = collateral.balanceOf(_liquidator);
         uint256 _expectedReward = cdpManager.getCdpCollShares(cdpIds[0]) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[0]) +
-            ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getICR(cdpIds[1], _newPrice))) /
+            ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getCachedICR(cdpIds[1], _newPrice))) /
                 _newPrice) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[1]);
 
@@ -438,7 +438,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.stopPrank();
 
         // ensure RM is exited
-        assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
+        assertTrue(cdpManager.getCachedTCR(_newPrice) > cdpManager.CCR());
         uint256 _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         _utils.assertApproximateEq(
             _liquidatorBalAfter,
@@ -453,7 +453,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         (bytes32[] memory cdpIds, uint256 _newPrice) = _sequenceRecoveryModeSwitchSetup();
 
         // ensure we are in RM now
-        uint256 _currentTCR = cdpManager.getTCR(_newPrice);
+        uint256 _currentTCR = cdpManager.getCachedTCR(_newPrice);
         assertTrue(_currentTCR < cdpManager.CCR());
 
         // prepare batch liquidation
@@ -464,7 +464,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _liquidatorBalBefore = collateral.balanceOf(_liquidator);
         uint256 _expectedReward = cdpManager.getCdpCollShares(cdpIds[0]) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[0]) +
-            ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getICR(cdpIds[1], _newPrice))) /
+            ((cdpManager.getCdpDebt(cdpIds[1]) * (cdpManager.getCachedICR(cdpIds[1], _newPrice))) /
                 _newPrice) +
             cdpManager.getCdpLiquidatorRewardShares(cdpIds[1]);
 
@@ -476,7 +476,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         assertTrue(sortedCdps.contains(cdpIds[3]) == true);
 
         // ensure RM is exited
-        assertTrue(cdpManager.getTCR(_newPrice) > cdpManager.CCR());
+        assertTrue(cdpManager.getCachedTCR(_newPrice) > cdpManager.CCR());
         uint256 _liquidatorBalAfter = collateral.balanceOf(_liquidator);
         _utils.assertApproximateEq(
             _liquidatorBalAfter,
@@ -498,7 +498,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _newPrice = (_originalPrice * 1e18) / 130e16;
         priceFeedMock.setPrice(_newPrice);
         _utils.assertApproximateEq(
-            cdpManager.getICR(userCdpid, _newPrice),
+            cdpManager.getCachedICR(userCdpid, _newPrice),
             1e18,
             ICR_COMPARE_TOLERANCE
         );
@@ -535,7 +535,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _newPrice = (_originalPrice * 3e16) / 130e16;
         priceFeedMock.setPrice(_newPrice);
         _utils.assertApproximateEq(
-            cdpManager.getICR(userCdpid, _newPrice),
+            cdpManager.getCachedICR(userCdpid, _newPrice),
             3e16,
             ICR_COMPARE_TOLERANCE
         );
@@ -572,7 +572,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _originalPrice = priceFeedMock.fetchPrice();
         uint256 _newPrice = (_originalPrice * 105e16) / ICR;
         priceFeedMock.setPrice(_newPrice);
-        uint256 _currentICR = cdpManager.getICR(userCdpid, _newPrice);
+        uint256 _currentICR = cdpManager.getCachedICR(userCdpid, _newPrice);
         _utils.assertApproximateEq(_currentICR, 105e16, ICR_COMPARE_TOLERANCE);
         assertTrue(_currentICR > 103e16);
 
@@ -609,9 +609,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _originalPrice = priceFeedMock.fetchPrice();
         uint256 _newPrice = (_originalPrice * 1102e15) / ICR;
         priceFeedMock.setPrice(_newPrice);
-        uint256 _currentICR = cdpManager.getICR(userCdpid, _newPrice);
+        uint256 _currentICR = cdpManager.getCachedICR(userCdpid, _newPrice);
         _utils.assertApproximateEq(_currentICR, 1102e15, ICR_COMPARE_TOLERANCE);
-        uint256 _currentTCR = cdpManager.getTCR(_newPrice);
+        uint256 _currentTCR = cdpManager.getCachedTCR(_newPrice);
         assertTrue(_currentTCR < cdpManager.CCR());
         assertTrue(_currentICR < _currentTCR);
 
@@ -663,16 +663,18 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         (, bytes32 safeCdpId) = _singleCdpSetup(users[0], victimICR);
 
         // Go through Grace Period
-        cdpManager.syncGracePeriod();
-
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        _waitUntilRMColldown();
         vm.startPrank(users[0]);
 
         // Show it cannot be liquidated
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.liquidate(safeCdpId);
 
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
     }
 
@@ -705,21 +707,23 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         priceFeedMock.setPrice(newPrice);
 
         // We are in RM
-        uint256 _TCR = cdpManager.getTCR(newPrice);
+        uint256 _TCR = cdpManager.getCachedTCR(newPrice);
         bool _recoveryMode = _TCR < cdpManager.CCR();
         vm.assume(_recoveryMode);
 
         // Go through Grace Period
-        cdpManager.syncGracePeriod();
-
-        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriod() + 1);
+        _waitUntilRMColldown();
         vm.startPrank(users[0]);
 
         // Show it cannot be liquidated
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.liquidate(safeCdpId);
 
-        vm.expectRevert("CdpManager: ICR is not below liquidation threshold in current mode");
+        vm.expectRevert(
+            "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
+        );
         cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
 
         uint256 liquidationCheckpoint = vm.snapshot();
@@ -807,13 +811,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // price drop
         priceFeedMock.setPrice(_newPrice);
         _utils.assertApproximateEq(
-            cdpManager.getICR(userCdpid, _newPrice),
+            cdpManager.getCachedICR(userCdpid, _newPrice),
             _liqICR,
             ICR_COMPARE_TOLERANCE
         );
 
         if (!_noNeedRM) {
-            assertTrue(cdpManager.getTCR(_newPrice) < cdpManager.CCR());
+            assertTrue(cdpManager.getCachedTCR(_newPrice) < cdpManager.CCR());
             _waitUntilRMColldown();
         }
 
@@ -851,6 +855,35 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         );
     }
 
+    function test_ZeroSurplus_WithFullLiq_ForICRLessThanLICR(uint256 ICR) public {
+        ICR = bound(ICR, cdpManager.MCR() + 1, cdpManager.CCR());
+
+        // ensure there is more than one CDP
+        _singleCdpSetup(users[0], 156e16);
+        (address user, bytes32 userCdpid) = _singleCdpSetup(users[0], ICR);
+
+        // price drop to trigger liquidation
+        uint256 _originalPrice = priceFeedMock.fetchPrice();
+        uint256 _newPrice = (_originalPrice * (cdpManager.LICR() - 1234567890123)) / ICR;
+        priceFeedMock.setPrice(_newPrice);
+        uint256 _currentICR = cdpManager.getCachedICR(userCdpid, _newPrice);
+        assertTrue(cdpManager.getSyncedICR(userCdpid, _newPrice) < cdpManager.LICR());
+
+        // prepare liquidation
+        address _liquidator = users[users.length - 1];
+        deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
+
+        // ensure there is no surplus for full liquidation if bad debt generated
+        uint256 _surplusBalBefore = collSurplusPool.getSurplusCollShares(user);
+        uint256 _redistributedIndexBefore = cdpManager.systemDebtRedistributionIndex();
+        vm.prank(_liquidator);
+        cdpManager.liquidate(userCdpid);
+        uint256 _surplusBalAfter = collSurplusPool.getSurplusCollShares(user);
+        uint256 _redistributedIndexAfter = cdpManager.systemDebtRedistributionIndex();
+        assertTrue(_surplusBalBefore == _surplusBalAfter);
+        assertTrue(_redistributedIndexAfter > _redistributedIndexBefore);
+    }
+
     function testFullLiquidation() public {
         // Set up a test case where the CDP is fully liquidated, with ICR below MCR or TCR in recovery mode
         // Call _liquidateIndividualCdpSetupCDP with the appropriate arguments
@@ -871,10 +904,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _singleCdpSetup(address _usr, uint256 _icr) internal returns (address, bytes32) {
         uint256 _price = priceFeedMock.fetchPrice();
-        uint256 _coll = cdpManager.MIN_NET_COLL() * 2;
+        uint256 _coll = cdpManager.MIN_NET_STETH_BALANCE() * 2;
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
-        uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
+        uint256 _cdpICR = cdpManager.getCachedICR(_cdpId, _price);
         _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
         return (_usr, _cdpId);
     }
@@ -897,7 +930,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // [1] 190%
         (, cdpIds[0]) = _singleCdpSetup(user, 190e16);
         _utils.assertApproximateEq(
-            cdpManager.getICR(cdpIds[0], _price),
+            cdpManager.getCachedICR(cdpIds[0], _price),
             190e16,
             ICR_COMPARE_TOLERANCE
         );
@@ -905,7 +938,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // [2] 210%
         (, cdpIds[1]) = _singleCdpSetup(user, 210e16);
         _utils.assertApproximateEq(
-            cdpManager.getICR(cdpIds[1], _price),
+            cdpManager.getCachedICR(cdpIds[1], _price),
             210e16,
             ICR_COMPARE_TOLERANCE
         );
@@ -913,7 +946,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // [3] 270%
         (, cdpIds[2]) = _singleCdpSetup(user, 270e16);
         _utils.assertApproximateEq(
-            cdpManager.getICR(cdpIds[2], _price),
+            cdpManager.getCachedICR(cdpIds[2], _price),
             270e16,
             ICR_COMPARE_TOLERANCE
         );
@@ -921,7 +954,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         // [4] 290%
         (, cdpIds[3]) = _singleCdpSetup(user, 290e16);
         _utils.assertApproximateEq(
-            cdpManager.getICR(cdpIds[3], _price),
+            cdpManager.getCachedICR(cdpIds[3], _price),
             290e16,
             ICR_COMPARE_TOLERANCE
         );

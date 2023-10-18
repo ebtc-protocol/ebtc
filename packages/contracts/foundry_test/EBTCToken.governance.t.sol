@@ -2,11 +2,11 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "../contracts/Dependencies/LiquityMath.sol";
+import "../contracts/Dependencies/EbtcMath.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 
 /*
- * Test suite that tests opened CDPs with two different operations: repayEBTC and withdrawEBTC
+ * Test suite that tests opened CDPs with two different operations: repayDebt and withdrawDebt
  * Test include testing different metrics such as each CDP ICR, also TCR changes after operations are executed
  */
 contract EBTCTokenGovernanceTest is eBTCBaseFixture {
@@ -122,6 +122,32 @@ contract EBTCTokenGovernanceTest is eBTCBaseFixture {
 
         // Burn succeeds
         eBTCToken.burn(user, mintAmount);
+
+        vm.stopPrank();
+
+        uint256 totalSupply1 = eBTCToken.totalSupply();
+        uint256 balanceOfUser1 = eBTCToken.balanceOf(user);
+
+        assertEq(totalSupply0 - totalSupply1, mintAmount);
+        assertEq(balanceOfUser0 - balanceOfUser1, mintAmount);
+    }
+
+    function testEBTCUserWithBurningPermisionCanBurnWithoutAddress() public {
+        address user = _utils.getNextUserAddress();
+
+        // Grant user burning permissions
+        vm.startPrank(defaultGovernance);
+        eBTCToken.mint(user, mintAmount);
+        authority.setUserRole(user, 2, true);
+        vm.stopPrank();
+
+        uint256 totalSupply0 = eBTCToken.totalSupply();
+        uint256 balanceOfUser0 = eBTCToken.balanceOf(user);
+
+        vm.startPrank(user);
+
+        // Burn succeeds
+        eBTCToken.burn(mintAmount);
 
         vm.stopPrank();
 

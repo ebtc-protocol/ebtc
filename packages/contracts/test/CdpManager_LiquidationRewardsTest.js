@@ -368,7 +368,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(3714, 13))
 
     // Liquidate A
-    // console.log(`ICR A: ${await cdpManager.getICR(A, price)}`)
+    // console.log(`ICR A: ${await cdpManager.getCachedICR(A, price)}`)
     await debtToken.transfer(owner, (await debtToken.balanceOf(B)), {from: B});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(A)), {from: A});
     const txA = await cdpManager.liquidate(_aCdpId, {from: owner})
@@ -475,7 +475,7 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     const denominatorColl_1 = (await cdpManager.getSystemCollShares()).sub(A_entireColl_0)
 
     // Liquidate A
-    // console.log(`ICR A: ${await cdpManager.getICR(A, price)}`)
+    // console.log(`ICR A: ${await cdpManager.getCachedICR(A, price)}`)
     await debtToken.transfer(owner, (await debtToken.balanceOf(B)), {from: B});	
     await debtToken.transfer(owner, (await debtToken.balanceOf(A)), {from: A});
     const txA = await cdpManager.liquidate(_aCdpId, {from: owner})
@@ -549,11 +549,11 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(7428, 13))
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawDebt(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)
-    let _aliceTotalDebt = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[0];
+    let _aliceTotalDebt = (await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId))[0];
 
     // Liquidate Alice	
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});
@@ -911,11 +911,11 @@ contract('CdpManager - Redistribution reward calculations', async accounts => {
     await priceFeed.setPrice(dec(7428, 13))
 
     // Alice withdraws EBTC
-    await borrowerOperations.withdrawEBTC(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
+    await borrowerOperations.withdrawDebt(_aliceCdpId, await getNetBorrowingAmount(A_totalDebt), _aliceCdpId, _aliceCdpId, { from: alice })
 
     // Price drops to 100 $/E
     await priceFeed.setPrice(_newPrice)	
-    let _aliceTotalDebt = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[0];
+    let _aliceTotalDebt = (await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId))[0];
 
     // Liquidate Alice
     await debtToken.transfer(owner, (await debtToken.balanceOf(alice)), {from: alice});

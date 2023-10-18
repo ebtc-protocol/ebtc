@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/ICdpManager.sol";
 
-/// @notice The contract allows to check real CR of CDPs
+/// @notice The contract allows to check real CR of Cdps
 ///   Acknowledgement: https://github.com/Uniswap/v3-periphery/blob/main/contracts/lens/Quoter.sol
 contract CRLens {
     ICdpManager public immutable cdpManager;
@@ -26,7 +26,7 @@ contract CRLens {
 
         // Return latest
         uint price = priceFeed.fetchPrice();
-        uint256 tcr = cdpManager.getTCR(price);
+        uint256 tcr = cdpManager.getCachedTCR(price);
 
         if (revertValue) {
             assembly {
@@ -44,7 +44,7 @@ contract CRLens {
     function getRealICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
         cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
-        uint256 icr = cdpManager.getICR(cdpId, price);
+        uint256 icr = cdpManager.getCachedICR(cdpId, price);
 
         if (revertValue) {
             assembly {
@@ -62,7 +62,7 @@ contract CRLens {
     function getRealNICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
         cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
-        uint256 icr = cdpManager.getNominalICR(cdpId);
+        uint256 icr = cdpManager.getCachedNominalICR(cdpId);
 
         if (revertValue) {
             assembly {
@@ -142,6 +142,12 @@ contract CRLens {
     ///     These cost more gas, there should never be a reason for you to use them beside integration with Echidna
     function quoteCheckRecoveryMode() external returns (uint256) {
         try this.getCheckRecoveryMode(true) {} catch (bytes memory reason) {
+            return parseRevertReason(reason);
+        }
+    }
+
+    function quoteAnything(function() external anything) external returns (uint256) {
+        try anything() {} catch (bytes memory reason) {
             return parseRevertReason(reason);
         }
     }

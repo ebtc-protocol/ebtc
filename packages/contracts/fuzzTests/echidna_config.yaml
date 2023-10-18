@@ -34,7 +34,7 @@ testMaxGas: 1000000000
 #filterBlacklist: false
 
 #stopOnFail makes echidna terminate as soon as any property fails and has been shrunk
-stopOnFail: true
+stopOnFail: false
 
 #coverage controls coverage guided testing
 coverage: true

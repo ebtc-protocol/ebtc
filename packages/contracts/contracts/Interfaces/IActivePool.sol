@@ -8,10 +8,15 @@ interface IActivePool is IPool {
     // --- Events ---
     event ActivePoolEBTCDebtUpdated(uint256 _EBTCDebt);
     event SystemCollSharesUpdated(uint256 _coll);
-    event FeeRecipientAddressChanged(address _feeRecipientAddress);
+    event FeeRecipientAddressChanged(address indexed _feeRecipientAddress);
     event FeeRecipientClaimableCollSharesIncreased(uint256 _coll, uint256 _fee);
     event FeeRecipientClaimableCollSharesDecreased(uint256 _coll, uint256 _fee);
-    event FlashLoanSuccess(address _receiver, address _token, uint256 _amount, uint256 _fee);
+    event FlashLoanSuccess(
+        address indexed _receiver,
+        address indexed _token,
+        uint256 _amount,
+        uint256 _fee
+    );
     event SweepTokenSuccess(address indexed _token, uint256 _amount, address indexed _recipient);
 
     // --- Functions ---

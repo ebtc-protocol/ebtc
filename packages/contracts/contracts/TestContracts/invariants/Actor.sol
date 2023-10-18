@@ -1,13 +1,9 @@
 pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../Interfaces/IERC3156FlashBorrower.sol";
-import {EBTCTokenTester} from "../EBTCTokenTester.sol";
-import {BorrowerOperations} from "../../BorrowerOperations.sol";
-import {ActivePool} from "../../ActivePool.sol";
 import {IERC20} from "../../Dependencies/IERC20.sol";
-import {AssertionHelper} from "./AssertionHelper.sol";
 
-contract Actor is IERC3156FlashBorrower, AssertionHelper {
+contract Actor is IERC3156FlashBorrower {
     address[] internal tokens;
     address[] internal callers;
 
@@ -38,7 +34,7 @@ contract Actor is IERC3156FlashBorrower, AssertionHelper {
 
     // callback for flashloan
     function onFlashLoan(
-        address initiator,
+        address,
         address token,
         uint256 amount,
         uint256 fee,
@@ -59,8 +55,8 @@ contract Actor is IERC3156FlashBorrower, AssertionHelper {
                 (address[], bytes[])
             );
             for (uint256 i = 0; i < _targets.length; ++i) {
-                (bool success, bytes memory returnData) = address(_targets[i]).call(_calldatas[i]);
-                require(success, _getRevertMsg(returnData));
+                (bool success, ) = address(_targets[i]).call(_calldatas[i]);
+                require(success);
             }
         }
 

@@ -197,7 +197,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
         collToWithdraw = bound(
             collToWithdraw,
             1,
-            _getCdpStEthBalance(userCdpId) - cdpManager.MIN_NET_COLL() - 1
+            _getCdpStEthBalance(userCdpId) - cdpManager.MIN_NET_STETH_BALANCE() - 1
         );
 
         uint price = priceFeedMock.fetchPrice();
@@ -263,18 +263,18 @@ contract PositionManagersTest is eBTCBaseInvariants {
 
     /// @dev PositionManager should be able to increase debt of Cdp
     /// @dev eBTC should go to positionManager's account
-    function test_PositionManagerCanWithdrawEBTC() public {
+    function test_PositionManagerCanwithdrawDebt() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         // FIXME? debt withdrawn to positionManager instead CDP owner?
         uint _balBefore = eBTCToken.balanceOf(positionManager);
         uint _debtChange = 1e17;
         vm.prank(positionManager);
-        borrowerOperations.withdrawEBTC(userCdpId, _debtChange, bytes32(0), bytes32(0));
+        borrowerOperations.withdrawDebt(userCdpId, _debtChange, bytes32(0), bytes32(0));
         assertEq(
             eBTCToken.balanceOf(positionManager),
             _balBefore + _debtChange,
-            "debt not sent to correct recipient after withdrawEBTC()"
+            "debt not sent to correct recipient after withdrawDebt()"
         );
         assertTrue(
             borrowerOperations.getPositionManagerApproval(user, positionManager) ==
@@ -282,14 +282,14 @@ contract PositionManagersTest is eBTCBaseInvariants {
         );
     }
 
-    function test_PositionManagerCanRepayEBTC() public {
+    function test_PositionManagerCanrepayDebt() public {
         (address user, address positionManager, bytes32 userCdpId) = _testPreconditions();
 
         uint positionManagerBalanceBefore = eBTCToken.balanceOf(positionManager);
         uint userBalanceBefore = eBTCToken.balanceOf(user);
 
         vm.prank(positionManager);
-        borrowerOperations.repayEBTC(userCdpId, 1e17, bytes32(0), bytes32(0));
+        borrowerOperations.repayDebt(userCdpId, 1e17, bytes32(0), bytes32(0));
 
         assertEq(
             positionManagerBalanceBefore - eBTCToken.balanceOf(positionManager),

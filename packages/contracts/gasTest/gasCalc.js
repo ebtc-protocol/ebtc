@@ -77,34 +77,34 @@ contract('Gas cost tests', async accounts => {
     // Accounts A - J open cdps at sequentially lower ICR
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: A, value: dec(35, 'ether') }})	
     let _cdpIdA = await sortedCdps.cdpOfOwnerByIndex(A, 0);
-    console.log("_cdpIdA=" + _cdpIdA + ",icr=" + (await cdpManager.getNominalICR(_cdpIdA)));
+    console.log("_cdpIdA=" + _cdpIdA + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdA)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: B, value: dec(37, 'ether') }})	
     let _cdpIdB = await sortedCdps.cdpOfOwnerByIndex(B, 0);
-    console.log("_cdpIdB=" + _cdpIdB + ",icr=" + (await cdpManager.getNominalICR(_cdpIdB)));
+    console.log("_cdpIdB=" + _cdpIdB + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdB)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: C, value: dec(39, 'ether') }})	
     let _cdpIdC = await sortedCdps.cdpOfOwnerByIndex(C, 0);
-    console.log("_cdpIdC=" + _cdpIdC + ",icr=" + (await cdpManager.getNominalICR(_cdpIdC)));
+    console.log("_cdpIdC=" + _cdpIdC + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdC)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: D, value: dec(41, 'ether') }})	
     let _cdpIdD = await sortedCdps.cdpOfOwnerByIndex(D, 0);
-    console.log("_cdpIdD=" + _cdpIdD + ",icr=" + (await cdpManager.getNominalICR(_cdpIdD)));
+    console.log("_cdpIdD=" + _cdpIdD + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdD)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: E, value: dec(43, 'ether') }})	
     let _cdpIdE = await sortedCdps.cdpOfOwnerByIndex(E, 0);
-    console.log("_cdpIdE=" + _cdpIdE + ",icr=" + (await cdpManager.getNominalICR(_cdpIdE)));
+    console.log("_cdpIdE=" + _cdpIdE + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdE)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: F, value: dec(45, 'ether') }})	
     let _cdpIdF = await sortedCdps.cdpOfOwnerByIndex(F, 0);
-    console.log("_cdpIdF=" + _cdpIdF + ",icr=" + (await cdpManager.getNominalICR(_cdpIdF)));
+    console.log("_cdpIdF=" + _cdpIdF + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdF)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: G, value: dec(47, 'ether') }})	
     let _cdpIdG = await sortedCdps.cdpOfOwnerByIndex(G, 0);
-    console.log("_cdpIdG=" + _cdpIdG + ",icr=" + (await cdpManager.getNominalICR(_cdpIdG)));
+    console.log("_cdpIdG=" + _cdpIdG + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdG)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: H, value: dec(49, 'ether') }})	
     let _cdpIdH = await sortedCdps.cdpOfOwnerByIndex(H, 0);
-    console.log("_cdpIdH=" + _cdpIdH + ",icr=" + (await cdpManager.getNominalICR(_cdpIdH)));
+    console.log("_cdpIdH=" + _cdpIdH + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdH)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: I, value: dec(51, 'ether') }})	
     let _cdpIdI = await sortedCdps.cdpOfOwnerByIndex(I, 0);
-    console.log("_cdpIdI=" + _cdpIdI + ",icr=" + (await cdpManager.getNominalICR(_cdpIdI)));
+    console.log("_cdpIdI=" + _cdpIdI + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdI)));
     await th.openCdp(contracts, {extraEBTCAmount: dec(1, 18), extraParams: { from: J, value: dec(53, 'ether') }})	
     let _cdpIdJ = await sortedCdps.cdpOfOwnerByIndex(J, 0);
-    console.log("_cdpIdJ=" + _cdpIdJ + ",icr=" + (await cdpManager.getNominalICR(_cdpIdJ)));
+    console.log("_cdpIdJ=" + _cdpIdJ + ",icr=" + (await cdpManager.getCachedNominalICR(_cdpIdJ)));
 
     // Between F and G
     let amount = dec(1, 18)
@@ -469,13 +469,13 @@ contract('Gas cost tests', async accounts => {
     th.appendData(gasResults, message, data)
   })
 
-  // --- withdrawEBTC() --- 
+  // --- withdrawDebt() --- 
 
   // it("", async () => {
-  //   const message = 'withdrawEBTC(), first withdrawal, 10 accounts, each account withdraws 100 EBTC'
+  //   const message = 'withdrawDebt(), first withdrawal, 10 accounts, each account withdraws 100 EBTC'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
 
-  //   const gasResults = await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+  //   const gasResults = await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(100, 18))
   //   th.logGasMetrics(gasResults, message)
   //   th.logAllGasCosts(gasResults)
 
@@ -483,11 +483,11 @@ contract('Gas cost tests', async accounts => {
   // })
 
   // it("", async () => {
-  //   const message = 'withdrawEBTC(), second withdrawal, 10 accounts, each account withdraws 100 EBTC'
+  //   const message = 'withdrawDebt(), second withdrawal, 10 accounts, each account withdraws 100 EBTC'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+  //   await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(100, 18))
 
-  //   const gasResults = await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+  //   const gasResults = await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(100, 18))
   //   th.logGasMetrics(gasResults, message)
   //   th.logAllGasCosts(gasResults)
 
@@ -495,7 +495,7 @@ contract('Gas cost tests', async accounts => {
   // })
 
   it("", async () => {
-    const message = 'withdrawEBTC(), first withdrawal, 30 accounts, each account withdraws a random EBTC amount'
+    const message = 'withdrawDebt(), first withdrawal, 30 accounts, each account withdraws a random EBTC amount'
     await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), dec(1, 18))
     
     let _allCdpIds = [];
@@ -506,7 +506,7 @@ contract('Gas cost tests', async accounts => {
          _allCdpIds.push(_cdpId);		
     }
 
-    const gasResults = await th.withdrawEBTC_allAccounts_randomAmount(1, 1.8, _30_Accounts, contracts, _allCdpIds)
+    const gasResults = await th.withdrawDebt_allAccounts_randomAmount(1, 1.8, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -514,7 +514,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'withdrawEBTC(), second withdrawal, 30 accounts, each account withdraws a random EBTC amount'
+    const message = 'withdrawDebt(), second withdrawal, 30 accounts, each account withdraws a random EBTC amount'
     await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
     
     let _allCdpIds = [];
@@ -524,23 +524,23 @@ contract('Gas cost tests', async accounts => {
          assert.isTrue(await sortedCdps.contains(_cdpId))  
          _allCdpIds.push(_cdpId);		
     }
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
+    await th.withdrawDebt_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
 
-    const gasResults = await th.withdrawEBTC_allAccounts_randomAmount(1, 1.5, _30_Accounts, contracts, _allCdpIds)
+    const gasResults = await th.withdrawDebt_allAccounts_randomAmount(1, 1.5, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
     th.appendData(gasResults, message, data)
   })
 
-  // --- repayEBTC() ---
+  // --- repayDebt() ---
 
   // it("", async () => {
-  //   const message = 'repayEBTC(), partial repayment, 10 accounts, repay 30 EBTC (of 100 EBTC)'
+  //   const message = 'repayDebt(), partial repayment, 10 accounts, repay 30 EBTC (of 100 EBTC)'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+  //   await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(100, 18))
 
-  //   const gasResults = await th.repayEBTC_allAccounts(_10_Accounts, contracts, dec(30, 18))
+  //   const gasResults = await th.repayDebt_allAccounts(_10_Accounts, contracts, dec(30, 18))
   //   th.logGasMetrics(gasResults, message)
   //   th.logAllGasCosts(gasResults)
 
@@ -548,12 +548,12 @@ contract('Gas cost tests', async accounts => {
   // })
 
   // it("", async () => {
-  //   const message = 'repayEBTC(), second partial repayment, 10 accounts, repay 30 EBTC (of 70 EBTC)'
+  //   const message = 'repayDebt(), second partial repayment, 10 accounts, repay 30 EBTC (of 70 EBTC)'
   //   await th.openCdp_allAccounts(_30_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(100, 18))
-  //   await th.repayEBTC_allAccounts(_30_Accounts, contracts, dec(30, 18))
+  //   await th.withdrawDebt_allAccounts(_30_Accounts, contracts, dec(100, 18))
+  //   await th.repayDebt_allAccounts(_30_Accounts, contracts, dec(30, 18))
 
-  //   const gasResults = await th.repayEBTC_allAccounts(_30_Accounts, contracts, dec(30, 18))
+  //   const gasResults = await th.repayDebt_allAccounts(_30_Accounts, contracts, dec(30, 18))
   //   th.logGasMetrics(gasResults, message)
   //   th.logAllGasCosts(gasResults)
 
@@ -561,7 +561,7 @@ contract('Gas cost tests', async accounts => {
   // })
 
   it("", async () => {
-    const message = 'repayEBTC(), partial repayment, 30 accounts, repay random amount of EBTC'
+    const message = 'repayDebt(), partial repayment, 30 accounts, repay random amount of EBTC'
     await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
     
     let _allCdpIds = [];
@@ -571,9 +571,9 @@ contract('Gas cost tests', async accounts => {
          assert.isTrue(await sortedCdps.contains(_cdpId))  
          _allCdpIds.push(_cdpId);		
     }
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
+    await th.withdrawDebt_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
 
-    const gasResults = await th.repayEBTC_allAccounts_randomAmount(1, 1.5, _30_Accounts, contracts, _allCdpIds)
+    const gasResults = await th.repayDebt_allAccounts_randomAmount(1, 1.5, _30_Accounts, contracts, _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
@@ -581,11 +581,11 @@ contract('Gas cost tests', async accounts => {
   })
 
   // it("", async () => {
-  //   const message = 'repayEBTC(), first repayment, 10 accounts, repay in full (100 of 100 EBTC)'
+  //   const message = 'repayDebt(), first repayment, 10 accounts, repay in full (100 of 100 EBTC)'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+  //   await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(100, 18))
 
-  //   const gasResults = await th.repayEBTC_allAccounts(_10_Accounts, contracts, dec(100, 18))
+  //   const gasResults = await th.repayDebt_allAccounts(_10_Accounts, contracts, dec(100, 18))
   //   th.logGasMetrics(gasResults, message)
   //   th.logAllGasCosts(gasResults)
 
@@ -593,7 +593,7 @@ contract('Gas cost tests', async accounts => {
   // })
 
   it("", async () => {
-    const message = 'repayEBTC(), first repayment, 30 accounts, repay in full'
+    const message = 'repayDebt(), first repayment, 30 accounts, repay in full'
     await th.openCdp_allAccounts(_30_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
     
     let _allCdpIds = [];
@@ -604,34 +604,34 @@ contract('Gas cost tests', async accounts => {
          _allCdpIds.push(_cdpId);		
     }
 	
-    await th.withdrawEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
+    await th.withdrawDebt_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
 
-    const gasResults = await th.repayEBTC_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
+    const gasResults = await th.repayDebt_allAccounts(_30_Accounts, contracts, dec(1, 18), _allCdpIds)
     th.logGasMetrics(gasResults, message)
     th.logAllGasCosts(gasResults)
 
     th.appendData(gasResults, message, data)
   })
 
-  // --- getICR() ---
+  // --- getCachedICR() ---
 
   it("", async () => {
-    const message = 'single getICR() call'
+    const message = 'single getCachedICR() call'
 
     await th.openCdp_allAccounts([accounts[1]], contracts, dec(200, 'ether'), dec(1, 18))
     let _cdpId = await sortedCdps.cdpOfOwnerByIndex(accounts[1], 0);
     const randEBTCAmount = th.randAmountInWei(1, 10)
-    await borrowerOperations.withdrawEBTC(_cdpId, randEBTCAmount, accounts[1], accounts[1], { from: accounts[1] })
+    await borrowerOperations.withdrawDebt(_cdpId, randEBTCAmount, accounts[1], accounts[1], { from: accounts[1] })
 
     const price = await priceFeed.getPrice()
-    const tx = await functionCaller.cdpManager_getICR(accounts[1], price)
+    const tx = await functionCaller.cdpManager_getCachedICR(accounts[1], price)
 
     const gas = th.gasUsed(tx) - 21000
     th.logGas(gas, message)
   })
 
   it("", async () => {
-    const message = 'getICR(), Cdps with 10 ether and 100 EBTC withdrawn'
+    const message = 'getCachedICR(), Cdps with 10 ether and 100 EBTC withdrawn'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(200, 'ether'), dec(1, 18))
 
     const gasResults = await th.getICR_allAccounts(_10_Accounts, contracts, functionCaller)
@@ -642,7 +642,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getICR(), Cdps with 10 ether and random EBTC amount withdrawn'
+    const message = 'getCachedICR(), Cdps with 10 ether and random EBTC amount withdrawn'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(200, 'ether'), dec(1, 18))
     
     let _allCdpIds = [];
@@ -652,7 +652,7 @@ contract('Gas cost tests', async accounts => {
          assert.isTrue(await sortedCdps.contains(_cdpId))  
          _allCdpIds.push(_cdpId);		
     }
-    await th.withdrawEBTC_allAccounts_randomAmount(1, 10, _10_Accounts, contracts, _allCdpIds)
+    await th.withdrawDebt_allAccounts_randomAmount(1, 10, _10_Accounts, contracts, _allCdpIds)
 	
     const gasResults = await th.getICR_allAccounts(_10_Accounts, contracts, functionCaller)
     th.logGasMetrics(gasResults, message)
@@ -661,10 +661,10 @@ contract('Gas cost tests', async accounts => {
     th.appendData(gasResults, message, data)
   })
 
-  // --- getICR() with pending distribution rewards ---
+  // --- getCachedICR() with pending distribution rewards ---
 
   it("", async () => {
-    const message = 'single getICR() call, WITH pending rewards'
+    const message = 'single getCachedICR() call, WITH pending rewards'
 
     const randEBTCAmount = th.randAmountInWei(1, 10)
     let _randColl = toBN(randEBTCAmount.toString()).div(await priceFeed.getPrice()).mul(toBN('2000000000000000000'));
@@ -685,7 +685,7 @@ contract('Gas cost tests', async accounts => {
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     const price = await priceFeed.getPrice()
-    const tx = await functionCaller.cdpManager_getICR(_cdpId, price)
+    const tx = await functionCaller.cdpManager_getCachedICR(_cdpId, price)
 
     const gas = th.gasUsed(tx) - 21000
     th.logGas(gas, message)
@@ -694,7 +694,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getICR(), new Cdps with 10 ether and no withdrawals,  WITH pending rewards'
+    const message = 'getCachedICR(), new Cdps with 10 ether and no withdrawals,  WITH pending rewards'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(3, 18))
 
     // acct 500 adds coll, withdraws EBTC
@@ -724,7 +724,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getICR(), Cdps with 10 ether and 2 EBTC withdrawn, WITH pending rewards'
+    const message = 'getCachedICR(), Cdps with 10 ether and 2 EBTC withdrawn, WITH pending rewards'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(1, 18))
 
     // acct 500 adds coll, withdraws EBTC
@@ -754,7 +754,7 @@ contract('Gas cost tests', async accounts => {
   })
 
   it("", async () => {
-    const message = 'getICR(), Cdps with 10 ether WITH pending rewards'
+    const message = 'getCachedICR(), Cdps with 10 ether WITH pending rewards'
     await th.openCdp_allAccounts(_10_Accounts, contracts, dec(100, 'ether'), dec(2, 18))
 
     // acct 500 adds coll, withdraws EBTC
@@ -910,7 +910,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => { 
   //   const message = 'redeemCollateral(),  EBTC, each redemption only hits the first Cdp, never closes it'
   //   await th.addColl_allAccounts(_20_Accounts, cdpManager, dec(10, 'ether'))
-  //   await th.withdrawEBTC_allAccounts(_20_Accounts, cdpManager, dec(100, 18))
+  //   await th.withdrawDebt_allAccounts(_20_Accounts, cdpManager, dec(100, 18))
 
   //   const gasResults = await th.redeemCollateral_allAccounts_randomAmount( 1, 10, _10_Accounts, cdpManager)
   //   th.logGasMetrics(gasResults, message)
@@ -939,7 +939,7 @@ contract('Gas cost tests', async accounts => {
     await priceFeed.setPrice(_droppedPrice)	
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
-	console.log('tcr='+ (await cdpManager.getTCR(_droppedPrice)));
+	console.log('tcr='+ (await cdpManager.getCachedTCR(_droppedPrice)));
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
     const gas = await th.redeemCollateral(_liquidator, contracts, dec(2, 18))
 
@@ -967,7 +967,7 @@ contract('Gas cost tests', async accounts => {
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
 	let _first = await sortedCdps.getFirst();
-	let _firstDebtAndColl = await cdpManager.getDebtAndCollShares(_first);
+	let _firstDebtAndColl = await cdpManager.getSyncedDebtAndCollShares(_first);
     const gas = await th.redeemCollateral(_liquidator, contracts, _firstDebtAndColl[0])
     th.logGas(gas, message)
 
@@ -1061,7 +1061,7 @@ contract('Gas cost tests', async accounts => {
     // Price drops, account[998]'s ICR falls below MCR, and gets liquidated
     let _droppedPrice = dec(3314, 13);
     await priceFeed.setPrice(_droppedPrice)	
-	console.log('icr='+ (await cdpManager.getICR(_cdpIdLiq, _droppedPrice)));
+	console.log('icr='+ (await cdpManager.getCachedICR(_cdpIdLiq, _droppedPrice)));
     await cdpManager.liquidate(_cdpIdLiq, { from: _liquidator })
 
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_MONTH, web3.currentProvider)
@@ -1076,11 +1076,11 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => { 
   //   const message = 'redeemCollateral(),  EBTC, each redemption only hits the first Cdp, never closes it, WITH pending rewards'
   //   await th.addColl_allAccounts(_20_Accounts, cdpManager, dec(10, 'ether'))
-  //   await th.withdrawEBTC_allAccounts(_20_Accounts, cdpManager, dec(100, 18))
+  //   await th.withdrawDebt_allAccounts(_20_Accounts, cdpManager, dec(100, 18))
 
   //    // acct 999 adds coll, withdraws EBTC, sits at 111% ICR
   //    await borrowerOperations.addColl(accounts[999], {from: accounts[999], value:dec(1, 'ether')})
-  //    await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[999], ZERO_ADDRESS, { from: accounts[999]})
+  //    await borrowerOperations.withdrawDebt(_100pct, dec(130, 18), accounts[999], ZERO_ADDRESS, { from: accounts[999]})
 
   //     // Price drops, account[999]'s ICR falls below MCR, and gets liquidated
   //    await priceFeed.setPrice(dec(100, 18))
@@ -1099,7 +1099,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => {
   //   const message = 'getApproxHint(), numTrials = 10, 10 calls, each with random CR'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0 )
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
 
   //   gasCostList = []
 
@@ -1120,7 +1120,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => {
   //   const message = 'getApproxHint(), numTrials = 10:  i.e. k = 1, list size = 1'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0 )
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
 
   //   const CR = '200000000000000000000'
   //   tx = await functionCaller.cdpManager_getApproxHint(CR, 10)
@@ -1133,7 +1133,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => {
   //   const message = 'getApproxHint(), numTrials = 32:  i.e. k = 10, list size = 10'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0 )
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
 
 
   //   const CR = '200000000000000000000'
@@ -1147,7 +1147,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => {
   //   const message = 'getApproxHint(), numTrials = 100: i.e. k = 10, list size = 100'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0 )
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, borrowerOperations)
 
   //   const CR = '200000000000000000000'
   //   tx = await functionCaller.cdpManager_getApproxHint(CR, 100)
@@ -1162,7 +1162,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => { //8mil. gas
   //   const message = 'getApproxHint(), numTrials = 320: i.e. k = 10, list size = 1000'
   //   await th.addColl_allAccounts(_10_Accounts, cdpManager, dec(10, 'ether'))
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
 
   //   const CR = '200000000000000000000'
   //   tx = await functionCaller.cdpManager_getApproxHint(CR, 320)
@@ -1175,7 +1175,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => { // 25mil. gas
   //   const message = 'getApproxHint(), numTrials = 1000:  i.e. k = 10, list size = 10000'
   //   await th.addColl_allAccounts(_10_Accounts, cdpManager, dec(10, 'ether'))
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
 
   //   const CR = '200000000000000000000'
   //   tx = await functionCaller.cdpManager_getApproxHint(CR, 1000)
@@ -1188,7 +1188,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => { // 81mil. gas
   //   const message = 'getApproxHint(), numTrials = 3200:  i.e. k = 10, list size = 100000'
   //   await th.addColl_allAccounts(_10_Accounts, cdpManager, dec(10, 'ether'))
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
 
   //   const CR = '200000000000000000000'
   //   tx = await functionCaller.cdpManager_getApproxHint(CR, 3200)
@@ -1204,7 +1204,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => { 
   //   const message = 'getApproxHint(), numTrials = 10000:  i.e. k = 10, list size = 1000000'
   //   await th.addColl_allAccounts(_10_Accounts, cdpManager, dec(10, 'ether'))
-  //   await th.withdrawEBTC_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
+  //   await th.withdrawDebt_allAccounts_randomAmount(1, 180, _10_Accounts, cdpManager)
 
   //   const CR = '200000000000000000000'
   //   tx = await functionCaller.cdpManager_getApproxHint(CR, 10000)
@@ -1221,7 +1221,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => {
   //   const message = 'provideToSP(), No pending rewards, part of issued EBTC: all accounts withdraw 180 EBTC, all make first deposit, provide 100 EBTC'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(130, 18))
+  //   await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(130, 18))
 
   //   // first funds provided
   //   const gasResults = await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(100, 18))
@@ -1234,7 +1234,7 @@ contract('Gas cost tests', async accounts => {
   // it("", async () => {
   //   const message = 'provideToSP(), No pending rewards, all issued EBTC: all accounts withdraw 180 EBTC, all make first deposit, 180 EBTC'
   //   await th.openCdp_allAccounts(_10_Accounts, contracts, dec(10, 'ether'), 0)
-  //   await th.withdrawEBTC_allAccounts(_10_Accounts, contracts, dec(130, 18))
+  //   await th.withdrawDebt_allAccounts(_10_Accounts, contracts, dec(130, 18))
 
   //   // first funds provided
   //   const gasResults = await th.provideToSP_allAccounts(_10_Accounts, stabilityPool, dec(130, 18))
@@ -1255,7 +1255,7 @@ contract('Gas cost tests', async accounts => {
 
   //   //1 acct open Cdp with 1 ether and withdraws 170 EBTC
   //   await borrowerOperations.openCdp(0, accounts[1], ZERO_ADDRESS, { from: accounts[1], value: dec(1, 'ether') })
-  //   await borrowerOperations.withdrawEBTC(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
+  //   await borrowerOperations.withdrawDebt(_100pct, dec(130, 18), accounts[1], ZERO_ADDRESS, { from: accounts[1] })
 
   //   await th.fastForwardTime(timeValues.SECONDS_IN_ONE_HOUR, web3.currentProvider)
 

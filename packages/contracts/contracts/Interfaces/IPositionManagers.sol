@@ -10,8 +10,8 @@ interface IPositionManagers {
     }
 
     event PositionManagerApprovalSet(
-        address _borrower,
-        address _positionManager,
+        address indexed _borrower,
+        address indexed _positionManager,
         PositionManagerApproval _approval
     );
 
@@ -38,8 +38,6 @@ interface IPositionManagers {
         bytes32 r,
         bytes32 s
     ) external;
-
-    function nonces(address owner) external view returns (uint256);
 
     function version() external view returns (string memory);
 

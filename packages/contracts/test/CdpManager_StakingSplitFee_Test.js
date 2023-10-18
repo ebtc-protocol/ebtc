@@ -45,7 +45,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
     defaultPool = contracts.defaultPool;
     feeSplit = await contracts.cdpManager.stakingRewardSplit();	
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
-    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
+    minDebt = await contracts.borrowerOperations.MIN_NET_STETH_BALANCE();
     _MCR = await cdpManager.MCR();
     _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();
@@ -94,8 +94,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_diffApBal, _underlyingBalTotal);
 	  
       let _price = await priceFeed.getPrice();
-      let _icrBefore = await cdpManager.getICR(_aliceCdpId, _price);
-      let _tcrBefore = await cdpManager.getTCR(_price);
+      let _icrBefore = await cdpManager.getCachedICR(_aliceCdpId, _price);
+      let _tcrBefore = await cdpManager.getCachedTCR(_price);
 	  
       // sugardaddy some collateral staking reward by increasing its PPFS again
       _oldIndex = _newIndex;
@@ -117,7 +117,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // apply accumulated fee split to CDP	upon user operations  	  
       let _expectedFeeShare = _fees[0];
-      await borrowerOperations.withdrawEBTC(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
+      await borrowerOperations.withdrawDebt(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
       let _aliceCollAfter = await cdpManager.getCdpCollShares(_aliceCdpId); 
       let _totalCollAfter = await cdpManager.getSystemCollShares(); 
       th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceColl.sub(_expectedFeeShare), _errorTolerance);
@@ -128,8 +128,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(toBN(_underlyingBalAfter.toString()).gt(toBN(_underlyingBalBefore.toString())));
 	  
       // As a result, TCR and the CDP ICR improve as well
-      let _icrAfter = await cdpManager.getICR(_aliceCdpId, _price);
-      let _tcrAfter = await cdpManager.getTCR(_price);
+      let _icrAfter = await cdpManager.getCachedICR(_aliceCdpId, _price);
+      let _tcrAfter = await cdpManager.getCachedTCR(_price);
       assert.isTrue(toBN(_icrAfter.toString()).gt(toBN(_icrBefore.toString())));
       assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
 	  
@@ -170,8 +170,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _totalStake = await cdpManager.totalStakes();
           let _totalStakeAdded = toBN(_aliceStake.toString()).add(toBN(_bobStake.toString())); 	  
           th.assertIsApproximatelyEqual(_totalStakeAdded, _totalStake, _errorTolerance);
-          let _aliceColl = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[1]; 
-          let _bobColl = (await cdpManager.getDebtAndCollShares(_bobCdpId))[1]; 
+          let _aliceColl = (await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId))[1]; 
+          let _bobColl = (await cdpManager.getSyncedDebtAndCollShares(_bobCdpId))[1]; 
           let _totalColl = await cdpManager.getSystemCollShares(); 
           let _totalCollBeforeAdded = toBN(_aliceColl.toString()).add(toBN(_bobColl.toString()));
           th.assertIsApproximatelyEqual(_totalCollBeforeAdded, _totalColl, _errorTolerance);
@@ -186,9 +186,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           console.log(`[loop${i}] differenceToError/1e18: ${differenceToError / 1e18}`)
 		  
           let _underlyingBalBefore = _totalCollBeforeAdded.mul(_oldIndex).div(mv._1e18BN);
-          let _aliceIcrBefore = await cdpManager.getICR(_aliceCdpId, _price);
-          let _bobIcrBefore = await cdpManager.getICR(_bobCdpId, _price);
-          let _tcrBefore = await cdpManager.getTCR(_price);
+          let _aliceIcrBefore = await cdpManager.getCachedICR(_aliceCdpId, _price);
+          let _bobIcrBefore = await cdpManager.getCachedICR(_bobCdpId, _price);
+          let _tcrBefore = await cdpManager.getCachedTCR(_price);
 	  
           // sugardaddy some collateral staking reward by increasing its PPFS
           await collToken.setEthPerShare(_newIndex); 	  
@@ -207,8 +207,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           th.assertIsApproximatelyEqual(_actualFee, _expectedFeeShare, _errorTolerance);
 	  
           // get collateral after applying accumulated split fee
-          let _aliceCollAfter = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[1]; 
-          let _bobCollAfter = (await cdpManager.getDebtAndCollShares(_bobCdpId))[1];
+          let _aliceCollAfter = (await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId))[1]; 
+          let _bobCollAfter = (await cdpManager.getSyncedDebtAndCollShares(_bobCdpId))[1];
 	  
           let _systemStEthFeePerUnitIndex = await cdpManager.systemStEthFeePerUnitIndex();
           _systemStEthFeePerUnitIndexError = await cdpManager.systemStEthFeePerUnitIndexError();
@@ -228,16 +228,16 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           assert.isTrue(toBN(_underlyingBalAfter.toString()).gt(toBN(_underlyingBalBefore.toString())));
 	  
           // As a result, TCR and the CDP ICRs improve as well
-          let _aliceIcrAfter = await cdpManager.getICR(_aliceCdpId, _price);
-          let _bobIcrAfter = await cdpManager.getICR(_bobCdpId, _price);
-          let _tcrAfter = await cdpManager.getTCR(_price);
+          let _aliceIcrAfter = await cdpManager.getCachedICR(_aliceCdpId, _price);
+          let _bobIcrAfter = await cdpManager.getCachedICR(_bobCdpId, _price);
+          let _tcrAfter = await cdpManager.getCachedTCR(_price);
           assert.isTrue(toBN(_aliceIcrAfter.toString()).gt(toBN(_aliceIcrBefore.toString())));
           assert.isTrue(toBN(_bobIcrAfter.toString()).gt(toBN(_bobIcrBefore.toString())));
           assert.isTrue(toBN(_tcrAfter.toString()).gt(toBN(_tcrBefore.toString())));
 	  
           // apply accumulated fee split to CDP	upon user operations 
-          await borrowerOperations.withdrawEBTC(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
-          await borrowerOperations.withdrawEBTC(_bobCdpId, 1, _bobCdpId, _bobCdpId, { from: bob, value: 0 })	  
+          await borrowerOperations.withdrawDebt(_aliceCdpId, 1, _aliceCdpId, _aliceCdpId, { from: alice, value: 0 })
+          await borrowerOperations.withdrawDebt(_bobCdpId, 1, _bobCdpId, _bobCdpId, { from: bob, value: 0 })	  
 	  	  
           _oldIndex = _newIndex;
           _newIndex = _newIndex.add((mv._1_5e18BN.sub(mv._1e18BN)));// increase by 0.05 for next
@@ -274,8 +274,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // partially liquidate the CDP	  
       let _newPrice = dec(2800, 13);
       await priceFeed.setPrice(_newPrice);
-      let _icrBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
-      let _tcrBefore = await cdpManager.getTCR(_newPrice);	 
+      let _icrBefore = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
+      let _tcrBefore = await cdpManager.getCachedTCR(_newPrice);	 
       assert.isTrue(toBN(_icrBefore.toString()).gt(LICR));
       assert.isTrue(toBN(_icrBefore.toString()).gt(_MCR));
       let _partialDebtRepaid = minDebt;
@@ -284,9 +284,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _collBeforeLiquidator = await collToken.balanceOf(owner);		  
 	  	  
       // trigger cooldown and pass the liq wait
-      await cdpManager.syncGracePeriod();
-      await ethers.provider.send("evm_increaseTime", [901]);
-      await ethers.provider.send("evm_mine");
+      await th.syncGlobalStateAndGracePeriod(contracts, ethers.provider);
 	  
       await cdpManager.partiallyLiquidate(_aliceCdpId, _partialDebtRepaid, _aliceCdpId, _aliceCdpId, {from: owner});
       let _collAfterLiquidator = await collToken.balanceOf(owner);	
@@ -301,8 +299,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);  
 	  
       // redeem alice CDP
-      // skip bootstrapping phase	  
-      await ethers.provider.send("evm_increaseTime", [86400 * 15]);
       await ethers.provider.send("evm_mine");
 	  
       let _redeemDebt = _partialDebtRepaid.mul(toBN("9"));
@@ -349,15 +345,15 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_feeBalAfter.sub(_feeBalBefore), _expectedFeeShare, _errorTolerance);
 	  
       // check after accumulated fee split applied to CDPs
-      let _aliceCollAfter = (await cdpManager.getDebtAndCollShares(_aliceCdpId))[1];
+      let _aliceCollAfter = (await cdpManager.getSyncedDebtAndCollShares(_aliceCdpId))[1];
       th.assertIsApproximatelyEqual(_aliceCollAfter, _aliceExpectedFeeApplied[1], _errorTolerance);
-      let _bobCollDebtAfter = await cdpManager.getDebtAndCollShares(_bobCdpId);
+      let _bobCollDebtAfter = await cdpManager.getSyncedDebtAndCollShares(_bobCdpId);
       th.assertIsApproximatelyEqual(_bobCollDebtAfter[1], _bobExpectedFeeApplied[1], _errorTolerance);
 	  
       // fully liquidate the riskiest CDP with fee split applied	  
       _newPrice = dec(1520, 13);
       await priceFeed.setPrice(_newPrice);
-      let _icrBobAfter = await cdpManager.getICR(_bobCdpId, _newPrice);
+      let _icrBobAfter = await cdpManager.getCachedICR(_bobCdpId, _newPrice);
       assert.isTrue(toBN(_icrBobAfter.toString()).gt(LICR));
       let _expectedLiquidatedCollBob = (_bobCollDebtAfter[0].mul(_icrBobAfter).div(toBN(_newPrice))).mul(mv._1e18BN).div(_newIndex);
       await cdpManager.liquidate(_bobCdpId, {from: owner});
@@ -412,7 +408,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
       await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
       let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
-      let _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
+      let _cdpDebtColl = await cdpManager.getSyncedDebtAndCollShares(_cdpId);
       let _activeColl = await activePool.getSystemCollShares();
       let _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_activeColl, _cdpDebtColl[1], _errorTolerance.toNumber());
@@ -428,7 +424,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await cdpManager.syncGlobalAccountingAndGracePeriod();
 	  
       // final check
-      _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
+      _cdpDebtColl = await cdpManager.getSyncedDebtAndCollShares(_cdpId);
       _systemDebt = await cdpManager.getSystemDebt();
       th.assertIsApproximatelyEqual(_systemDebt, _cdpDebtColl[0], _errorTolerance.toNumber());
 	  
@@ -496,11 +492,11 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _moreDebt = toBN("708960105069686413");	 
       _deltaRequiredIdx = await cdpManager.getDeltaIndexToTriggerRM(_newIndex, _newPrice, _newSplitFee);
       assert.isTrue(_newIndex.sub(_oldIndex).gte(_deltaRequiredIdx));    
-      await assertRevert(borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
+      await assertRevert(borrowerOperations.withdrawDebt(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32), "BorrowerOperations: Operation must leave cdp with ICR >= CCR");
 	  
       // price rebounce and adjust CDP  
       await priceFeed.setPrice(_originalPrice);
-      borrowerOperations.withdrawEBTC(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
+      borrowerOperations.withdrawDebt(_cdpId, _moreDebt, th.DUMMY_BYTES32, th.DUMMY_BYTES32)
 	  	  
       // make some fee to claim
       await ethers.provider.send("evm_increaseTime", [43924]);
@@ -539,8 +535,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // final check
       let _price = await priceFeed.getPrice();
       let _firstId = await sortedCdps.getFirst();
-      let _firstICR = await cdpManager.getICR(_firstId, _price);
-      let _tcr = await cdpManager.getTCR(_price);
+      let _firstICR = await cdpManager.getCachedICR(_firstId, _price);
+      let _tcr = await cdpManager.getCachedTCR(_price);
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
 	  	  
       // get a CDP to be liquidated with bad debt
@@ -549,7 +545,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _liqDebt = await cdpManager.getCdpDebt(_liqId);
       _price = toBN("58000000000000000");
       await priceFeed.setPrice(_price);
-      let _toLiqICR = await cdpManager.getICR(_liqId, _price);
+      let _toLiqICR = await cdpManager.getCachedICR(_liqId, _price);
       assert.isTrue(_toLiqICR.lt(LICR));
       await debtToken.transfer(owner, _liqDebt, {from: alice});
       await cdpManager.liquidate(_liqId, {from: owner});
@@ -563,14 +559,14 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _syncedTCR = await cdpManager.getSyncedTCR(_price);
 	  
       // apply CDP sync with staking split fee
-      await borrowerOperations.withdrawEBTC(_firstId, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32);
-      await borrowerOperations.repayEBTC(_firstId, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32);
+      await borrowerOperations.withdrawDebt(_firstId, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32);
+      await borrowerOperations.repayDebt(_firstId, 1, th.DUMMY_BYTES32, th.DUMMY_BYTES32);
       let _newIdxCached = await cdpManager.stEthIndex();
       assert.isTrue(_newIdxCached.eq(_newIndex));
       let _cdpCollAfter = await cdpManager.getCdpCollShares(_firstId);
       let _cdpDebtAfter = await cdpManager.getCdpDebt(_firstId);
-      let _cdpIcrAfter = await cdpManager.getICR(_firstId, _price);
-      let _tcrAfter = await cdpManager.getTCR(_price);
+      let _cdpIcrAfter = await cdpManager.getCachedICR(_firstId, _price);
+      let _tcrAfter = await cdpManager.getCachedTCR(_price);
       assert.isTrue(_cdpCollAfter.eq(_syncedColl));
       assert.isTrue(_cdpDebtAfter.eq(_syncedDebt));
       assert.isTrue(_cdpIcrAfter.eq(_syncedICR));
@@ -598,8 +594,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // final check
       let _price = await priceFeed.getPrice();
       let _firstId = await sortedCdps.getFirst();
-      let _firstICR = await cdpManager.getICR(_firstId, _price);
-      let _tcr = await cdpManager.getTCR(_price);
+      let _firstICR = await cdpManager.getCachedICR(_firstId, _price);
+      let _tcr = await cdpManager.getCachedTCR(_price);
       th.assertIsApproximatelyEqual(_firstICR, _tcr, _errorTolerance.toNumber());
 	  	  
       // get a CDP to be liquidated with bad debt
@@ -608,7 +604,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _liqDebt = await cdpManager.getCdpDebt(_liqId);
       _price = toBN("58000000000000000");
       await priceFeed.setPrice(_price);
-      let _toLiqICR = await cdpManager.getICR(_liqId, _price);
+      let _toLiqICR = await cdpManager.getCachedICR(_liqId, _price);
       assert.isTrue(_toLiqICR.lt(LICR));
       await debtToken.transfer(owner, _liqDebt, {from: alice});
       await cdpManager.liquidate(_liqId, {from: owner});
@@ -625,10 +621,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _bobId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
 	  
       // check synced state after CDP initialization
-      let _bobDebtIndex = await cdpManager.debtRedistributionIndex(_bobId);
+      let _bobDebtIndex = await cdpManager.cdpDebtRedistributionIndex(_bobId);
       let _globalDebtIndex = await cdpManager.systemDebtRedistributionIndex();
       assert.isTrue(_globalDebtIndex.eq(_bobDebtIndex));
-      let _bobFeeIndex = await cdpManager.stEthFeePerUnitIndex(_bobId);
+      let _bobFeeIndex = await cdpManager.cdpStEthFeePerUnitIndex(_bobId);
       let _globalFeeIndex = await cdpManager.systemStEthFeePerUnitIndex();
       assert.isTrue(_globalFeeIndex.eq(_bobFeeIndex));
 	  
@@ -677,8 +673,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.setEthPerShare(_newIndex);
 
       // check TCR for victim
-      let _tcrBefore = await cdpManager.getTCR(_price);
-      let _victimICRBefore = await cdpManager.getICR(_victimId, _price);
+      let _tcrBefore = await cdpManager.getCachedTCR(_price);
+      let _victimICRBefore = await cdpManager.getCachedICR(_victimId, _price);
       assert.isTrue(_tcrBefore.gt(_CCR));
       assert.isTrue(_victimICRBefore.lt(_CCR));
       let _1e36 = mv._1e18BN.mul(mv._1e18BN);
@@ -721,9 +717,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await collToken.approve(borrowerOperations.address, mv._1Be18BN, {from: owner});
       await borrowerOperations.openCdp(_ebtcAmt, th.DUMMY_BYTES32, th.DUMMY_BYTES32, _collAmt);
       let _cdpId = await sortedCdps.cdpOfOwnerByIndex(owner, 0);
-      let _cdpDebtColl = await cdpManager.getDebtAndCollShares(_cdpId);
-      let _nicrStart = await cdpManager.getNominalICR(_cdpId);
-      let _cdpSplitIdxStart = await cdpManager.stEthFeePerUnitIndex(_cdpId); 
+      let _cdpDebtColl = await cdpManager.getSyncedDebtAndCollShares(_cdpId);
+      let _nicrStart = await cdpManager.getCachedNominalICR(_cdpId);
+      let _cdpSplitIdxStart = await cdpManager.cdpStEthFeePerUnitIndex(_cdpId); 
       console.log('startNICR:' + _nicrStart + ', _cdpSplitIdxStart=' + _cdpSplitIdxStart);	  
 	  
       // now there is staking reward to split
@@ -743,10 +739,10 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.isTrue(_expectedFeeApplied[0].gt(_addedColl));// split fee take more collateral than added so NICR could decrease
       await collToken.deposit({from: owner, value: _addedColl});
       await borrowerOperations.addColl(_cdpId, _cdpId, _cdpId, 20, { from: owner, value: 0 })
-      let _cdpSplitIdxAfter = await cdpManager.stEthFeePerUnitIndex(_cdpId); 
+      let _cdpSplitIdxAfter = await cdpManager.cdpStEthFeePerUnitIndex(_cdpId); 
       assert.isTrue(_cdpSplitIdxAfter.eq(_expectedNewIdxPerUnit));
 	  
-      let _nicrAfter = await cdpManager.getNominalICR(_cdpId);
+      let _nicrAfter = await cdpManager.getCachedNominalICR(_cdpId);
       console.log('_nicrAfter:' + _nicrAfter + ', _cdpSplitIdxAfter=' + _cdpSplitIdxAfter);	
       assert.isTrue(_nicrAfter.lt(_nicrStart));
 	  

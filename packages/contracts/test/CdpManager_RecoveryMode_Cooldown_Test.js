@@ -45,11 +45,11 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
     defaultPool = contracts.defaultPool;
     feeSplit = await contracts.cdpManager.stakingRewardSplit();	
     liq_stipend = await  contracts.cdpManager.LIQUIDATOR_REWARD();
-    minDebt = await contracts.borrowerOperations.MIN_NET_COLL();
+    minDebt = await contracts.borrowerOperations.MIN_NET_STETH_BALANCE();
     _MCR = await cdpManager.MCR();
     _CCR = await cdpManager.CCR();
     LICR = await cdpManager.LICR();
-    _coolDownWait = await cdpManager.recoveryModeGracePeriod();
+    _coolDownWait = await cdpManager.recoveryModeGracePeriodDuration();
     borrowerOperations = contracts.borrowerOperations;
     collSurplusPool = contracts.collSurplusPool;
     collToken = contracts.collateral;
@@ -77,10 +77,10 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       // price drops to trigger RM	  
       let _newPrice = dec(6000, 13);
       await priceFeed.setPrice(_newPrice);
-      let _aliceICRBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
-      let _bobICRBefore = await cdpManager.getICR(_bobCdpId, _newPrice);
-      let _carolICRBefore = await cdpManager.getICR(_carolCdpId, _newPrice);
-      let _tcrBefore = await cdpManager.getTCR(_newPrice);
+      let _aliceICRBefore = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
+      let _bobICRBefore = await cdpManager.getCachedICR(_bobCdpId, _newPrice);
+      let _carolICRBefore = await cdpManager.getCachedICR(_carolCdpId, _newPrice);
+      let _tcrBefore = await cdpManager.getCachedTCR(_newPrice);
       console.log('_aliceICRBefore=' + _aliceICRBefore + ', _bobICRBefore=' + _bobICRBefore + ', _carolICRBefore=' + _carolICRBefore + ', _tcrBefore=' + _tcrBefore);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
       assert.isTrue(toBN(_aliceICRBefore.toString()).gt(_tcrBefore));
@@ -89,7 +89,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       assert.isTrue(toBN(_carolICRBefore.toString()).lt(_MCR));
 	  	  
       // trigger RM cooldown
-      await cdpManager.syncGracePeriod();	 
+      await cdpManager.syncGlobalAccountingAndGracePeriod();	 
       await assertRevert(cdpManager.liquidate(_bobCdpId, {from: owner}), "Grace period yet to finish");
 	  
       // cooldown only apply those [> MCR & < TCR]
@@ -113,7 +113,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       // price drops to trigger RM	  
       let _newPrice = dec(6000, 13);
       await priceFeed.setPrice(_newPrice);
-      let _tcrBefore = await cdpManager.getTCR(_newPrice);
+      let _tcrBefore = await cdpManager.getCachedTCR(_newPrice);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
       let _stillInitVal = await cdpManager.lastGracePeriodStartTimestamp();
       assert.isTrue(_stillInitVal.eq(_initVal));
@@ -121,8 +121,8 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       // trigger RM cooldown by open a new CDP
       await openCdp({ ICR: _CCR.add(toBN('1234567890123456789')), extraParams: { from: bob } }) 
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);
-      let _bobICRBefore = await cdpManager.getICR(_bobCdpId, _newPrice);
-      let _tcrInMiddle = await cdpManager.getTCR(_newPrice);
+      let _bobICRBefore = await cdpManager.getCachedICR(_bobCdpId, _newPrice);
+      let _tcrInMiddle = await cdpManager.getCachedTCR(_newPrice);
       console.log('_tcrInMiddle=' + _tcrInMiddle);
       assert.isTrue(toBN(_tcrInMiddle.toString()).lt(_CCR));
       let _rmTriggerTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
@@ -131,7 +131,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
 	  	  
       // trigger RM exit by open another new CDP
       await openCdp({ ICR: toBN(dec(349, 16)), extraEBTCAmount: toBN(minDebt.toString()).mul(toBN("100")), extraParams: { from: owner } }) 
-      let _tcrFinal = await cdpManager.getTCR(_newPrice);
+      let _tcrFinal = await cdpManager.getCachedTCR(_newPrice);
       console.log('_tcrFinal=' + _tcrFinal);
       assert.isTrue(toBN(_tcrFinal.toString()).gt(_CCR));
       let _rmExitTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
@@ -152,11 +152,11 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       let _originalPrice = await priceFeed.getPrice();
       let _newPrice = dec(5992, 13);
       await priceFeed.setPrice(_newPrice);
-      let _tcrBefore = await cdpManager.getTCR(_newPrice);
-      let _aliceICRBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
+      let _tcrBefore = await cdpManager.getCachedTCR(_newPrice);
+      let _aliceICRBefore = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
       console.log('_tcrBefore=' + _tcrBefore + ',_aliceICRBefore=' + _aliceICRBefore);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
-      await cdpManager.syncGracePeriod();
+      await cdpManager.syncGlobalAccountingAndGracePeriod();
       let _rmTriggerTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
       assert.isTrue(_rmTriggerTimestamp.gt(toBN('0')));
       assert.isTrue(_rmTriggerTimestamp.lt(_initVal));
@@ -165,7 +165,7 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       await priceFeed.setPrice(_originalPrice);
       await borrowerOperations.closeCdp(_carolCdpId, { from: carol } ); 
       assert.isFalse((await sortedCdps.contains(_carolCdpId)));
-      let _tcrAfter = await cdpManager.getTCR(_originalPrice);
+      let _tcrAfter = await cdpManager.getCachedTCR(_originalPrice);
       assert.isTrue(toBN(_tcrAfter.toString()).gt(_CCR));
       let _rmExitTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
       assert.isTrue(_rmExitTimestamp.eq(_initVal));
@@ -186,8 +186,8 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
       let _originalPrice = await priceFeed.getPrice();
       let _newPrice = dec(5992, 13);
       await priceFeed.setPrice(_newPrice);
-      let _tcrBefore = await cdpManager.getTCR(_newPrice);
-      let _aliceICRBefore = await cdpManager.getICR(_aliceCdpId, _newPrice);
+      let _tcrBefore = await cdpManager.getCachedTCR(_newPrice);
+      let _aliceICRBefore = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
       assert.isTrue(toBN(_tcrBefore.toString()).lt(_CCR));
       await cdpManager.syncGracePeriod();
       let _rmTriggerTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
@@ -196,9 +196,9 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
 	  	  
       // reset RM cooldown by adjust a CDP in Normal Mode (withdraw more debt)
       await priceFeed.setPrice(_originalPrice);
-      let _tcrAfter = await cdpManager.getTCR(_originalPrice);
+      let _tcrAfter = await cdpManager.getCachedTCR(_originalPrice);
       assert.isTrue(toBN(_tcrAfter.toString()).gt(_CCR));	  
-      await borrowerOperations.withdrawEBTC(_carolCdpId, _dustVal, _carolCdpId, _carolCdpId, { from: carol } ); 
+      await borrowerOperations.withdrawDebt(_carolCdpId, _dustVal, _carolCdpId, _carolCdpId, { from: carol } ); 
       let _rmExitTimestamp = await cdpManager.lastGracePeriodStartTimestamp();
       assert.isTrue(_rmExitTimestamp.eq(_initVal));
 	  
@@ -212,8 +212,8 @@ contract('CdpManager - Cooldown switch with respect to Recovery Mode to ensure d
 	  
       // end RM cooldown by adjust a CDP in RM (repayment)
       await debtToken.approve(borrowerOperations.address, _carolDebt, {from: carol});	  
-      await borrowerOperations.repayEBTC(_carolCdpId, _carolDebt, _carolCdpId, _carolCdpId, { from: carol } );
-      let _tcrFinal = await cdpManager.getTCR(_newPrice);
+      await borrowerOperations.repayDebt(_carolCdpId, _carolDebt, _carolCdpId, _carolCdpId, { from: carol } );
+      let _tcrFinal = await cdpManager.getCachedTCR(_newPrice);
       assert.isTrue(toBN(_tcrFinal.toString()).gt(_CCR));
       let _rmExitFinal = await cdpManager.lastGracePeriodStartTimestamp();
       assert.isTrue(_rmExitFinal.eq(_initVal));
