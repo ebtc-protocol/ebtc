@@ -649,7 +649,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     function getRedemptionFeeWithDecay(
         uint256 _stETHToRedeem
     ) external view override returns (uint256) {
-        return _calcRedemptionFee(getRedemptionRateWithDecay(), _ETHDrawn);
+        return _calcRedemptionFee(getRedemptionRateWithDecay(), _stETHToRedeem);
     }
 
     function _calcRedemptionFee(
