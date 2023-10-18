@@ -753,7 +753,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Governance Parameters ---
 
-    /// @notice Set the staking reward split percentage 
+    /// @notice Set the staking reward split percentage
     /// @dev Only callable by authorized addresses
     /// @param _stakingRewardSplit New staking reward split percentage value
     function setStakingRewardSplit(uint256 _stakingRewardSplit) external requiresAuth {
@@ -769,8 +769,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     /// @notice Set the minimum redemption fee floor percentage
-    /// @dev Only callable by authorized addresses 
-    /// @param _redemptionFeeFloor New minimum redemption fee floor percentage  
+    /// @dev Only callable by authorized addresses
+    /// @param _redemptionFeeFloor New minimum redemption fee floor percentage
     function setRedemptionFeeFloor(uint256 _redemptionFeeFloor) external requiresAuth {
         require(
             _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
@@ -787,7 +787,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
     }
 
-    /// @notice Set the minute decay factor for the redemption fee rate 
+    /// @notice Set the minute decay factor for the redemption fee rate
     /// @dev Only callable by authorized addresses
     /// @param _minuteDecayFactor New minute decay factor value
     function setMinuteDecayFactor(uint256 _minuteDecayFactor) external requiresAuth {
@@ -811,7 +811,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     /// @notice Set the beta value that controls redemption fee rate
-    /// @dev Only callable by authorized addresses  
+    /// @dev Only callable by authorized addresses
     /// @param _beta New beta value
     function setBeta(uint256 _beta) external requiresAuth {
         syncGlobalAccountingAndGracePeriod();
@@ -823,8 +823,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     /// @notice Pause or unpause redemptions
-/// @dev Only callable by authorized addresses
-/// @param _paused True to pause redemptions, false to unpause
+    /// @dev Only callable by authorized addresses
+    /// @param _paused True to pause redemptions, false to unpause
 
     function setRedemptionsPaused(bool _paused) external requiresAuth {
         syncGlobalAccountingAndGracePeriod();
@@ -838,13 +838,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     /// @notice Get status of a Cdp. Named enum values can be found in ICdpManagerData.Status
     /// @param _cdpId ID of the Cdp to get status for
-    /// @return Status code of the Cdp 
+    /// @return Status code of the Cdp
     function getCdpStatus(bytes32 _cdpId) external view override returns (uint256) {
         return uint256(Cdps[_cdpId].status);
     }
 
     /// @notice Get stake value of a Cdp
-    /// @param _cdpId ID of the Cdp to get stake for  
+    /// @param _cdpId ID of the Cdp to get stake for
     /// @return Stake value of the Cdp
     function getCdpStake(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].stake;
@@ -853,7 +853,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @notice Get stored debt value of a Cdp, in eBTC units
     /// @notice Cached value - does not include pending changes from redistributions
     /// @param _cdpId ID of the Cdp to get debt for
-    /// @return Debt value of the Cdp in eBTC 
+    /// @return Debt value of the Cdp in eBTC
     function getCdpDebt(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].debt;
     }
@@ -872,8 +872,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @dev Upon closing by a position manager, This value is returned directly to the position manager.
     /// @dev Upon a full liquidation, This value is given to liquidators upon fully liquidating the Cdp
     /// @dev Upon redemption, This value is sent to the CollSurplusPool for reclaiming by the borrower.
-    /// @param _cdpId ID of the Cdp to get liquidator reward shares for 
-    /// @return Liquidator reward shares value of the Cdp  
+    /// @param _cdpId ID of the Cdp to get liquidator reward shares for
+    /// @return Liquidator reward shares value of the Cdp
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].liquidatorRewardShares;
     }
@@ -924,7 +924,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @notice Set new Cdp debt and collateral values, updating stake accordingly
     /// @dev Only callable by BorrowerOperations, critical trust assumption
     /// @param _cdpId ID of Cdp to update state for
-    /// @param _borrower Address of the Cdp borrower   
+    /// @param _borrower Address of the Cdp borrower
     /// @param _coll Previous collateral shares of Cdp, before update
     /// @param _debt Previous debt units of Cdp, before update.
     /// @param _newColl New collateral shares of Cdp after update operation
