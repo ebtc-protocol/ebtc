@@ -26,6 +26,7 @@ contract EBTCDeployerTester is EBTCDeployer {
     // core contracts creation code
     bytes public authority_creationCode = type(Governor).creationCode;
     bytes public liquidationLibrary_creationCode = type(LiquidationLibrary).creationCode;
+    /// NOTE: RE CHECK if this is the one you want to use!!
     bytes public cdpManager_creationCode = type(CdpManager).creationCode;
     bytes public borrowerOperations_creationCode = type(BorrowerOperations).creationCode;
     bytes public sortedCdps_creationCode = type(SortedCdps).creationCode;

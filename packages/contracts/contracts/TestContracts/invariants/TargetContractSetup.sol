@@ -5,6 +5,7 @@ import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 import "../../Interfaces/ICdpManagerData.sol";
 import "../../Dependencies/SafeMath.sol";
 import "../../CdpManager.sol";
+import "../AccruableCdpManager.sol";
 import "../../LiquidationLibrary.sol";
 import "../../BorrowerOperations.sol";
 import "../../ActivePool.sol";
@@ -80,7 +81,8 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
 
             // CDP Manager
-            creationCode = type(CdpManager).creationCode;
+            /// @audit NOTE: This is the TEST contract!!!
+            creationCode = type(AccruableCdpManager).creationCode;
             args = abi.encode(
                 addr.liquidationLibraryAddress,
                 addr.authorityAddress,
