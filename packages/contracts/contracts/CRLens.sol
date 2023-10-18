@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./Interfaces/IPriceFeed.sol";
 import "./Interfaces/ICdpManager.sol";
 
-/// @notice The contract allows to check real CR of CDPs
+/// @notice The contract allows to check real CR of Cdps
 ///   Acknowledgement: https://github.com/Uniswap/v3-periphery/blob/main/contracts/lens/Quoter.sol
 contract CRLens {
     ICdpManager public immutable cdpManager;

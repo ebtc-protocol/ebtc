@@ -6,6 +6,8 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/EbtcBase.sol";
 
+/// @title HintHelpers mainly serves to provide handy information to facilitate offchain integration like redemption bots.
+/// @dev It is strongly recommended to use HintHelper for redemption purpose
 contract HintHelpers is EbtcBase {
     string public constant NAME = "HintHelpers";
 
@@ -35,16 +37,14 @@ contract HintHelpers is EbtcBase {
 
     // --- Functions ---
 
-    /**
-     * @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
-     * @param _EBTCamount The amount of eBTC to be redeemed.
-     * @param _price The current price of the asset.
-     * @param _maxIterations The maximum number of iterations to be performed.
-     * @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
-     * @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
-     * @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
-     * @return partialRedemptionNewColl The new collateral amount after partial redemption.
-     */
+    /// @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
+    /// @param _EBTCamount The amount of eBTC to be redeemed.
+    /// @param _price The current price of the stETH:eBTC.
+    /// @param _maxIterations The maximum number of iterations to be performed.
+    /// @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
+    /// @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
+    /// @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
+    /// @return partialRedemptionNewColl The new collateral amount after partial redemption.
     function getRedemptionHints(
         uint256 _EBTCamount,
         uint256 _price,
@@ -98,7 +98,6 @@ contract HintHelpers is EbtcBase {
                     ) = _calculateCdpStateAfterPartialRedemption(vars, currentCdpDebt, _price);
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
-                    // TODO: This seems to return the original coll? why?
                     if (
                         collateral.getPooledEthByShares(partialRedemptionNewColl) <
                         MIN_NET_STETH_BALANCE
@@ -198,11 +197,18 @@ contract HintHelpers is EbtcBase {
     }
 
     /// @notice Compute nominal CR for a specified collateral and debt amount
+    /// @param _coll The collateral amount, in shares
+    /// @param _debt The debt amount
+    /// @return The computed nominal CR for the given collateral and debt
     function computeNominalCR(uint256 _coll, uint256 _debt) external pure returns (uint256) {
         return EbtcMath._computeNominalCR(_coll, _debt);
     }
 
-    /// @notice Compute CR for a specified collateral and debt amount
+    /// @notice Compute CR for a specified collateral, debt amount, and price
+    /// @param _coll The collateral amount, in shares
+    /// @param _debt The debt amount
+    /// @param _price The current price
+    /// @return The computed CR for the given parameters
     function computeCR(
         uint256 _coll,
         uint256 _debt,

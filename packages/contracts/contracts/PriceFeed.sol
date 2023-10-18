@@ -54,7 +54,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _authorityAddress The address of the Authority contract
     /// @param _collEthCLFeed The address of the collateral-ETH ChainLink feed
     /// @param _ethBtcCLFeed The address of the ETH-BTC ChainLink feed
-    /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
     constructor(
         address _fallbackCallerAddress,
         address _authorityAddress,
@@ -92,8 +91,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // --- Functions ---
 
     /// @notice Returns the latest price obtained from the Oracle
-    /// @dev Called by eBTC functions that require a current price. Also callable by anyone externally.
-    /// @dev Non-view function - it stores the last good price seen by eBTC.
+    /// @dev Called by eBTC functions that require a current price. Also callable permissionlessly.
+    /// @dev Non-view function - it updates and stores the last good price seen by eBTC.
     /// @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
     /// @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
     /// @return The latest price fetched from the Oracle
@@ -602,7 +601,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
-
     function _getCurrentChainlinkResponse()
         internal
         view
@@ -684,7 +682,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @param _currentRoundEthBtcId The current round ID for the ETH-BTC price feed.
     /// @param _currentRoundStEthEthId The current round ID for the stETH-ETH price feed.
     /// @return prevChainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
-
     function _getPrevChainlinkResponse(
         uint80 _currentRoundEthBtcId,
         uint80 _currentRoundStEthEthId
