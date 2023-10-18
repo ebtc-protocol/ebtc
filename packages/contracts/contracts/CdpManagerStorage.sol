@@ -227,7 +227,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         address _priceFeed,
         address _collateral
     ) EbtcBase(_activePool, _priceFeed, _collateral) {
-        // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
 

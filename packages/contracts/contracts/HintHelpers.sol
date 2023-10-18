@@ -99,7 +99,6 @@ contract HintHelpers is EbtcBase {
                     ) = _calculateCdpStateAfterPartialRedemption(vars, currentCdpDebt, _price);
 
                     // If the partial redemption would leave the CDP with less than the minimum allowed coll, bail out of partial redemption and return only the fully redeemable
-                    // TODO: This seems to return the original coll? why?
                     if (
                         collateral.getPooledEthByShares(partialRedemptionNewColl) <
                         MIN_NET_STETH_BALANCE

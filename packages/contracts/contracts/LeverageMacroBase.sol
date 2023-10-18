@@ -249,7 +249,7 @@ contract LeverageMacroBase {
         } else if (check.operator == Operator.equal) {
             require(check.value == valueToCheck, "!LeverageMacroReference: equal post check");
         } else {
-            // TODO: If proof OOB enum, then we can remove this
+            /// @audit If proof OOB enum, then we can remove this
             revert("Operator not found");
         }
     }
@@ -434,9 +434,9 @@ contract LeverageMacroBase {
             }
         }
     }
-
-    // TODO: Check and add more if you think it's better
+    
     function _ensureNotSystem(address addy) internal {
+        /// @audit Check and add more if you think it's better
         require(addy != address(borrowerOperations));
         require(addy != address(sortedCdps));
         require(addy != address(activePool));
