@@ -101,7 +101,7 @@ RUN cd medusa && git checkout ac99e78ee38df86a8afefb21f105be9e4eae46ee && git pu
 
 ## WARNING!!!!
 ## Comment this line on Silicon, the line below is for Intel!
-RUN cd medusa && GOOS=linux GOARCH=386 go build
+RUN cd medusa && GOOS=linux GOARCH=amd64 go build
 
 RUN cd medusa && mv medusa /usr/local/bin/ 
 

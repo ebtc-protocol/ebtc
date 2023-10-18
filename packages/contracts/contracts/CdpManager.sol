@@ -512,8 +512,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @notice It will synchronize global accounting with stETH share index first
     /// @notice then apply split fee and debt redistribution if any
     /// @param _cdpId cdpId to sync pending accounting state for
-    function syncAccounting(bytes32 _cdpId) external override {
-        // _requireCallerIsBorrowerOperations(); /// @audit Opening can cause invalid reordering of Cdps due to changing values without reInserting into sortedCdps
+    function syncAccounting(bytes32 _cdpId) external virtual override {
+        /// @audit Opening can cause invalid reordering of Cdps due to changing values without reInserting into sortedCdps
+        _requireCallerIsBorrowerOperations();
         return _syncAccounting(_cdpId);
     }
 

@@ -32,7 +32,7 @@ contract SimplifiedDiamondLike {
 
     struct DiamondLikeStorage {
         mapping(bytes4 => address) callbackHandler;
-        OurSettings settings; // add to these to allow more fiels
+        OurSettings settings; // add to these to allow more fields
     }
 
     // SIMPLFIIED STORAGE POS
@@ -90,7 +90,7 @@ contract SimplifiedDiamondLike {
     /// === DS LIKE === ////
 
     // Hardcoded Generic Function
-    // NOTE: If you don't know what these are, be scared
+    // NOTE: If you don't know what these are, DO NOT USE THIS!
     enum OperationType {
         call,
         delegatecall
@@ -166,7 +166,11 @@ contract SimplifiedDiamondLike {
     }
 
     /// @dev DiamondLike Fallback
-    ///     With extra check
+    /// - Checks if it allows fallback either permanently or as one-off
+    /// - If it does, load the handler for that signatures
+    /// - If it exists, delegatecall to it, forwarding the data
+    /// @notice The pattern allows to add custom callbacks to this contract
+    ///     Effectively making this a Smart Contract Wallet which enables Callbacks
     function _fallback() internal {
         DiamondLikeStorage storage ds = _getStorage();
 
