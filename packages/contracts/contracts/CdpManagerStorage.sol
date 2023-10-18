@@ -716,7 +716,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     /// @notice Return the pending extra debt assigned to the Cdp from liquidation redistribution, calcualted by Cdp's stake
     /// @param _cdpId The CdpId whose pending debt redistribution to be queried
-    /// @return _pendingDebt The pending debt redistribution of the specified Cdp.
+    /// @return pendingEBTCDebtReward The pending debt redistribution of the specified Cdp.
     function getPendingRedistributedDebt(
         bytes32 _cdpId
     ) public view returns (uint256 pendingEBTCDebtReward) {
