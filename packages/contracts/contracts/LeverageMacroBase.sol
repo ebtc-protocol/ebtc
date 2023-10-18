@@ -15,14 +15,15 @@ interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }
 
-/**
- * @title Base implementation of the LeverageMacro
- * @notice Do not use this contract as a end users
- * @dev You must extend this contract and override `owner()` to allow this to work:
- *      - As a Clone / Proxy (Not done, prob you'd read `owner` from calldata when using clones-with-immutable-args)
- *      - As a deployed copy (LeverageMacroReference)
- *      - Via delegate call (LeverageMacroDelegateTarget)
- */
+
+/// @title Base implementation of the LeverageMacro
+/// @notice Do not use this contract as a end users
+/// @dev You must extend this contract and override `owner()` to allow this to work:
+/// - As a Clone / Proxy (Not done, prob you'd read `owner` from calldata when using clones-with-immutable-args)
+/// - As a deployed copy (LeverageMacroReference)
+/// - Via delegate call (LeverageMacroDelegateTarget)
+/// @custom:known-issue Due to slippage some dust amounts for all intermediary tokens can be left, since there's no way to ask to sell all available
+
 contract LeverageMacroBase {
     using SafeERC20 for IERC20;
 
