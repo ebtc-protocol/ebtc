@@ -557,7 +557,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Recovery Mode and TCR functions ---
 
-    /// @return The entire debt assigned to all Cdps within eBTC system
+    /// @return entireSystemDebt The entire debt assigned to all Cdps within eBTC system
     /// @dev It is actually the `systemDebt` value of the ActivePool.
     function getSystemDebt() public view returns (uint256 entireSystemDebt) {
         return _getSystemDebt();

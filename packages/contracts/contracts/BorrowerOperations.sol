@@ -188,10 +188,10 @@ contract BorrowerOperations is
         uint256 _debt,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint256 _collAmount,
+        uint256 _stEthBalance,
         address _borrower
     ) external override nonReentrantSelfAndCdpM returns (bytes32) {
-        return _openCdp(_debt, _upperHint, _lowerHint, _collAmount, _borrower);
+        return _openCdp(_debt, _upperHint, _lowerHint, _stEthBalance, _borrower);
     }
 
     /// @notice Function that adds the received stETH to the specified Cdp.

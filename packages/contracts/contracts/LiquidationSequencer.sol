@@ -33,7 +33,7 @@ contract LiquidationSequencer is EbtcBase {
     /// @dev Non-view function that updates and returns live price at execution time
     /// @dev could use callStatic offline to save gas
     /// @param _n The number for sequential liquidation to be converted into a CdpId array batch
-    /// @return The CdpId array batch converted from the specified sequential number
+    /// @return _array The CdpId array batch converted from the specified sequential number
     function sequenceLiqToBatchLiq(uint256 _n) external returns (bytes32[] memory _array) {
         uint256 _price = priceFeed.fetchPrice();
         return sequenceLiqToBatchLiqWithPrice(_n, _price);
@@ -44,7 +44,7 @@ contract LiquidationSequencer is EbtcBase {
     /// @dev could use callStatic offline to save gas
     /// @param _n The number for sequential liquidation to be converted into a CdpId array batch
     /// @param _price The price of stETH:eBTC to be used to check if Cdp is liquidatable
-    /// @return The CdpId array batch converted from the specified sequential number
+    /// @return _array The CdpId array batch converted from the specified sequential number
     function sequenceLiqToBatchLiqWithPrice(
         uint256 _n,
         uint256 _price
