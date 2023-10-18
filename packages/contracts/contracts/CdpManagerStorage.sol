@@ -17,16 +17,12 @@ import "./Dependencies/AuthNoOwner.sol";
 /// @dev Both CdpManager and LiquidationLibrary must maintain **the same storage layout**, so shared storage components
 /// @dev and shared functions are added here in CdpManagerStorage to de-dup code
 contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
-    // TODO: IMPROVE
     // NOTE: No packing cause it's the last var, no need for u64
     uint128 public constant UNSET_TIMESTAMP = type(uint128).max;
     uint128 public constant MINIMUM_GRACE_PERIOD = 15 minutes;
 
-    // TODO: IMPROVE THIS!!!
     uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
     uint128 public recoveryModeGracePeriodDuration = MINIMUM_GRACE_PERIOD;
-
-    // TODO: Pitfal is fee split // NOTE: Solved by calling `syncGracePeriod` on external operations from BO
 
     /// @notice Start the recovery mode grace period, if the system is in RM and the grace period timestamp has not already been set
     /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
@@ -158,7 +154,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /*
      * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction,
      * in order to calc the new base rate from a redemption.
-     * Corresponds to (1 / ALPHA) in the white paper.
+     * Corresponds to (1 / ALPHA) in the Liquity white paper.
      */
     uint256 public beta = 2;
 
@@ -180,7 +176,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     uint256 public totalCollateralSnapshot;
 
     /*
-     * systemDebtRedistributionIndex track the sums of accumulated liquidation rewards per unit staked.
+     * systemDebtRedistributionIndex track the sums of accumulated socialized liquidations per unit staked.
      * During its lifetime, each stake earns:
      *
      * A systemDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
@@ -189,6 +185,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      * for the active Cdp taken at the instant the stake was made
      */
     uint256 public systemDebtRedistributionIndex;
+
+    // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
+    mapping(bytes32 => uint256) public cdpDebtRedistributionIndex;
+
+    // Error trackers for the cdp redistribution calculation
+    uint256 public lastEBTCDebtErrorRedistribution;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stEthIndex;
@@ -200,15 +202,20 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     mapping(bytes32 => uint256) public cdpStEthFeePerUnitIndex;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
-    // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
-    mapping(bytes32 => uint256) public cdpDebtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
-    // Error trackers for the cdp redistribution calculation
-    uint256 public lastEBTCDebtErrorRedistribution;
-
+    /// @notice Initializes the contract with the provided addresses and sets up the required initial state
+    /// @param _liquidationLibraryAddress The address of the Liquidation Library
+    /// @param _authorityAddress The address of the Authority
+    /// @param _borrowerOperationsAddress The address of Borrower Operations
+    /// @param _collSurplusPool The address of the Collateral Surplus Pool
+    /// @param _ebtcToken The address of the eBTC Token contract
+    /// @param _sortedCdps The address of the Sorted CDPs contract
+    /// @param _activePool The address of the Active Pool
+    /// @param _priceFeed The address of the Price Feed
+    /// @param _collateral The address of the Collateral token
     constructor(
         address _liquidationLibraryAddress,
         address _authorityAddress,
@@ -232,10 +239,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         sortedCdps = ISortedCdps(_sortedCdps);
     }
 
-    /**
-        @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
-        @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
-     */
+    /// @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
+    /// @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
     modifier nonReentrantSelfAndBOps() {
         require(locked == OPEN, "CdpManager: Reentrancy in nonReentrant call");
         require(
@@ -284,9 +289,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      *
      * The calculation excludes a portion of collateral that is in the ActivePool:
      *
-     * the total ETH gas compensation from the liquidation sequence
+     * the total stETH liquidator reward compensation from the liquidation sequence
      *
-     * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
+     * The stETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
      */
     function _updateSystemSnapshotsExcludeCollRemainder(uint256 _collRemainder) internal {
         uint256 _totalStakesSnapshot = totalStakes;
@@ -298,9 +303,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         emit SystemSnapshotsUpdated(_totalStakesSnapshot, _totalCollateralSnapshot);
     }
 
-    /**
-    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
-    */
+    /// @dev get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     function _getPendingRedistributedDebt(
         bytes32 _cdpId
     ) internal view returns (uint256 pendingEBTCDebtReward, uint256 _debtIndexDiff) {
@@ -319,20 +322,20 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         }
     }
 
+    /*
+     * A Cdp has pending redistributed debt if its snapshot is less than the current rewards per-unit-staked sum:
+     * this indicates that redistributions have occured since the snapshot was made, and the user therefore has
+     * pending debt
+     */
     function _hasRedistributedDebt(bytes32 _cdpId) internal view returns (bool) {
-        /*
-         * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
-         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
-         * pending rewards
-         */
         if (Cdps[_cdpId].status != Status.active) {
             return false;
         }
 
-        // Returns true if there have been any redemptions
         return (cdpDebtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
+    /// @dev Sync Cdp debt redistribution index to global value
     function _updateRedistributedDebtIndex(bytes32 _cdpId) internal {
         uint256 _systemDebtRedistributionIndex = systemDebtRedistributionIndex;
 

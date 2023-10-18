@@ -17,19 +17,17 @@ import "./Dependencies/Proxy.sol";
 contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Dependency setter ---
 
-    /**
-     * @notice Constructor for CdpManager contract.
-     * @dev Sets up dependencies and initial staking reward split.
-     * @param _liquidationLibraryAddress Address of the liquidation library.
-     * @param _authorityAddress Address of the authority.
-     * @param _borrowerOperationsAddress Address of BorrowerOperations.
-     * @param _collSurplusPoolAddress Address of CollSurplusPool.
-     * @param _ebtcTokenAddress Address of the eBTC token.
-     * @param _sortedCdpsAddress Address of the SortedCDPs.
-     * @param _activePoolAddress Address of the ActivePool.
-     * @param _priceFeedAddress Address of the price feed.
-     * @param _collTokenAddress Address of the collateral token.
-     */
+    /// @notice Constructor for CdpManager contract.
+    /// @dev Sets up dependencies and initial staking reward split.
+    /// @param _liquidationLibraryAddress Address of the liquidation library.
+    /// @param _authorityAddress Address of the authority.
+    /// @param _borrowerOperationsAddress Address of BorrowerOperations.
+    /// @param _collSurplusPoolAddress Address of CollSurplusPool.
+    /// @param _ebtcTokenAddress Address of the eBTC token.
+    /// @param _sortedCdpsAddress Address of the SortedCDPs.
+    /// @param _activePoolAddress Address of the ActivePool.
+    /// @param _priceFeedAddress Address of the price feed.
+    /// @param _collTokenAddress Address of the collateral token.
     constructor(
         address _liquidationLibraryAddress,
         address _authorityAddress,
@@ -99,7 +97,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
     /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
     /// @param _cdpId ID of the Cdp to liquidate.
-
     function liquidate(bytes32 _cdpId) external override {
         _delegate(liquidationLibrary);
     }
@@ -511,9 +508,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _toRemoveIds;
     }
 
-    /// @notice Synchorize the accounting for the specified Cdp.
+    /// @notice Synchorize the accounting for the specified Cdp
     /// @notice It will synchronize global accounting with stETH share index first
     /// @notice then apply split fee and debt redistribution if any
+    /// @param _cdpId cdpId to sync pending accounting state for
     function syncAccounting(bytes32 _cdpId) external override {
         // _requireCallerIsBorrowerOperations(); /// @audit Opening can cause invalid reordering of Cdps due to changing values without reInserting into sortedCdps
         return _syncAccounting(_cdpId);
@@ -521,13 +519,22 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     /// @notice Update stake for the specified Cdp and total stake within the system.
     /// @dev Only BorrowerOperations is allowed to call this function
+    /// @param _cdpId cdpId to update stake for
     function updateStakeAndTotalStakes(bytes32 _cdpId) external override returns (uint256) {
         _requireCallerIsBorrowerOperations();
         return _updateStakeAndTotalStakes(_cdpId);
     }
 
-    /// @notice Close the specified Cdp.
-    /// @dev Only BorrowerOperations is allowed to call this function
+    /// @notice Close the specified Cdp by ID.
+    /// @dev Only BorrowerOperations is allowed to call this function.
+    /// @dev This will close the Cdp and update its status to `closedByOwner`
+    /// @dev The collateral and debt will be zero'd out
+    /// @dev The Cdp will be removed from the sorted list
+    /// @dev The close will emit a `CdpUpdated` event containing closing details
+    /// @param _cdpId ID of the Cdp to close
+    /// @param _borrower Address of the Cdp borrower
+    /// @param _debt The recorded Cdp debt prior to closing
+    /// @param _coll The recorded Cdp collateral shares prior to closing
     function closeCdp(
         bytes32 _cdpId,
         address _borrower,
@@ -557,23 +564,28 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Recovery Mode and TCR functions ---
 
-    /// @return entireSystemDebt The entire debt assigned to all Cdps within eBTC system
+    /// @notice Get the sum of debt units assigned to all Cdps within eBTC system
     /// @dev It is actually the `systemDebt` value of the ActivePool.
+    /// @return entireSystemDebt entire system debt accounting value
     function getSystemDebt() public view returns (uint256 entireSystemDebt) {
         return _getSystemDebt();
     }
 
-    /// @return The total collateralization ratio (TCR) of the system as a cached "view" (maybe outdated)
+    /// @notice The total collateralization ratio (TCR) of the system as a cached "view" (maybe outdated)
     /// @dev It is based on the current recorded system debt and collateral.
     /// @dev Possible split fee is not considered with this function.
     /// @dev Please use getSyncedTCR() otherwise
+    /// @param _price The current stETH:BTC price
+    /// @return TCR The cached total collateralization ratio (TCR) of the system (does not take into account pending global state)
     function getCachedTCR(uint256 _price) external view override returns (uint256) {
         return _getCachedTCR(_price);
     }
 
-    /// @return Whether or not the system is in Recovery Mode (TCR is below the CCR)
+    /// @notice Whether or not the system is in Recovery Mode (TCR is below the CCR)
     /// @dev Possible split fee is not considered with this function.
     /// @dev Please use getSyncedTCR() otherwise
+    /// @param _price The current stETH:BTC price
+    /// @return True if system is in recovery mode with cached values (TCR < CCR), false otherwise
     function checkRecoveryMode(uint256 _price) external view override returns (bool) {
         return _checkRecoveryMode(_price);
     }
