@@ -15,7 +15,6 @@ interface ICdpCdps {
     function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
 }
 
-
 /// @title Base implementation of the LeverageMacro
 /// @notice Do not use this contract as a end users
 /// @dev You must extend this contract and override `owner()` to allow this to work:
