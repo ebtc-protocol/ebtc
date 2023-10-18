@@ -196,15 +196,13 @@ contract HintHelpers is EbtcBase {
         return newCollShare;
     }
 
-    /* getApproxHint() - return address of a Cdp that is, on average, (length / numTrials) positions away in the 
-    sortedCdps list from the correct insert position of the Cdp to be inserted. 
-    
-    Note: The output address is worst-case O(n) positions away from the correct insert position, however, the function 
-    is probabilistic. Input can be tuned to guarantee results to a high degree of confidence, e.g:
-
-    Submitting numTrials = k * sqrt(length), with k = 15 makes it very, very likely that the ouput address will 
-    be <= sqrt(length) positions away from the correct insert position.
-    */
+    /// @notice Find address of a CDP that is, on average, (length / numTrials) positions away in the sortedCdps list from the correct insert position of the CDP to be inserted
+    /// @dev The output address is worst-case O(n) positions away from the correct insert position, however, the function is probabilistic
+    /// @dev Input can be tuned to guarantee results to a high degree of confidence, e.g:
+    /// @dev Submitting numTrials = k * sqrt(length), with k = 15 makes it very, very likely that the ouput address will  be <= sqrt(length) positions away from the correct insert position
+    /// @return hint The Id of the CDP that has the closest collateral ratio to the given _CR
+    /// @return diff The difference between the collateral ratio of the hint CDP and the given _CR
+    /// @return latestRandomSeed The final random seed value after all iterations
     function getApproxHint(
         uint256 _CR,
         uint256 _numTrials,
@@ -241,11 +239,18 @@ contract HintHelpers is EbtcBase {
     }
 
     /// @notice Compute nominal CR for a specified collateral and debt amount
+    /// @param _coll The collateral amount, in shares
+    /// @param _debt The debt amount
+    /// @return The computed nominal CR for the given collateral and debt
     function computeNominalCR(uint256 _coll, uint256 _debt) external pure returns (uint256) {
         return EbtcMath._computeNominalCR(_coll, _debt);
     }
 
-    /// @notice Compute CR for a specified collateral and debt amount
+    /// @notice Compute CR for a specified collateral, debt amount, and price
+    /// @param _coll The collateral amount, in shares
+    /// @param _debt The debt amount
+    /// @param _price The current price
+    /// @return The computed CR for the given parameters
     function computeCR(
         uint256 _coll,
         uint256 _debt,

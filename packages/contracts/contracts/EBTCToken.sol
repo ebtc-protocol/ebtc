@@ -18,8 +18,8 @@ import "./Dependencies/PermitNonce.sol";
  *
  * --- Functionality added specific to the EBTCToken ---
  *
- * 1) Transfer protection: blacklist of addresses that are invalid recipients (i.e. core Liquity contracts) in external
- * transfer() and transferFrom() calls. The purpose is to protect users from losing tokens by mistakenly sending EBTC directly to a Liquity
+ * 1) Transfer protection: blocklist of addresses that are invalid recipients (i.e. core Ebtc contracts) in external transfer() and transferFrom() calls.
+ * The purpose is to protect users from losing tokens by mistakenly sending EBTC directly to a Liquity.
  * core contract, when they should rather call the right function.
  */
 
@@ -55,6 +55,9 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
     address public immutable cdpManagerAddress;
     address public immutable borrowerOperationsAddress;
 
+    /// @param _cdpManagerAddress Address of the CDP Manager
+    /// @param _borrowerOperationsAddress Address of the Borrower Operations
+    /// @param _authorityAddress Address of the authority for the contract
     constructor(
         address _cdpManagerAddress,
         address _borrowerOperationsAddress,
@@ -74,38 +77,30 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
     }
 
-    // --- Functions for intra-Liquity calls ---
-
-    /**
-     * @notice Mint new tokens
-     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
-     * @dev Governance can also expand the list of approved minters to enable other systems to mint tokens
-     * @param _account The address to receive the newly minted tokens
-     * @param _amount The amount of tokens to mint
-     */
+    /// @notice Mint new tokens
+    /// @dev Internal system function - only callable by BorrowerOperations or CDPManager
+    /// @dev Governance can also expand the list of approved minters to enable other systems to mint tokens
+    /// @param _account The address to receive the newly minted tokens
+    /// @param _amount The amount of tokens to mint
     function mint(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _mint(_account, _amount);
     }
 
-    /**
-     * @notice Burn existing tokens
-     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
-     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
-     * @param _account The address to burn tokens from
-     * @param _amount The amount of tokens to burn
-     */
+    /// @notice Burn existing tokens
+    /// @dev Internal system function - only callable by BorrowerOperations or CDPManager
+    /// @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+    /// @param _account The address to burn tokens from
+    /// @param _amount The amount of tokens to burn
     function burn(address _account, uint256 _amount) external override {
         _requireCallerIsBOorCdpMOrAuth();
         _burn(_account, _amount);
     }
 
-    /**
-     * @notice Burn existing tokens from caller
-     * @dev Internal system function - only callable by BorrowerOperations or CDPManager
-     * @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
-     * @param _amount The amount of tokens to burn
-     */
+    /// @notice Burn existing tokens from caller
+    /// @dev Internal system function - only callable by BorrowerOperations or CDPManager
+    /// @dev Governance can also expand the list of approved burners to enable other systems to burn tokens
+    /// @param _amount The amount of tokens to burn
     function burn(uint256 _amount) external {
         _requireCallerIsBOorCdpMOrAuth();
         _burn(msg.sender, _amount);
@@ -135,7 +130,6 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
         _approve(msg.sender, spender, amount);
         return true;
     }
-
     function transferFrom(
         address sender,
         address recipient,
@@ -317,22 +311,32 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
 
     // --- Optional functions ---
 
+    /// @notice Returns the name of the token
+    /// @return Name of the token
     function name() external pure override returns (string memory) {
         return _NAME;
     }
 
+    /// @notice Returns the symbol of the token
+    /// @return Symbol of the token
     function symbol() external pure override returns (string memory) {
         return _SYMBOL;
     }
 
+    /// @notice Returns the number of decimals used to represent token amounts
+    /// @return Number of decimals used by the token
     function decimals() external pure override returns (uint8) {
         return _DECIMALS;
     }
 
+    /// @notice Returns the version of the token
+    /// @return Version of the token
     function version() external pure override returns (string memory) {
         return _VERSION;
     }
 
+    /// @notice Returns the type hash used for permit() function as per EIP-2612
+    /// @return EIP-2612 permit type hash
     function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_TYPEHASH;
     }

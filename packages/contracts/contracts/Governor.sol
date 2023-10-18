@@ -27,36 +27,19 @@ contract Governor is RolesAuthority {
         uint8[] roles;
     }
 
-    /*//////////////////////////////////////////////////////////////
-                            STORAGE
-    //////////////////////////////////////////////////////////////*/
-
     mapping(uint8 => string) internal roleNames;
 
-    /*//////////////////////////////////////////////////////////////
-                                 EVENTS
-    //////////////////////////////////////////////////////////////*/
-
     event RoleNameSet(uint8 indexed role, string indexed name);
-
-    /*//////////////////////////////////////////////////////////////
-                               CONSTRUCTOR
-    //////////////////////////////////////////////////////////////*/
 
     /// @notice The contract constructor initializes RolesAuthority with the given owner.
     /// @param _owner The address of the owner, who gains all permissions by default.
     constructor(address _owner) RolesAuthority(_owner, Authority(address(this))) {}
-
-    /*//////////////////////////////////////////////////////////////
-                            GETTERS
-    //////////////////////////////////////////////////////////////*/
 
     /// @notice Returns a list of users that are assigned a specific role.
     /// @dev This function searches all users and checks if they are assigned the given role.
     /// @dev Intended for off-chain utility only due to inefficiency.
     /// @param role The role ID to find users for.
     /// @return usersWithRole An array of addresses that are assigned the given role.
-
     function getUsersByRole(uint8 role) external view returns (address[] memory usersWithRole) {
         // Search over all users: O(n) * 2
         uint256 count;
@@ -87,7 +70,6 @@ contract Governor is RolesAuthority {
     /// @dev Intended for off-chain utility only due to inefficiency.
     /// @param user The address of the user.
     /// @return rolesForUser An array of role IDs that the user has.
-
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled
         uint256 count;
@@ -108,6 +90,9 @@ contract Governor is RolesAuthority {
         }
     }
 
+    /// @notice Converts a byte map representation to an array of role IDs.
+    /// @param byteMap The bytes32 value encoding the roles.
+    /// @return roleIds An array of role IDs extracted from the byte map.
     function getRolesFromByteMap(bytes32 byteMap) public pure returns (uint8[] memory roleIds) {
         uint256 count;
         for (uint8 i = 0; i < type(uint8).max; i++) {
@@ -129,7 +114,9 @@ contract Governor is RolesAuthority {
         }
     }
 
-    // helper function to generate bytes32 cache data for given roleIds array
+    /// @notice Converts an array of role IDs to a byte map representation.
+    /// @param roleIds An array of role IDs.
+    /// @return A bytes32 value encoding the roles.
     function getByteMapFromRoles(uint8[] memory roleIds) public pure returns (bytes32) {
         bytes32 _data;
         for (uint8 i = 0; i < roleIds.length; i++) {
@@ -138,7 +125,9 @@ contract Governor is RolesAuthority {
         return _data;
     }
 
-    // helper function to return every authorization-enabled function signatures for given target address
+    /// @notice Retrieves all function signatures enabled for a target address.
+    /// @param _target The target contract address.
+    /// @return _funcs An array of function signatures enabled for the target.
     function getEnabledFunctionsInTarget(
         address _target
     ) public view returns (bytes4[] memory _funcs) {
@@ -151,37 +140,18 @@ contract Governor is RolesAuthority {
         }
     }
 
-    /// @notice return all role IDs that have at least one capability enabled
-    function getActiveRoles() external view returns (Role[] memory activeRoles) {
-        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
-    }
-
-    // If a role exists, flip enabled
-
-    // Return all roles that are enabled anywhere
-
-    function getCapabilitiesForTarget(
-        address target
-    ) external view returns (Capability[] memory capabilities) {
-        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
-    }
-
-    function getCapabilitiesByRole(
-        uint8 role
-    ) external view returns (Capability[] memory capabilities) {
-        revert("Planned off-chain QOL function, not yet implemented, please ignore for audit");
-    }
-
+    /// @notice Retrieves the name associated with a role ID
+    /// @param role The role ID
+    /// @return roleName The name of the role
     function getRoleName(uint8 role) external view returns (string memory roleName) {
         return roleNames[role];
     }
 
-    /*//////////////////////////////////////////////////////////////
-                            AUTHORIZED SETTERS
-    //////////////////////////////////////////////////////////////*/
-
+    /// @notice Sets the name for a specific role ID for better readability
+    /// @dev This function requires authorization
+    /// @param role The role ID
+    /// @param roleName The name to assign to the role
     function setRoleName(uint8 role, string memory roleName) external requiresAuth {
-        // TODO: require maximum size for a name
         roleNames[role] = roleName;
 
         emit RoleNameSet(role, roleName);

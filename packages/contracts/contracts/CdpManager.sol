@@ -62,8 +62,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     // --- Getters ---
 
     /**
-     * @notice Get the count of CDPs in the system
-     * @return The number of CDPs.
+     * @notice Get the count of Cdps in the system
+     * @return The number of Cdps.
      */
 
     function getActiveCdpsCount() external view override returns (uint256) {
@@ -73,7 +73,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /**
      * @notice Get the CdpId at a given index in the CdpIds array.
      * @param _index Index of the CdpIds array.
-     * @return CDP ID.
+     * @return Cdp ID.
      */
     function getIdFromCdpIdsArray(uint256 _index) external view override returns (bytes32) {
         return CdpIds[_index];
@@ -81,7 +81,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Cdp Liquidation functions ---
     // -----------------------------------------------------------------
-    //    CDP ICR     |       Liquidation Behavior (TODO gas compensation?)
+    //    Cdp ICR     |       Liquidation Behavior (TODO gas compensation?)
     //
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
@@ -97,21 +97,21 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     //                |  liquidator could get collateral of (repaidDebt * max(LICR, min(ICR, MCR)) / price)
     // -----------------------------------------------------------------
 
-    /// @notice Fully liquidate a single CDP by ID. CDP must meet the criteria for liquidation at the time of execution.
+    /// @notice Fully liquidate a single Cdp by ID. Cdp must meet the criteria for liquidation at the time of execution.
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
     /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-    /// @param _cdpId ID of the CDP to liquidate.
+    /// @param _cdpId ID of the Cdp to liquidate.
 
     function liquidate(bytes32 _cdpId) external override {
         _delegate(liquidationLibrary);
     }
 
-    /// @notice Partially liquidate a single CDP.
+    /// @notice Partially liquidate a single Cdp.
     /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-    /// @param _cdpId ID of the CDP to partially liquidate.
+    /// @param _cdpId ID of the Cdp to partially liquidate.
     /// @param _partialAmount Amount to partially liquidate.
-    /// @param _upperPartialHint Upper hint for reinsertion of the CDP into the linked list.
-    /// @param _lowerPartialHint Lower hint for reinsertion of the CDP into the linked list.
+    /// @param _upperPartialHint Upper hint for reinsertion of the Cdp into the linked list.
+    /// @param _lowerPartialHint Lower hint for reinsertion of the Cdp into the linked list.
     function partiallyLiquidate(
         bytes32 _cdpId,
         uint256 _partialAmount,
@@ -123,10 +123,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Batch/Sequence liquidation functions ---
 
-    /// @notice Attempt to liquidate a custom list of CDPs provided by the caller
+    /// @notice Attempt to liquidate a custom list of Cdps provided by the caller
     /// @notice Callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
     /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
-    /// @param _cdpArray Array of CDPs to liquidate.
+    /// @param _cdpArray Array of Cdps to liquidate.
     function batchLiquidateCdps(bytes32[] memory _cdpArray) external override {
         _delegate(liquidationLibrary);
     }
@@ -161,7 +161,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 newColl = _oldDebtAndColl.collShares - singleRedemption.collSharesDrawn;
 
         if (newDebt == 0) {
-            // No debt remains, close CDP
+            // No debt remains, close Cdp
             // No debt left in the Cdp, therefore the cdp gets closed
             {
                 address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp.cdpId);
@@ -193,7 +193,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 );
             }
         } else {
-            // Debt remains, reinsert CDP
+            // Debt remains, reinsert Cdp
             uint256 newNICR = EbtcMath._computeNominalCR(newColl, newDebt);
 
             /*
@@ -241,7 +241,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * Called when a full redemption occurs, and closes the cdp.
      * The redeemer swaps (debt) EBTC for (debt)
      * worth of stETH, so the stETH liquidation reserve is all that remains.
-     * In order to close the cdp, the stETH liquidation reserve is returned to the CDP owner,
+     * In order to close the cdp, the stETH liquidation reserve is returned to the Cdp owner,
      * The debt recorded on the cdp's struct is zero'd elswhere, in _closeCdp.
      * Any surplus stETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
      */
@@ -753,6 +753,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Governance Parameters ---
 
+    /// @notice Set the staking reward split percentage 
+    /// @dev Only callable by authorized addresses
+    /// @param _stakingRewardSplit New staking reward split percentage value
     function setStakingRewardSplit(uint256 _stakingRewardSplit) external requiresAuth {
         require(
             _stakingRewardSplit <= MAX_REWARD_SPLIT,
@@ -765,6 +768,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit StakingRewardSplitSet(_stakingRewardSplit);
     }
 
+    /// @notice Set the minimum redemption fee floor percentage
+    /// @dev Only callable by authorized addresses 
+    /// @param _redemptionFeeFloor New minimum redemption fee floor percentage  
     function setRedemptionFeeFloor(uint256 _redemptionFeeFloor) external requiresAuth {
         require(
             _redemptionFeeFloor >= MIN_REDEMPTION_FEE_FLOOR,
@@ -781,6 +787,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit RedemptionFeeFloorSet(_redemptionFeeFloor);
     }
 
+    /// @notice Set the minute decay factor for the redemption fee rate 
+    /// @dev Only callable by authorized addresses
+    /// @param _minuteDecayFactor New minute decay factor value
     function setMinuteDecayFactor(uint256 _minuteDecayFactor) external requiresAuth {
         require(
             _minuteDecayFactor >= MIN_MINUTE_DECAY_FACTOR,
@@ -801,6 +810,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         emit MinuteDecayFactorSet(_minuteDecayFactor);
     }
 
+    /// @notice Set the beta value that controls redemption fee rate
+    /// @dev Only callable by authorized addresses  
+    /// @param _beta New beta value
     function setBeta(uint256 _beta) external requiresAuth {
         syncGlobalAccountingAndGracePeriod();
 
@@ -809,6 +821,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         beta = _beta;
         emit BetaSet(_beta);
     }
+
+    /// @notice Pause or unpause redemptions
+/// @dev Only callable by authorized addresses
+/// @param _paused True to pause redemptions, false to unpause
 
     function setRedemptionsPaused(bool _paused) external requiresAuth {
         syncGlobalAccountingAndGracePeriod();
@@ -820,49 +836,58 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Cdp property getters ---
 
-    /// @notice Get status of a CDP. Named values can be found in ICdpManagerData.Status.
+    /// @notice Get status of a Cdp. Named enum values can be found in ICdpManagerData.Status
+    /// @param _cdpId ID of the Cdp to get status for
+    /// @return Status code of the Cdp 
     function getCdpStatus(bytes32 _cdpId) external view override returns (uint256) {
         return uint256(Cdps[_cdpId].status);
     }
 
-    /// @notice Get stake value of a CDP.
+    /// @notice Get stake value of a Cdp
+    /// @param _cdpId ID of the Cdp to get stake for  
+    /// @return Stake value of the Cdp
     function getCdpStake(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].stake;
     }
 
-    /// @notice Get stored debt value of a CDP, in eBTC units. Does not include pending changes from redistributions
+    /// @notice Get stored debt value of a Cdp, in eBTC units
+    /// @notice Cached value - does not include pending changes from redistributions
+    /// @param _cdpId ID of the Cdp to get debt for
+    /// @return Debt value of the Cdp in eBTC 
     function getCdpDebt(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].debt;
     }
 
-    /// @notice Get stored collateral value of a CDP, in stETH shares. Does not include pending changes from redistributions or unprocessed staking yield.
+    /// @notice Get stored collateral value of a Cdp, in stETH shares
+    /// @notice Cached value - does not include pending changes from staking yield
+    /// @param _cdpId ID of the Cdp to get collateral for
+    /// @return Collateral value of the Cdp in stETH shares
     function getCdpCollShares(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].coll;
     }
 
-    /**
-        @notice Get shares value of the liquidator gas incentive reward stored for a CDP. 
-        @notice This value is processed when a CDP closes. 
-        @dev This value is returned to the borrower when they close their own CDP
-        @dev This value is given to liquidators upon fully liquidating a CDP
-        @dev This value is sent to the CollSurplusPool for reclaiming by the borrower when their CDP is redeemed
-    */
+    /// @notice Get shares value of the liquidator gas incentive reward stored for a Cdp.
+    /// @notice The value stored is processed when a Cdp closes.
+    /// @dev Upon closing by borrower, This value is returned directly to the borrower.
+    /// @dev Upon closing by a position manager, This value is returned directly to the position manager.
+    /// @dev Upon a full liquidation, This value is given to liquidators upon fully liquidating the Cdp
+    /// @dev Upon redemption, This value is sent to the CollSurplusPool for reclaiming by the borrower.
+    /// @param _cdpId ID of the Cdp to get liquidator reward shares for 
+    /// @return Liquidator reward shares value of the Cdp  
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view override returns (uint256) {
         return Cdps[_cdpId].liquidatorRewardShares;
     }
 
     // --- Cdp property setters, called by BorrowerOperations ---
 
-    /**
-        @notice Initiailze all state for new CDP
-        @dev Only callable by BorrowerOperations, critical trust assumption 
-        @dev Requires CDP to be already inserted into linked list correctly
-        @param _cdpId id of CDP to initialize state for. Inserting the blank CDP into the linked list grants this ID
-        @param _debt debt units of CDP
-        @param _coll collateral shares of CDP
-        @param _liquidatorRewardShares collateral shares for CDP gas stipend
-        @param _borrower borrower address
-     */
+    /// @notice Initialize all state for new Cdp
+    /// @dev Only callable by BorrowerOperations, critical trust assumption
+    /// @dev Requires Cdp to be already inserted into linked list correctly
+    /// @param _cdpId ID of Cdp to initialize state for
+    /// @param _debt Initial debt units of Cdp
+    /// @param _coll Initial collateral shares of Cdp
+    /// @param _liquidatorRewardShares Liquidator reward shares for Cdp liquidation gas stipend
+    /// @param _borrower Address of the Cdp borrower
     function initializeCdp(
         bytes32 _cdpId,
         uint256 _debt,
@@ -882,7 +907,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         uint256 stake = _updateStakeAndTotalStakes(_cdpId);
         uint256 index = _addCdpIdToArray(_cdpId);
 
-        // Previous debt and coll are by definition zero upon opening a new CDP
+        // Previous debt and coll are known to be zero upon opening a new Cdp
         emit CdpUpdated(
             _cdpId,
             _borrower,
@@ -896,16 +921,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    /**
-        @notice Set new CDP debt and collateral values, updating stake accordingly.
-        @dev Only callable by BorrowerOperations, critical trust assumption 
-        @param _cdpId Id of CDP to update state for
-        @param _borrower borrower of CDP. Passed along in function to avoid an extra storage read.
-        @param _coll collateral shares of CDP before update operation. Passed in function to avoid an extra stroage read.
-        @param _debt debt units of CDP before update operation. Passed in function to avoid an extra stroage read.
-        @param _newColl collateral shares of CDP after update operation.
-        @param _newDebt debt units of CDP after update operation.
-     */
+    /// @notice Set new Cdp debt and collateral values, updating stake accordingly
+    /// @dev Only callable by BorrowerOperations, critical trust assumption
+    /// @param _cdpId ID of Cdp to update state for
+    /// @param _borrower Address of the Cdp borrower   
+    /// @param _coll Previous collateral shares of Cdp, before update
+    /// @param _debt Previous debt units of Cdp, before update.
+    /// @param _newColl New collateral shares of Cdp after update operation
+    /// @param _newDebt New debt units of Cdp after update operation
     function updateCdp(
         bytes32 _cdpId,
         address _borrower,
@@ -934,20 +957,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    /**
-     * @notice Set the collateral of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _newColl New collateral value, in stETH shares
-     */
+    /// @notice Set the collateral of a Cdp
+    /// @param _cdpId The ID of the Cdp
+    /// @param _newColl New collateral value, in stETH shares
     function _setCdpCollShares(bytes32 _cdpId, uint256 _newColl) internal {
         Cdps[_cdpId].coll = _newColl;
     }
 
-    /**
-     * @notice Set the debt of a CDP
-     * @param _cdpId The ID of the CDP
-     * @param _newDebt New debt units value
-     */
+    /// @notice Set the debt of a Cdp
+    /// @param _cdpId The ID of the Cdp
+    /// @param _newDebt New debt units value
     function _setCdpDebt(bytes32 _cdpId, uint256 _newDebt) internal {
         Cdps[_cdpId].debt = _newDebt;
     }

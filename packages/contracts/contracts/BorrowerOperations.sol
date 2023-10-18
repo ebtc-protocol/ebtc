@@ -319,7 +319,7 @@ contract BorrowerOperations is
         uint256 _cdpStEthBalance = collateral.getPooledEthByShares(vars.collShares);
         require(
             _stEthBalanceDecrease <= _cdpStEthBalance,
-            "BorrowerOperations: withdraw more collateral than CDP has!"
+            "BorrowerOperations: Cannot withdraw greater stEthBalance than the value in Cdp"
         );
         vars.oldICR = EbtcMath._computeCR(_cdpStEthBalance, vars.debt, vars.price);
         vars.newICR = _getNewICRFromCdpChange(
@@ -420,7 +420,7 @@ contract BorrowerOperations is
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.ICR = EbtcMath._computeCR(vars.netStEthBalance, vars.debt, vars.price);
 
-        // NICR uses shares to normalize NICR across CDPs opened at different pooled ETH / shares ratios
+        // NICR uses shares to normalize NICR across Cdps opened at different pooled ETH / shares ratios
         vars.NICR = EbtcMath._computeNominalCR(_netCollAsShares, vars.debt);
 
         /**
@@ -428,7 +428,7 @@ contract BorrowerOperations is
             CCR > MCR (125% vs 110%)
 
             In normal mode, ICR must be greater thatn MCR
-            Additionally, the new system TCR after the CDPs addition must be >CCR
+            Additionally, the new system TCR after the Cdps addition must be >CCR
         */
         bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
         uint256 newTCR = _getNewTCRFromCdpChange(
@@ -481,9 +481,9 @@ contract BorrowerOperations is
         _withdrawDebt(msg.sender, _debt);
 
         /**
-            Note that only NET stEth balance (as shares) is considered part of the CDP.
-            The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon CDP close, to the closer.
-            The close can happen from the borrower closing their own CDP, a full liquidation, or a redemption.
+            Note that only NET stEth balance (as shares) is considered part of the Cdp.
+            The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon Cdp close, to the closer.
+            The close can happen from the borrower closing their own Cdp, a full liquidation, or a redemption.
         */
 
         // CEI: Move the collateral and liquidator gas compensation to the Active Pool. Track only net collateral for TCR purposes.
@@ -683,7 +683,7 @@ contract BorrowerOperations is
     }
 
     /**
-        @notice Process the token movements required by a CDP adjustment.
+        @notice Process the token movements required by a Cdp adjustment.
         @notice Handles the cases of a debt increase / decrease, and/or a collateral increase / decrease.
      */
     function _processTokenMovesFromAdjustment(MoveTokensParams memory _varMvTokens) internal {
@@ -708,7 +708,7 @@ contract BorrowerOperations is
     /// @param _stEthBalance total balance of stETH to send, inclusive of coll and liquidatorRewardShares
     /// @param _sharesToTrack coll as shares (exclsuive of liquidator reward shares)
     /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
-    /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
+    /// @dev These number of liquidator shares associated with each Cdp are stored in the Cdp, while the actual tokens float in the active pool
     function _activePoolAddColl(uint256 _stEthBalance, uint256 _sharesToTrack) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(activePool), _stEthBalance);

@@ -9,7 +9,7 @@ import "./Interfaces/IBorrowerOperations.sol";
 /*
  * A sorted doubly linked list with nodes sorted in descending order.
  *
- * Nodes map to active Cdps in the system by ID.
+ * Nodes map to active Cdps in the system by Id.
  * Nodes are ordered according to their current nominal individual collateral ratio (NICR),
  * which is like the ICR but without the price, i.e., just collateral / debt.
  *
@@ -23,7 +23,7 @@ import "./Interfaces/IBorrowerOperations.sol";
  * relative to it's peers, as rewards accumulate, as long as it's raw collateral and debt have not changed.
  * Thus, Nodes remain sorted by current NICR.
  *
- * Nodes need only be re-inserted upon a Cdp operation - when the owner adds or removes collateral or debt
+ * Nodes need only be re-inserted upon a CDP operation - when the owner adds or removes collateral or debt
  * to their position.
  *
  * The list is a modification of the following audited SortedDoublyLinkedList:
@@ -38,6 +38,15 @@ import "./Interfaces/IBorrowerOperations.sol";
  *   The list relies on the property that ordering by ICR is maintained as the stETH:BTC price varies.
  *
  * - Public functions with parameters have been made internal to save gas, and given an external wrapper function for external access
+ *
+ *
+ * Changes made in the Ebtc implementation:
+ *
+ * - Positions are now indexed by Ids, not addresses. Functions to generate Ids are provided.
+ * 
+ * - Added batchRemove functions to optimize redemptions.
+ * 
+ * - Added more O(n) getter functions and pagination-flavor variants, intended for off-chain use.
  */
 contract SortedCdps is ISortedCdps {
     string public constant NAME = "SortedCdps";
@@ -71,7 +80,11 @@ contract SortedCdps is ISortedCdps {
     bytes32 public constant dummyId =
         0x0000000000000000000000000000000000000000000000000000000000000000;
 
-    // --- Dependency setters ---
+    /// @notice Constructor
+    /// @dev Sets max list size
+    /// @param _size Max number of nodes allowed in the list
+    /// @param _cdpManagerAddress Address of CdpManager contract
+    /// @param _borrowerOperationsAddress Address of BorrowerOperations contract
     constructor(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) {
         if (_size == 0) {
             _size = type(uint256).max;
@@ -83,7 +96,12 @@ contract SortedCdps is ISortedCdps {
         borrowerOperationsAddress = _borrowerOperationsAddress;
     }
 
-    // https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
+    /// @notice Encodes a unique CDP Id from owner, block and nonce
+    /// @dev Inspired https://github.com/balancer-labs/balancer-v2-monorepo/blob/18bd5fb5d87b451cc27fbd30b276d1fb2987b529/pkg/vault/contracts/PoolRegistry.sol
+    /// @param owner Owner address of the CDP
+    /// @param blockHeight Block number when CDP opened
+    /// @param nonce Unique nonce for CDP
+    /// @return Unique bytes32 CDP Id
     function toCdpId(
         address owner,
         uint256 blockHeight,
@@ -98,24 +116,27 @@ contract SortedCdps is ISortedCdps {
         return serialized;
     }
 
-    /// @notice Get owner address of a given Cdp, by CdpId.
+    /// @notice Get owner address of a given CDP, given CdpId.
     /// @dev The owner address is stored in the first 20 bytes of the CdpId
-    /// @param cdpId cdpId of Cdp to get owner of
-    /// @return owner address of the Cdp
+    /// @param cdpId cdpId of CDP to get owner of
+    /// @return owner address of the CDP
     function getOwnerAddress(bytes32 cdpId) public pure override returns (address) {
         uint256 _tmp = uint256(cdpId) >> ADDRESS_SHIFT;
         return address(uint160(_tmp));
     }
 
+    /// @notice Get dummy non-existent CDP Id
+    /// @return Dummy non-existent CDP Id
     function nonExistId() public pure override returns (bytes32) {
         return dummyId;
     }
 
-    /// @notice Find a specific Cdp for a given owner, indexed by it's place in the linked list relative to other Cdps owned by the same address
+    /// @notice Find a specific CDP for a given owner, indexed by it's place in the linked list relative to other Cdps owned by the same address
     /// @notice Reverts if the index exceeds the number of active Cdps owned by the given owner
     /// @dev Intended for off-chain use, O(n) operation on size of SortedCdps linked list
-    /// @param owner address of Cdp owner
-    /// @param index index of Cdp, ordered by position in linked list relative to Cdps of the same owner
+    /// @param owner address of CDP owner
+    /// @param index index of CDP, ordered by position in linked list relative to Cdps of the same owner
+    /// @return CDP Id if found
     function cdpOfOwnerByIndex(
         address owner,
         uint256 index
@@ -125,8 +146,12 @@ contract SortedCdps is ISortedCdps {
     }
 
     /// @dev a pagination-flavor search (from least ICR to biggest ICR) for CDP owned by given owner and specified index (starting at given CDP)
+    /// @param owner address of CDP owner
+    /// @param index index of CDP, ordered by position in linked list relative to Cdps of the same owner
     /// @param startNodeId the seach traversal will start at this given CDP instead of the tail of the list
-    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of CDPs
+    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of Cdps
+    /// @return CDP Id if found, else return last seen CDP
+    /// @return True if CDP found, false otherwise
     function cdpOfOwnerByIdx(
         address owner,
         uint256 index,
@@ -136,8 +161,15 @@ contract SortedCdps is ISortedCdps {
         return _cdpOfOwnerByIndex(owner, index, startNodeId, maxNodes);
     }
 
+    /// @notice Get a user CDP by index using pagination
     /// @dev return EITHER the found CDP owned by given owner & index with a true indicator OR
-    /// @dev        current lastly-visited CDP as the startNode for next pagination with a false indicator
+    /// @dev current lastly-visited CDP as the startNode for next pagination with a false indicator
+    /// @param owner Owner address to get CDP for
+    /// @param index Index of CDP amongst user's Cdps
+    /// @param startNodeId Start position CDP Id
+    /// @param maxNodes Max number of Cdps to traverse
+    /// @return cdpId The CDP Id if found, otherwise return current lastly-visited CDP as the startNode for next pagination
+    /// @return found True if the CDP was found, false otherwise
     function _cdpOfOwnerByIndex(
         address owner,
         uint256 index,
@@ -151,19 +183,19 @@ contract SortedCdps is ISortedCdps {
         uint i;
 
         while (_currentCdpId != dummyId) {
-            // if the current Cdp is owned by specified owner
+            // if the current CDP is owned by specified owner
             if (getOwnerAddress(_currentCdpId) == owner) {
-                // if the current index of the owner Cdp matches specified index
+                // if the current index of the owner CDP matches specified index
                 if (_currentIndex == index) {
                     return (_currentCdpId, true);
                 } else {
-                    // if not, increment the owner index as we've seen a Cdp owned by them
+                    // if not, increment the owner index as we've seen a CDP owned by them
                     _currentIndex = _currentIndex + 1;
                 }
             }
             ++i;
 
-            // move to the next Cdp in the list
+            // move to the next CDP in the list
             _currentCdpId = data.nodes[_currentCdpId].prevId;
 
             // cut the run if we exceed expected iterations through the loop
@@ -177,16 +209,21 @@ contract SortedCdps is ISortedCdps {
         return (_currentCdpId, false);
     }
 
-    /// @notice Get active Cdp count of a given address
+    /// @notice Get active CDP count for an owner address
     /// @dev Intended for off-chain use, O(n) operation on size of linked list
+    /// @param owner Owner address to count Cdps for
+    /// @return count Number of active Cdps owned by the address
     function cdpCountOf(address owner) external view override returns (uint256) {
         (uint256 _cnt, ) = _cdpCountOf(owner, dummyId, 0);
         return _cnt;
     }
 
-    /// @dev a pagination-flavor search count of (from least ICR to biggest ICR) CDPs owned by given owner (starting at given CDP)
+    /// @notice a Pagination-flavor search for the count of Cdps owned by given owner
+    /// @notice Starts from a given CdpId in the sorted list, and moves from lowest ICR to highest ICR
     /// @param startNodeId the count traversal will start at this given CDP instead of the tail of the list
-    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of CDPs
+    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of Cdps
+    /// @return count Number of active Cdps owned by the address in the segment of the list traversed
+    /// @return last seen CDP for the startNode for next pagination
     function getCdpCountOf(
         address owner,
         bytes32 startNodeId,
@@ -196,7 +233,7 @@ contract SortedCdps is ISortedCdps {
     }
 
     /// @dev return the found CDP count owned by given owner with
-    /// @dev        current lastly-visited CDP as the startNode for next pagination
+    /// @dev current lastly-visited CDP as the startNode for next pagination
     function _cdpCountOf(
         address owner,
         bytes32 startNodeId,
@@ -209,13 +246,13 @@ contract SortedCdps is ISortedCdps {
         uint i = 0;
 
         while (_currentCdpId != dummyId) {
-            // if the current Cdp is owned by specified owner
+            // if the current CDP is owned by specified owner
             if (getOwnerAddress(_currentCdpId) == owner) {
                 _ownedCount = _ownedCount + 1;
             }
             ++i;
 
-            // move to the next Cdp in the list
+            // move to the next CDP in the list
             _currentCdpId = data.nodes[_currentCdpId].prevId;
 
             // cut the run if we exceed expected iterations through the loop
@@ -238,9 +275,9 @@ contract SortedCdps is ISortedCdps {
         }
     }
 
-    /// @dev a pagination-flavor search retrieval of (from least ICR to biggest ICR) CDPs owned by given owner (starting at given CDP)
+    /// @dev a pagination-flavor search retrieval of (from least ICR to biggest ICR) Cdps owned by given owner (starting at given CDP)
     /// @param startNodeId the traversal will start at this given CDP instead of the tail of the list
-    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of CDPs
+    /// @param maxNodes the traversal will go through the list by this given maximum limit of number of Cdps
     function getAllCdpsOf(
         address owner,
         bytes32 startNodeId,
@@ -252,8 +289,8 @@ contract SortedCdps is ISortedCdps {
         return _getCdpsOf(owner, startNodeId, maxNodes, _ownedCount);
     }
 
-    /// @dev return EITHER the found CDPs (also the count) owned by given owner OR empty array with
-    /// @dev        current lastly-visited CDP as the startNode for next pagination
+    /// @dev return EITHER the found Cdps (also the count) owned by given owner OR empty array with
+    /// @dev current lastly-visited CDP as the startNode for next pagination
     function _getCdpsOf(
         address owner,
         bytes32 startNodeId,
@@ -274,14 +311,14 @@ contract SortedCdps is ISortedCdps {
         bytes32 _currentCdpId = (startNodeId == dummyId ? data.tail : startNodeId);
 
         while (_currentCdpId != dummyId) {
-            // if the current Cdp is owned by specified owner
+            // if the current CDP is owned by specified owner
             if (getOwnerAddress(_currentCdpId) == owner) {
                 userCdps[_cdpRetrieved] = _currentCdpId;
                 ++_cdpRetrieved;
             }
             ++i;
 
-            // move to the next Cdp in the list
+            // move to the next CDP in the list
             _currentCdpId = data.nodes[_currentCdpId].prevId;
 
             // cut the run if we exceed expected iterations through the loop
@@ -293,13 +330,12 @@ contract SortedCdps is ISortedCdps {
         return (userCdps, _cdpRetrieved, _currentCdpId);
     }
 
-    /*
-     * @dev Add a node to the list
-     * @param owner cdp owner
-     * @param _NICR Node's NICR
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
-     */
+    /// @notice Add a node to the list
+    /// @param owner CDP owner for corresponding Id
+    /// @param _NICR Node's NICR
+    /// @param _prevId Id of previous node for the insert position
+    /// @param _nextId Id of next node for the insert position
+    /// @return _id Id of the new node
     function insert(
         address owner,
         uint256 _NICR,
@@ -364,11 +400,16 @@ contract SortedCdps is ISortedCdps {
         emit NodeAdded(_id, _NICR);
     }
 
+    /// @notice Remove a node from the sorted list, by Id
     function remove(bytes32 _id) external override {
         _requireCallerIsCdpManager();
         _remove(_id);
     }
 
+    /// @notice Batch a node from the sorted list, by Id
+    /// @notice Strong trust assumption that the specified nodes are sorted in the same order as in the input array
+    /// @dev Optimization to reduce gas cost for removing multiple nodes on redemption
+    /// @param _ids Array of node IDs to remove
     function batchRemove(bytes32[] memory _ids) external override {
         _requireCallerIsCdpManager();
         uint256 _len = _ids.length;
@@ -406,10 +447,6 @@ contract SortedCdps is ISortedCdps {
         data.size = data.size - _len;
     }
 
-    /*
-     * @dev Remove a node from the list
-     * @param _id Node's id
-     */
     function _remove(bytes32 _id) internal {
         // List must contain the node
         require(contains(_id), "SortedCdps: List does not contain the id");
@@ -447,13 +484,11 @@ contract SortedCdps is ISortedCdps {
         emit NodeRemoved(_id);
     }
 
-    /*
-     * @dev Re-insert the node at a new position, based on its new NICR
-     * @param _id Node's id
-     * @param _newNICR Node's new NICR
-     * @param _prevId Id of previous node for the new insert position
-     * @param _nextId Id of next node for the new insert position
-     */
+    /// @notice Re-insert an existing node at a new position, based on its new NICR
+    /// @param _id Node's id
+    /// @param _newNICR Node's new NICR
+    /// @param _prevId Id of previous node for the new insert position
+    /// @param _nextId Id of next node for the new insert position
     function reInsert(
         bytes32 _id,
         uint256 _newNICR,
@@ -472,11 +507,9 @@ contract SortedCdps is ISortedCdps {
         _insert(_id, _newNICR, _prevId, _nextId);
     }
 
-    /**
-     * @dev Checks if the list contains a given node
-     * @param _id The ID of the node
-     * @return true if the node exists, false otherwise
-     */
+    /// @dev Checks if the list contains a given node Id
+    /// @param _id The Id of the node
+    /// @return true if the node exists, false otherwise
     function contains(bytes32 _id) public view override returns (bool) {
         bool _exist = _id != dummyId && (data.head == _id || data.tail == _id);
         if (!_exist) {
@@ -486,79 +519,61 @@ contract SortedCdps is ISortedCdps {
         return _exist;
     }
 
-    /**
-     * @dev Checks if the list is full
-     * @return true if the list is full, false otherwise
-     */
+    /// @dev Checks if the list is full
+    /// @return true if the list is full, false otherwise
     function isFull() public view override returns (bool) {
         return data.size == maxSize;
     }
 
-    /**
-     * @dev Checks if the list is empty
-     * @return true if the list is empty, false otherwise
-     */
+    /// @dev Checks if the list is empty
+    /// @return true if the list is empty, false otherwise
     function isEmpty() public view override returns (bool) {
         return data.size == 0;
     }
 
-    /**
-     * @dev Returns the current size of the list
-     * @return The current size of the list
-     */
+    /// @dev Returns the current size of the list
+    /// @return The current size of the list
     function getSize() external view override returns (uint256) {
         return data.size;
     }
 
-    /**
-     * @dev Returns the maximum size of the list
-     * @return The maximum size of the list
-     */
+    /// @dev Returns the maximum size of the list
+    /// @return The maximum size of the list
     function getMaxSize() external view override returns (uint256) {
         return maxSize;
     }
 
-    /**
-     * @dev Returns the first node in the list (node with the largest NICR)
-     * @return The ID of the first node
-     */
+    /// @dev Returns the first node in the list (node with the largest NICR)
+    /// @return The Id of the first node
     function getFirst() external view override returns (bytes32) {
         return data.head;
     }
 
-    /**
-     * @dev Returns the last node in the list (node with the smallest NICR)
-     * @return The ID of the last node
-     */
+    /// @dev Returns the last node in the list (node with the smallest NICR)
+    /// @return The Id of the last node
     function getLast() external view override returns (bytes32) {
         return data.tail;
     }
 
-    /**
-     * @dev Returns the next node (with a smaller NICR) in the list for a given node
-     * @param _id The ID of the node
-     * @return The ID of the next node
-     */
+    /// @dev Returns the next node (with a smaller NICR) in the list for a given node
+    /// @param _id The Id of the node
+    /// @return The Id of the next node
     function getNext(bytes32 _id) external view override returns (bytes32) {
         return data.nodes[_id].nextId;
     }
 
-    /**
-     * @dev Returns the previous node (with a larger NICR) in the list for a given node
-     * @param _id The ID of the node
-     * @return The ID of the previous node
-     */
+    /// @dev Returns the previous node (with a larger NICR) in the list for a given node
+    /// @param _id The Id of the node
+    /// @return The Id of the previous node
     function getPrev(bytes32 _id) external view override returns (bytes32) {
         return data.nodes[_id].prevId;
     }
 
-    /*
-     * @dev Check if a pair of nodes is a valid insertion point for a new node with the given NICR
-     * @param _NICR Node's NICR
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
-     * @return true if the position is valid, false otherwise
-     */
+    /// @dev Check if a pair of nodes is a valid insertion point for a new node with the given NICR
+    /// @param _NICR Node's NICR
+    /// @param _prevId Id of previous node for the insert position
+    /// @param _nextId Id of next node for the insert position
+    /// @return true if the position is valid, false otherwise
     function validInsertPosition(
         uint256 _NICR,
         bytes32 _prevId,
@@ -590,11 +605,11 @@ contract SortedCdps is ISortedCdps {
         }
     }
 
-    /*
-     * @dev Descend the list (larger NICRs to smaller NICRs) to find a valid insert position
-     * @param _NICR Node's NICR
-     * @param _startId Id of node to start descending the list from
-     */
+    /// @dev Descend the list (larger NICRs to smaller NICRs) to find a valid insert position
+    /// @param _NICR Node's NICR
+    /// @param _startId Id of node to start descending the list from
+    /// @return The previous node Id for the inserted node
+    /// @return The next node Id for the inserted node
     function _descendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the head, check if the insert position is before the head
         if (data.head == _startId && _NICR >= cdpManager.getCachedNominalICR(_startId)) {
@@ -613,11 +628,11 @@ contract SortedCdps is ISortedCdps {
         return (prevId, nextId);
     }
 
-    /*
-     * @dev Ascend the list (smaller NICRs to larger NICRs) to find a valid insert position
-     * @param _NICR Node's NICR
-     * @param _startId Id of node to start ascending the list from
-     */
+    /// @dev Ascend the list (smaller NICRs to larger NICRs) to find a valid insert position
+    /// @param _NICR Node's NICR
+    /// @param _startId Id of node to start ascending the list from
+    /// @return The previous node Id for the inserted node
+    /// @return The next node Id for the inserted node
     function _ascendList(uint256 _NICR, bytes32 _startId) internal view returns (bytes32, bytes32) {
         // If `_startId` is the tail, check if the insert position is after the tail
         if (data.tail == _startId && _NICR <= cdpManager.getCachedNominalICR(_startId)) {
@@ -636,13 +651,12 @@ contract SortedCdps is ISortedCdps {
         return (prevId, nextId);
     }
 
-    /*
-     * @dev Find the insert position for a new node with the given NICR
-     * @param _NICR Node's NICR
-     * @param _prevId Id of previous node for the insert position
-     * @param _nextId Id of next node for the insert position
-     * @return The IDs of the previous and next nodes for the insert position
-     */
+    /// @dev Find the insert position for a node with the given NICR
+    /// @param _NICR Node's NICR
+    /// @param _prevId Id of previous node for the insert position
+    /// @param _nextId Id of next node for the insert position
+    /// @return The previous node Id for the inserted node
+    /// @return The next node Id for the inserted node
     function findInsertPosition(
         uint256 _NICR,
         bytes32 _prevId,
@@ -688,7 +702,7 @@ contract SortedCdps is ISortedCdps {
         }
     }
 
-    // --- 'require' functions ---
+    // === Modifiers ===
 
     /// @dev Asserts that the caller of the function is the CdpManager
     function _requireCallerIsCdpManager() internal view {
