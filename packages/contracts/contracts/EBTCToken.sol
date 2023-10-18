@@ -130,6 +130,7 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
         _approve(msg.sender, spender, amount);
         return true;
     }
+
     function transferFrom(
         address sender,
         address recipient,
