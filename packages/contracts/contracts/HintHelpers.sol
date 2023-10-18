@@ -6,6 +6,8 @@ import "./Interfaces/ICdpManager.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/EbtcBase.sol";
 
+/// @title HintHelpers mainly serves to provide handy information to facilitate offchain integration like redemption bots.
+/// @dev It is strongly recommended to use HintHelper for redemption purpose
 contract HintHelpers is EbtcBase {
     string public constant NAME = "HintHelpers";
 
@@ -35,16 +37,14 @@ contract HintHelpers is EbtcBase {
 
     // --- Functions ---
 
-    /**
-     * @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
-     * @param _EBTCamount The amount of eBTC to be redeemed.
-     * @param _price The current price of the asset.
-     * @param _maxIterations The maximum number of iterations to be performed.
-     * @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
-     * @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
-     * @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
-     * @return partialRedemptionNewColl The new collateral amount after partial redemption.
-     */
+    /// @notice Get the redemption hints for the specified amount of eBTC, price and maximum number of iterations.
+    /// @param _EBTCamount The amount of eBTC to be redeemed.
+    /// @param _price The current price of the stETH:eBTC.
+    /// @param _maxIterations The maximum number of iterations to be performed.
+    /// @return firstRedemptionHint The identifier of the first CDP to be considered for redemption.
+    /// @return partialRedemptionHintNICR The new Nominal Collateral Ratio (NICR) of the CDP after partial redemption.
+    /// @return truncatedEBTCamount The actual amount of eBTC that can be redeemed.
+    /// @return partialRedemptionNewColl The new collateral amount after partial redemption.
     function getRedemptionHints(
         uint256 _EBTCamount,
         uint256 _price,
@@ -199,7 +199,11 @@ contract HintHelpers is EbtcBase {
     /// @notice Find address of a CDP that is, on average, (length / numTrials) positions away in the sortedCdps list from the correct insert position of the CDP to be inserted
     /// @dev The output address is worst-case O(n) positions away from the correct insert position, however, the function is probabilistic
     /// @dev Input can be tuned to guarantee results to a high degree of confidence, e.g:
-    /// @dev Submitting numTrials = k * sqrt(length), with k = 15 makes it very, very likely that the ouput address will  be <= sqrt(length) positions away from the correct insert position
+    /// @dev Submitting numTrials = k * sqrt(length), with k = 15 makes it very,
+    /// @dev very likely that the ouput address will be <= sqrt(length) positions away from the correct insert position
+    /// @param _CR The ICR of Cdp to be inserted into SortedCdps
+    /// @param _numTrials The maximum number the finding will try
+    /// @param _inputRandomSeed The random seed to pick a Cdp within the SortedCdps for comparison
     /// @return hint The Id of the CDP that has the closest collateral ratio to the given _CR
     /// @return diff The difference between the collateral ratio of the hint CDP and the given _CR
     /// @return latestRandomSeed The final random seed value after all iterations

@@ -171,10 +171,14 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
 
     // --- EIP 2612 Functionality (https://eips.ethereum.org/EIPS/eip-2612) ---
 
+    /// @notice This function returns the domain separator for current chain
+    /// @return EIP712 compatible Domain definition
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return domainSeparator();
     }
 
+    /// @notice This function returns the domain separator for current chain
+    /// @return EIP712 compatible Domain definition
     function domainSeparator() public view override returns (bytes32) {
         if (_chainID() == _CACHED_CHAIN_ID) {
             return _CACHED_DOMAIN_SEPARATOR;
@@ -183,6 +187,15 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
         }
     }
 
+    /// @notice This function approve given amount for specified owner and spender
+    /// @notice by verifying the validity of given deadline and signature parameters (v, r, s).
+    /// @param owner The token owner
+    /// @param spender The consumer to which owner want to grant approval
+    /// @param amount The token expenditure budget to be set
+    /// @param deadline The permit valid deadline
+    /// @param v The v part of signature from owner
+    /// @param r The r part of signature from owner
+    /// @param s The s part of signature from owner
     function permit(
         address owner,
         address spender,
@@ -207,7 +220,8 @@ contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
         _approve(owner, spender, amount);
     }
 
-    /// @dev Return current nonce for msg.sender fOR EIP-2612 compatibility
+    /// @dev Return current nonce for specified owner fOR EIP-2612 compatibility
+    /// @param owner The address whose nonce to be queried
     function nonces(address owner) external view override(IERC2612, PermitNonce) returns (uint256) {
         return _nonces[owner];
     }

@@ -9,6 +9,10 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Interfaces/IActivePool.sol";
 
+/// @notice CollSurplusPool holds stETH collateral for Cdp owner when redemption or liquidation happens
+/// @notice only if there is a remaining portion of the closed Cdp for the owner to claim
+/// @dev While an owner could have multiple different sized Cdps, the remaining surplus colateral from all of its closed Cdp
+/// @dev is consolidated into one balance here
 contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
     using SafeERC20 for IERC20;
 
@@ -53,26 +57,23 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         }
     }
 
-    /**
-     * @notice Gets the current collateral state variable of the pool
-     * @dev Not necessarily equal to the raw collateral token balance - tokens can be forcibly sent to contracts
-     * @return The current collateral balance tracked by the variable
-     */
+    /// @return The current total collateral surplus available in this pool
     function getTotalSurplusCollShares() external view override returns (uint256) {
         return totalSurplusCollShares;
     }
 
-    /**
-     * @notice Gets the collateral surplus available for the given account
-     * @param _account The address of the account
-     * @return The collateral balance available to claim
-     */
+    /// @return The collateral surplus available for the specified owner _account
+    /// @param _account The address of the owner whose surplus balance to be queried
     function getSurplusCollShares(address _account) external view override returns (uint256) {
         return balances[_account];
     }
 
     // --- Pool functionality ---
 
+    /// @notice Increase collateral surplus balance for owner _account by _amount
+    /// @param _account The owner address whose surplus balance is increased
+    /// @param _amount The surplus increase value
+    /// @dev only CdpManager is allowed to call this function
     function increaseSurplusCollShares(address _account, uint256 _amount) external override {
         _requireCallerIsCdpManager();
 
@@ -82,6 +83,9 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         emit SurplusCollSharesUpdated(_account, newAmount);
     }
 
+    /// @notice Allow owner to claim all its surplus recorded in this pool
+    /// @dev stETH token will be sent to _account address if any surplus exist
+    /// @param _account The owner address whose surplus balance is to be claimed
     function claimSurplusCollShares(address _account) external override {
         _requireCallerIsBorrowerOperations();
         uint256 claimableColl = balances[_account];
@@ -120,6 +124,9 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         require(msg.sender == activePoolAddress, "CollSurplusPool: Caller is not Active Pool");
     }
 
+    /// @notice Increase total collateral surplus balance by _value
+    /// @param _value The surplus increase value
+    /// @dev only ActivePool is allowed to call this function
     function increaseTotalSurplusCollShares(uint256 _value) external override {
         _requireCallerIsActivePool();
         totalSurplusCollShares = totalSurplusCollShares + _value;
@@ -127,9 +134,11 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
     // === Governed Functions === //
 
-    /// @dev Function to move unintended dust that are not protected
+    /// @dev Function to move unintended dust that are not protected to fee recipient
     /// @notice moves given amount of given token (collateral is NOT allowed)
     /// @notice because recipient are fixed, this function is safe to be called by anyone
+    /// @param token The token to be swept
+    /// @param amount The token value to be swept
     function sweepToken(address token, uint256 amount) public nonReentrant requiresAuth {
         require(token != address(collateral), "CollSurplusPool: Cannot Sweep Collateral");
 

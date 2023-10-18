@@ -37,17 +37,13 @@ interface ICdpManager is IEbtcBase, ICdpManagerData {
 
     function syncAccounting(bytes32 _cdpId) external;
 
-    function getTotalStakeForFeeTaken(uint256 _feeTaken) external view returns (uint256, uint256);
-
     function closeCdp(bytes32 _cdpId, address _borrower, uint256 _debt, uint256 _coll) external;
 
     function getRedemptionRate() external view returns (uint256);
 
     function getRedemptionRateWithDecay() external view returns (uint256);
 
-    function getRedemptionFeeWithDecay(uint256 _ETHDrawn) external view returns (uint256);
-
-    function decayBaseRateFromBorrowing() external;
+    function getRedemptionFeeWithDecay(uint256 _stETHToRedeem) external view returns (uint256);
 
     function getCdpStatus(bytes32 _cdpId) external view returns (uint256);
 

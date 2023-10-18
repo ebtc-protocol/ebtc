@@ -265,6 +265,8 @@ contract SortedCdps is ISortedCdps {
 
     /// @notice Get all active Cdps for a given address
     /// @dev Intended for off-chain use, O(n) operation on size of linked list
+    /// @param owner address of CDP owner
+    /// @return cdps all CdpIds of the specified owner
     function getCdpsOf(address owner) external view override returns (bytes32[] memory cdps) {
         // Naive method uses two-pass strategy to determine exactly how many Cdps are owned by owner
         // This roughly halves the amount of Cdps we can process before relying on pagination or off-chain methods
@@ -278,6 +280,9 @@ contract SortedCdps is ISortedCdps {
     /// @dev a pagination-flavor search retrieval of (from least ICR to biggest ICR) Cdps owned by given owner (starting at given CDP)
     /// @param startNodeId the traversal will start at this given CDP instead of the tail of the list
     /// @param maxNodes the traversal will go through the list by this given maximum limit of number of Cdps
+    /// @return all CdpIds of the specified owner found by search starting at the specified startNodeId for the specified maximum iteration count
+    /// @return found number of Cdp for the owner
+    /// @return starting CdpId for next pagination within current SortedCdps
     function getAllCdpsOf(
         address owner,
         bytes32 startNodeId,
@@ -401,6 +406,7 @@ contract SortedCdps is ISortedCdps {
     }
 
     /// @notice Remove a node from the sorted list, by Id
+    /// @param _id The CdpId to be removed
     function remove(bytes32 _id) external override {
         _requireCallerIsCdpManager();
         _remove(_id);
@@ -409,7 +415,7 @@ contract SortedCdps is ISortedCdps {
     /// @notice Batch a node from the sorted list, by Id
     /// @notice Strong trust assumption that the specified nodes are sorted in the same order as in the input array
     /// @dev Optimization to reduce gas cost for removing multiple nodes on redemption
-    /// @param _ids Array of node IDs to remove
+    /// @param _ids Array of CdpIds to remove
     function batchRemove(bytes32[] memory _ids) external override {
         _requireCallerIsCdpManager();
         uint256 _len = _ids.length;
