@@ -67,7 +67,7 @@ contract HintHelpers is EbtcBase {
 
             while (
                 vars.currentCdpUser != address(0) &&
-                cdpManager.getCachedICR(vars.currentCdpId, _price) < MCR
+                cdpManager.getSyncedICR(vars.currentCdpId, _price) < MCR
             ) {
                 vars.currentCdpId = sortedCdps.getPrev(vars.currentCdpId);
                 vars.currentCdpUser = sortedCdps.getOwnerAddress(vars.currentCdpId);
@@ -87,8 +87,7 @@ contract HintHelpers is EbtcBase {
                 _maxIterations-- > 0
             ) {
                 // Apply pending debt
-                uint256 currentCdpDebt = cdpManager.getCdpDebt(vars.currentCdpId) +
-                    cdpManager.getPendingRedistributedDebt(vars.currentCdpId);
+                uint256 currentCdpDebt = cdpManager.getSyncedCdpDebt(vars.currentCdpId);
 
                 // If this CDP has more debt than the remaining to redeem, attempt a partial redemption
                 if (currentCdpDebt > vars.remainingEbtcToRedeem) {
@@ -140,19 +139,7 @@ contract HintHelpers is EbtcBase {
         // maxReemable = min(remainingToRedeem, currentDebt)
         uint256 maxRedeemableEBTC = EbtcMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
-        uint256 newCollShare;
-        uint256 _oldIndex = cdpManager.stEthIndex();
-        uint256 _newIndex = collateral.getPooledEthByShares(DECIMAL_PRECISION);
-
-        if (_oldIndex < _newIndex) {
-            newCollShare = _getCollateralWithSplitFeeApplied(
-                vars.currentCdpId,
-                _newIndex,
-                _oldIndex
-            );
-        } else {
-            (, newCollShare) = cdpManager.getSyncedDebtAndCollShares(vars.currentCdpId);
-        }
+        uint256 newCollShare = cdpManager.getSyncedCdpCollShares(vars.currentCdpId);
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
         uint256 collShareToReceive = collateral.getSharesByPooledEth(
@@ -164,36 +151,6 @@ contract HintHelpers is EbtcBase {
             _newCollShareAfter,
             EbtcMath._computeNominalCR(_newCollShareAfter, currentCdpDebt - maxRedeemableEBTC)
         );
-    }
-
-    /**
-     * @notice Get the collateral amount of a CDP after applying split fee.
-     * @dev This is an internal function used by _calculateCdpStateAfterPartialRedemption.
-     * @param _cdpId The identifier of the CDP.
-     * @param _newIndex The new index after the split fee is applied.
-     * @param _oldIndex The old index before the split fee is applied.
-     * @return newCollShare The new collateral share amount of the CDP after applying split fee.
-     */
-    function _getCollateralWithSplitFeeApplied(
-        bytes32 _cdpId,
-        uint256 _newIndex,
-        uint256 _oldIndex
-    ) internal view returns (uint256) {
-        uint256 _deltaFeePerUnit;
-        uint256 _newStFeePerUnit;
-        uint256 _perUnitError;
-        uint256 _feeTaken;
-
-        (_feeTaken, _deltaFeePerUnit, _perUnitError) = cdpManager.calcFeeUponStakingReward(
-            _newIndex,
-            _oldIndex
-        );
-        _newStFeePerUnit = _deltaFeePerUnit + cdpManager.systemStEthFeePerUnitIndex();
-        (, uint256 newCollShare) = cdpManager.getAccumulatedFeeSplitApplied(
-            _cdpId,
-            _newStFeePerUnit
-        );
-        return newCollShare;
     }
 
     /* getApproxHint() - return address of a Cdp that is, on average, (length / numTrials) positions away in the 
@@ -217,7 +174,7 @@ contract HintHelpers is EbtcBase {
         }
 
         hint = sortedCdps.getLast();
-        diff = EbtcMath._getAbsoluteDifference(_CR, cdpManager.getCachedNominalICR(hint));
+        diff = EbtcMath._getAbsoluteDifference(_CR, cdpManager.getSyncedNominalICR(hint));
         latestRandomSeed = _inputRandomSeed;
 
         uint256 i = 1;
@@ -227,7 +184,7 @@ contract HintHelpers is EbtcBase {
 
             uint256 arrayIndex = latestRandomSeed % arrayLength;
             bytes32 _cId = cdpManager.getIdFromCdpIdsArray(arrayIndex);
-            uint256 currentNICR = cdpManager.getCachedNominalICR(_cId);
+            uint256 currentNICR = cdpManager.getSyncedNominalICR(_cId);
 
             // check if abs(current - CR) > abs(closest - CR), and update closest if current is closer
             uint256 currentDiff = EbtcMath._getAbsoluteDifference(currentNICR, _CR);
