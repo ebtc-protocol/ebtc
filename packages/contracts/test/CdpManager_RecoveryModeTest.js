@@ -9,7 +9,7 @@ const mv = testHelpers.MoneyValues
 const timeValues = testHelpers.TimeValues
 
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 
 const GAS_PRICE = 10000000000 //10 GWEI
 

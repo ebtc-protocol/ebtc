@@ -2,7 +2,7 @@
 const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const StabilityPool = artifacts.require("./StabilityPool.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
@@ -28,7 +28,7 @@ const ARBITRARY_ADDRESS = "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419"   // plac
 const coreContractABIs = [
   BorrowerOperations,
   PriceFeed,
-  EBTCToken,
+  EbtcToken,
   SortedCdps,
   CdpManager,
   ActivePool,

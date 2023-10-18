@@ -6,7 +6,7 @@ const DefaultPool = artifacts.require("./DefaultPool.sol")
 const StabilityPool = artifacts.require("./StabilityPool.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
@@ -24,7 +24,7 @@ module.exports = async () => {
   const stabilityPool = await StabilityPool.new()
   const defaultPool = await DefaultPool.new()
   const functionCaller = await FunctionCaller.new()
-  const ebtcToken = await EBTCToken.new(
+  const ebtcToken = await EbtcToken.new(
     cdpManager.address,
     stabilityPool.address,
     borrowerOperations.address
@@ -37,7 +37,7 @@ module.exports = async () => {
   StabilityPool.setAsDeployed(stabilityPool)
   DefaultPool.setAsDeployed(defaultPool)
   FunctionCaller.setAsDeployed(functionCaller)
-  EBTCToken.setAsDeployed(ebtcToken)
+  EbtcToken.setAsDeployed(ebtcToken)
 
   const contracts = {
     borrowerOperations,

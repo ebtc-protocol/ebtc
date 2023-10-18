@@ -285,7 +285,7 @@ def contracts():
     contracts.collSurplusPool = CollSurplusPool.at(_addresses[7])
     contracts.borrowerOperations = BorrowerOperations.at(_addresses[3])
     contracts.hintHelpers = HintHelpers.at(_addresses[8])
-    contracts.ebtcToken = EBTCToken.at(_addresses[9])
+    contracts.ebtcToken = EbtcToken.at(_addresses[9])
     contracts.feeRecipient = FeeRecipient.at(_addresses[10])
     ## TODO: Add the addresses from the factory
     ## TODO: Add some sort of test to prove they are correct

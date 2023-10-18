@@ -40,7 +40,7 @@ contract('Deployment script - Sets correct contract addresses dependencies after
     assert.equal(priceFeedAddress, recordedPriceFeedAddress)
   })
 
-  it('Sets the correct EBTCToken address in CdpManager', async () => {
+  it('Sets the correct EbtcToken address in CdpManager', async () => {
     const ebtcTokenAddress = ebtcToken.address
 
     const recordedClvTokenAddress = await cdpManager.ebtcToken()

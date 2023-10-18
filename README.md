@@ -18,7 +18,7 @@ The following contracts in `/packages/contracts/contracts` (base contracts direc
 `/packages/contracts/contracts/CdpManager.sol`
 `/packages/contracts/contracts/CdpManagerStorage.sol`
 `/packages/contracts/contracts/CollSurplusPool.sol`
-`/packages/contracts/contracts/EBTCToken.sol`
+`/packages/contracts/contracts/EbtcToken.sol`
 `/packages/contracts/contracts/Governor.sol`
 `/packages/contracts/contracts/LiquidationLibrary.sol`
 `/packages/contracts/contracts/PriceFeed.sol`
@@ -95,7 +95,7 @@ We anticipate liquidators and redemption arbitrageurs to use Curve and Balancer 
   - [CdpManager Functions - `CdpManager.sol`](#cdpmanager-functions---cdpmanagersol)
   - [Hint Helper Functions - `HintHelpers.sol`](#hint-helper-functions---hinthelperssol)
   - [Stability Pool Functions - `StabilityPool.sol`](#stability-pool-functions---stabilitypoolsol)
-  - [eBTC token `EBTCToken.sol`](#ebtc-token-ebtctokensol)
+  - [eBTC token `EbtcToken.sol`](#ebtc-token-ebtctokensol)
 - [Supplying Hints to CDP operations](#supplying-hints-to-cdp-operations)
   - [Hints for `redeemCollateral`](#hints-for-redeemcollateral)
     - [First redemption hint](#first-redemption-hint)
@@ -255,7 +255,7 @@ The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold th
 
 `EbtcBase.sol` - Both CdpManager and BorrowerOperations inherit from the parent contract EbtcBase, which contains global constants and some common functions.
 
-`EBTCToken.sol` - the eBTC token contract, which implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers. The contract mints, burns and transfers eBTC tokens.
+`EbtcToken.sol` - the eBTC token contract, which implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers. The contract mints, burns and transfers eBTC tokens.
 
 `SortedCdps.sol` - a doubly linked list that stores addresses of CDP owners, sorted by their individual collateralization ratio (ICR). It inserts and re-inserts CDPs at the correct position, based on their ICR.
 
@@ -545,7 +545,7 @@ All data structures with the ‘public’ visibility specifier are ‘gettable�
 
 The number of CDPs to consider for redemption can be capped by passing a non-zero value as `_maxIterations`, while passing zero will leave it uncapped.
 
-### eBTC token `EBTCToken.sol`
+### eBTC token `EbtcToken.sol`
 
 Standard ERC20 and EIP2612 (`permit()` ) functionality.
 

@@ -16,7 +16,7 @@ import "../testnet/PriceFeedTestnet.sol";
 import "../CollateralTokenTester.sol";
 import "../EBTCTokenTester.sol";
 import "../../Governor.sol";
-import "../../EBTCDeployer.sol";
+import "../../EbtcDeployer.sol";
 
 import "./Properties.sol";
 import "./Actor.sol";
@@ -38,19 +38,19 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
     function _setUp() internal {
         defaultGovernance = address(this);
-        ebtcDeployer = new EBTCDeployer();
+        ebtcDeployer = new EbtcDeployer();
 
         // Default governance is deployer
         // vm.prank(defaultGovernance);
         collateral = new CollateralTokenTester();
 
-        EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
+        EbtcDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
 
         {
             bytes memory creationCode;
             bytes memory args;
 
-            // Use EBTCDeployer to deploy all contracts at determistic addresses
+            // Use EbtcDeployer to deploy all contracts at determistic addresses
 
             // Authority
             creationCode = type(Governor).creationCode;
@@ -321,7 +321,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
     function _setUpFork() internal {
         defaultGovernance = address(0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128);
-        ebtcDeployer = EBTCDeployer(0xe90f99c08F286c48db4D1AfdAE6C122de69B7219);
+        ebtcDeployer = EbtcDeployer(0xe90f99c08F286c48db4D1AfdAE6C122de69B7219);
         collateral = CollateralTokenTester(payable(0xf8017430A0efE03577f6aF88069a21900448A373));
         {
             authority = Governor(0x4945Fc25282b1bC103d2C62C251Cd022138c1de9);

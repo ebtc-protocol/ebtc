@@ -8,7 +8,7 @@ const getDifference = th.getDifference
 const mv = testHelpers.MoneyValues
 
 const CdpManagerTester = artifacts.require("CdpManagerTester")
-const EBTCToken = artifacts.require("EBTCToken")
+const EbtcToken = artifacts.require("EbtcToken")
 
 const GAS_PRICE = 10000000000 //10 GWEI
 

@@ -6,7 +6,7 @@ const DefaultPool = artifacts.require("./DefaultPool.sol")
 const StabilityPool = artifacts.require("./StabilityPool.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 const FunctionCaller = artifacts.require("./FunctionCaller.sol")
 const BorrowerOperations = artifacts.require("./BorrowerOperations.sol")
 
@@ -23,7 +23,7 @@ module.exports = function(deployer) {
   deployer.deploy(ActivePool)
   deployer.deploy(StabilityPool)
   deployer.deploy(DefaultPool)
-  deployer.deploy(EBTCToken)
+  deployer.deploy(EbtcToken)
   deployer.deploy(FunctionCaller)
 
   deployer.then(async () => {
@@ -34,7 +34,7 @@ module.exports = function(deployer) {
     const activePool = await ActivePool.deployed()
     const stabilityPool = await StabilityPool.deployed()
     const defaultPool = await DefaultPool.deployed()
-    const ebtcToken = await EBTCToken.deployed()
+    const ebtcToken = await EbtcToken.deployed()
     const functionCaller = await FunctionCaller.deployed()
 
     const liquityContracts = {

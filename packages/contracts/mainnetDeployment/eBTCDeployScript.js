@@ -117,7 +117,7 @@ class EBTCDeployerScript {
             _deployedState = await (await ethers.getContractFactory("BorrowerOperations")).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: borrowerOperations.authority()=' + (await _deployedState.authority()));
         } else if (_stateName == EBTC_TOKEN_STATE_NAME) {
-            _deployedState = await (await ethers.getContractFactory("EBTCToken")).attach(deploymentState[_stateName]["address"])
+            _deployedState = await (await ethers.getContractFactory("EbtcToken")).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: ebtcToken.authority()=' + (await _deployedState.authority()));
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
             let contractName = useMockPriceFeed ? "PriceFeedTestnet" : "PriceFeed";
@@ -157,7 +157,7 @@ class EBTCDeployerScript {
     }
 
     async loadOrDeployEBTCDeployer() {
-        console.log(chalk.cyan("[EBTCDeployer]"))
+        console.log(chalk.cyan("[EbtcDeployer]"))
         this.ebtcDeployer = await this.deployOrLoadState(EBTC_DEPLOYER_STATE_NAME, [])
     }
 
@@ -210,7 +210,7 @@ class EBTCDeployerScript {
         let borrowerOperations = await this.deployOrLoadState(BORROWER_OPERATIONS_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy eBTCToken
-        console.log(chalk.cyan("[EBTCToken]"))
+        console.log(chalk.cyan("[EbtcToken]"))
         _constructorArgs = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
         let ebtcToken = await this.deployOrLoadState(EBTC_TOKEN_STATE_NAME, _expectedAddr, _constructorArgs);
 

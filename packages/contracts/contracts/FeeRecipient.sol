@@ -11,7 +11,7 @@ import "./Dependencies/SafeERC20.sol";
 /// @notice Tokens can be swept to owner address by authorized user
 contract FeeRecipient is Ownable, AuthNoOwner {
     using SafeERC20 for IERC20;
-    
+
     event SweepTokenSuccess(address indexed _token, uint256 _amount, address indexed _recipient);
 
     string public constant NAME = "FeeRecipient";

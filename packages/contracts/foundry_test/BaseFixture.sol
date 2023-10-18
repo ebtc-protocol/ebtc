@@ -12,13 +12,13 @@ import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
 import {ActivePool} from "../contracts/ActivePool.sol";
 import {HintHelpers} from "../contracts/HintHelpers.sol";
 import {FeeRecipient} from "../contracts/FeeRecipient.sol";
-import {EBTCToken} from "../contracts/EBTCToken.sol";
+import {EbtcToken} from "../contracts/EbtcToken.sol";
 import {CollSurplusPool} from "../contracts/CollSurplusPool.sol";
 import {MultiCdpGetter} from "../contracts/MultiCdpGetter.sol";
 import {FunctionCaller} from "../contracts/TestContracts/FunctionCaller.sol";
 import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenTester.sol";
 import {Governor} from "../contracts/Governor.sol";
-import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
+import {EbtcDeployer} from "../contracts/EbtcDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
@@ -72,7 +72,7 @@ contract eBTCBaseFixture is
     bytes4 private constant SET_GRACE_PERIOD_SIG =
         bytes4(keccak256(bytes("setGracePeriod(uint128)")));
 
-    // EBTCToken
+    // EbtcToken
     bytes4 public constant MINT_SIG = bytes4(keccak256(bytes("mint(address,uint256)")));
     bytes4 public constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
     bytes4 public constant BURN2_SIG = bytes4(keccak256(bytes("burn(uint256)")));
@@ -127,7 +127,7 @@ contract eBTCBaseFixture is
         defaultGovernance = _utils.getNextSpecialAddress();
 
         vm.prank(defaultGovernance);
-        ebtcDeployer = new EBTCDeployer();
+        ebtcDeployer = new EbtcDeployer();
 
         // Default governance is deployer
         // vm.prank(defaultGovernance);
@@ -151,13 +151,13 @@ contract eBTCBaseFixture is
             11: multiCdpGetter
         */
 
-        EBTCDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
+        EbtcDeployer.EbtcAddresses memory addr = ebtcDeployer.getFutureEbtcAddresses();
 
         {
             bytes memory creationCode;
             bytes memory args;
 
-            // Use EBTCDeployer to deploy all contracts at determistic addresses
+            // Use EbtcDeployer to deploy all contracts at determistic addresses
 
             // Authority
             creationCode = type(Governor).creationCode;
@@ -288,14 +288,14 @@ contract eBTCBaseFixture is
             );
 
             // eBTC Token
-            creationCode = type(EBTCToken).creationCode;
+            creationCode = type(EbtcToken).creationCode;
             args = abi.encode(
                 addr.cdpManagerAddress,
                 addr.borrowerOperationsAddress,
                 addr.authorityAddress
             );
 
-            eBTCToken = EBTCToken(
+            eBTCToken = EbtcToken(
                 ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
             );
 

@@ -4,7 +4,7 @@ const testHelpers = require("../utils/testHelpers.js")
 const SortedCdps = artifacts.require("SortedCdps")
 const SortedCdpsTester = artifacts.require("SortedCdpsTester")
 const CdpManagerTester = artifacts.require("CdpManagerTester")
-const EBTCToken = artifacts.require("EBTCToken")
+const EbtcToken = artifacts.require("EbtcToken")
 
 const th = testHelpers.TestHelper
 const dec = th.dec

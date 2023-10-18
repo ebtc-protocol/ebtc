@@ -8,7 +8,7 @@ const moneyVals = testHelpers.MoneyValues
 let latestRandomSeed = 31337
 
 const CdpManagerTester = artifacts.require("CdpManagerTester")
-const EBTCToken = artifacts.require("EBTCToken")
+const EbtcToken = artifacts.require("EbtcToken")
 
 contract('HintHelpers', async accounts => {
  

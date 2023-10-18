@@ -14,7 +14,7 @@ const mv = testHelpers.MoneyValues
 const timeValues = testHelpers.TimeValues
 
 const CdpManagerTester = artifacts.require("CdpManagerTester")
-const EBTCToken = artifacts.require("EBTCToken")
+const EbtcToken = artifacts.require("EbtcToken")
 
 contract('CollSurplusPool', async accounts => {
   const [

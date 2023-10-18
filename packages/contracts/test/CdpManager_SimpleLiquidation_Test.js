@@ -3,7 +3,7 @@ const { TestHelper: th, MoneyValues: mv } = require("../utils/testHelpers.js")
 const { toBN, dec, ZERO_ADDRESS } = th
 
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
-const EBTCToken = artifacts.require("./EBTCTokenTester.sol")
+const EbtcToken = artifacts.require("./EBTCTokenTester.sol")
 const SimpleLiquidationTester = artifacts.require("./SimpleLiquidationTester.sol");
 
 const assertRevert = th.assertRevert

@@ -4,7 +4,7 @@ const SortedCdps = artifacts.require("./SortedCdps.sol")
 const CdpManager = artifacts.require("./CdpManager.sol")
 const PriceFeed = artifacts.require("./PriceFeed.sol")
 const PriceFeedTestnet = artifacts.require("./PriceFeedTestnet.sol")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 const WETH9 = artifacts.require("./WETH9.sol")
 const ActivePool = artifacts.require("./ActivePool.sol");
 const CollSurplusPool = artifacts.require("./CollSurplusPool.sol")
@@ -18,7 +18,7 @@ const LiquidationSequencer = artifacts.require("./LiquidationSequencer.sol")
 const MultiCdpGetter = artifacts.require("./MultiCdpGetter.sol")
 
 const FeeRecipient = artifacts.require("./FeeRecipient.sol")
-const EBTCDeployer = artifacts.require("./EBTCDeployer.sol")
+const EbtcDeployer = artifacts.require("./EbtcDeployer.sol")
 
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
@@ -359,9 +359,9 @@ class DeploymentHelper {
     const _argValues = [_expectedAddr[2], _expectedAddr[3], _expectedAddr[0]];
 
     const _salt = await ebtcDeployer.EBTC_TOKEN();
-    const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, EBTCToken, _salt);
+    const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, EbtcToken, _salt);
     assert.isTrue(_deployedAddr == _expectedAddr[9]);
-    return await EBTCToken.at(_deployedAddr);
+    return await EbtcToken.at(_deployedAddr);
   }
   
   static async deployCollateralTestnet(){ 
@@ -372,7 +372,7 @@ class DeploymentHelper {
   
   static async deployEBTCDeployer(){  
     let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
-    const eBTCDeployer = await EBTCDeployer.new({gasLimit: await EBTCDeployer.new.estimateGas(), nonce: _nonce});
+    const eBTCDeployer = await EbtcDeployer.new({gasLimit: await EbtcDeployer.new.estimateGas(), nonce: _nonce});
     return eBTCDeployer;
   }
 
@@ -410,7 +410,7 @@ class DeploymentHelper {
     const liquidationSequencer = await LiquidationSequencer.new(cdpManager.address, sortedCdps.address, priceFeedTestnet.address, activePool.address, collateral.address);
 
     // truffle migrations
-    EBTCToken.setAsDeployed(ebtcToken)
+    EbtcToken.setAsDeployed(ebtcToken)
     PriceFeedTestnet.setAsDeployed(priceFeedTestnet)
     SortedCdps.setAsDeployed(sortedCdps)
     CdpManager.setAsDeployed(cdpManager)

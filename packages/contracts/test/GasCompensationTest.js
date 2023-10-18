@@ -2,7 +2,7 @@ const deploymentHelper = require("../utils/deploymentHelpers.js")
 const testHelpers = require("../utils/testHelpers.js")
 const CdpManagerTester = artifacts.require("./CdpManagerTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
-const EBTCToken = artifacts.require("EBTCToken")
+const EbtcToken = artifacts.require("EbtcToken")
 const LiquidationLibrary = artifacts.require("./LiquidationLibrary.sol")
 
 const th = testHelpers.TestHelper

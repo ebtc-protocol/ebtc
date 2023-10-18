@@ -43,9 +43,9 @@ import "./Interfaces/IBorrowerOperations.sol";
  * Changes made in the Ebtc implementation:
  *
  * - Positions are now indexed by Ids, not addresses. Functions to generate Ids are provided.
- * 
+ *
  * - Added batchRemove functions to optimize redemptions.
- * 
+ *
  * - Added more O(n) getter functions and pagination-flavor variants, intended for off-chain use.
  */
 contract SortedCdps is ISortedCdps {

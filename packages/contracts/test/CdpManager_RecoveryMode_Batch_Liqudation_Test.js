@@ -3,7 +3,7 @@ const { TestHelper: th, MoneyValues: mv } = require("../utils/testHelpers.js")
 const { toBN, dec, ZERO_ADDRESS } = th
 
 const CdpManagerTester = artifacts.require("./CdpManagerTester")
-const EBTCToken = artifacts.require("./EBTCToken.sol")
+const EbtcToken = artifacts.require("./EbtcToken.sol")
 
 contract('CdpManager - in Recovery Mode - back to normal mode in 1 tx', async accounts => {
   const [bountyAddress, lpRewardsAddress, multisig] = accounts.slice(accounts.length - 3, accounts.length)

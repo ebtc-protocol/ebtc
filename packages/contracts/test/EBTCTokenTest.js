@@ -46,7 +46,7 @@ const getPermitDigest = ( name, address, chainId, version,
     ]))
 }
 
-contract('EBTCToken', async accounts => {
+contract('EbtcToken', async accounts => {
   const [owner, alice, bob, carol, dennis] = accounts;
   
   const hhAccounts = hre.config.networks.hardhat.accounts;

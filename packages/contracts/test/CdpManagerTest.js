@@ -3367,7 +3367,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(dennis_ICR_after.gte(dennis_ICR_before))
   })
 
-  it("redeemCollateral(): caller can redeem their entire EBTCToken balance", async () => {
+  it("redeemCollateral(): caller can redeem their entire EbtcToken balance", async () => {
     const { collateral: W_coll, totalDebt: W_totalDebt } = await openCdp({ ICR: toBN(dec(20, 18)), extraParams: { from: whale } })
 
     // Alice opens cdp and transfers 400 EBTC to Erin, the would-be redeemer

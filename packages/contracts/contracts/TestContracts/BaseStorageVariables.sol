@@ -12,12 +12,12 @@ import {SyncedLiquidationSequencer} from "../SyncedLiquidationSequencer.sol";
 import {ActivePool} from "../ActivePool.sol";
 import {HintHelpers} from "../HintHelpers.sol";
 import {FeeRecipient} from "../FeeRecipient.sol";
-import {EBTCToken} from "../EBTCToken.sol";
+import {EbtcToken} from "../EbtcToken.sol";
 import {CollSurplusPool} from "../CollSurplusPool.sol";
 import {FunctionCaller} from "./FunctionCaller.sol";
 import {CollateralTokenTester} from "./CollateralTokenTester.sol";
 import {Governor} from "../Governor.sol";
-import {EBTCDeployer} from "../EBTCDeployer.sol";
+import {EbtcDeployer} from "../EbtcDeployer.sol";
 import {Actor} from "./invariants/Actor.sol";
 import {CRLens} from "../CRLens.sol";
 import {Simulator} from "./invariants/Simulator.sol";
@@ -32,13 +32,13 @@ abstract contract BaseStorageVariables {
     FunctionCaller internal functionCaller;
     BorrowerOperations internal borrowerOperations;
     HintHelpers internal hintHelpers;
-    EBTCToken internal eBTCToken;
+    EbtcToken internal eBTCToken;
     CollateralTokenTester internal collateral;
     Governor internal authority;
     LiquidationLibrary internal liqudationLibrary;
     LiquidationSequencer internal liquidationSequencer;
     SyncedLiquidationSequencer internal syncedLiquidationSequencer;
-    EBTCDeployer internal ebtcDeployer;
+    EbtcDeployer internal ebtcDeployer;
     address internal defaultGovernance;
 
     // LQTY Stuff

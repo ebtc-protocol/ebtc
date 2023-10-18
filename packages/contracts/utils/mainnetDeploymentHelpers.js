@@ -87,7 +87,7 @@ class MainnetDeploymentHelper {
     const collSurplusPoolFactory = await this.getFactory("CollSurplusPool")
     const borrowerOperationsFactory = await this.getFactory("BorrowerOperations")
     const hintHelpersFactory = await this.getFactory("HintHelpers")
-    const ebtcTokenFactory = await this.getFactory("EBTCToken")
+    const ebtcTokenFactory = await this.getFactory("EbtcToken")
     // TODO: Use TellorCaller instead of TellorCallerMock
     const tellorCallerFactory = await this.getFactory("TellorCallerMock")
 

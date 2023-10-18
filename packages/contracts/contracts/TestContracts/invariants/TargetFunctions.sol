@@ -18,7 +18,7 @@ import "../testnet/PriceFeedTestnet.sol";
 import "../CollateralTokenTester.sol";
 import "../EBTCTokenTester.sol";
 import "../../Governor.sol";
-import "../../EBTCDeployer.sol";
+import "../../EbtcDeployer.sol";
 
 import "./Properties.sol";
 import "./Actor.sol";
@@ -101,10 +101,10 @@ abstract contract TargetFunctions is Properties {
         uint256 _n = between(value, 1, cdpManager.getActiveCdpsCount());
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
         uint256 _i = between(value, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
         address[] memory _targets = new address[](_actions);
         bytes[] memory _calldatas = new bytes[](_actions);
@@ -208,12 +208,12 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last Cdp");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
-        require(entireDebt > 0, "CDP must have debt");
+        require(entireDebt > 0, "Cdp must have debt");
 
         _before(_cdpId);
 
@@ -279,12 +279,12 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last Cdp");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
-        require(entireDebt > 0, "CDP must have debt");
+        require(entireDebt > 0, "Cdp must have debt");
 
         _partialAmount = between(_partialAmount, 0, entireDebt);
 
@@ -304,7 +304,7 @@ abstract contract TargetFunctions is Properties {
         _after(_cdpId);
 
         if (success) {
-            lt(vars.cdpDebtAfter, vars.cdpDebtBefore, "Partial liquidation must reduce CDP debt");
+            lt(vars.cdpDebtAfter, vars.cdpDebtBefore, "Partial liquidation must reduce Cdp debt");
 
             if (
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
@@ -327,7 +327,7 @@ abstract contract TargetFunctions is Properties {
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             if (vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
-                // CDP was not fully liquidated
+                // Cdp was not fully liquidated
                 gte(
                     collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
                     borrowerOperations.MIN_NET_STETH_BALANCE(),
@@ -367,7 +367,7 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last Cdp");
 
         _n = between(_n, 1, cdpManager.getActiveCdpsCount());
 
@@ -394,9 +394,9 @@ abstract contract TargetFunctions is Properties {
             gte(
                 cdpsLiquidated.length,
                 1,
-                "liquidateCdps must liquidate at least 1 CDP when successful"
+                "liquidateCdps must liquidate at least 1 Cdp when successful"
             );
-            lte(cdpsLiquidated.length, _n, "liquidateCdps must not liquidate more than n CDPs");
+            lte(cdpsLiquidated.length, _n, "liquidateCdps must not liquidate more than n Cdps");
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
                 t(
@@ -484,7 +484,7 @@ abstract contract TargetFunctions is Properties {
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/10#issuecomment-1702685732
             if (vars.sortedCdpsSizeBefore == vars.sortedCdpsSizeAfter) {
                 // Redemptions do not reduce TCR
-                // If redemptions do not close any CDP that was healthy (low debt, high coll)
+                // If redemptions do not close any Cdp that was healthy (low debt, high coll)
                 gt(
                     vars.newTcrAfter, // TODO: See how this breaks
                     vars.newTcrBefore,
@@ -699,7 +699,7 @@ abstract contract TargetFunctions is Properties {
             eq(
                 vars.sortedCdpsSizeBefore + 1,
                 vars.sortedCdpsSizeAfter,
-                "CDPs count must have increased"
+                "Cdps count must have increased"
             );
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -734,11 +734,11 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
         _coll = between(_coll, 0, INITIAL_COLL_BALANCE / 10);
 
@@ -838,13 +838,13 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
-        // Can only withdraw up to CDP collateral amount, otherwise will revert with assert
+        // Can only withdraw up to Cdp collateral amount, otherwise will revert with assert
         _amount = between(
             _amount,
             0,
@@ -912,11 +912,11 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
         // TODO verify the assumption below, maybe there's a more sensible (or Governance-defined/hardcoded) limit for the maximum amount of minted eBTC at a single operation
         // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflow
@@ -983,11 +983,11 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _amount = between(_amount, 0, entireDebt);
@@ -1054,14 +1054,14 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot close last CDP");
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot close last Cdp");
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
         _before(_cdpId);
 
@@ -1095,7 +1095,7 @@ abstract contract TargetFunctions is Properties {
             );
             gt(
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/11
-                // Note: not checking for strict equality since split fee is difficult to calculate a-priori, so the CDP collateral value may not be sent back to the user in full
+                // Note: not checking for strict equality since split fee is difficult to calculate a-priori, so the Cdp collateral value may not be sent back to the user in full
                 vars.actorCollAfter,
                 vars.actorCollBefore +
                     // ActivePool transfer SHARES not ETH directly
@@ -1142,11 +1142,11 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        require(numberOfCdps > 0, "Actor must have at least one Cdp open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
-        t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
+        t(_cdpId != bytes32(0), "Cdp ID must not be null if the index is valid");
 
         (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _collWithdrawal = between(_collWithdrawal, 0, entireColl);

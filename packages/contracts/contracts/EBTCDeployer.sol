@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./Dependencies/Create3.sol";
 import "./Dependencies/Ownable.sol";
 
-contract EBTCDeployer is Ownable {
+contract EbtcDeployer is Ownable {
     string public constant name = "eBTC Deployer";
 
     string public constant AUTHORITY = "ebtc.v1.authority";
