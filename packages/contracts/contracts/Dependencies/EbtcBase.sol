@@ -45,6 +45,10 @@ contract EbtcBase is BaseMath, IEbtcBase {
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;
 
+    /// @notice Initializes the contract with the provided addresses
+    /// @param _activePoolAddress The address of the ActivePool contract
+    /// @param _priceFeedAddress The address of the PriceFeed contract
+    /// @param _collateralAddress The address of the CollateralToken contract
     constructor(address _activePoolAddress, address _priceFeedAddress, address _collateralAddress) {
         activePool = IActivePool(_activePoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -57,11 +61,9 @@ contract EbtcBase is BaseMath, IEbtcBase {
         return _stEthBalance - LIQUIDATOR_REWARD;
     }
 
-    /**
-        @notice Get the entire system collateral
-        @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
-        @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
-     */
+    /// @notice Get the entire system collateral
+    /// @notice Entire system collateral = collateral allocated to system in ActivePool, using it's internal accounting
+    /// @dev Collateral tokens stored in ActivePool for liquidator rewards, fees, or coll in CollSurplusPool, are not included
     function getSystemCollShares() public view returns (uint256 entireSystemColl) {
         return (activePool.getSystemCollShares());
     }
@@ -74,7 +76,7 @@ contract EbtcBase is BaseMath, IEbtcBase {
         return (activePool.getSystemDebt());
     }
 
-    function _getTCR(uint256 _price) internal view returns (uint256 TCR) {
+    function _getCachedTCR(uint256 _price) internal view returns (uint256 TCR) {
         (TCR, , ) = _getTCRWithSystemDebtAndCollShares(_price);
     }
 
@@ -91,7 +93,7 @@ contract EbtcBase is BaseMath, IEbtcBase {
     }
 
     function _checkRecoveryMode(uint256 _price) internal view returns (bool) {
-        return _checkRecoveryModeForTCR(_getTCR(_price));
+        return _checkRecoveryModeForTCR(_getCachedTCR(_price));
     }
 
     function _checkRecoveryModeForTCR(uint256 _tcr) internal view returns (bool) {

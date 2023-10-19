@@ -8,6 +8,8 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 
+/// @title LiquidationLibrary mainly provide necessary logic to fulfill liquidation for eBTC Cdps.
+/// @dev This contract shares same base and storage layout with CdpManager and is the delegatecall destination from CdpManager
 contract LiquidationLibrary is CdpManagerStorage {
     constructor(
         address _borrowerOperationsAddress,
@@ -31,13 +33,20 @@ contract LiquidationLibrary is CdpManagerStorage {
         )
     {}
 
-    /// @notice Single CDP liquidation function (fully).
+    /// @notice Fully liquidate a single Cdp by ID. Cdp must meet the criteria for liquidation at the time of execution.
     /// @notice callable by anyone, attempts to liquidate the CdpId. Executes successfully if Cdp meets the conditions for liquidation (e.g. in Normal Mode, it liquidates if the Cdp's ICR < the system MCR).
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpId ID of the Cdp to liquidate.
     function liquidate(bytes32 _cdpId) external nonReentrantSelfAndBOps {
         _liquidateIndividualCdpSetup(_cdpId, 0, _cdpId, _cdpId);
     }
 
-    // Single CDP liquidation function (partially).
+    /// @notice Partially liquidate a single Cdp.
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpId ID of the Cdp to partially liquidate.
+    /// @param _partialAmount Amount to partially liquidate.
+    /// @param _upperPartialHint Upper hint for reinsertion of the Cdp into the linked list.
+    /// @param _lowerPartialHint Lower hint for reinsertion of the Cdp into the linked list.
     function partiallyLiquidate(
         bytes32 _cdpId,
         uint256 _partialAmount,
@@ -62,7 +71,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _price = priceFeed.fetchPrice();
 
         // prepare local variables
-        uint256 _ICR = getICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
+        uint256 _ICR = getCachedICR(_cdpId, _price); // @audit syncAccounting already called, guarenteed to be synced
         (uint256 _TCR, uint256 systemColl, uint256 systemDebt) = _getTCRWithSystemDebtAndCollShares(
             _price
         );
@@ -466,7 +475,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         // if original ICR is above LICR
         if (_partialState.ICR > LICR) {
             require(
-                getICR(_cdpId, _partialState.price) >= _partialState.ICR,
+                getCachedICR(_cdpId, _partialState.price) >= _partialState.ICR,
                 "LiquidationLibrary: !_newICR>=_ICR"
             );
         }
@@ -661,11 +670,12 @@ contract LiquidationLibrary is CdpManagerStorage {
         singleLiquidation.liquidatorCollSharesReward = _outputState.totalLiquidatorRewardCollShares;
     }
 
-    /*
-     * Attempt to liquidate a custom list of cdps provided by the caller.
-
-     callable by anyone, accepts a custom list of Cdps addresses as an argument. Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas. A Cdp is liquidated only if it meets the conditions for liquidation. For a batch of 10 Cdps, the gas costs per liquidated Cdp are roughly between 75K-83K, for a batch of 50 Cdps between 54K-69K.
-     */
+    /// @notice Attempt to liquidate a custom list of Cdps provided by the caller
+    /// @notice Callable by anyone, accepts a custom list of Cdps addresses as an argument.
+    /// @notice Steps through the provided list and attempts to liquidate every Cdp, until it reaches the end or it runs out of gas.
+    /// @notice A Cdp is liquidated only if it meets the conditions for liquidation.
+    /// @dev forwards msg.data directly to the liquidation library using OZ proxy core delegation function
+    /// @param _cdpArray Array of Cdps to liquidate.
     function batchLiquidateCdps(bytes32[] memory _cdpArray) external nonReentrantSelfAndBOps {
         require(
             _cdpArray.length != 0,

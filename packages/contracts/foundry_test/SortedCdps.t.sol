@@ -131,8 +131,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         emit log_string("col3");
         emit log_uint(cdpManager.getCdpCollShares(cdpId));
 
-        emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
-        emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getCachedTCR(priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getCachedICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
         assertTrue(invariant_SL_01(cdpManager, sortedCdps), "SL-01");
     }
@@ -152,8 +152,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         borrowerOperations.openCdp(1, HINT, HINT, coll);
         collateral.setEthPerShare((collateral.getEthPerShare() * 1 ether) / 1.1 ether);
 
-        emit log_uint(cdpManager.getTCR(priceFeedMock.getPrice()));
-        emit log_uint(cdpManager.getICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getCachedTCR(priceFeedMock.getPrice()));
+        emit log_uint(cdpManager.getCachedICR(sortedCdps.getFirst(), priceFeedMock.getPrice()));
 
         assertTrue(invariant_SL_02(cdpManager, sortedCdps, priceFeedMock), "SL-02");
     }

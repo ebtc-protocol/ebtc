@@ -15,6 +15,9 @@ import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/PermitNonce.sol";
 
+/// @title BorrowerOperations is mainly in charge of all end user interactions like Cdp open, adjust, close etc
+/// @notice End users could approve delegate via IPositionManagers for authorized actions on their behalf
+/// @dev BorrowerOperations also allows ERC3156 compatible flashmint of eBTC token
 contract BorrowerOperations is
     EbtcBase,
     ReentrancyGuard,
@@ -154,11 +157,14 @@ contract BorrowerOperations is
 
     // --- Borrower Cdp Operations ---
 
-    /**
-    @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral.
-    @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed the minimum (110% in Normal Mode, 150% in Recovery Mode).
-    @notice In addition to the requested debt, extra debt is issued to cover the gas compensation.
-    */
+    /// @notice Function that creates a Cdp for the caller with the requested debt, and the stETH received as collateral.
+    /// @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed minimum requirement, e.g., MCR.
+    /// @notice Upon Cdp open, a separate gas stipend (denominated in stETH) will be allocated for possible liquidation.
+    /// @param _debt The expected debt for this new Cdp
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _stEthBalance The total stETH collateral amount deposited for the specified Cdp
+    /// @return The CdpId for this newly created Cdp
     function openCdp(
         uint256 _debt,
         bytes32 _upperHint,
@@ -168,17 +174,32 @@ contract BorrowerOperations is
         return _openCdp(_debt, _upperHint, _lowerHint, _stEthBalance, msg.sender);
     }
 
+    /// @notice Function that creates a Cdp for the specified _borrower by caller with the requested debt, and the stETH received as collateral.
+    /// @dev Caller will need approval from _borrower via IPositionManagers if they are different address
+    /// @notice Successful execution is conditional mainly on the resulting collateralization ratio which must exceed minimum requirement, e.g., MCR.
+    /// @notice Upon Cdp open, a separate gas stipend (denominated in stETH) will be allocated for possible liquidation.
+    /// @param _debt The expected debt for this new Cdp
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _stEthBalance The total stETH collateral amount deposited for the specified Cdp
+    /// @param _borrower The Cdp owner for this new Cdp.
+    /// @return The CdpId for this newly created Cdp
     function openCdpFor(
         uint256 _debt,
         bytes32 _upperHint,
         bytes32 _lowerHint,
-        uint256 _collAmount,
+        uint256 _stEthBalance,
         address _borrower
     ) external override nonReentrantSelfAndCdpM returns (bytes32) {
-        return _openCdp(_debt, _upperHint, _lowerHint, _collAmount, _borrower);
+        return _openCdp(_debt, _upperHint, _lowerHint, _stEthBalance, _borrower);
     }
 
-    // Function that adds the received stETH to the caller's specified Cdp.
+    /// @notice Function that adds the received stETH to the specified Cdp.
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @param _cdpId The CdpId on which this operation is operated
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _stEthBalanceIncrease The total stETH collateral amount deposited (added) for the specified Cdp
     function addColl(
         bytes32 _cdpId,
         bytes32 _upperHint,
@@ -188,9 +209,13 @@ contract BorrowerOperations is
         _adjustCdpInternal(_cdpId, 0, 0, false, _upperHint, _lowerHint, _stEthBalanceIncrease);
     }
 
-    /**
-    Withdraws `_stEthBalanceDecrease` amount of collateral from the caller’s Cdp. Executes only if the user has an active Cdp, the withdrawal would not pull the user’s Cdp below the minimum collateralization ratio, and the resulting total collateralization ratio of the system is above 150%.
-    */
+    /// @notice Function that withdraws `_stEthBalanceDecrease` amount of collateral from the specified Cdp
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @notice Successful execution is conditional on whether the withdrawal would bring down the ICR or TCR to the minimum requirement, e.g., MCR or CCR
+    /// @param _cdpId The CdpId on which this operation is operated
+    /// @param _stEthBalanceDecrease The total stETH collateral amount withdrawn (reduced) for the specified Cdp
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
     function withdrawColl(
         bytes32 _cdpId,
         uint256 _stEthBalanceDecrease,
@@ -200,10 +225,13 @@ contract BorrowerOperations is
         _adjustCdpInternal(_cdpId, _stEthBalanceDecrease, 0, false, _upperHint, _lowerHint, 0);
     }
 
-    // Withdraw EBTC tokens from a cdp: mint new EBTC tokens to the owner, and increase the cdp's debt accordingly
-    /**
-    Issues `_amount` of eBTC from the caller’s Cdp to the caller. Executes only if the Cdp's collateralization ratio would remain above the minimum, and the resulting total collateralization ratio is above 150%.
-     */
+    /// @notice Function that withdraws `_debt` amount of eBTC token from the specified Cdp, thus increasing its debt accounting
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @notice Successful execution is conditional on whether the withdrawal would bring down the ICR or TCR to the minimum requirement, e.g., MCR or CCR
+    /// @param _cdpId The CdpId on which this operation is operated
+    /// @param _debt The total debt collateral amount increased for the specified Cdp
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
     function withdrawDebt(
         bytes32 _cdpId,
         uint256 _debt,
@@ -213,10 +241,12 @@ contract BorrowerOperations is
         _adjustCdpInternal(_cdpId, 0, _debt, true, _upperHint, _lowerHint, 0);
     }
 
-    // Repay EBTC tokens to a Cdp: Burn the repaid EBTC tokens, and reduce the cdp's debt accordingly
-    /**
-    repay `_amount` of eBTC to the caller’s Cdp, subject to leaving 50 debt in the Cdp (which corresponds to the 50 eBTC gas compensation).
-    */
+    /// @notice Function that repays the received eBTC token to the specified Cdp, thus reducing its debt accounting.
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @param _cdpId The CdpId on which this operation is operated
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _debt The total eBTC debt amount repaid for the specified Cdp
     function repayDebt(
         bytes32 _cdpId,
         uint256 _debt,
@@ -226,6 +256,17 @@ contract BorrowerOperations is
         _adjustCdpInternal(_cdpId, 0, _debt, false, _upperHint, _lowerHint, 0);
     }
 
+    /// @notice Function that allows various operations which might change both collateral and debt
+    /// @notice like taking more risky position (withdraws eBTC token and reduces stETH collateral)
+    /// @notice or holding more safer position (repays eBTC token) with the specified Cdp.
+    /// @notice If end user want to add collateral and change debt at the same time, use adjustCdpWithColl() instead
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @param _cdpId The CdpId on which this operation is operated
+    /// @param _stEthBalanceDecrease The total stETH collateral amount withdrawn from the specified Cdp
+    /// @param _debtChange The total eBTC debt amount withdrawn or repaid for the specified Cdp
+    /// @param _isDebtIncrease The flag (true or false) to indicate whether this is a eBTC token withdrawal (debt increase) or a repayment (debt reduce)
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
     function adjustCdp(
         bytes32 _cdpId,
         uint256 _stEthBalanceDecrease,
@@ -245,10 +286,17 @@ contract BorrowerOperations is
         );
     }
 
-    /**
-    enables a borrower to simultaneously change both their collateral and debt, subject to all the restrictions that apply to individual increases/decreases of each quantity with the following particularity: if the adjustment reduces the collateralization ratio of the Cdp, the function only executes if the resulting total collateralization ratio is above 150%. The borrower has to provide a `_maxFeePercentage` that he/she is willing to accept in case of a fee slippage, i.e. when a redemption transaction is processed first, driving up the issuance fee. The parameter is ignored if the debt is not increased with the transaction.
-    */
-    // TODO optimization candidate
+    /// @notice Function that allows various operations which might change both collateral and debt
+    /// @notice like taking more risky position (withdraws eBTC token and reduces stETH collateral)
+    /// @notice or holding more safer position (repays eBTC token and adds stETH collateral) with the specified Cdp.
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @param _cdpId The CdpId on which this operation is operated
+    /// @param _stEthBalanceDecrease The total stETH collateral amount withdrawn from the specified Cdp
+    /// @param _debtChange The total eBTC debt amount withdrawn or repaid for the specified Cdp
+    /// @param _isDebtIncrease The flag (true or false) to indicate whether this is a eBTC token withdrawal (debt increase) or a repayment (debt reduce)
+    /// @param _upperHint The expected CdpId of neighboring higher ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _lowerHint The expected CdpId of neighboring lower ICR within SortedCdps, could be simply bytes32(0)
+    /// @param _stEthBalanceIncrease The total stETH collateral amount deposited (added) for the specified Cdp
     function adjustCdpWithColl(
         bytes32 _cdpId,
         uint256 _stEthBalanceDecrease,
@@ -319,7 +367,7 @@ contract BorrowerOperations is
         uint256 _cdpStEthBalance = collateral.getPooledEthByShares(vars.collShares);
         require(
             _stEthBalanceDecrease <= _cdpStEthBalance,
-            "BorrowerOperations: withdraw more collateral than CDP has!"
+            "BorrowerOperations: Cannot withdraw greater stEthBalance than the value in Cdp"
         );
         vars.oldICR = EbtcMath._computeCR(_cdpStEthBalance, vars.debt, vars.price);
         vars.newICR = _getNewICRFromCdpChange(
@@ -333,7 +381,7 @@ contract BorrowerOperations is
         );
 
         // Check the adjustment satisfies all conditions for the current system mode
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
         _requireValidAdjustmentInCurrentMode(
             isRecoveryMode,
             _stEthBalanceDecrease,
@@ -420,7 +468,7 @@ contract BorrowerOperations is
         // ICR is based on the net coll, i.e. the requested coll amount - fixed liquidator incentive gas comp.
         vars.ICR = EbtcMath._computeCR(vars.netStEthBalance, vars.debt, vars.price);
 
-        // NICR uses shares to normalize NICR across CDPs opened at different pooled ETH / shares ratios
+        // NICR uses shares to normalize NICR across Cdps opened at different pooled ETH / shares ratios
         vars.NICR = EbtcMath._computeNominalCR(_netCollAsShares, vars.debt);
 
         /**
@@ -428,9 +476,9 @@ contract BorrowerOperations is
             CCR > MCR (125% vs 110%)
 
             In normal mode, ICR must be greater thatn MCR
-            Additionally, the new system TCR after the CDPs addition must be >CCR
+            Additionally, the new system TCR after the Cdps addition must be >CCR
         */
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getTCR(vars.price));
+        bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
         uint256 newTCR = _getNewTCRFromCdpChange(
             vars.netStEthBalance,
             true,
@@ -481,9 +529,9 @@ contract BorrowerOperations is
         _withdrawDebt(msg.sender, _debt);
 
         /**
-            Note that only NET stEth balance (as shares) is considered part of the CDP.
-            The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon CDP close, to the closer.
-            The close can happen from the borrower closing their own CDP, a full liquidation, or a redemption.
+            Note that only NET stEth balance (as shares) is considered part of the Cdp.
+            The static liqudiation incentive is stored in the gas pool and can be considered a deposit / voucher to be returned upon Cdp close, to the closer.
+            The close can happen from the borrower closing their own Cdp, a full liquidation, or a redemption.
         */
 
         // CEI: Move the collateral and liquidator gas compensation to the Active Pool. Track only net collateral for TCR purposes.
@@ -498,9 +546,10 @@ contract BorrowerOperations is
         return _cdpId;
     }
 
-    /**
-    allows a borrower to repay all debt, withdraw all their collateral, and close their Cdp. Requires the borrower have a eBTC balance sufficient to repay their cdp's debt, excluding gas compensation - i.e. `(debt - 50)` eBTC.
-    */
+    /// @notice Function that allows the caller to repay all debt, withdraw collateral, and close the specified Cdp
+    /// @notice Caller should have enough eBTC token to repay off the debt fully for specified Cdp
+    /// @dev If caller is different from Cdp owner, it will need approval from Cdp owner for this call
+    /// @param _cdpId The CdpId on which this operation is operated
     function closeCdp(bytes32 _cdpId) external override {
         address _borrower = sortedCdps.getOwnerAddress(_cdpId);
         _requireBorrowerOrPositionManagerAndUpdateManagerApproval(_borrower);
@@ -510,7 +559,7 @@ contract BorrowerOperations is
         cdpManager.syncAccounting(_cdpId);
 
         uint256 price = priceFeed.fetchPrice();
-        _requireNotInRecoveryMode(_getTCR(price));
+        _requireNotInRecoveryMode(_getCachedTCR(price));
 
         uint256 collShares = cdpManager.getCdpCollShares(_cdpId);
         uint256 debt = cdpManager.getCdpDebt(_cdpId);
@@ -544,17 +593,18 @@ contract BorrowerOperations is
         );
     }
 
-    /**
-     * Claim remaining collateral from a redemption or from a liquidation with ICR > MCR in Recovery Mode
-
-      when a borrower’s Cdp has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio above 110%, this function allows the borrower to claim their stETH collateral surplus that remains in the system (collateral - debt upon redemption; collateral - 110% of the debt upon liquidation).
-     */
+    /// @notice Claim remaining collateral from a redemption or from a liquidation with ICR > MCR in Recovery Mode
+    /// @notice when a Cdp has been fully redeemed from and closed, or liquidated in Recovery Mode with a collateralization ratio higher enough (like over MCR)
+    /// @notice the borrower is allowed to claim their stETH collateral surplus that remains in the system if any
     function claimSurplusCollShares() external override {
         // send ETH from CollSurplus Pool to owner
         collSurplusPool.claimSurplusCollShares(msg.sender);
     }
 
     /// @notice Returns true if the borrower is allowing position manager to act on their behalf
+    /// @return PositionManagerApproval (None/OneTime/Persistent) status for given _borrower and _positionManager
+    /// @param _borrower The Cdp owner who use eBTC
+    /// @param _positionManager The position manager address in question whether it gets valid approval from _borrower
     function getPositionManagerApproval(
         address _borrower,
         address _positionManager
@@ -569,10 +619,12 @@ contract BorrowerOperations is
         return positionManagers[_borrower][_positionManager];
     }
 
-    /// @notice Approve an account to take arbitrary actions on your Cdps.
-    /// @notice Account managers with 'Persistent' status will be able to take actions indefinitely
-    /// @notice Account managers with 'OneTIme' status will be able to take a single action on one Cdp. Approval will be automatically revoked after one Cdp-related action.
+    /// @notice Approve an account (_positionManager) to take arbitrary actions on your Cdps.
+    /// @notice Position managers with 'Persistent' status will be able to take actions indefinitely
+    /// @notice Position managers with 'OneTIme' status will be able to take a single action on one Cdp. Approval will be automatically revoked after one Cdp-related action.
     /// @notice Similar to approving tokens, approving a position manager allows _stealing of all positions_ if given to a malicious account.
+    /// @param _positionManager The position manager address which will get the specified approval from caller
+    /// @param _approval PositionManagerApproval (None/OneTime/Persistent) status set to the specified _positionManager for caller's Cdp
     function setPositionManagerApproval(
         address _positionManager,
         PositionManagerApproval _approval
@@ -591,19 +643,25 @@ contract BorrowerOperations is
 
     /// @notice Revoke a position manager from taking further actions on your Cdps
     /// @notice Similar to approving tokens, approving a position manager allows _stealing of all positions_ if given to a malicious account.
+    /// @param _positionManager The position manager address which will get all approval revoked by caller (a Cdp owner)
     function revokePositionManagerApproval(address _positionManager) external override {
         _setPositionManagerApproval(msg.sender, _positionManager, PositionManagerApproval.None);
     }
 
     /// @notice Allows recipient of delegation to renounce it
+    /// @param _borrower The Cdp owner address which will have all approval to the caller (a PositionManager) revoked.
     function renouncePositionManagerApproval(address _borrower) external override {
         _setPositionManagerApproval(_borrower, msg.sender, PositionManagerApproval.None);
     }
 
+    /// @notice This function returns the domain separator for current chain
+    /// @return EIP712 compatible Domain definition
     function DOMAIN_SEPARATOR() external view returns (bytes32) {
         return domainSeparator();
     }
 
+    /// @notice This function returns the domain separator for current chain
+    /// @return EIP712 compatible Domain definition
     function domainSeparator() public view override returns (bytes32) {
         if (_chainID() == _CACHED_CHAIN_ID) {
             return _CACHED_DOMAIN_SEPARATOR;
@@ -624,14 +682,27 @@ contract BorrowerOperations is
         return keccak256(abi.encode(typeHash, name, version, _chainID(), address(this)));
     }
 
+    /// @notice This function returns the version parameter for the EIP712 domain
+    /// @return EIP712 compatible version parameter
     function version() external pure override returns (string memory) {
         return _VERSION;
     }
 
+    /// @notice This function returns hash of the fully encoded EIP712 message for the permitPositionManagerApproval.
+    /// @return EIP712 compatible hash of Positon Manager permit
     function permitTypeHash() external pure override returns (bytes32) {
         return _PERMIT_POSITION_MANAGER_TYPEHASH;
     }
 
+    /// @notice This function set given _approval for specified _borrower and _positionManager
+    /// @notice by verifying the validity of given deadline and signature parameters (v, r, s).
+    /// @param _borrower The Cdp owner
+    /// @param _positionManager The delegate to which _borrower want to grant approval
+    /// @param _approval The PositionManagerApproval (None/OneTime/Persistent) status to be set
+    /// @param _deadline The permit valid deadline
+    /// @param v The v part of signature from _borrower
+    /// @param r The r part of signature from _borrower
+    /// @param s The s part of signature from _borrower
     function permitPositionManagerApproval(
         address _borrower,
         address _positionManager,
@@ -683,7 +754,7 @@ contract BorrowerOperations is
     }
 
     /**
-        @notice Process the token movements required by a CDP adjustment.
+        @notice Process the token movements required by a Cdp adjustment.
         @notice Handles the cases of a debt increase / decrease, and/or a collateral increase / decrease.
      */
     function _processTokenMovesFromAdjustment(MoveTokensParams memory _varMvTokens) internal {
@@ -708,7 +779,7 @@ contract BorrowerOperations is
     /// @param _stEthBalance total balance of stETH to send, inclusive of coll and liquidatorRewardShares
     /// @param _sharesToTrack coll as shares (exclsuive of liquidator reward shares)
     /// @dev Liquidator reward shares are not considered as part of the system for CR purposes.
-    /// @dev These number of liquidator shares associated with each CDP are stored in the CDP, while the actual tokens float in the active pool
+    /// @dev These number of liquidator shares associated with each Cdp are stored in the Cdp, while the actual tokens float in the active pool
     function _activePoolAddColl(uint256 _stEthBalance, uint256 _sharesToTrack) internal {
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
         collateral.transferFrom(msg.sender, address(activePool), _stEthBalance);
@@ -996,6 +1067,13 @@ contract BorrowerOperations is
     }
 
     // === Flash Loans === //
+
+    /// @notice Borrow assets with a flash loan
+    /// @param receiver The address to receive the flash loan
+    /// @param token The address of the token to loan
+    /// @param amount The amount of tokens to loan
+    /// @param data Additional data
+    /// @return A boolean value indicating whether the operation was successful
     function flashLoan(
         IERC3156FlashBorrower receiver,
         address token,
@@ -1029,6 +1107,10 @@ contract BorrowerOperations is
         return true;
     }
 
+    /// @notice Calculate the flash loan fee for a given token and amount loaned
+    /// @param token The address of the token to calculate the fee for
+    /// @param amount The amount of tokens to calculate the fee for
+    /// @return The flashloan fee calcualted for given token and loan amount
     function flashFee(address token, uint256 amount) public view override returns (uint256) {
         require(token == address(ebtcToken), "BorrowerOperations: EBTC Only");
         require(!flashLoansPaused, "BorrowerOperations: Flash Loans Paused");
@@ -1036,7 +1118,9 @@ contract BorrowerOperations is
         return (amount * feeBps) / MAX_BPS;
     }
 
-    /// @dev Max flashloan, exclusively in ETH equals to the current balance
+    /// @notice Get the maximum flash loan amount for a specific token
+    /// @param token The address of the token to get the maximum flash loan amount for, exclusively used here for eBTC token
+    /// @return The maximum available flashloan amount for the token, equals to `type(uint112).max`
     function maxFlashLoan(address token) public view override returns (uint256) {
         if (token != address(ebtcToken)) {
             return 0;
@@ -1051,6 +1135,8 @@ contract BorrowerOperations is
 
     // === Governed Functions ==
 
+    /// @notice Set new FeeRecipient
+    /// @param _feeRecipientAddress The new fee recipient address to be set
     function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
         require(
             _feeRecipientAddress != address(0),
@@ -1063,6 +1149,8 @@ contract BorrowerOperations is
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
+    /// @notice Sets new Fee for FlashLoans
+    /// @param _newFee The new flashloan fee to be set
     function setFeeBps(uint256 _newFee) external requiresAuth {
         require(_newFee <= MAX_FEE_BPS, "ERC3156FlashLender: _newFee should <= MAX_FEE_BPS");
 
@@ -1074,6 +1162,8 @@ contract BorrowerOperations is
         emit FlashFeeSet(msg.sender, _oldFee, _newFee);
     }
 
+    /// @notice Should Flashloans be paused?
+    /// @param _paused The flag (true or false) whether flashloan will be paused
     function setFlashLoansPaused(bool _paused) external requiresAuth {
         cdpManager.syncGlobalAccounting();
 

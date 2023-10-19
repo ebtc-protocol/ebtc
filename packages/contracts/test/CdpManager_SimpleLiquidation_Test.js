@@ -66,7 +66,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _bobCdpId = await sortedCdps.cdpOfOwnerByIndex(bob, 0);	  
 	  
       // normal mode	  
-      let _aliceICR = await cdpManager.getICR(_aliceCdpId, (await priceFeed.getPrice()));
+      let _aliceICR = await cdpManager.getCachedICR(_aliceCdpId, (await priceFeed.getPrice()));
       assert.isTrue(_aliceICR.gt(_MCR));
       await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");
       await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");  
@@ -78,8 +78,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
       await contracts.collateral.deposit({from: alice, value: dec(100, 'ether')});
       await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, dec(100, 'ether'), { from: alice, value: 0 })
-      _aliceICR = await cdpManager.getICR(_aliceCdpId, _newPrice);
-      let _TCR = await cdpManager.getTCR(_newPrice);
+      _aliceICR = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
+      let _TCR = await cdpManager.getCachedTCR(_newPrice);
       assert.isTrue(_aliceICR.gt(_TCR));
       await assertRevert(cdpManager.liquidate(_aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");
       await assertRevert(cdpManager.partiallyLiquidate(_aliceCdpId, 123, _aliceCdpId, _aliceCdpId, {from: bob}), "CdpManager: ICR is not below liquidation threshold in current mode");	  
@@ -345,8 +345,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // liquidate alice in recovery mode	  
       let prevETHOfOwner = await ethers.provider.getBalance(owner);
       let _collLiquidatorPre = await collToken.balanceOf(owner);
-      let _TCR = await cdpManager.getTCR(_newPrice);
-      let _aliceICR = await cdpManager.getICR(aliceCdpId, _newPrice);
+      let _TCR = await cdpManager.getCachedTCR(_newPrice);
+      let _aliceICR = await cdpManager.getCachedICR(aliceCdpId, _newPrice);
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_TCR.toString())));
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_MCR.toString())));
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(LICR.toString())));
@@ -406,8 +406,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // liquidate alice in recovery mode	  
       let prevETHOfOwner = await ethers.provider.getBalance(owner);	
       let _collLiquidatorPre = await collToken.balanceOf(owner);
-      let _TCR = await cdpManager.getTCR(_newPrice);
-      let _aliceICR = await cdpManager.getICR(aliceCdpId, _newPrice);
+      let _TCR = await cdpManager.getCachedTCR(_newPrice);
+      let _aliceICR = await cdpManager.getCachedICR(aliceCdpId, _newPrice);
       assert.isTrue(toBN(_aliceICR.toString()).lt(toBN(_TCR.toString())));
       assert.isTrue(toBN(_aliceICR.toString()).gt(toBN(_MCR.toString())));
       let _cappedLiqColl = toBN(aliceDebt.toString()).mul(_MCR).div(toBN(_newPrice));
@@ -478,7 +478,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _newPrice = dec(2400, 13);
       await priceFeed.setPrice(_newPrice);
       assert.isTrue(await cdpManager.checkRecoveryMode(_newPrice));
-      let _bobICR = await cdpManager.getICR(_bobCdpId, _newPrice);
+      let _bobICR = await cdpManager.getCachedICR(_bobCdpId, _newPrice);
       assert.isTrue(toBN(_bobICR.toString()).lt(LICR));
       let _colRatio = LICR;	 
 	  
@@ -551,7 +551,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
 	  
       // liquidator bob coming in firstly partially liquidate some portion(0.1 EBTC) of alice
       let _partialAmount = toBN("100000000000000000"); // 0.1e18
-      let _icr = await cdpManager.getICR(_aliceCdpId, _newPrice);
+      let _icr = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
 
       assert.isTrue(toBN(_icr.toString()).lt(_MCR));
       assert.isTrue(toBN(_icr.toString()).gt(LICR));
@@ -636,7 +636,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       assert.equal((await cdpManager.Cdps(_aliceCdpId))[4], '1')
 	  
       // Confirm partially liquidated CDP got higher or at least equal ICR than before
-      let _aliceNewICR = await cdpManager.getICR(_aliceCdpId, _newPrice);
+      let _aliceNewICR = await cdpManager.getCachedICR(_aliceCdpId, _newPrice);
       assert.isTrue(toBN(_icr.toString()).lte(_aliceNewICR));
 	  
       // Confirm alice still on top of sorted CDP list since partially liquidation should keep its ICR NOT decreased
@@ -987,8 +987,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // price slump to Recovery Mode
       let _newPrice = dec(175, 13);
       await priceFeed.setPrice(_newPrice);
-      let _tcr = await cdpManager.getTCR(_newPrice);
-      assert.isTrue(_tcr.gt(await cdpManager.getICR(_dennisCdpId, _newPrice)));
+      let _tcr = await cdpManager.getCachedTCR(_newPrice);
+      assert.isTrue(_tcr.gt(await cdpManager.getCachedICR(_dennisCdpId, _newPrice)));
       assert.isTrue(_tcr.lt(_CCR));
 
       // check sequenceLiqToBatchLiq() results
@@ -1025,7 +1025,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // price keep system in Normal Mode
       let _newPrice = dec(175, 13);
       await priceFeed.setPrice(_newPrice);
-      let _tcr = await cdpManager.getTCR(_newPrice);
+      let _tcr = await cdpManager.getCachedTCR(_newPrice);
       assert.isTrue(_tcr.gt(_CCR));
 
       // check sequenceLiqToBatchLiq() results

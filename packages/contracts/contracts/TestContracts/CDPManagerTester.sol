@@ -52,7 +52,7 @@ contract CdpManagerTester is CdpManager {
         uint256 _price,
         uint256 _stakingRewardSplit
     ) external view returns (uint256) {
-        uint256 _tcr = _getTCR(_price);
+        uint256 _tcr = _getCachedTCR(_price);
         if (_tcr <= CCR) {
             return 0;
         } else if (_tcr == EbtcMath.MAX_TCR) {

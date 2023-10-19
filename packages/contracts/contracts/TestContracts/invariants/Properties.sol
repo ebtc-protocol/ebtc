@@ -139,8 +139,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         while (currentCdp != bytes32(0) && nextCdp != bytes32(0) && currentCdp != nextCdp) {
             // TODO remove tolerance once proper fix has been applied
-            uint256 nicrNext = cdpManager.getNominalICR(nextCdp);
-            uint256 nicrCurrent = cdpManager.getNominalICR(currentCdp);
+            uint256 nicrNext = cdpManager.getCachedNominalICR(nextCdp);
+            uint256 nicrCurrent = cdpManager.getCachedNominalICR(currentCdp);
             emit L2(nicrNext, nicrCurrent);
             if (nicrNext > nicrCurrent && diffPercent(nicrNext, nicrCurrent) > 0.01e18) {
                 return false;
@@ -160,8 +160,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     ) internal view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint256 _price = priceFeedMock.getPrice();
-        uint256 _firstICR = cdpManager.getICR(_first, _price);
-        uint256 _TCR = cdpManager.getTCR(_price);
+        uint256 _firstICR = cdpManager.getCachedICR(_first, _price);
+        uint256 _TCR = cdpManager.getCachedTCR(_price);
 
         if (
             _first != sortedCdps.dummyId() &&
@@ -237,7 +237,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
+            cdpManager.getCachedTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
                 ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
                     eBTCToken.totalSupply()
                 : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <

@@ -238,9 +238,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 _systemStEthFeePerUnitIndex
     ) external view returns (uint256, uint256);
 
-    function getNominalICR(bytes32 _cdpId) external view returns (uint256);
+    function getCachedNominalICR(bytes32 _cdpId) external view returns (uint256);
 
-    function getICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
+    function getCachedICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
 
     function getSyncedCdpDebt(bytes32 _cdpId) external view returns (uint256);
 
@@ -249,6 +249,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     function getSyncedICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
 
     function getSyncedTCR(uint256 _price) external view returns (uint256);
+
+    function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256);
 
     function getPendingRedistributedDebt(bytes32 _cdpId) external view returns (uint256);
 

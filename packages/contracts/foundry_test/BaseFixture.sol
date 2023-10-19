@@ -6,6 +6,7 @@ import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
+import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
@@ -187,7 +188,8 @@ contract eBTCBaseFixture is
             );
 
             // CDP Manager
-            creationCode = type(CdpManager).creationCode;
+            /// @audit NOTE: This is the DEV VERSION!!!!!
+            creationCode = type(AccruableCdpManager).creationCode;
             args = abi.encode(
                 addr.liquidationLibraryAddress,
                 addr.authorityAddress,
@@ -448,7 +450,7 @@ contract eBTCBaseFixture is
         uint256 _price = priceFeedMock.fetchPrice();
         uint256 _debt = (_coll * _price) / _icr;
         bytes32 _cdpId = _openTestCDP(_usr, _coll + cdpManager.LIQUIDATOR_REWARD(), _debt);
-        uint256 _cdpICR = cdpManager.getICR(_cdpId, _price);
+        uint256 _cdpICR = cdpManager.getCachedICR(_cdpId, _price);
         _utils.assertApproximateEq(_icr, _cdpICR, ICR_COMPARE_TOLERANCE); // in the scale of 1e18
         return (_usr, _cdpId);
     }
@@ -496,16 +498,16 @@ contract eBTCBaseFixture is
             collateral.getPooledEthByShares(activePool.getSystemCollShares())
         );
         console.log("systemDebt         :", activePool.getSystemDebt());
-        console.log("TCR                :", cdpManager.getTCR(price));
+        console.log("TCR                :", cdpManager.getCachedTCR(price));
         console.log("stEthLiveIndex     :", collateral.getPooledEthByShares(DECIMAL_PRECISION));
         console.log("stEthGlobalIndex   :", cdpManager.stEthIndex());
         console.log("price              :", price);
         console.log("");
     }
 
-    function _getICR(bytes32 cdpId) internal returns (uint256) {
+    function _getCachedICR(bytes32 cdpId) internal returns (uint256) {
         uint256 price = priceFeedMock.fetchPrice();
-        return cdpManager.getICR(cdpId, price);
+        return cdpManager.getCachedICR(cdpId, price);
     }
 
     function _printAllCdps() internal {
@@ -518,7 +520,7 @@ contract eBTCBaseFixture is
             console.log("=== ", bytes32ToString(node));
             console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
             console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
-            console.log("ICR                   :", cdpManager.getICR(node, price));
+            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
             console.log(
                 "Percent of System     :",
                 (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
@@ -536,7 +538,7 @@ contract eBTCBaseFixture is
         uint counter = 0;
 
         while (_currentCdpId != sortedCdps.dummyId()) {
-            uint NICR = cdpManager.getNominalICR(_currentCdpId);
+            uint NICR = cdpManager.getCachedNominalICR(_currentCdpId);
             console.log(counter, bytes32ToString(_currentCdpId));
             console.log(NICR);
             _currentCdpId = sortedCdps.getPrev(_currentCdpId);

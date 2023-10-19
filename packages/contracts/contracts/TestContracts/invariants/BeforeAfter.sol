@@ -80,7 +80,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
         (uint256 debtBefore, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
-        vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceBefore) : 0;
+        vars.icrBefore = _cdpId != bytes32(0)
+            ? cdpManager.getCachedICR(_cdpId, vars.priceBefore)
+            : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
@@ -102,7 +104,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeBefore = sortedCdps.getSize();
-        vars.tcrBefore = cdpManager.getTCR(vars.priceBefore);
+        vars.tcrBefore = cdpManager.getCachedTCR(vars.priceBefore);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
         vars.ethPerShareBefore = collateral.getEthPerShare();
         vars.activePoolDebtBefore = activePool.getSystemDebt();
@@ -117,7 +119,6 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() +
                 cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
-        // TODO: Cleanup new vs old
         vars.newTcrBefore = crLens.quoteRealTCR();
         vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
 
@@ -135,7 +136,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.priceAfter = priceFeedMock.fetchPrice();
 
         vars.nicrAfter = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
-        vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getICR(_cdpId, vars.priceAfter) : 0;
+        vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getCachedICR(_cdpId, vars.priceAfter) : 0;
         vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
         vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
@@ -158,7 +159,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));
         vars.sortedCdpsSizeAfter = sortedCdps.getSize();
-        vars.tcrAfter = cdpManager.getTCR(vars.priceAfter);
+        vars.tcrAfter = cdpManager.getCachedTCR(vars.priceAfter);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
         vars.ethPerShareAfter = collateral.getEthPerShare();
         vars.activePoolDebtAfter = activePool.getSystemDebt();

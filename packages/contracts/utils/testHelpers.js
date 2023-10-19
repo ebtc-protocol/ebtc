@@ -177,12 +177,12 @@ class TestHelper {
   }
 
   static async ICRbetween100and110(cdpId, cdpManager, price) {
-    const ICR = await cdpManager.getICR(cdpId, price)
+    const ICR = await cdpManager.getCachedICR(cdpId, price)
     return (ICR.gt(MoneyValues._ICR100)) && (ICR.lt(MoneyValues._MCR))
   }
 
   static async isUndercollateralized(account, cdpManager, price) {
-    const ICR = await cdpManager.getICR(account, price)
+    const ICR = await cdpManager.getCachedICR(account, price)
     return ICR.lt(MoneyValues._MCR)
   }
 
@@ -240,7 +240,7 @@ class TestHelper {
       const squeezedAddr = this.squeezeAddr(account)
       const coll = (await contracts.cdpManager.Cdps(account))[1]
       const debt = (await contracts.cdpManager.Cdps(account))[0]
-      const ICR = await contracts.cdpManager.getICR(account, price)
+      const ICR = await contracts.cdpManager.getCachedICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
 
@@ -266,7 +266,7 @@ class TestHelper {
       const squeezedAddr = this.squeezeAddr(account)
       const coll = (await cdpManager.Cdps(account))[1]
       const debt = (await cdpManager.Cdps(account))[0]
-      const ICR = await cdpManager.getICR(account, price)
+      const ICR = await cdpManager.getCachedICR(account, price)
 
       console.log(`Acct: ${squeezedAddr}  coll:${coll}  debt: ${debt}  ICR: ${ICR}`)
     }
@@ -293,9 +293,9 @@ class TestHelper {
     return contracts.cdpManager.checkRecoveryMode(price)
   }
 
-  static async getTCR(contracts) {
+  static async getCachedTCR(contracts) {
     const price = await contracts.priceFeedTestnet.getPrice()
-    return contracts.cdpManager.getTCR(price)
+    return contracts.cdpManager.getCachedTCR(price)
   }
   
   static async syncGlobalStateAndGracePeriod(contracts, provider){	  
@@ -556,8 +556,8 @@ class TestHelper {
     // console.log(`account: ${account}`)
     const rawColl = (await contracts.cdpManager.Cdps(account))[1]
     const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
-    const pendingEBTCDebtReward = (await contracts.cdpManager.getPendingRedistributedDebt(account))
-    const entireDebt = rawDebt.add(pendingEBTCDebtReward)
+    const pendingRedistributedDebt = (await contracts.cdpManager.getPendingRedistributedDebt(account))
+    const entireDebt = rawDebt.add(pendingRedistributedDebt)
     let entireColl = rawColl;
     return { entireColl, entireDebt }
   }
@@ -687,7 +687,7 @@ class TestHelper {
 
       if (logging && tx.receipt.status) {
         i++
-        const ICR = await contracts.cdpManager.getICR(account, price)
+        const ICR = await contracts.cdpManager.getCachedICR(account, price)
         // console.log(`${i}. Cdp opened. addr: ${this.squeezeAddr(account)} coll: ${randCollAmount} debt: ${proportionalEBTC} ICR: ${ICR}`)
       }
       const gas = this.gasUsed(tx)
@@ -1068,7 +1068,7 @@ class TestHelper {
     const price = await contracts.priceFeedTestnet.getPrice()
 
     for (const account of accounts) {
-      const tx = await functionCaller.cdpManager_getICR(account, price)
+      const tx = await functionCaller.cdpManager_getCachedICR(account, price)
       const gas = this.gasUsed(tx) - 21000
       gasCostList.push(gas)
     }

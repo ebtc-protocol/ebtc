@@ -8,10 +8,10 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Interfaces/ICdpManagerData.sol";
 import "./Dependencies/EbtcBase.sol";
 
-/// @notice Helper to turn a sequence into CDP id array for batch liquidation
+/// @notice Helper contract to turn a sequence into CDP id array for batch liquidation
 /// @dev Note this sequencer only serves as an approximation tool to provide "best-effort"
 /// @dev that return a list of CDP ids which could be consumed by "CdpManager.batchLiquidateCdps()".
-/// @dev It is possible that some of the returned CDPs might be skipped (not liquidatable any more)
+/// @dev It is possible that some of the returned Cdps might be skipped (not liquidatable any more)
 /// @dev during liquidation execution due to change of the system states
 /// @dev e.g., TCR brought back from Recovery Mode to Normal Mode
 contract LiquidationSequencer is EbtcBase {
@@ -32,6 +32,8 @@ contract LiquidationSequencer is EbtcBase {
     /// @dev Get first N batch of liquidatable Cdps at current price
     /// @dev Non-view function that updates and returns live price at execution time
     /// @dev could use callStatic offline to save gas
+    /// @param _n The number for sequential liquidation to be converted into a CdpId array batch
+    /// @return _array The CdpId array batch converted from the specified sequential number
     function sequenceLiqToBatchLiq(uint256 _n) external returns (bytes32[] memory _array) {
         uint256 _price = priceFeed.fetchPrice();
         return sequenceLiqToBatchLiqWithPrice(_n, _price);
@@ -40,6 +42,9 @@ contract LiquidationSequencer is EbtcBase {
     /// @dev Get first N batch of liquidatable Cdps at specified price
     /// @dev Non-view function that will sync global state
     /// @dev could use callStatic offline to save gas
+    /// @param _n The number for sequential liquidation to be converted into a CdpId array batch
+    /// @param _price The price of stETH:eBTC to be used to check if Cdp is liquidatable
+    /// @return _array The CdpId array batch converted from the specified sequential number
     function sequenceLiqToBatchLiqWithPrice(
         uint256 _n,
         uint256 _price
@@ -50,17 +55,17 @@ contract LiquidationSequencer is EbtcBase {
     }
 
     // return CdpId array (in NICR-decreasing order same as SortedCdps)
-    // including the last N CDPs in sortedCdps for batch liquidation
+    // including the last N Cdps in sortedCdps for batch liquidation
     function _sequenceLiqToBatchLiq(
         uint256 _n,
         uint256 _price,
         uint256 _TCR
     ) internal view returns (bytes32[] memory _array) {
         if (_n > 0) {
-            // get count of liquidatable CDPs with 1st iteration
+            // get count of liquidatable Cdps with 1st iteration
             (uint256 _cnt, ) = _iterateOverSortedCdps(0, _TCR, _n, _price);
 
-            // retrieve liquidatable CDPs with 2nd iteration
+            // retrieve liquidatable Cdps with 2nd iteration
             (uint256 _j, bytes32[] memory _returnedArray) = _iterateOverSortedCdps(
                 _cnt,
                 _TCR,
@@ -103,7 +108,7 @@ contract LiquidationSequencer is EbtcBase {
                 }
                 _cdpId = sortedCdps.getPrev(_cdpId);
             } else {
-                // breaking loop early if not liquidatable due to sorted (descending) list of CDPs
+                // breaking loop early if not liquidatable due to sorted (descending) list of Cdps
                 break;
             }
             unchecked {

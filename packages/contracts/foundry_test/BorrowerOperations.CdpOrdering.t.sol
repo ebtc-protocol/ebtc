@@ -26,7 +26,7 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         bytes32 cdp1 = _openTestCDP(user, coll, debt);
 
         uint256 price = priceFeedMock.fetchPrice();
-        console.log("cdp1 before: ", cdpManager.getICR(cdp1, price));
+        console.log("cdp1 before: ", cdpManager.getCachedICR(cdp1, price));
 
         /**
             move to index 1.2
@@ -45,8 +45,8 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         bytes32 cdp2 = _openTestCDP(user, coll, debt);
 
         price = priceFeedMock.fetchPrice();
-        console.log("cdp1 after: ", cdpManager.getICR(cdp1, price));
-        console.log("cdp2 after: ", cdpManager.getICR(cdp2, price));
+        console.log("cdp1 after: ", cdpManager.getCachedICR(cdp1, price));
+        console.log("cdp2 after: ", cdpManager.getCachedICR(cdp2, price));
 
         _ensureSystemInvariants();
     }
