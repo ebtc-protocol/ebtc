@@ -246,7 +246,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
      * Any surplus stETH left in the cdp, is sent to the Coll surplus pool, and can be later claimed by the borrower.
      */
     function _closeCdpByRedemption(
-        bytes32 _cdpId, // TODO: Remove?
+        bytes32 _cdpId,
         uint256 _EBTC,
         uint256 _collSurplus,
         uint256 _liquidatorRewardShares,

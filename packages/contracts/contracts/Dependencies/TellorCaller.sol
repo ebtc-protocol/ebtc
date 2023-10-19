@@ -20,6 +20,8 @@ contract TellorCaller is IFallbackCaller {
     uint256 timeOut;
 
     // TODO: Use new Tellor query ID for stETH/BTC when available
+    // NOTE: Code is deprecated
+    // NOTE: DO NOT USE TELLOR IN PROD!!!
     bytes32 public constant STETH_BTC_TELLOR_QUERY_ID =
         0x4a5d321c06b63cd85798f884f7d5a1d79d27c6c65756feda15e06742bd161e69; // keccak256(abi.encode("SpotPrice", abi.encode("steth", "btc")))
     // default 15 minutes, soft governance might help to change this default configuration if required

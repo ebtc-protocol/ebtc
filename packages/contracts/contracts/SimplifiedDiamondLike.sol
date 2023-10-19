@@ -151,7 +151,7 @@ contract SimplifiedDiamondLike {
         }
 
         if (op.checkSuccess) {
-            require(success); // TODO: How do we easily debug this?
+            require(success);
         }
     }
 

@@ -27,8 +27,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
     uint128 public recoveryModeGracePeriodDuration = MINIMUM_GRACE_PERIOD;
 
-    // TODO: Pitfal is fee split // NOTE: Solved by calling `syncGracePeriod` on external operations from BO
-
     /// @notice Start the recovery mode grace period, if the system is in RM and the grace period timestamp has not already been set
     /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
     /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
@@ -219,7 +217,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         address _priceFeed,
         address _collateral
     ) EbtcBase(_activePool, _priceFeed, _collateral) {
-        // TODO: Move to setAddresses or _tickInterest?
         deploymentStartTime = block.timestamp;
         liquidationLibrary = _liquidationLibraryAddress;
 

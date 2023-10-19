@@ -134,7 +134,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         uint256 cachedSystemCollShares = systemCollShares;
         require(cachedSystemCollShares >= _shares, "ActivePool: Insufficient collateral shares");
-        uint256 totalShares = _shares + _liquidatorRewardShares; // TODO: Is this safe?
+        uint256 totalShares = _shares + _liquidatorRewardShares;
         unchecked {
             // Safe per the check above
             cachedSystemCollShares -= _shares;

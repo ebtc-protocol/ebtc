@@ -226,7 +226,6 @@ abstract contract TargetFunctions is Properties {
 
         if (success) {
             // if ICR >= TCR then we ignore
-            // TODO: We could check for TCR > 110
             // We could check that Liquidated is not above TCR
             if (
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
@@ -486,7 +485,7 @@ abstract contract TargetFunctions is Properties {
                 // Redemptions do not reduce TCR
                 // If redemptions do not close any CDP that was healthy (low debt, high coll)
                 gt(
-                    vars.newTcrAfter, // TODO: See how this breaks
+                    vars.newTcrAfter,
                     vars.newTcrBefore,
                     R_07
                 );
