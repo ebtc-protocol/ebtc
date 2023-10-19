@@ -212,7 +212,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         FakeCall(address(wallet)).fakeFunction();
     }
 
-    function test_openWithLeverage() public {
+    function test_openWithLeverage(uint256 _leverage) public {
         // Same as above, but:
         // Swap data
         // Flashloan
@@ -270,7 +270,10 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.call,
             // NOTE: same sig
-            data: abi.encodeCall(eBTCToken.approve, (address(borrowerOperations), type(uint256).max))
+            data: abi.encodeCall(
+                collateral.approve,
+                (address(borrowerOperations), type(uint256).max)
+            )
         });
 
         // 3) stETH.approve(_activePool, type(uint256).max);
@@ -281,10 +284,11 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             gas: 9999999,
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.call,
-            data: abi.encodeCall(eBTCToken.approve, (address(activePool), type(uint256).max))
+            data: abi.encodeCall(collateral.approve, (address(activePool), type(uint256).max))
         });
 
         // 4) Leverage Operation on Macro Reference
+        uint256 _expectedICR = MINIMAL_COLLATERAL_RATIO + 12345678901234567;
         data[4] = SimplifiedDiamondLike.Operation({
             to: address(address(macro_reference)),
             checkSuccess: true,
@@ -292,7 +296,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             gas: 9999999,
             capGas: false,
             opType: SimplifiedDiamondLike.OperationType.delegatecall,
-            data: getEncodedOpenCdpData()
+            data: getEncodedOpenCdpData(_leverage, _expectedICR)
         });
 
         uint256 cdpCntBefore = sortedCdps.cdpCountOf(address(wallet));
@@ -302,6 +306,9 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // Verify new cdp is opened
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(wallet), cdpCntBefore);
+        assertTrue(cdpId != bytes32(0));
+        uint256 cdpCntAfter = sortedCdps.cdpCountOf(address(wallet));
+        assertTrue(cdpCntAfter == cdpCntBefore + 1);
 
         // NOTE: We don't sweep to caller, but instead leave in SC wallet
 
@@ -309,40 +316,45 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // IsCDPOpen
         vm.stopPrank();
 
-        // Verify token balance to user
-        assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
+        // Verify leveraged CDP ICR
+        uint256 _icr = cdpManager.getSyncedICR(cdpId, priceFeedMock.fetchPrice());
+        _utils.assertApproximateEq(_expectedICR, _icr, 1e8);
     }
 
-    function getEncodedOpenCdpData() internal returns (bytes memory) {
+    function getEncodedOpenCdpData(
+        uint256 _leverage,
+        uint256 _expectedICR
+    ) internal returns (bytes memory) {
+        // do some clamp on leverage parameter
+        _leverage = bound(_leverage, 2, 8);
+
         // Swaps b4 and after
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
         LeverageMacroBase.SwapOperation[] memory _levSwapsAfter;
 
-        uint256 netColl = collateral.balanceOf(user) / 2; // TODO: Make generic
+        uint256 initialPrincipal = collateral.balanceOf(user) / (2 * _leverage);
 
-        uint256 grossColl = netColl + cdpManager.LIQUIDATOR_REWARD();
-
-        // TODO: FIX THIS // Donation breaks invariants but ensures we have enough to pay without figuring out issue with swap
-        deal(address(eBTCToken), address(wallet), 1e23);
+        uint256 grossColl = (initialPrincipal * _leverage) + cdpManager.LIQUIDATOR_REWARD();
 
         // leverage parameters
         uint256 debt = _utils.calculateBorrowAmount(
             grossColl,
             priceFeedMock.fetchPrice(),
-            COLLATERAL_RATIO
+            _expectedICR
         );
+        uint256 _debtPlusFee = debt + borrowerOperations.flashFee(address(eBTCToken), debt);
 
-        // Swaps b4
+        // Swaps b4: from flashloaned eBTC to collateral for leverage
         _levSwapsBefore = _generateCalldataSwapMock1InchOneStep(
             address(eBTCToken),
             debt,
             address(collateral),
-            0 // TODO _collMinOut
+            (grossColl - initialPrincipal)
         );
 
-        // Open CDP
+        // Open CDP with expected collateral & debt
         LeverageMacroBase.OpenCdpOperation memory _opData = LeverageMacroBase.OpenCdpOperation(
-            debt,
+            _debtPlusFee,
             DUMMY_CDP_ID,
             DUMMY_CDP_ID,
             grossColl
@@ -354,7 +366,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
             .LeverageMacroOperation(
                 address(collateral),
-                (grossColl - 0),
+                (initialPrincipal), // transfer initial principal to wallet from user
                 _levSwapsBefore,
                 _levSwapsAfter,
                 LeverageMacroBase.OperationType.OpenCdpOperation,
@@ -362,15 +374,16 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             );
 
         // Post check params
+        uint256 _expectedCdpColl = grossColl - cdpManager.LIQUIDATOR_REWARD();
         LeverageMacroBase.PostCheckParams memory postCheckParams = LeverageMacroBase
             .PostCheckParams({
                 expectedDebt: LeverageMacroBase.CheckValueAndType({
-                    value: 0,
-                    operator: LeverageMacroBase.Operator.skip
+                    value: _debtPlusFee,
+                    operator: LeverageMacroBase.Operator.equal
                 }),
                 expectedCollateral: LeverageMacroBase.CheckValueAndType({
-                    value: 0,
-                    operator: LeverageMacroBase.Operator.skip
+                    value: _expectedCdpColl,
+                    operator: LeverageMacroBase.Operator.equal
                 }),
                 // NOTE: Unused
                 cdpId: bytes32(0),
