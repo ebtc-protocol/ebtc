@@ -345,11 +345,10 @@ Fees generated through the core protocol are managed at an external FeeRecipient
 
 ## Core System Architecture
 
-The core eBTC system consists of several smart contracts, which are deployable to the Ethereum blockchain.
+The core eBTC system consists of several smart contracts.
 
 All application logic and data is contained in these contracts - there is no need for a separate database or back end logic running on a web server. In effect, the Ethereum network is itself the eBTC back end. As such, all balances and contract data are public.
 
-The system has no admin key or human governance. Once deployed, it is fully automated, decentralized and no user holds any special privileges in or control over the system.
 
 The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control CDP state updates and movements of stETH and eBTC tokens around the system.
 
