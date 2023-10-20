@@ -182,7 +182,6 @@ Which allows delta neutral LPing as well as gas efficient liquidations and lever
 ## eBTC System Summary
 - [eBTC Overview](#ebtc-overview)
 - [Liquidations](#liquidations)
-  - [Liquidation gas costs](#liquidation-gas-costs)
 - [eBTC Token Redemption](#ebtc-token-redemption)
   - [Partial redemption](#partial-redemption)
   - [Full redemption](#full-redemption)
@@ -280,10 +279,6 @@ eBTC implements an open and incentivized liquidation mechanism, where any user c
 
 Anyone may call the public `liquidate()` function, which will allow the liquidation of under-collateralized CDPs. Alternatively they can call `batchLiquidateCdps()` with a custom list of CDP addresses to attempt to liquidate.
 
-### Liquidation gas costs
-
-Currently, mass liquidations performed via the above functions cost 60-65k gas per CDP. Thus the system can liquidate up to a maximum of 95-105 CDPs in a single transaction.
-
 ## eBTC Token Redemption
 
 Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC directly with the system. Their eBTC is exchanged for stETH, at face value: redeeming x eBTC tokens returns \$x worth of stETH (minus a [redemption fee](#redemption-fee)).
@@ -322,7 +317,7 @@ Recovery Mode kicks in when the total collateralization ratio (TCR) of the syste
 
 During Recovery Mode, liquidation conditions are relaxed, and the system blocks borrower transactions that would further decrease the TCR. New eBTC may only be issued by adjusting existing CDPs in a way that improves their ICR, or by opening a new CDP with an ICR of >=125%. In general, if an existing CDP's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 125%
 
-Recovery Mode is structured to incentivize borrowers to behave in ways that promptly raise the TCR back above 150%.
+Recovery Mode is structured to incentivize borrowers to behave in ways that promptly raise the TCR back above 125%.
 
 Economically, Recovery Mode is designed to encourage collateral top-ups and debt repayments, and also itself acts as a self-negating deterrent: the possibility of it occurring actually guides the system away from ever reaching it.
 
@@ -864,13 +859,13 @@ forge test
 ```
 
 ## Known Issues (Liquity)
-> 🦉 These issues are not modified from the text of the Liquity readme, and may no longer be relevant or may behave differently within the context of eBTC.
+> 🦉 These issues are lightly modified from the text of the Liquity readme, and may no longer be relevant or may behave differently within the context of eBTC.
 
 ### Temporary and slightly inaccurate TCR calculation within `batchLiquidateCdps` in Recovery Mode. 
 
 When liquidating a CDP with `ICR > 110%`, a collateral surplus remains claimable by the borrower. This collateral surplus should be excluded from subsequent TCR calculations, but within the liquidation sequence in `batchLiquidateCdps` in Recovery Mode, it is not. This results in a slight distortion to the TCR value used at each step of the liquidation sequence going forward. This distortion only persists for the duration the `batchLiquidateCdps` function call, and the TCR is again calculated correctly after the liquidation sequence ends. In most cases there is no impact at all, and when there is, the effect tends to be minor. The issue is not present at all in Normal Mode. 
 
-There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 150% boundary, a large CDP must be liquidated, and the stETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
+There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 125% boundary, a large CDP must be liquidated, and the stETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
 
 ### SortedCdps edge cases - top and bottom of the sorted list
 
