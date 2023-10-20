@@ -6,42 +6,41 @@ After locking up stETH as collateral in a smart contract and creating an individ
 The redemption and liquidation mechanisms help ensure that stability is maintained through economically-driven user interactions and arbitrage, rather than through active governance or monetary interventions.
 
 ## eBTC Audit - What's in scope
-The following contracts in `/packages/contracts/contracts` (base contracts directory)
 
-#### Core Protocol
-`/packages/contracts/contracts/Dependencies/ActivePool.sol`
-`/packages/contracts/contracts/Dependencies/BorrowerOperations.sol`
-`/packages/contracts/contracts/CdpManager.sol`
-`/packages/contracts/contracts/CdpManagerStorage.sol`
-`/packages/contracts/contracts/CollSurplusPool.sol`
-`/packages/contracts/contracts/EBTCToken.sol`
-`/packages/contracts/contracts/Governor.sol`
-`/packages/contracts/contracts/LiquidationLibrary.sol`
-`/packages/contracts/contracts/PriceFeed.sol`
-`/packages/contracts/contracts/SortedCdps.sol`
 
-#### Lens / Helper Contracts
-`/packages/contracts/contracts/HintHelpers.sol`
-`/packages/contracts/contracts/CRLens.sol`
-`/packages/contracts/contracts/MultiCdpGetter.sol`
-`/packages/contracts/contracts/SyncedLiquidationSequencer.sol`
+|File|[SLOC](#nowhere "(nSLOC, SLOC, Lines)")|Description|
+:-|:-:|:-|
+|_Core Protocol Contracts (10)_|
+|[/packages/contracts/contracts/ActivePool.sol]()|[221]|Manages system-level internal accounting and stETH tokens.|
+|[/packages/contracts/contracts/BorrowerOperations.sol]()|[751]|Entry point to Open, Adjust, and Close Cdps as well as delegate positionManagers.|
+|[/packages/contracts/contracts/CdpManager.sol]()|[578]|Cdp operations and entry point for non-borrower operations on Cdps (Liquidations, Redemptions).|
+|[/packages/contracts/contracts/LiquidationLibrary.sol]()|[700]|Contains liquidation-related functions. Split off due to maximum contract size, delegateCalled by CdpManager.|
+|[/packages/contracts/contracts/CdpManagerStorage.sol]()|[550]|Shared storage variables between CdpManager and Liquidation Library, and common functions.|
+|[/packages/contracts/contracts/CollSurplusPool.sol]()|[83]|Isolated storage of excess collateral owed to users from liquidations or redemptions. Not considered part of system for accounting.|
+|[/packages/contracts/contracts/EBTCToken.sol]()|[223]|ERC20 EbtcToken, with permit approvals and extensible minting.|
+|[/packages/contracts/contracts/Governor.sol]()|[107]|Roles-based authorization contract, adapted and expanded from solmate Authority. Expanded with more convenience view functions and ability to permanently burn capabilities.|
+|[/packages/contracts/contracts/PriceFeed.sol]()|[491]|PriceFeed with primary and secondary oracles and state machine to switch between them and handle failure cases.|
+|[/packages/contracts/contracts/SortedCdps.sol]()|[399]|Data storage for the doubly-linked list of Cdps. Sorting of Cdps is used to enforce redemptions from lowest ICR to highest ICR.|
+|_Lens / Helper Contracts (4)_|
+|[/packages/contracts/contracts/HintHelpers.sol]()|[142]|Generate approximate locations for proper linked list insertion locations for Cdps.|
+|[/packages/contracts/contracts/CRLens.sol]()|[98]|Simulate state changes and view results, to compare to expected results in testing env.|
+|[/packages/contracts/contracts/MultiCdpGetter.sol]()|[92]|Get data from multiple Cdps in one call.|
+|[/packages/contracts/contracts/SyncedLiquidationSequencer.sol]()|[76]|Generate sequences of Cdps available for liquidation, for use with batchLiquidate|
+|_Leverage Macros & Smart Wallets (5)_|
+|[/packages/contracts/contracts/LeverageMacroBase.sol]()|[353]|Common base implementation of the LeverageMacro.|
+|[/packages/contracts/contracts/LeverageMacroDelegateTarget.sol]()|[30]|LeverageMacro variant for use with delegateCall with compatible smart wallets.|
+|[/packages/contracts/contracts/LeverageMacroFactory.sol]()|[46]|Factory for deploying LeverageMacroReference|
+|[/packages/contracts/contracts/LeverageMacroReference.sol]()|[38]|LeverageMacro variant for use as a zap with an individual owner.|
+|[/packages/contracts/contracts/SimplifiedDiamondLike.sol]()|[109]|Smart wallet with custom callback handler support.|
+|_Modified Dependencies (7)_|
+|[/packages/contracts/contracts/Dependencies/Auth.sol]()|[33]|Inherited by contracts consuming authorization rules of Governor.|
+|[/packages/contracts/contracts/Dependencies/AuthNoOwner.sol]()|[36]|Inherited by contracts consuming authorization rules of Governor. Removes owner address that has global 'admin' permission from Auth.|
+|[/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol]()|[10]|Base for standardized flash loans|
+|[/packages/contracts/contracts/Dependencies/EbtcBase.sol]()|[78]|Common definition and base functions for system contracts.|
+|[/packages/contracts/contracts/Dependencies/EbtcMath.sol]()|[62]|More common math functions for system contracts.|
+|[/packages/contracts/contracts/Dependencies/ReentrancyGuard.sol]()|[12]|Simple, optimized reentrancy guard.|
+|[/packages/contracts/contracts/Dependencies/RolesAuthority.sol]()|[102]|Role-based authorization from solmate. Expanded functionality for use with Governor.|
 
-#### Leverage Macros & Smart Wallets
-`/packages/contracts/contracts/LeverageMacroBase.sol`
-`/packages/contracts/contracts/LeverageMacroDelegateTarget.sol`
-`/packages/contracts/contracts/LeverageMacroFactory.sol`
-`/packages/contracts/contracts/LeverageMacroReference.sol`
-`/packages/contracts/contracts/SimplifiedDiamondLike.sol`
-
-Most of the `/Dependency` files are copy-pastes, but the following are custom or modified and are worthy of review:
-
-`/packages/contracts/contracts/Dependencies/Auth.sol`
-`/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
-`/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
-`/packages/contracts/contracts/Dependencies/EbtcBase.sol`
-`/packages/contracts/contracts/Dependencies/EbtcMath.sol`
-`/packages/contracts/contracts/Dependencies/ReentrancyGuard.sol`
-`/packages/contracts/contracts/Dependencies/RolesAuthority.sol`
 
 ## Known issues from Previous Audits
 
