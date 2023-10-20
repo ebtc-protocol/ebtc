@@ -1,8 +1,4 @@
 # eBTC
-| Tests                                                                                                                                                                                   | Coverage                                                                                                                                        |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| [![Test contracts](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml/badge.svg)](https://github.com/Badger-Finance/ebtc/actions/workflows/test-contracts.yml) | [![codecov](https://codecov.io/gh/Badger-Finance/ebtc/branch/main/graph/badge.svg?token=JZ8V8KI5D6)](https://codecov.io/gh/Badger-Finance/ebtc) |
-
 eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Staked Ether (stETH) and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
 
 After locking up stETH as collateral in a smart contract and creating an individual position called a "CDP", the user can get instant liquidity by minting eBTC. Each CDP is required to be collateralized at a fixed minimum ratio determined by the protocol.
@@ -10,48 +6,41 @@ After locking up stETH as collateral in a smart contract and creating an individ
 The redemption and liquidation mechanisms help ensure that stability is maintained through economically-driven user interactions and arbitrage, rather than through active governance or monetary interventions.
 
 ## eBTC Audit - What's in scope
-The following contracts in `/packages/contracts/contracts` (base contracts directory)
 
-#### Core Protocol
-`/packages/contracts/contracts/Dependencies/ActivePool.sol`
-`/packages/contracts/contracts/Dependencies/BorrowerOperations.sol`
-`/packages/contracts/contracts/CdpManager.sol`
-`/packages/contracts/contracts/CdpManagerStorage.sol`
-`/packages/contracts/contracts/CollSurplusPool.sol`
-`/packages/contracts/contracts/EBTCToken.sol`
-`/packages/contracts/contracts/Governor.sol`
-`/packages/contracts/contracts/LiquidationLibrary.sol`
-`/packages/contracts/contracts/PriceFeed.sol`
-`/packages/contracts/contracts/SortedCdps.sol`
 
-#### Lens / Helper Contracts
-`/packages/contracts/contracts/HintHelpers.sol`
-`/packages/contracts/contracts/CRLens.sol`
-`/packages/contracts/contracts/MultiCdpGetter.sol`
-`/packages/contracts/contracts/SyncedLiquidationSequencer.sol`
+|File|[SLOC](#nowhere "(nSLOC, SLOC, Lines)")|Description|
+:-|:-:|:-|
+|_Core Protocol Contracts (10)_|
+|[/packages/contracts/contracts/ActivePool.sol]()|[221]|Manages system-level internal accounting and stETH tokens.|
+|[/packages/contracts/contracts/BorrowerOperations.sol]()|[751]|Entry point to Open, Adjust, and Close Cdps as well as delegate positionManagers.|
+|[/packages/contracts/contracts/CdpManager.sol]()|[578]|Cdp operations and entry point for non-borrower operations on Cdps (Liquidations, Redemptions).|
+|[/packages/contracts/contracts/LiquidationLibrary.sol]()|[700]|Contains liquidation-related functions. Split off due to maximum contract size, delegateCalled by CdpManager.|
+|[/packages/contracts/contracts/CdpManagerStorage.sol]()|[550]|Shared storage variables between CdpManager and Liquidation Library, and common functions.|
+|[/packages/contracts/contracts/CollSurplusPool.sol]()|[83]|Isolated storage of excess collateral owed to users from liquidations or redemptions. Not considered part of system for accounting.|
+|[/packages/contracts/contracts/EBTCToken.sol]()|[223]|ERC20 EbtcToken, with permit approvals and extensible minting.|
+|[/packages/contracts/contracts/Governor.sol]()|[107]|Roles-based authorization contract, adapted and expanded from solmate Authority. Expanded with more convenience view functions and ability to permanently burn capabilities.|
+|[/packages/contracts/contracts/PriceFeed.sol]()|[491]|PriceFeed with primary and secondary oracles and state machine to switch between them and handle failure cases.|
+|[/packages/contracts/contracts/SortedCdps.sol]()|[399]|Data storage for the doubly-linked list of Cdps. Sorting of Cdps is used to enforce redemptions from lowest ICR to highest ICR.|
+|_Lens / Helper Contracts (4)_|
+|[/packages/contracts/contracts/HintHelpers.sol]()|[142]|Generate approximate locations for proper linked list insertion locations for Cdps.|
+|[/packages/contracts/contracts/CRLens.sol]()|[98]|Simulate state changes and view results, to compare to expected results in testing env.|
+|[/packages/contracts/contracts/MultiCdpGetter.sol]()|[92]|Get data from multiple Cdps in one call.|
+|[/packages/contracts/contracts/SyncedLiquidationSequencer.sol]()|[76]|Generate sequences of Cdps available for liquidation, for use with batchLiquidate|
+|_Leverage Macros & Smart Wallets (5)_|
+|[/packages/contracts/contracts/LeverageMacroBase.sol]()|[353]|Common base implementation of the LeverageMacro.|
+|[/packages/contracts/contracts/LeverageMacroDelegateTarget.sol]()|[30]|LeverageMacro variant for use with delegateCall with compatible smart wallets.|
+|[/packages/contracts/contracts/LeverageMacroFactory.sol]()|[46]|Factory for deploying LeverageMacroReference|
+|[/packages/contracts/contracts/LeverageMacroReference.sol]()|[38]|LeverageMacro variant for use as a zap with an individual owner.|
+|[/packages/contracts/contracts/SimplifiedDiamondLike.sol]()|[109]|Smart wallet with custom callback handler support.|
+|_Modified Dependencies (7)_|
+|[/packages/contracts/contracts/Dependencies/Auth.sol]()|[33]|Inherited by contracts consuming authorization rules of Governor.|
+|[/packages/contracts/contracts/Dependencies/AuthNoOwner.sol]()|[36]|Inherited by contracts consuming authorization rules of Governor. Removes owner address that has global 'admin' permission from Auth.|
+|[/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol]()|[10]|Base for standardized flash loans|
+|[/packages/contracts/contracts/Dependencies/EbtcBase.sol]()|[78]|Common definition and base functions for system contracts.|
+|[/packages/contracts/contracts/Dependencies/EbtcMath.sol]()|[62]|More common math functions for system contracts.|
+|[/packages/contracts/contracts/Dependencies/ReentrancyGuard.sol]()|[12]|Simple, optimized reentrancy guard.|
+|[/packages/contracts/contracts/Dependencies/RolesAuthority.sol]()|[102]|Role-based authorization from solmate. Expanded functionality for use with Governor.|
 
-#### Leverage Macros & Smart Wallets
-`/packages/contracts/contracts/LeverageMacroBase.sol`
-`/packages/contracts/contracts/LeverageMacroDelegateTarget.sol`
-`/packages/contracts/contracts/LeverageMacroFactory.sol`
-`/packages/contracts/contracts/LeverageMacroReference.sol`
-`/packages/contracts/contracts/SimplifiedDiamondLike.sol`
-
-Most of the `/Dependency` files are copy-pastes, but the following are custom or modified and are worthy of review:
-
-`/packages/contracts/contracts/Dependencies/Auth.sol`
-`/packages/contracts/contracts/Dependencies/AuthNoOwner.sol`
-`/packages/contracts/contracts/Dependencies/ERC3156FlashLender.sol`
-`/packages/contracts/contracts/Dependencies/EbtcBase.sol`
-`/packages/contracts/contracts/Dependencies/EbtcMath.sol`
-`/packages/contracts/contracts/Dependencies/ReentrancyGuard.sol`
-`/packages/contracts/contracts/Dependencies/RolesAuthority.sol`
-
-## Settings
-
-eBTC will be deployed exclusively on mainnet
-
-The only collateral for eBTC is stETH
 
 ## Known issues from Previous Audits
 
@@ -65,15 +54,19 @@ Acknowledged findings should be considered known and ignored
 
 Fixes to the above findings may have introduced bugs and should be well accepted
 
+## More information
+
+- [Introducing eBTC - A Decentralized Bitcoin Powered by Ethereum Staking](https://forum.badger.finance/t/introducing-ebtc-a-decentralized-bitcoin-powered-by-ethereum-staking/5952)
+- See the [eBTC Cheatsheet](https://gist.github.com/GalloDaSballo/7b060bb97de09c539ec64c533dd352c6) for an up to date list of additional resources.
 
 ## Known issues
 
 ### There is no fallback oracle as of now
+We should gracefully handle the case of no fallback oracle, as well as switching to a fallback oracle from having none.
 
-### If Chainlink burns all gas or the contract is destructed then the Price Feed will revert
+### If Chainlink dependencies burn all gas, or the contract is destructed, then the Price Feed will revert
 
 ### We understand some rounding errors can happen
-
 Badger will:
 - Donate up to 2stETH of collateral to the system contracts as a way to prevent any shortfall due to rounding (avoids off by one errors)
 - Keep open, at all times, a CDP with at least 2 stETH of Collateral with a CR between 150 and 200% (ensures its the last DP)
@@ -81,27 +74,25 @@ Badger will:
 For this reason, rounding errors related to stETH should not be accepted as valid unless they can provably break the 2stETH threshold under reasonable circumnstances (e.g. 100 billion people using the protocol would be considered above reasonable)
 
 
-### stETH can be rugged via an upgrade
-We acknowledge that and understand that’s a risk
+### stETH contract can be arbitrarily upgraded
+We acknowledge that and understand that’s a dependency risk.
 
 ### eBTC Governance has the ability to cause substantial damage
 These impacts but are not limited to:
 
-  - Mint new eBTC (until extensible minting is revoked)
+  - Mint new eBTC (until extensible minting capability is burned)
   - Pause Flashloans and Redemptions
   - Raise fees for Flashloans and Redemtpions
   - Raise the Fee Split of stETH to up to 100%
   - Delay Recovery Mode via the Grace Period to an indefinite amount
 
-eBTC governance should not be able to block depositing, minting, adjusting and closing of positions under any circumnstance
+eBTC governance should however not be able to block depositing, minting, adjusting and closing of positions under any circumstance.
 
 ### Permit Signatures are malleable
-
-Because they use nonces, the malleability cannot be exploited
+Because they use nonces, the malleability cannot be exploited.
 
 ### Malicious Position Managers can steal all tokens from borrowers that grant them approvals
-
-Position Manager can receive Permanent or One Time abilities to perform any operation on behalf of an address
+Position Managers can receive Permanent or One Time abilities to perform any operation on behalf of an address.
 
 Ths means that signing delegation to a malicious address can cause a total loss of funds for all CDPs
 
@@ -111,50 +102,43 @@ We recommend:
 - Ensure that the recipient of the delegation is a safe zap that rescinds it's ownership after the transaction
 - Simulate all your transactions before performing them
 
-### The tokens are StETH and eBTC
+### The tokens of the system are fixed: StETH and eBTC
 
 They do not require safeTransfer nor SafeApprove, eBTC is deployed exclusively on mainnet
 
-
 ### Flashloan Limits can be bypassed
 
-The limitations are capping the value that one call can cause, but by looping, more stETH and more eBTC could be borrowed
-
+The limitations are capping the value that one call can access, but looping to borrow more stETH and more eBTC can occur.
 
 ### Prevening Bad Debt Redistribution
+Closing a CDP or reducing Stake are ways to prevent or minimize redistribution of bad debt during Normal Mode.
 
-Closing a CDP
-
-And Reducing Stake
-
-Are ways to prevent redistribution of bad debt during Normal Mode
-
+Sandwiching the redistribution:
+* close or reduce position
+* bad debt redistribution event occurs
+* re-open or increase position
 
 ### Incorrect Sorting due to Pending Debt and Yield
-
-We have been able to create scenarios in which the sorting of CDPs is incorrect -> TODO: Test case
-
+We have been able to create scenarios during fuzz testing in which the sorting of CDPs invariant is violated. Anticipate example cases shown here. The impact is believed to be minimal in practice.
 
 ### Liquidators can behave in ways that are not ideal to the protocol security
+Liquidators can maximize their expected profits by liquidating from the lowest risk CDP -> highest risk CDP.
 
-Liquidators can maximize their expected profits by liquidating from the lowest risk to the highest risk CDP
+Lower risk CDPs (e.g. 109%) offer more due to the dynamic premium than higher risk CDPs (e.g. 103%)
 
-Highest Risk CDPs due to the dynamic premium, offer lower premium, (3%, which from our benchmarks requires a 2/1 ratio in stableswap a pool before it becomes a concern)
-
+From our benchmarks, assuming liquidations happen at 3% premium requires a 2/1 eBTC ratio in a stableswap pool vs like-kind BTC asset before it becomes a concern (see riskDAO report).
 
 ### Liquidations Premium
-
-Was modelled by Risk DAO
+Was determined via modelling by RiskDAO
 
 3% bad debt is extremely smaller compared to worst case scenarios
 
 And 3% for a stableswap is a crazy high depeg
 
 ### Leverage Macro
+Because swaps may not use all tokens, some dust could be left in the contract.
 
-Because swaps may not use all tokens, some dust would be left in the contract
-
-It can be swept after but may cause operations to be slightly inefficient if slippage occurs between the time the calldata is generated and the call is executed
+It can be swept after, but may cause operations to be slightly inefficient if slippage occurs between the time the calldata is generated and the call is executed.
 
 ### Grace Period Desynchs
 
@@ -174,14 +158,13 @@ If nobody calls the Start or the End of the Grace Period, then:
 - Nobody starts it -> RM Liquidations cannot happen until the Grace Period is started and the time has passed
 
 ### Grace Period can be denied by repaying
+Can be denied by repaying or by depositing more collateral.
 
-Can be denied by repaying or by depositing more collateral
+Repaying or adding more collateral are intended behaviours, they helps the system and reduce the maximum debt that has to be liquidated at a time.
 
-Repaying or adding more collateral are intended behaviours, they helps the system and reduce the maximum debt that has to be liquidated at a time
+Adding collateral raises your CR as well, and it's always cheaper to repay than to deposit collateral.
 
-Adding collateral raises your CR as well, and it's always cheaper to repay than to deposit collateral
-
-Proper risky Liquidations are not delayed in any way
+Proper risky Liquidations are not delayed in any way.
 
 
 ## Other Notes
@@ -196,13 +179,7 @@ Which will allow buying stETH via the highly liquid wBTC - WETH pair
 
 Which allows delta neutral LPing as well as gas efficient liquidations and leverage for smaller sizes (the pool price imbalances more rapidly)
 
-## More information
-
-- [Introducing eBTC - A Decentralized Bitcoin Powered by Ethereum Staking](https://forum.badger.finance/t/introducing-ebtc-a-decentralized-bitcoin-powered-by-ethereum-staking/5952)
-- [eBTC - Builder Update #1](https://forum.badger.finance/t/ebtc-builder-update-1/5975)
-
 ## eBTC System Summary
-- [Disclaimer](#disclaimer)
 - [eBTC Overview](#ebtc-overview)
 - [Liquidations](#liquidations)
   - [Liquidation gas costs](#liquidation-gas-costs)
@@ -213,30 +190,20 @@ Which allows delta neutral LPing as well as gas efficient liquidations and lever
 - [Recovery Mode](#recovery-mode)
 - [Project Structure](#project-structure)
   - [Directories](#directories)
-  - [Branches](#branches)
 - [Core System Architecture](#core-system-architecture)
-  - [Core Smart Contracts](#core-smart-contracts)
-  - [Data and Value Silo Contracts](#data-and-value-silo-contracts)
   - [Contract Interfaces](#contract-interfaces)
   - [PriceFeed and Oracle](#pricefeed-and-oracle)
   - [PriceFeed Logic](#pricefeed-logic)
   - [Testnet PriceFeed and PriceFeed tests](#testnet-pricefeed-and-pricefeed-tests)
   - [PriceFeed limitations and known issues](#pricefeed-limitations-and-known-issues)
   - [Keeping a sorted list of CDPs ordered by ICR](#keeping-a-sorted-list-of-cdps-ordered-by-icr)
-  - [Flow of Ether in eBTC](#flow-of-stETH-in-ebtc)
-  - [Flow of eBTC tokens in eBTC](#flow-of-ebtc-tokens-in-ebtc)
-  - [Flow of LQTY Tokens in eBTC](#flow-of-lqty-tokens-in-ebtc)
 - [Expected User Behaviors](#expected-user-behaviors)
 - [Contract Ownership and Function Permissions](#contract-ownership-and-function-permissions)
 - [Deployment to a Development Blockchain](#deployment-to-a-development-blockchain)
-- [Running Tests](#running-tests)
-  - [Brownie Tests](#brownie-tests)
-  - [OpenEthereum](#openethereum)
-  - [Coverage](#coverage)
 - [System Quantities - Units and Representation](#system-quantities---units-and-representation)
   - [Integer representations of decimals](#integer-representations-of-decimals)
 - [Public Data](#public-data)
-- [Public User-Facing Functions](#public-user-facing-functions)
+- [Core Public User-Facing Functions](#core-public-user-facing-functions)
   - [Borrower (CDP) Operations - `BorrowerOperations.sol`](#borrower-cdp-operations---borroweroperationssol)
   - [CdpManager Functions - `CdpManager.sol`](#cdpmanager-functions---cdpmanagersol)
   - [Hint Helper Functions - `HintHelpers.sol`](#hint-helper-functions---hinthelperssol)
@@ -251,7 +218,7 @@ Which allows delta neutral LPing as well as gas efficient liquidations and lever
   - [Liquidation](#liquidation)
   - [Gas compensation and redemptions](#gas-compensation-and-redemptions)
   - [Gas compensation helper functions](#gas-compensation-helper-functions)
-- [eBTC System Fees](#ebtc-system-fees)
+- [eBTC Redemption Fees](#ebtc-redemption-fees)
   - [Redemption Fee](#redemption-fee)
   - [Fee Schedule](#fee-schedule)
   - [Intuition behind fees](#intuition-behind-fees)
@@ -287,8 +254,7 @@ Which allows delta neutral LPing as well as gas efficient liquidations and lever
     - [Example 2: wrapping the frontend container in HTTPS](#example-2-wrapping-the-dev-ui-container-in-https)
 - [Known Issues](#known-issues)
   - [Front-running issues](#front-running-issues)
-- [Disclaimer](#disclaimer)
-- [Periphery](#Periphery)
+- [Periphery](#periphery)
 
 ## eBTC Overview
 eBTC is a collateralized crypto asset soft pegged to the price of Bitcoin and built on the Ethereum network. It is backed exclusively by Lido's stETH and powered by immutable smart contracts with minimized counterparty reliance. It’s designed to be the most decentralized synthetic BTC in DeFi and offers the ability for anyone in the world to borrow BTC at no cost.
@@ -310,8 +276,6 @@ The tokens are freely exchangeable - anyone with an Ethereum address can send or
 The eBTC system regularly updates the stETH:BTC price via a decentralized data feed. When a CDP falls below a minimum collateralization ratio (MCR) of 110%, it is considered under-collateralized, and is vulnerable to liquidation.
 
 ## Liquidations
-
-
 eBTC implements an open and incentivized liquidation mechanism, where any user can liquidate a CDP that does not have enough collateral. As a reward for their service, the liquidator receives a percentage of the CDP's collateral, ranging from 3% to 10%. Additionally, the liquidator also receives a "Gas Stipend" of 0.2 stETH, which is previously deposited by the borrower as insurance against liquidation costs. See [this](https://hackmd.io/@re73/r19oq9LM2) for details.
 
 Anyone may call the public `liquidate()` function, which will allow the liquidation of under-collateralized CDPs. Alternatively they can call `batchLiquidateCdps()` with a custom list of CDP addresses to attempt to liquidate.
@@ -365,15 +329,11 @@ Economically, Recovery Mode is designed to encourage collateral top-ups and debt
 ## Project Structure
 
 ### Directories
-- `papers` - Whitepaper and math papers inherited from Liquity: a proof of eBTC's CDP order invariant, and a derivation of the scalable Stability Pool staking formula
 - `packages/contracts/` - The backend development folder, contains the Hardhat and Foundry projects, contracts, and tests
 - `packages/contracts/contracts/` - The core back end smart contracts written in Solidity
 - `packages/contracts/test/` - JS test suite for the system. Tests run in Mocha/Chai
 - `packages/contracts/foundry_test/` - Foundry test suite for the system
 - `packages/contracts/tests/` - Python test suite for the system. Tests run in Brownie
-- `packages/contracts/gasTest/` - Non-assertive tests that return gas costs for eBTC operations under various scenarios
-- `packages/contracts/fuzzTests/` - Echidna tests, and naive "random operation" tests 
-- `packages/contracts/migrations/` - contains Hardhat scripts for deploying the smart contracts to the blockchain
 - `packages/contracts/utils/` - external Hardhat and node scripts - deployment helpers, gas calculators, etc
 
 Backend development is done in the Hardhat framework, and allows eBTC to be deployed on the Hardhat EVM network for fast compilation and test execution.
@@ -392,37 +352,6 @@ All application logic and data is contained in these contracts - there is no nee
 The system has no admin key or human governance. Once deployed, it is fully automated, decentralized and no user holds any special privileges in or control over the system.
 
 The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control CDP state updates and movements of stETH and eBTC tokens around the system.
-
-### Core Smart Contracts
-
-`BorrowerOperations.sol` - contains the basic operations by which borrowers interact with their CDP: CDP creation, stETH top-up / withdrawal, eBTC issuance and repayment. BorrowerOperations functions call in to CdpManager, telling it to update CDP state, where necessary. BorrowerOperations functions also call in to the various Pools, telling them to move stETH/eBTC between Pools or between Pool <> user, where necessary.
-
-`CdpManager.sol` - contains functionality for liquidations and redemptions. It sends redemption fees to the `FeeRecipient` contract. Also contains the state of each CDP - i.e. a record of the CDP’s collateral and debt. CdpManager does not hold value (i.e. Ether / other tokens). CdpManager functions call in to the various Pools to tell them to move Ether/tokens between Pools, where necessary.
-
-`EbtcBase.sol` - Both CdpManager and BorrowerOperations inherit from the parent contract EbtcBase, which contains global constants and some common functions.
-
-`EBTCToken.sol` - the eBTC token contract, which implements the ERC20 fungible token standard in conjunction with EIP-2612 and a mechanism that blocks (accidental) transfers to contracts and addresses like address(0) that are not supposed to receive funds through direct transfers. The contract mints, burns and transfers eBTC tokens.
-
-`SortedCdps.sol` - a doubly linked list that stores addresses of CDP owners, sorted by their individual collateralization ratio (ICR). It inserts and re-inserts CDPs at the correct position, based on their ICR.
-
-`PriceFeed.sol` - Contains functionality for obtaining the current stETH:BTC price, which the system uses for calculating collateralization ratios.
-
-`HintHelpers.sol` - Helper contract, containing the read-only functionality for calculation of accurate hints to be supplied to borrower operations and redemptions.
-
-### Data and Value Silo Contracts
-These contracts hold stETH and/or eBTC for their respective parts of the system, and contain minimal logic:
-
-`ActivePool.sol` - holds the total stETH balance and records the total eBTC debt of the active CDPs.
-
-`DefaultPool.sol` - holds the total stETH balance and records the total eBTC debt of the liquidated CDPs that are pending redistribution to active CDPs. If a CDP has pending stETH/debt “rewards” in the DefaultPool, then they will be applied to the CDP when it next undergoes a borrower operation, a redemption, or a liquidation.
-
-`CollSurplusPool.sol` - holds the stETH surplus from CDPs that have been fully redeemed from as well as from CDPs with an ICR > MCR that were liquidated in Recovery Mode. Sends the surplus back to the owning borrower, when told to do so by `BorrowerOperations.sol`.
-
-`GasPool.sol` - holds the total eBTC liquidation reserves. eBTC is moved into the `GasPool` when a CDP is opened, and moved out when a CDP is liquidated or closed.
-
-### Contract Interfaces
-
-`ICdpManager.sol`, `IPool.sol` etc. These provide specification for a contract’s functions, without implementation. They are similar to interfaces in Java or C#.
 
 ### PriceFeed and Oracle
 
@@ -501,74 +430,6 @@ Nodes also remain sorted as the stETH:BTC price varies, since price fluctuations
 
 Thus, nodes need only be re-inserted to the sorted list upon a CDP operation - when the owner adds or removes collateral or debt to their position.
 
-### Flow of stETH in eBTC
-
-![Flow of stETH](images/ETH_flows.svg)
-
-stETH in the system lives in three Pools: the ActivePool, the DefaultPool and the StabilityPool. When an operation is made, stETH is transferred in one of three ways:
-
-- From a user to a Pool
-- From a Pool to a user
-- From one Pool to another Pool
-
-stETH is recorded on an _individual_ level, but stored in _aggregate_ in a Pool. An active CDP with collateral and debt has a struct in the CdpManager that stores its stETH collateral value in a uint, but its actual stETH is in the balance of the ActivePool contract.
-
-Likewise, the StabilityPool holds the total accumulated stETH gains from liquidations for all depositors.
-
-**Borrower Operations**
-
-| Function                     | stETH quantity                        | Path                                       |
-|------------------------------|-------------------------------------|--------------------------------------------|
-| openCdp                    | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
-| addColl                      | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
-| withdrawColl                 | _collWithdrawal parameter           | ActivePool->msg.sender                     |
-| adjustCdp: adding stETH      | msg.value                           | msg.sender->BorrowerOperations->ActivePool |
-| adjustCdp: withdrawing stETH | _collWithdrawal parameter           | ActivePool->msg.sender                     |
-| closeCdp                   | All remaining                       | ActivePool->msg.sender                     |
-| claimCollateral              | CollSurplusPool.balance[msg.sender] | CollSurplusPool->msg.sender                |
-
-**CDP Manager**
-
-| Function                                | stETH quantity                           | Path                          |
-|-----------------------------------------|----------------------------------------|-------------------------------|
-| liquidate (offset)                      | collateral to be offset                | ActivePool->StabilityPool     |
-| liquidate (redistribution)              | collateral to be redistributed         | ActivePool->DefaultPool       |
-| liquidateCdps (offset)                | collateral to be offset                | ActivePool->StabilityPool     |
-| liquidateCdps (redistribution)        | collateral to be redistributed         | ActivePool->DefaultPool       |
-| batchLiquidateCdps (offset)           | collateral to be offset                | ActivePool->StabilityPool     |
-| batchLiquidateCdps (redistribution).  | collateral to be redistributed         | ActivePool->DefaultPool       |
-| redeemCollateral                        | collateral to be swapped with redeemer | ActivePool->msg.sender        |
-| redeemCollateral                        | redemption fee                         | ActivePool->FeeRecipient       |
-| redeemCollateral                        | CDP's collateral surplus             | ActivePool->CollSurplusPool |
-
-### Flow of eBTC tokens in eBTC
-
-![Flow of eBTC](images/EBTC_flows.svg)
-
-When a user issues debt from their CDP, eBTC tokens are minted to their own address, and a debt is recorded on the CDP. Conversely, when they repay their CDP’s eBTC debt, eBTC is burned from their address, and the debt on their CDP is reduced.
-
-Redemptions burn eBTC from the redeemer’s balance, and reduce the debt of the CDP redeemed against.
-
-**Borrower Operations**
-
-| Function                      | eBTC Quantity | ERC20 Operation                      |
-|-------------------------------|---------------|--------------------------------------|
-| openCdp                     | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| withdrawDebt                  | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| repayDebt                     | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
-| adjustCdp: withdrawing eBTC | Drawn eBTC    | eBTC._mint(msg.sender, _EBTCAmount)  |
-| adjustCdp: repaying eBTC    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount)  |
-| closeCdp                    | Repaid eBTC   | eBTC._burn(msg.sender, _EBTCAmount) |
-
-**CDP Manager**
-
-| Function                 | eBTC Quantity            | ERC20 Operation                                  |
-|--------------------------|--------------------------|--------------------------------------------------|
-| liquidate (offset)       | eBTC to offset with debt | eBTC._burn(stabilityPoolAddress, _debtToOffset); |
-| liquidateCdps (offset)   | eBTC to offset with debt | eBTC._burn(stabilityPoolAddress, _debtToOffset); |
-| batchLiquidateCdps (offset) | eBTC to offset with debt | eBTC._burn(stabilityPoolAddress, _debtToOffset); |
-| redeemCollateral         | eBTC to redeem           | eBTC._burn(msg.sender, _EBTC)                    |
-
 ## Expected User Behaviors
 
 Generally, borrowers call functions that trigger CDP operations on their own CDP.
@@ -579,62 +440,15 @@ eBTC token holders may also redeem their tokens, and swap an amount of tokens 1-
 
 ## Contract Ownership and Function Permissions
 
-All the core smart contracts inherit from the OpenZeppelin `Ownable.sol` contract template. As such all contracts have a single owning address, which is the deploying address. The contract's ownership is renounced either upon deployment, or immediately after its address setter has been called, connecting it to the rest of the core eBTC system. 
-
 Several public and external functions have modifiers such as `requireCallerIsCdpManager`, `requireCallerIsActivePool`, etc - ensuring they can only be called by the respective permitted contract.
 
 Functions subject to minimal governance use the `isAuthorized()` modifier inherited from `AuthNoOwner.sol`. The authority contract is the Governor. See [solmate auth paradigm](https://github.com/transmissions11/solmate/tree/main/src/auth) which this functionality is lightly modified from.
 
 ## Deployment to a Development Blockchain
 
-The Hardhat migrations script and deployment helpers in `utils/deploymentHelpers.js` deploy all contracts, and connect all contracts to their dependency contracts, by setting the necessary deployed addresses.
+The script in `mainnetDeployment/eBTCDeployScript.js` deploy all contracts, and connects all contracts to their dependency contracts, by setting the necessary deployed addresses.
 
-The project is deployed on the Goerli testnet.
-
-## Running Tests
-
-Run all tests with `npx hardhat test`, or run a specific test with `npx hardhat test ./test/contractTest.js`
-
-Tests are run against the Hardhat EVM.
-
-### Brownie Tests
-There are some special tests that are using Brownie framework.
-
-To test, install brownie with:
-```
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-
-pipx install eth-brownie
-```
-
-and add numpy with:
-```
-pipx inject eth-brownie numpy
-```
-
-Add OpenZeppelin package:
-```
-brownie pm install OpenZeppelin/openzeppelin-contracts@3.3.0
-```
-
-Run, from `packages/contracts/`:
-```
-brownie test -s
-```
-
-### Coverage
-
-To check test coverage you can run:
-```
-yarn coverage
-```
-
-You can see the coverage status at mainnet deployment [here](https://codecov.io/gh/liquity/dev/tree/8f52f2906f99414c0b1c3a84c95c74c319b7a8c6).
-
-![Impacted file tree graph](https://codecov.io/gh/liquity/dev/pull/707/graphs/tree.svg?width=650&height=150&src=pr&token=7AJPQ3TW0O&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=liquity)
-
-There’s also a [pull request](https://github.com/liquity/dev/pull/515) to increase the coverage, but it hasn’t been merged yet because it modifies some smart contracts (mostly removing unnecessary checks).
+The project is deployed on the Sepolia testnet.
 
 ## System Quantities - Units and Representation
 
@@ -656,26 +470,29 @@ etc.
 
 ## Public Data
 
-All data structures with the ‘public’ visibility specifier are ‘gettable’, with getters automatically generated by the compiler. Simply call `CdpManager::MCR()` to get the MCR, etc.
-
-## Public User-Facing Functions
+## Core Public User-Facing Functions
 
 ### Borrower (CDP) Operations - `BorrowerOperations.sol`
 
 - `openCdp`
+- `openCdpFor`
 - `addColl`
 - `withdrawColl`
 - `withdrawDebt`
 - `repayDebt`
-- `_adjustCdp`
-- `closeCdp()`
+- `adjustCdp`
+- `adjustCdpWithColl`
+- `closeCdp`
 - `claimCollateral`
+- `setPositionManagerApproval`
+- `revokePositionManagerApproval`
+- `renouncePositionManagerApproval`
+- `permitPositionManagerApproval`
 
 ### CdpManager Functions - `CdpManager.sol`
 
 - `liquidate`
 - `partiallyLiquidate`
-- `liquidateCdps`
 - `batchLiquidateCdps`
 - `redeemCollateral`
 
@@ -880,11 +697,11 @@ This means that liquidations are always incentivized within the eBTC ecosystem w
 
 ### Gas compensation schedule
 
-When a borrower opens a CDP, an additional 0.2 stETH are required and the equivalent amount of shares are sent to a dedicated contract (`GasPool`) for gas compensation - the "gas pool".
+When a borrower opens a CDP, an additional 0.2 stETH are required and the equivalent amount of shares are sent to the `ActivePool` for gas compensation. Their accounting is kept separate from the core system collateral.
 
-When a borrower closes their active CDP, this gas compensation is refunded: the amount of shares sent by the user are transferred back from the GasPool to the user. Note that these shares may represent a larger amount of stETH than before due to the accrued yield.
+When a borrower closes their active CDP, this gas compensation is refunded: the amount of shares sent by the user are transferred back from the ActivePool to the user. Note that these shares may represent a larger amount of stETH than before due to the accrued yield or a smaller amount due to negative rebases.
 
-The purpose of the 0.2 stETH Liquidation Reserve is to provide a minimum level of gas compensation, regardless of the CDP's collateral size or the current stETH price.
+The purpose of the 0.2 stETH Liquidation Reserve is to provide a minimum level of gas compensation, regardless of the CDP's collateral size or the current stETH market price.
 
 ### Liquidation
 
@@ -896,13 +713,7 @@ As mentioned as well, if liquidated below 103%, the liquidator is guaranteed a 3
 
 If the redemption causes a CDP's full debt to be cancelled, the CDP is then closed: Gas Stipend from the Liquidation Reserve becomes avaiable for the borrower to reclaim along of the CDP's Collateral Surplus.
 
-### Gas compensation helper functions
-
-Gas compensation functions are found in the parent _EbtcBase.sol_ contract:
-
-`_getCompositeDebt(uint _debt)` returns the composite debt (drawn debt + gas compensation) of a CDP, for the purpose of ICR calculation.
-
-## eBTC System Fees
+## eBTC Redemption Fees
 
 eBTC generates fee revenue from redemptions. Fees are captured by the feeRecipient contract. Redemptions fees are paid in stETH.
 
@@ -910,7 +721,7 @@ eBTC generates fee revenue from redemptions. Fees are captured by the feeRecipie
 
 The redemption fee is taken as a cut of the total stETH drawn from the system in a redemption. It is based on the current redemption rate.
 
-In the `CdpManager`, `redeemCollateral` calculates the stETH fee and transfers it to the staking contract, `FeeRecipient.sol`
+In the `CdpManager`, `redeemCollateral` calculates the stETH fee and it is allocated to the `FeeRecipient` address in the `ActivePool`.
 
 ### Fee Schedule
 
@@ -942,17 +753,13 @@ Time is measured in units of minutes. The `baseRate` decay is based on `block.ti
 The decay parameter is tuned such that the fee changes by a factor of 0.99 per hour, i.e. it loses 1% of its current value per hour. At that rate, after one week, the baseRate decays to 18% of its prior value. The exact decay parameter is subject to change, and will be fine-tuned via economic modelling.
 
 ## Redistributions and Corrected Stakes
-> 🦉 This section is not updated for eBTC, as there is no stability pool. The mechanics of redistribution still apply though
-
-When a liquidation occurs and the Stability Pool is empty or smaller than the liquidated debt, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated CDP, to all active CDPs in the system, in proportion to their collateral.
+When a liquidation occurs on an undercollateralized Cdp and bad debt remains after paying out the premium, the redistribution mechanism should distribute the remaining collateral and debt of the liquidated CDP, to all active CDPs in the system, in proportion to their collateral.
 
 For two CDPs A and B with collateral `A.coll > B.coll`, CDP A should earn a bigger share of the liquidated collateral and debt.
 
-In eBTC it is important that all active CDPs remain ordered by their ICR. We have proven that redistribution of the liquidated debt and collateral proportional to active Cdps’ collateral, preserves the ordering of active CDPs by ICR, as liquidations occur over time.  Please see the [proofs section](https://github.com/liquity/dev/tree/main/papers).
+However, when it comes to implementation, Ethereum gas costs make it too expensive to loop over all CDPs and write new data to storage for each one. When a CDP receives redistributed debt, the system does not update the CDP's debt value - instead, the debt remains "pending" until the borrower's next operation (or more accurately, next operation directly modifying that CDP).
 
-However, when it comes to implementation, Ethereum gas costs make it too expensive to loop over all CDPs and write new data to storage for each one. When a CDP receives redistribution rewards, the system does not update the CDP's collateral and debt properties - instead, the Cdp’s rewards remain "pending" until the borrower's next operation.
-
-These “pending rewards” can not be accounted for in future reward calculations in a scalable way.
+These “pending debt redistributions" can not be accounted for in future calculations in a scalable way.
 
 However: the ICR of a CDP is always calculated as the ratio of its total collateral to its total debt. So, a Cdp’s ICR calculation **does** include all its previous accumulated rewards.
 
@@ -966,7 +773,7 @@ This can break the ordering of CDPs by ICR - see the [proofs section](https://gi
 
 ### Corrected Stake Solution
 
-We use a corrected stake to account for this discrepancy, and ensure that newer CDPs earn the same liquidation rewards per unit of total collateral, as do older CDPs with pending rewards. Thus the corrected stake ensures the sorted list remains ordered by ICR, as liquidation events occur over time.
+We use a corrected stake to account for this discrepancy, and ensure that newer CDPs earn the same liquidation rewards per unit of total collateral, as do older CDPs with pending changes. Thus the corrected stake ensures the sorted list remains ordered by ICR, as liquidation events occur over time.
 
 When a CDP is opened, its stake is calculated based on its collateral, and snapshots of the entire system collateral and debt which were taken immediately after the last liquidation.
 
@@ -984,7 +791,7 @@ To convince yourself this corrected stake preserves ordering of active CDPs by I
 
 ## Math Proofs
 
-The eBTC implementation relies on some important system properties and mathematical derivations.
+The eBTC implementation relies on some important system properties and mathematical derivations from Liquity's initial design.
 
 In particular, we have:
 
@@ -997,35 +804,27 @@ PDFs of these can be found in https://github.com/liquity/dev/blob/main/papers
 
 _**CDP:**_ a collateralized debt position, bound to a single Ethereum address. Also referred to as a “CDP” in similar protocols.
 
-_**eBTC**_:  The soft-pegged asset that may be issued from a user's collateralized debt position and freely transferred/traded to any Ethereum address. Intended to maintain parity with the US dollar, and can always be redeemed directly with the system: 1 eBTC is always exchangeable for 1 BTC worth of stETH.
+_**eBTC**_:  The soft-pegged asset that may be issued from a user's collateralized debt position and freely transferred/traded to any Ethereum address. Intended to maintain parity with BTC, and can always be redeemed directly with the system: 1 eBTC is always exchangeable for 1 BTC worth of stETH, minus fees.
 
 _**Active CDP:**_ an Ethereum address owns an “active Cdp” if there is a node in the `SortedCdps` list with ID equal to the address, and non-zero collateral is recorded on the CDP struct for that address.
 
 _**Closed CDP:**_ a CDP that was once active, but now has zero debt and zero collateral recorded on its struct, and there is no node in the `SortedCdps` list with ID equal to the owning address.
 
-_**Active collateral:**_ the amount of stETH collateral recorded on a Cdp’s struct
+_**Cached collateral:**_ the amount of stETH collateral recorded on a Cdp’s struct
 
-_**Active debt:**_ the amount of eBTC debt recorded on a Cdp’s struct
+_**Cached debt:**_ the amount of eBTC debt recorded on a Cdp’s struct
 
-_**Entire collateral:**_ the sum of a Cdp’s active collateral plus its pending collateral rewards accumulated from distributions
+_**Synced collateral:**_ the sum of a Cdp’s active collateral plus its pending collateral rewards accumulated from postive stETH rebases
 
-_**Entire debt:**_ the sum of a Cdp’s active debt plus its pending debt rewards accumulated from distributions
+_**Sycned debt:**_ the sum of a Cdp’s active debt plus its pending debt accumulated from distributions
 
 _**Individual collateralization ratio (ICR):**_ a CDP's ICR is the ratio of the dollar value of its entire collateral at the current stETH:BTC price, to its entire debt
 
 _**Nominal collateralization ratio (nominal ICR, NICR):**_ a CDP's nominal ICR is its entire collateral (in stETH) multiplied by 100e18 and divided by its entire debt.
 
-_**Total active collateral:**_ the sum of active collateral over all CDPs. Equal to the stETH in the ActivePool.
+_**System collateral:**_ the sum of active collateral over all CDPs. Equal to the stETH in the ActivePool allocated to the system from internal accounting values.
 
-_**Total active debt:**_ the sum of active debt over all CDPs. Equal to the eBTC in the ActivePool.
-
-_**Total defaulted collateral:**_ the total stETH collateral in the DefaultPool
-
-_**Total defaulted debt:**_ the total eBTC debt in the DefaultPool
-
-_**Entire system collateral:**_ the sum of the collateral in the ActivePool and DefaultPool
-
-_**Entire system debt:**_ the sum of the debt in the ActivePool and DefaultPool
+_**System debt:**_ the sum of active debt over all CDPs. Equal to the eBTC in the ActivePool.
 
 _**Total collateralization ratio (TCR):**_ the ratio of the dollar value of the entire system collateral at the current stETH:BTC price, to the entire system debt
 
@@ -1033,45 +832,15 @@ _**Critical collateralization ratio (CCR):**_ 125%. When the TCR is below the CC
 
 _**Borrower:**_ an externally owned account or contract that locks collateral in a CDP and issues eBTC tokens to their own address. They “borrow” eBTC tokens against their stETH collateral.
 
-_**Depositor:**_ an externally owned account or contract that has assigned eBTC tokens to the Stability Pool, in order to earn returns from liquidations, and receive LQTY token issuance.
-
 _**Redemption:**_ the act of swapping eBTC tokens with the system, in return for an equivalent value of stETH. Any account with a eBTC token balance may redeem them, whether or not they are a borrower.
 
 When eBTC is redeemed for stETH, the stETH is always withdrawn from the lowest collateral CDPs, in ascending order of their collateralization ratio. A redeemer can not selectively target CDPs with which to swap eBTC for stETH.
 
-_**Repayment:**_ when a borrower sends eBTC tokens to their own CDP, reducing their debt, and increasing their collateralization ratio.
-
-_**Retrieval:**_ when a borrower with an active CDP withdraws some or all of their stETH collateral from their own CDP, either reducing their collateralization ratio, or closing their CDP (if they have zero debt and withdraw all their stETH)
-
-_**Liquidation:**_ the act of force-closing an undercollateralized CDP and redistributing its collateral and debt.
+_**Liquidation:**_ the act of force-closing a CDP that is considered undercollateralized in the current system mode, and distributing its collateral and debt.
 
 Liquidation functionality is permissionless and publically available - anyone may liquidate an undercollateralized CDP, or batch liquidate CDPs in ascending order of collateralization ratio.
 
-_**Collateral Surplus**_: The difference between the dollar value of a CDP's stETH collateral, and the dollar value of its eBTC debt. In a full liquidation, this is the net gain earned by the recipients of the liquidation.
-
-_**Redistribution:**_ assignment of liquidated debt and collateral directly to active CDPs, in proportion to their collateral.
-
-_**Gas compensation:**_ A refund, in eBTC and stETH, automatically paid to the caller of a liquidation function, intended to at least cover the gas cost of the transaction. Designed to ensure that liquidators are not dissuaded by potentially high gas costs.
-
-## Development
-
-The eBTC monorepo is based on Yarn's [workspaces](https://classic.yarnpkg.com/en/docs/workspaces/) feature. You might be able to install some of the packages individually with npm, but to make all interdependent packages see each other, you'll need to use Yarn.
-
-In addition, some package scripts require Docker to be installed (Docker Desktop on Windows and Mac, Docker Engine on Linux).
-
-### Prerequisites
-
-You'll need to install the following:
-
-- [Git](https://help.github.com/en/github/getting-started-with-github/set-up-git) (of course)
-- [Node v12.x](https://nodejs.org/dist/latest-v12.x/)
-- [Yarn](https://classic.yarnpkg.com/en/docs/install)
-
-#### Making node-gyp work
-
-eBTC indirectly depends on some packages with native addons. To make sure these can be built, you'll have to take some additional steps. Refer to the subsection of [Installation](https://github.com/nodejs/node-gyp#installation) in node-gyp's README that corresponds to your operating system.
-
-Note: you can skip the manual installation of node-gyp itself (`npm install -g node-gyp`), but you will need to install its prerequisites to make sure eBTC can be installed.
+_**Gas stipend:**_ A fixed value, in stETH, automatically paid to the caller of a liquidation function that fully liquidates a CDP. Intended to at least cover the gas cost of the transaction. Designed to ensure that liquidators are not dissuaded by potentially high gas costs.
 
 ### Clone & Install
 
@@ -1085,78 +854,20 @@ yarn
 
 There are a number of scripts in the top-level package.json file to ease development, which you can run with yarn.
 
-#### Run all tests
+#### Run tests
 
+Hardhat test suite
 ```
 yarn test
 ```
 
-#### Deploy contracts to a testnet
-
-E.g.:
-
+Foundry test suite
 ```
-yarn deploy --network ropsten
+forge test
 ```
 
-Supported networks are currently: ropsten, kovan, rinkeby, goerli. The above command will deploy into the default channel (the one that's used by the public dev-frontend). To deploy into the internal channel instead:
-
-```
-yarn deploy --network ropsten --channel internal
-```
-
-You can optionally specify an explicit gas price too:
-
-```
-yarn deploy --network ropsten --gas-price 20
-```
-
-After a successful deployment, the addresses of the newly deployed contracts will be written to a version-controlled JSON file under `packages/lib-ethers/deployments/default`.
-
-To publish a new deployment, you must execute the above command for all of the following combinations:
-
-| Network | Channel  |
-| ------- | -------- |
-| ropsten | default  |
-| kovan   | default  |
-| rinkeby | default  |
-| goerli  | default  |
-
-At some point in the future, we will make this process automatic. Once you're done deploying to all the networks, execute the following command:
-
-```
-yarn save-live-version
-```
-
-This copies the contract artifacts to a version controlled area (`packages/lib/live`) then checks that you really did deploy to all the networks. Next you need to commit and push all changed files. The repo's GitHub workflow will then build a new Docker image of the frontend interfacing with the new addresses.
-
-
-#### Start a local fork blockchain and deploy the contracts
-1. Create a `secrets.js` file within the @ebtc/contracts workspace (You can use this [template](packages/contracts/secrets.js.template))
-2. Add an `alchemyAPIKey` to the file
-3. Open a separate command line window, navigate to the ebtc project's root and call the following to launch the local fork nework:
-```
-yarn start-fork
-```
-4. On the main command line window, navigate to the ebtc project's root and call the following to run the local deployment script:
-```
-yarn fork-deployment
-```
-
-The script will do the following:
-- Deploy all contracts locally and connect and configure them
-- Open a CDP position from the first local account
-- Create a Uniswap trading pair for eBTC/wETH and seed it
-- Open a CDP position from the second local account
-- Output all local deployment addresses to a new file called `localForkDeploymentOutput.json` under `packages/contracts/mainnetDeployment/`
-
-**NOTES:**
-- Should the script be runned again under the same active local network, the deployed addresses will be reused
-- Terminating the local fork network will flush the deployment state. Starting a new environment will require a new deployment, the script will automatically delete your latest deployment record and create a new one if it detects that the addresses doesn't match any instance of the contracts on the new network
-- Bear in mind that redeploying sometimes lead to new addresses being generated
-
-## Known Issues
-These issues are not modified from the text of the Liquity readme, and may no longer be relevant or may behave differently within the context of eBTC.
+## Known Issues (Liquity)
+> 🦉 These issues are not modified from the text of the Liquity readme, and may no longer be relevant or may behave differently within the context of eBTC.
 
 ### Temporary and slightly inaccurate TCR calculation within `batchLiquidateCdps` in Recovery Mode. 
 
@@ -1248,38 +959,4 @@ Adds a check to allow callbacks or allow any call to be handled by it's fallback
 Allows to specify a different implementation for each function selector
 -> Thanks to `callbackHandler` any function sig (beside ones clashing with the basic ones), can be added to the proxy, instead of having a proxy by proxy upgrade pattern
 
-
-## Additional Extra Resources
-
-### Full blown Python Simulation of CDP System
-
-https://github.com/GalloDaSballo/CDP-Sim
-
-### Selected Python Scripts to simulate specific economic behaviours
-
-https://github.com/GalloDaSballo/Cdp-Demo/tree/main/scripts
-
-### TODO: Chart for various Operations, Chart for Various Architectures and Flows
-
-### TODO: MISC
-
-### Simulate Risky CDPs ratio given TCR
-
-https://gist.github.com/GalloDaSballo/f02d887cfd1efd483b49be8201d4c960
-
-### Repay is better than delaying the RM
-
-https://gist.github.com/GalloDaSballo/27ddbf6cb06d8fe8368d2611c4eecc40
-
-### Cost of Reorgs
-https://gist.github.com/GalloDaSballo/5a0eb205d72df5b0d033b55f3baaa927
-
-
-### Cost of DOS of 10 / 15 minutes
-https://gist.github.com/GalloDaSballo/0a33a8b07e681d49c8228b6f8e9c9bd2
-
-
-## Video Tour
-
-### Happy Path, Open, Adjust, Close
 
