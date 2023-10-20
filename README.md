@@ -68,7 +68,7 @@ We should gracefully handle the case of no fallback oracle, as well as switching
 
 ### We understand some rounding errors can happen
 Badger will:
-- Donate up to 2stETH of collateral to the system contracts as a way to prevent any shortfall due to rounding (avoids off by one errors)
+- Donate up to 2 stETH of collateral to the system contracts as a way to prevent any shortfall due to rounding (avoids off by one errors)
 - Keep open, at all times, a CDP with at least 2 stETH of Collateral with a CR between 150 and 200% (ensures its the last DP)
 
 For this reason, rounding errors related to stETH should not be accepted as valid unless they can provably break the 2stETH threshold under reasonable circumnstances (e.g. 100 billion people using the protocol would be considered above reasonable)
@@ -182,7 +182,6 @@ Which allows delta neutral LPing as well as gas efficient liquidations and lever
 ## eBTC System Summary
 - [eBTC Overview](#ebtc-overview)
 - [Liquidations](#liquidations)
-  - [Liquidation gas costs](#liquidation-gas-costs)
 - [eBTC Token Redemption](#ebtc-token-redemption)
   - [Partial redemption](#partial-redemption)
   - [Full redemption](#full-redemption)
@@ -280,10 +279,6 @@ eBTC implements an open and incentivized liquidation mechanism, where any user c
 
 Anyone may call the public `liquidate()` function, which will allow the liquidation of under-collateralized CDPs. Alternatively they can call `batchLiquidateCdps()` with a custom list of CDP addresses to attempt to liquidate.
 
-### Liquidation gas costs
-
-Currently, mass liquidations performed via the above functions cost 60-65k gas per CDP. Thus the system can liquidate up to a maximum of 95-105 CDPs in a single transaction.
-
 ## eBTC Token Redemption
 
 Any eBTC holder (whether or not they have an active CDP) may redeem their eBTC directly with the system. Their eBTC is exchanged for stETH, at face value: redeeming x eBTC tokens returns \$x worth of stETH (minus a [redemption fee](#redemption-fee)).
@@ -322,7 +317,7 @@ Recovery Mode kicks in when the total collateralization ratio (TCR) of the syste
 
 During Recovery Mode, liquidation conditions are relaxed, and the system blocks borrower transactions that would further decrease the TCR. New eBTC may only be issued by adjusting existing CDPs in a way that improves their ICR, or by opening a new CDP with an ICR of >=125%. In general, if an existing CDP's adjustment reduces its ICR, the transaction is only executed if the resulting TCR is above 125%
 
-Recovery Mode is structured to incentivize borrowers to behave in ways that promptly raise the TCR back above 150%.
+Recovery Mode is structured to incentivize borrowers to behave in ways that promptly raise the TCR back above 125%.
 
 Economically, Recovery Mode is designed to encourage collateral top-ups and debt repayments, and also itself acts as a self-negating deterrent: the possibility of it occurring actually guides the system away from ever reaching it.
 
@@ -345,22 +340,21 @@ Fees generated through the core protocol are managed at an external FeeRecipient
 
 ## Core System Architecture
 
-The core eBTC system consists of several smart contracts, which are deployable to the Ethereum blockchain.
+The core eBTC system consists of several smart contracts.
 
 All application logic and data is contained in these contracts - there is no need for a separate database or back end logic running on a web server. In effect, the Ethereum network is itself the eBTC back end. As such, all balances and contract data are public.
 
-The system has no admin key or human governance. Once deployed, it is fully automated, decentralized and no user holds any special privileges in or control over the system.
 
 The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold the user-facing public functions, and contain most of the internal system logic. Together they control CDP state updates and movements of stETH and eBTC tokens around the system.
 
 ### PriceFeed and Oracle
 
-eBTC functions that require the most current stETH:BTC price data fetch the price dynamically, as needed, via the core `PriceFeed.sol` contract using the Chainlink stETH:BTC reference contract as its primary and Tellor's stETH:BTC price feed as its secondary (fallback) data source. PriceFeed is stateful, i.e. it records the last good price that may come from either of the two sources based on the contract's current state.
+eBTC functions that require the most current stETH:BTC price data fetch the price dynamically, as needed, via the core `PriceFeed.sol` contract using the Chainlink stETH:BTC reference contract as its primary and can use another oracle source as a secondary. PriceFeed is stateful, i.e. it records the last good price that may come from either of the two sources based on the contract's current state.
 
-The fallback logic distinguishes 3 different failure modes for Chainlink and 2 failure modes for Tellor:
+The fallback logic distinguishes 3 different failure modes for Chainlink and 2 failure modes for the backup:
 
 - `Frozen` (for both oracles): last price update more than 4 hours ago
-- `Broken` (for both oracles): response call reverted, invalid timeStamp that is either 0 or in the future, or reported price is non-positive (Chainlink) or zero (Tellor). Chainlink is considered broken if either the response for the latest round _or_ the response for the round before the latest fails one of these conditions.
+- `Broken` (for both oracles): response call reverted, invalid timeStamp that is either 0 or in the future, or reported price is non-positive (Chainlink) or zero (Backup). Chainlink is considered broken if either the response for the latest round _or_ the response for the round before the latest fails one of these conditions.
 - `PriceChangeAboveMax` (Chainlink only): higher than 50% deviation between two consecutive price updates
 
 There is also a return condition `bothOraclesLiveAndUnbrokenAndSimilarPrice` which is a function returning true if both oracles are live and not broken, and the percentual difference between the two reported prices is below 5%.
@@ -380,29 +374,27 @@ The PriceFeed contract fetches the current price and previous price from Chainli
 
 The `PriceFeedTestnet.sol` is a mock PriceFeed for testnet and general back end testing purposes, with no oracle connection. It contains a manual price setter, `setPrice()`, and a getter, `getPrice()`, which returns the latest stored price.
 
-The mainnet PriceFeed is tested in `test/PriceFeedTest.js`, using a mock Chainlink aggregator and a mock TellorMaster contract.
-
 ### PriceFeed limitations and known issues
 
 The purpose of the PriceFeed is to be at least as good as an immutable PriceFeed that relies purely on Chainlink, while also having some resilience in case of Chainlink failure / timeout, and chance of recovery.
 
-The PriceFeed logic consists of automatic on-chain decision-making for obtaining fallback price data from Tellor, and if possible, for returning to Chainlink if/when it recovers.
+The PriceFeed logic consists of automatic on-chain decision-making for obtaining fallback price data from the backup, and if possible, for returning to Chainlink if/when it recovers.
 
 The PriceFeed logic is complex, and although we would prefer simplicity, it does allow the system a chance of switching to an accurate price source in case of a Chainlink failure or timeout, and also the possibility of returning to an honest Chainlink price after it has failed and recovered.
 
 We believe the benefit of the fallback logic is worth the complexity. If we had no fallback logic and Chainlink were to be hacked or permanently fail, eBTC would become unusable without a backup.
 
-Governance is also capable of setting a new backup oracle feed, as long as it conforms to the tellor interface.
+Governance is also capable of setting a new backup oracle feed, as long as it conforms to the interface.
 
 **Chainlink Decimals**: the `PriceFeed` checks for and uses the latest `decimals` value reported by the Chainlink aggregator in order to calculate the Chainlink price at 18-digit precision, as needed by eBTC.  `PriceFeed` does not assume a value for decimals and can handle the case where Chainlink change their decimal value. 
 
 However, the check `chainlinkIsBroken` uses both the current response from the latest round and the response previous round. Since `decimals` is not attached to round data, eBTC has no way of knowing whether decimals has changed between the current round and the previous round, so we assume it is the same. eBTC assumes the current return value of decimals() applies to both current round `i` and previous round `i-1`. 
 
-This means that a decimal change that coincides with a eBTC price fetch could cause eBTC to assert that the Chainlink price has deviated too much, and fall back to Tellor. There is nothing we can do about this. We hope/expect Chainlink to never change their `decimals()` return value (currently 8), and if a hack/technical error causes Chainlink's decimals to change, eBTC may fall back to Tellor.
+This means that a decimal change that coincides with a eBTC price fetch could cause eBTC to assert that the Chainlink price has deviated too much, and fall back to the backup. There is nothing we can do about this. We hope/expect Chainlink to never change their `decimals()` return value (currently 8), and if a hack/technical error causes Chainlink's decimals to change, eBTC may fall back to the backup.
 
 To summarize the Chainlink decimals issue: 
 - eBTC can handle the case where Chainlink decimals changes across _two consecutive rounds `i` and `i-1` which are not used in the same eBTC price fetch_
-- If eBTC fetches the price at round `i`, it will not know if Chainlink decimals changed across round `i-1` to round `i`, and the consequent price scaling distortion may cause eBTC to fall back to Tellor
+- If eBTC fetches the price at round `i`, it will not know if Chainlink decimals changed across round `i-1` to round `i`, and the consequent price scaling distortion may cause eBTC to fall back to the backup.
 - eBTC will always calculate the correct current price at 18-digit precision assuming the current return value of `decimals()` is correct (i.e. is the value used by the nodes).
 
 ### Keeping a sorted list of CDPs ordered by ICR
@@ -867,13 +859,13 @@ forge test
 ```
 
 ## Known Issues (Liquity)
-> 🦉 These issues are not modified from the text of the Liquity readme, and may no longer be relevant or may behave differently within the context of eBTC.
+> 🦉 These issues are lightly modified from the text of the Liquity readme, and may no longer be relevant or may behave differently within the context of eBTC.
 
 ### Temporary and slightly inaccurate TCR calculation within `batchLiquidateCdps` in Recovery Mode. 
 
 When liquidating a CDP with `ICR > 110%`, a collateral surplus remains claimable by the borrower. This collateral surplus should be excluded from subsequent TCR calculations, but within the liquidation sequence in `batchLiquidateCdps` in Recovery Mode, it is not. This results in a slight distortion to the TCR value used at each step of the liquidation sequence going forward. This distortion only persists for the duration the `batchLiquidateCdps` function call, and the TCR is again calculated correctly after the liquidation sequence ends. In most cases there is no impact at all, and when there is, the effect tends to be minor. The issue is not present at all in Normal Mode. 
 
-There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 150% boundary, a large CDP must be liquidated, and the stETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
+There is a theoretical and extremely rare case where it incorrectly causes a loss for Stability Depositors instead of a gain. It relies on the stars aligning: the system must be in Recovery Mode, the TCR must be very close to the 125% boundary, a large CDP must be liquidated, and the stETH price must drop by >10% at exactly the right moment. No profitable exploit is possible. For more details, please see [this security advisory](https://github.com/liquity/dev/security/advisories/GHSA-xh2p-7p87-fhgh).
 
 ### SortedCdps edge cases - top and bottom of the sorted list
 
