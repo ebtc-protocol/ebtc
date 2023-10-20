@@ -97,7 +97,7 @@ contract LeverageMacroBase {
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
         // Used only to check status
-        ICdpManagerData.Status expectedStatus; // NOTE: THIS IS SUPERFLUOUS 
+        ICdpManagerData.Status expectedStatus; // NOTE: THIS IS SUPERFLUOUS
     }
 
     /**

@@ -484,11 +484,7 @@ abstract contract TargetFunctions is Properties {
             if (vars.sortedCdpsSizeBefore == vars.sortedCdpsSizeAfter) {
                 // Redemptions do not reduce TCR
                 // If redemptions do not close any CDP that was healthy (low debt, high coll)
-                gt(
-                    vars.newTcrAfter,
-                    vars.newTcrBefore,
-                    R_07
-                );
+                gt(vars.newTcrAfter, vars.newTcrBefore, R_07);
             }
             t(invariant_CDPM_04(vars), CDPM_04);
         }
