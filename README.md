@@ -354,12 +354,12 @@ The two main contracts - `BorrowerOperations.sol` and `CdpManager.sol` - hold th
 
 ### PriceFeed and Oracle
 
-eBTC functions that require the most current stETH:BTC price data fetch the price dynamically, as needed, via the core `PriceFeed.sol` contract using the Chainlink stETH:BTC reference contract as its primary and Tellor's stETH:BTC price feed as its secondary (fallback) data source. PriceFeed is stateful, i.e. it records the last good price that may come from either of the two sources based on the contract's current state.
+eBTC functions that require the most current stETH:BTC price data fetch the price dynamically, as needed, via the core `PriceFeed.sol` contract using the Chainlink stETH:BTC reference contract as its primary and can use another oracle source as a secondary. PriceFeed is stateful, i.e. it records the last good price that may come from either of the two sources based on the contract's current state.
 
-The fallback logic distinguishes 3 different failure modes for Chainlink and 2 failure modes for Tellor:
+The fallback logic distinguishes 3 different failure modes for Chainlink and 2 failure modes for the backup:
 
 - `Frozen` (for both oracles): last price update more than 4 hours ago
-- `Broken` (for both oracles): response call reverted, invalid timeStamp that is either 0 or in the future, or reported price is non-positive (Chainlink) or zero (Tellor). Chainlink is considered broken if either the response for the latest round _or_ the response for the round before the latest fails one of these conditions.
+- `Broken` (for both oracles): response call reverted, invalid timeStamp that is either 0 or in the future, or reported price is non-positive (Chainlink) or zero (Backup). Chainlink is considered broken if either the response for the latest round _or_ the response for the round before the latest fails one of these conditions.
 - `PriceChangeAboveMax` (Chainlink only): higher than 50% deviation between two consecutive price updates
 
 There is also a return condition `bothOraclesLiveAndUnbrokenAndSimilarPrice` which is a function returning true if both oracles are live and not broken, and the percentual difference between the two reported prices is below 5%.
@@ -379,29 +379,27 @@ The PriceFeed contract fetches the current price and previous price from Chainli
 
 The `PriceFeedTestnet.sol` is a mock PriceFeed for testnet and general back end testing purposes, with no oracle connection. It contains a manual price setter, `setPrice()`, and a getter, `getPrice()`, which returns the latest stored price.
 
-The mainnet PriceFeed is tested in `test/PriceFeedTest.js`, using a mock Chainlink aggregator and a mock TellorMaster contract.
-
 ### PriceFeed limitations and known issues
 
 The purpose of the PriceFeed is to be at least as good as an immutable PriceFeed that relies purely on Chainlink, while also having some resilience in case of Chainlink failure / timeout, and chance of recovery.
 
-The PriceFeed logic consists of automatic on-chain decision-making for obtaining fallback price data from Tellor, and if possible, for returning to Chainlink if/when it recovers.
+The PriceFeed logic consists of automatic on-chain decision-making for obtaining fallback price data from the backup, and if possible, for returning to Chainlink if/when it recovers.
 
 The PriceFeed logic is complex, and although we would prefer simplicity, it does allow the system a chance of switching to an accurate price source in case of a Chainlink failure or timeout, and also the possibility of returning to an honest Chainlink price after it has failed and recovered.
 
 We believe the benefit of the fallback logic is worth the complexity. If we had no fallback logic and Chainlink were to be hacked or permanently fail, eBTC would become unusable without a backup.
 
-Governance is also capable of setting a new backup oracle feed, as long as it conforms to the tellor interface.
+Governance is also capable of setting a new backup oracle feed, as long as it conforms to the interface.
 
 **Chainlink Decimals**: the `PriceFeed` checks for and uses the latest `decimals` value reported by the Chainlink aggregator in order to calculate the Chainlink price at 18-digit precision, as needed by eBTC.  `PriceFeed` does not assume a value for decimals and can handle the case where Chainlink change their decimal value. 
 
 However, the check `chainlinkIsBroken` uses both the current response from the latest round and the response previous round. Since `decimals` is not attached to round data, eBTC has no way of knowing whether decimals has changed between the current round and the previous round, so we assume it is the same. eBTC assumes the current return value of decimals() applies to both current round `i` and previous round `i-1`. 
 
-This means that a decimal change that coincides with a eBTC price fetch could cause eBTC to assert that the Chainlink price has deviated too much, and fall back to Tellor. There is nothing we can do about this. We hope/expect Chainlink to never change their `decimals()` return value (currently 8), and if a hack/technical error causes Chainlink's decimals to change, eBTC may fall back to Tellor.
+This means that a decimal change that coincides with a eBTC price fetch could cause eBTC to assert that the Chainlink price has deviated too much, and fall back to the backup. There is nothing we can do about this. We hope/expect Chainlink to never change their `decimals()` return value (currently 8), and if a hack/technical error causes Chainlink's decimals to change, eBTC may fall back to the backup.
 
 To summarize the Chainlink decimals issue: 
 - eBTC can handle the case where Chainlink decimals changes across _two consecutive rounds `i` and `i-1` which are not used in the same eBTC price fetch_
-- If eBTC fetches the price at round `i`, it will not know if Chainlink decimals changed across round `i-1` to round `i`, and the consequent price scaling distortion may cause eBTC to fall back to Tellor
+- If eBTC fetches the price at round `i`, it will not know if Chainlink decimals changed across round `i-1` to round `i`, and the consequent price scaling distortion may cause eBTC to fall back to the backup.
 - eBTC will always calculate the correct current price at 18-digit precision assuming the current return value of `decimals()` is correct (i.e. is the value used by the nodes).
 
 ### Keeping a sorted list of CDPs ordered by ICR
