@@ -3,12 +3,14 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import {SimplifiedDiamondLike} from "../contracts/SimplifiedDiamondLike.sol";
+import {FlippenZap} from "../contracts/FlippenZap.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {LeverageMacroDelegateTarget} from "../contracts/LeverageMacroDelegateTarget.sol";
 import {LeverageMacroBase} from "../contracts/LeverageMacroBase.sol";
 import {Mock1Inch} from "../contracts/TestContracts/Mock1Inch.sol";
 import {ICdpManagerData} from "../contracts/Interfaces/ICdpManagerData.sol";
+import {IPositionManagers} from "../contracts/Interfaces/IPositionManagers.sol";
 
 interface IOwnerLike {
     function owner() external view returns (address);
@@ -46,6 +48,8 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
     SimplifiedDiamondLike wallet;
 
+    FlippenZap flippenZap;
+
     Mock1Inch public _mock1Inch;
 
     function _createNewWalletForUser(address _user) internal returns (address payable) {
@@ -81,6 +85,14 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // SWAP
         _mock1Inch = new Mock1Inch(address(eBTCToken), address(collateral));
         _setupSwapDex(address(_mock1Inch));
+
+        flippenZap = new FlippenZap(
+            address(borrowerOperations),
+            address(priceFeedMock),
+            address(cdpManager),
+            address(collateral),
+            address(eBTCToken)
+        );
     }
 
     function test_happyOpen() public {
@@ -172,6 +184,8 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // Verify token balance to user
         assertTrue(eBTCToken.balanceOf(user) > 0);
+
+        // TODO check token balances?
     }
 
     function test_ownerCheckWithDelegateCall() public {
@@ -319,6 +333,30 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         // Verify leveraged CDP ICR
         uint256 _icr = cdpManager.getSyncedICR(cdpId, priceFeedMock.fetchPrice());
         _utils.assertApproximateEq(_expectedICR, _icr, 1e8);
+    }
+
+    function test_ZapEnterLongEth(uint256 _leverage) public {
+        // do some clamp on leverage parameter
+        _leverage = bound(_leverage, 2, 8);
+        _leverage = 1;
+
+        address payable[] memory _testUsrs = _utils.createUsers(1);
+        address payable _testUsr = _testUsrs[0];
+
+        dealCollateral(_testUsr, INITITAL_COLL);
+
+        vm.startPrank(_testUsr);
+        collateral.approve(address(flippenZap), type(uint256).max);
+        borrowerOperations.setPositionManagerApproval(
+            address(flippenZap),
+            IPositionManagers.PositionManagerApproval.Persistent
+        ); // Permanent
+        bytes32 _cdpId = flippenZap.enterLongEth(INITITAL_COLL, _leverage);
+        vm.stopPrank();
+
+        // ensure the leveraged Cdp is created
+        assertTrue(_cdpId != bytes32(0));
+        assertTrue(sortedCdps.getOwnerAddress(_cdpId) == _testUsr);
     }
 
     function getEncodedOpenCdpData(
