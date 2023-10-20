@@ -119,7 +119,6 @@ abstract contract BeforeAfter is BaseStorageVariables {
             cdpManager.lastGracePeriodStartTimestamp() +
                 cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
-        // TODO: Cleanup new vs old
         vars.newTcrBefore = crLens.quoteRealTCR();
         vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
 

@@ -12,6 +12,7 @@ The redemption and liquidation mechanisms help ensure that stability is maintain
 ## eBTC Audit - What's in scope
 The following contracts in `/packages/contracts/contracts` (base contracts directory)
 
+#### Core Protocol
 `/packages/contracts/contracts/Dependencies/ActivePool.sol`
 `/packages/contracts/contracts/Dependencies/BorrowerOperations.sol`
 `/packages/contracts/contracts/CdpManager.sol`
@@ -22,6 +23,19 @@ The following contracts in `/packages/contracts/contracts` (base contracts direc
 `/packages/contracts/contracts/LiquidationLibrary.sol`
 `/packages/contracts/contracts/PriceFeed.sol`
 `/packages/contracts/contracts/SortedCdps.sol`
+
+#### Lens / Helper Contracts
+`/packages/contracts/contracts/HintHelpers.sol`
+`/packages/contracts/contracts/CRLens.sol`
+`/packages/contracts/contracts/MultiCdpGetter.sol`
+`/packages/contracts/contracts/SyncedLiquidationSequencer.sol`
+
+#### Leverage Macros & Smart Wallets
+`/packages/contracts/contracts/LeverageMacroBase.sol`
+`/packages/contracts/contracts/LeverageMacroDelegateTarget.sol`
+`/packages/contracts/contracts/LeverageMacroFactory.sol`
+`/packages/contracts/contracts/LeverageMacroReference.sol`
+`/packages/contracts/contracts/SimplifiedDiamondLike.sol`
 
 Most of the `/Dependency` files are copy-pastes, but the following are custom or modified and are worthy of review:
 

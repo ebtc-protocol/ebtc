@@ -45,6 +45,10 @@ contract EbtcBase is BaseMath, IEbtcBase {
     // the only collateral token allowed in CDP
     ICollateralToken public immutable collateral;
 
+    /// @notice Initializes the contract with the provided addresses
+    /// @param _activePoolAddress The address of the ActivePool contract
+    /// @param _priceFeedAddress The address of the PriceFeed contract
+    /// @param _collateralAddress The address of the CollateralToken contract
     constructor(address _activePoolAddress, address _priceFeedAddress, address _collateralAddress) {
         activePool = IActivePool(_activePoolAddress);
         priceFeed = IPriceFeed(_priceFeedAddress);
@@ -57,11 +61,9 @@ contract EbtcBase is BaseMath, IEbtcBase {
         return _stEthBalance - LIQUIDATOR_REWARD;
     }
 
-    /**
-        @notice Get the entire system collateral
-        @notice Entire system collateral = collateral stored in ActivePool, using their internal accounting
-        @dev Coll stored for liquidator rewards or coll in CollSurplusPool are not included
-     */
+    /// @notice Get the entire system collateral
+    /// @notice Entire system collateral = collateral allocated to system in ActivePool, using it's internal accounting
+    /// @dev Collateral tokens stored in ActivePool for liquidator rewards, fees, or coll in CollSurplusPool, are not included
     function getSystemCollShares() public view returns (uint256 entireSystemColl) {
         return (activePool.getSystemCollShares());
     }

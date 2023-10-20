@@ -5,7 +5,7 @@ pragma solidity 0.8.17;
 import "./CdpManager.sol";
 import "./SortedCdps.sol";
 
-/*  Helper contract for grabbing Cdp data for the front end. Not part of the core Liquity system. */
+/*  Helper contract for grabbing Cdp data for the front end. Not part of the core Ebtc system. */
 contract MultiCdpGetter {
     struct CombinedCdpData {
         bytes32 id;
@@ -29,7 +29,7 @@ contract MultiCdpGetter {
     /// @notice Retrieves multiple sorted Cdps
     /// @param _startIdx The start index for the linked list. The sign determines whether to start from the head or tail of the list.
     /// @dev Positive values start from the _head_ of the list and walk towards the _tail_, negative values start from the _tail_ of the list and walk towards the _head_
-    /// @param _count The count of Cdps to retrieve. If the requested count exceeds the number of available CDPs starting from the _startIdx, the function will only retrieve the available CDPs.
+    /// @param _count The count of Cdps to retrieve. If the requested count exceeds the number of available Cdps starting from the _startIdx, the function will only retrieve the available Cdps.
     /// @return _cdps An array of CombinedCdpData structs
     function getMultipleSortedCdps(
         int _startIdx,

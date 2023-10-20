@@ -11,19 +11,16 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
-/**
-    @notice CDP Manager storage and shared functions
-    @dev CDP Manager was split to get around contract size limitations, liquidation related functions are delegated to LiquidationLibrary contract code.
-    @dev Both must maintain the same storage layout, so shared storage components where placed here
-    @dev Shared functions were also added here to de-dup code
- */
+/// @title CDP Manager storage and shared functions with LiquidationLibrary
+/// @dev All features around Cdp management are split into separate parts to get around contract size limitations.
+/// @dev Liquidation related functions are delegated to LiquidationLibrary contract code.
+/// @dev Both CdpManager and LiquidationLibrary must maintain **the same storage layout**, so shared storage components
+/// @dev and shared functions are added here in CdpManagerStorage to de-dup code
 contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNoOwner {
-    // TODO: IMPROVE
     // NOTE: No packing cause it's the last var, no need for u64
     uint128 public constant UNSET_TIMESTAMP = type(uint128).max;
     uint128 public constant MINIMUM_GRACE_PERIOD = 15 minutes;
 
-    // TODO: IMPROVE THIS!!!
     uint128 public lastGracePeriodStartTimestamp = UNSET_TIMESTAMP; // use max to signify
     uint128 public recoveryModeGracePeriodDuration = MINIMUM_GRACE_PERIOD;
 
@@ -31,6 +28,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
     /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
     /// @dev To maintain CEI compliance we use this trusted function
+    /// @param tcr The TCR to be checked whether Grace Period should be started
     function notifyStartGracePeriod(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
         _startGracePeriod(tcr);
@@ -40,6 +38,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @dev Trusted function to allow BorrowerOperations actions to set RM Grace Period
     /// @dev Assumes BorrowerOperations has correctly calculated and passed in the new system TCR
     /// @dev To maintain CEI compliance we use this trusted function
+    /// @param tcr The TCR to be checked whether Grace Period should be ended
     function notifyEndGracePeriod(uint256 tcr) external {
         _requireCallerIsBorrowerOperations();
         _endGracePeriod(tcr);
@@ -155,7 +154,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /*
      * BETA: 18 digit decimal. Parameter by which to divide the redeemed fraction,
      * in order to calc the new base rate from a redemption.
-     * Corresponds to (1 / ALPHA) in the white paper.
+     * Corresponds to (1 / ALPHA) in the Liquity white paper.
      */
     uint256 public beta = 2;
 
@@ -177,7 +176,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     uint256 public totalCollateralSnapshot;
 
     /*
-     * systemDebtRedistributionIndex track the sums of accumulated liquidation rewards per unit staked.
+     * systemDebtRedistributionIndex track the sums of accumulated socialized liquidations per unit staked.
      * During its lifetime, each stake earns:
      *
      * A systemDebt increase  of ( stake * [systemDebtRedistributionIndex - systemDebtRedistributionIndex(0)] )
@@ -186,6 +185,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      * for the active Cdp taken at the instant the stake was made
      */
     uint256 public systemDebtRedistributionIndex;
+
+    // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
+    mapping(bytes32 => uint256) public cdpDebtRedistributionIndex;
+
+    // Error trackers for the cdp redistribution calculation
+    uint256 public lastEBTCDebtErrorRedistribution;
 
     /* Global Index for (Full Price Per Share) of underlying collateral token */
     uint256 public override stEthIndex;
@@ -197,15 +202,20 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     mapping(bytes32 => uint256) public cdpStEthFeePerUnitIndex;
     /* Update timestamp for global index */
     uint256 lastIndexTimestamp;
-    // Map active cdps to their RewardSnapshot (eBTC debt redistributed)
-    mapping(bytes32 => uint256) public cdpDebtRedistributionIndex;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
 
-    // Error trackers for the cdp redistribution calculation
-    uint256 public lastEBTCDebtErrorRedistribution;
-
+    /// @notice Initializes the contract with the provided addresses and sets up the required initial state
+    /// @param _liquidationLibraryAddress The address of the Liquidation Library
+    /// @param _authorityAddress The address of the Authority
+    /// @param _borrowerOperationsAddress The address of Borrower Operations
+    /// @param _collSurplusPool The address of the Collateral Surplus Pool
+    /// @param _ebtcToken The address of the eBTC Token contract
+    /// @param _sortedCdps The address of the Sorted CDPs contract
+    /// @param _activePool The address of the Active Pool
+    /// @param _priceFeed The address of the Price Feed
+    /// @param _collateral The address of the Collateral token
     constructor(
         address _liquidationLibraryAddress,
         address _authorityAddress,
@@ -228,10 +238,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         sortedCdps = ISortedCdps(_sortedCdps);
     }
 
-    /**
-        @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
-        @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
-     */
+    /// @notice BorrowerOperations and CdpManager share reentrancy status by confirming the other's locked flag before beginning operation
+    /// @dev This is an alternative to the more heavyweight solution of both being able to set the reentrancy flag on a 3rd contract.
     modifier nonReentrantSelfAndBOps() {
         require(locked == OPEN, "CdpManager: Reentrancy in nonReentrant call");
         require(
@@ -280,9 +288,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      *
      * The calculation excludes a portion of collateral that is in the ActivePool:
      *
-     * the total ETH gas compensation from the liquidation sequence
+     * the total stETH liquidator reward compensation from the liquidation sequence
      *
-     * The ETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
+     * The stETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
      */
     function _updateSystemSnapshotsExcludeCollRemainder(uint256 _collRemainder) internal {
         uint256 _totalStakesSnapshot = totalStakes;
@@ -294,9 +302,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         emit SystemSnapshotsUpdated(_totalStakesSnapshot, _totalCollateralSnapshot);
     }
 
-    /**
-    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
-    */
+    /// @dev get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     function _getPendingRedistributedDebt(
         bytes32 _cdpId
     ) internal view returns (uint256 pendingEBTCDebtReward, uint256 _debtIndexDiff) {
@@ -315,20 +321,20 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         }
     }
 
+    /*
+     * A Cdp has pending redistributed debt if its snapshot is less than the current rewards per-unit-staked sum:
+     * this indicates that redistributions have occured since the snapshot was made, and the user therefore has
+     * pending debt
+     */
     function _hasRedistributedDebt(bytes32 _cdpId) internal view returns (bool) {
-        /*
-         * A Cdp has pending rewards if its snapshot is less than the current rewards per-unit-staked sum:
-         * this indicates that rewards have occured since the snapshot was made, and the user therefore has
-         * pending rewards
-         */
         if (Cdps[_cdpId].status != Status.active) {
             return false;
         }
 
-        // Returns true if there have been any redemptions
         return (cdpDebtRedistributionIndex[_cdpId] < systemDebtRedistributionIndex);
     }
 
+    /// @dev Sync Cdp debt redistribution index to global value
     function _updateRedistributedDebtIndex(bytes32 _cdpId) internal {
         uint256 _systemDebtRedistributionIndex = systemDebtRedistributionIndex;
 
@@ -493,9 +499,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // --- Staking-Reward Fee split functions ---
 
-    // Claim split fee if there is staking-reward coming
-    // and update global index & fee-per-unit variables
-    /// @dev BO can call this without trigggering a
+    /// @notice Claim split fee if there is staking-reward coming
+    /// @notice and update global index & fee-per-unit variables
+    /// @dev only BorrowerOperations is allowed to call this
+    /// @dev otherwise use syncGlobalAccountingAndGracePeriod()
     function syncGlobalAccounting() external {
         _requireCallerIsBorrowerOperations();
         _syncGlobalAccounting();
@@ -515,8 +522,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         }
     }
 
-    /// @notice Claim Fee Split, toggles Grace Period accordingly
-    /// @notice Call this if you want to accrue feeSplit
+    /// @notice Claim fee split, if there is staking-reward coming
+    /// @notice and update global index & fee-per-unit variables
+    /// @notice and toggles Grace Period accordingly.
+    /// @dev Call this if you want to help eBTC system to accrue split fee
     function syncGlobalAccountingAndGracePeriod() public {
         _syncGlobalAccounting(); // Apply // Could trigger RM
         _syncGracePeriod(); // Synch Grace Period
@@ -537,10 +546,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         }
     }
 
-    // Calculate fee for given pair of collateral indexes, following are returned values:
-    // - fee split in collateral token which will be deduced from current total system collateral
-    // - fee split increase per unit, used to update systemStEthFeePerUnitIndex
-    // - fee split calculation error, used to update systemStEthFeePerUnitIndexError
+    /// @notice Calculate fee for given pair of collateral indexes
+    /// @param _newIndex The value synced with stETH.getPooledEthByShares(1e18)
+    /// @param _prevIndex The cached global value of `stEthIndex`
+    /// @return _feeTaken The fee split in collateral token which will be deduced from current total system collateral
+    /// @return _deltaFeePerUnit The fee split increase per unit, used to added to `systemStEthFeePerUnitIndex`
+    /// @return _perUnitError The fee split calculation error, used to update `systemStEthFeePerUnitIndexError`
     function calcFeeUponStakingReward(
         uint256 _newIndex,
         uint256 _prevIndex
@@ -600,7 +611,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         );
     }
 
-    // return the applied split fee(scaled by 1e18) and the resulting CDP collateral amount after applied
+    /// @notice Calculate the applied split fee(scaled by 1e18) and the resulting CDP collateral share after applied
+    /// @param _cdpId The Cdp to which the calculated split fee is going to be applied
+    /// @param _systemStEthFeePerUnitIndex The fee-per-stake-unit value to be used in fee split calculation, could be result of calcFeeUponStakingReward()
+    /// @return _feeSplitDistributed The applied fee split to the specified Cdp (scaled up by 1e18)
+    /// @return _cdpCol The new collateral share of the specified Cdp after fe split applied
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
         uint256 _systemStEthFeePerUnitIndex
@@ -653,8 +668,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // --- Helper functions ---
 
-    /// @notice Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
+    /// @notice Return the Nominal Collateral Ratio (NICR) of the specified Cdp as "cached view" (maybe outdated).
     /// @dev Takes a cdp's pending coll and debt rewards from redistributions into account.
+    /// @param _cdpId The CdpId whose NICR to be queried
+    /// @return The Nominal Collateral Ratio (NICR) of the specified Cdp.
+    /// @dev Use getSyncedNominalICR() instead if pending fee split and debt redistribution should be considered
     function getCachedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
 
@@ -662,8 +680,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return NICR;
     }
 
-    /// @notice Return the nominal collateral ratio (ICR) of a given Cdp, without the price.
+    /// @notice Return the Nominal Collateral Ratio (NICR) of the specified Cdp.
     /// @dev Takes a cdp's pending coll and debt rewards as well as stETH Index into account.
+    /// @param _cdpId The CdpId whose NICR to be queried
+    /// @return The Nominal Collateral Ratio (NICR) of the specified Cdp with fee split and debt redistribution considered.
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
@@ -677,8 +697,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return NICR;
     }
 
-    // Return the current collateral ratio (ICR) of a given Cdp.
-    //Takes a cdp's pending coll and debt rewards from redistributions into account.
+    /// @notice Return the Individual Collateral Ratio (ICR) of the specified Cdp as "cached view" (maybe outdated).
+    /// @param _cdpId The CdpId whose ICR to be queried
+    /// @return The Individual Collateral Ratio (ICR) of the specified Cdp.
+    /// @dev Use getSyncedICR() instead if pending fee split and debt redistribution should be considered
     function getCachedICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
         uint256 ICR = _calculateCR(currentCollShares, currentEBTCDebt, _price);
@@ -694,9 +716,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return EbtcMath._computeCR(_underlyingCollateral, currentDebt, _price);
     }
 
-    /**
-    get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
-    */
+    /// @notice Return the pending extra debt assigned to the Cdp from liquidation redistribution, calcualted by Cdp's stake
+    /// @param _cdpId The CdpId whose pending debt redistribution to be queried
+    /// @return pendingEBTCDebtReward The pending debt redistribution of the specified Cdp.
     function getPendingRedistributedDebt(
         bytes32 _cdpId
     ) public view returns (uint256 pendingEBTCDebtReward) {
@@ -704,6 +726,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return _pendingDebt;
     }
 
+    /// @return Whether the debt redistribution tracking index of the specified Cdp is less than the global tracking one (meaning it might get pending debt redistribution)
+    /// @param _cdpId The CdpId whose debt redistribution tracking index to be queried against the gloabl one
     function hasPendingRedistributedDebt(bytes32 _cdpId) public view returns (bool) {
         return _hasRedistributedDebt(_cdpId);
     }
@@ -716,8 +740,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return CdpDebtAndCollShares(entireDebt, entireColl);
     }
 
-    // Return the Cdps entire debt and coll, including pending rewards from redistributions and collateral reduction from split fee.
-    /// @notice pending rewards are included in the debt and coll totals returned.
+    /// @notice Calculate the Cdps entire debt and coll, including pending debt redistributions and collateral reduction from split fee.
+    /// @param _cdpId The CdpId to be queried
+    /// @return debt The total debt value of the Cdp including debt redistribution considered
+    /// @return coll The total collateral value of the Cdp including possible fee split considered
+    /// @dev Should always use this as the first(default) choice for Cdp position size query
     function getSyncedDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint256 debt, uint256 coll) {
@@ -808,13 +835,19 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return (_newDebt, pendingDebtRedistributed, _debtIndexDelta);
     }
 
-    /// @return CDP debt with pending redistribution from liquidation applied
+    /// @notice Calculate the Cdps entire debt, including pending debt redistributions.
+    /// @param _cdpId The CdpId to be queried
+    /// @return _newDebt The total debt value of the Cdp including debt redistribution considered
+    /// @dev Should always use this as the first(default) choice for Cdp debt query
     function getSyncedCdpDebt(bytes32 _cdpId) public view returns (uint256) {
         (uint256 _newDebt, , ) = _getSyncedCdpDebtAndRedistribution(_cdpId);
         return _newDebt;
     }
 
-    /// @return CDP collateral with pending split fee applied
+    /// @notice Calculate the Cdps entire collateral, including pending fee split to be applied
+    /// @param _cdpId The CdpId to be queried
+    /// @return _newColl The total collateral value of the Cdp including fee split considered
+    /// @dev Should always use this as the first(default) choice for Cdp collateral query
     function getSyncedCdpCollShares(bytes32 _cdpId) public view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
@@ -826,14 +859,21 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return _newColl;
     }
 
-    /// @return CDP ICR with pending collateral and debt change applied
+    /// @notice Calculate the Cdps ICR, including pending debt distribution and fee split to be applied
+    /// @param _cdpId The CdpId to be queried
+    /// @param _price The ETH:eBTC price to be used in ICR calculation
+    /// @return The ICR of the Cdp including debt distribution and fee split considered
+    /// @dev Should always use this as the first(default) choice for Cdp ICR query
     function getSyncedICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
         uint256 _debt = getSyncedCdpDebt(_cdpId);
         uint256 _collShare = getSyncedCdpCollShares(_cdpId);
         return _calculateCR(_collShare, _debt, _price);
     }
 
-    /// @return TCR with pending collateral and debt change applied
+    /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken
+    /// @param _price The ETH:eBTC price to be used in TCR calculation
+    /// @return The TCR of the eBTC system including debt distribution and fee split considered
+    /// @dev Should always use this as the first(default) choice for TCR query
     function getSyncedTCR(uint256 _price) public view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (uint256 _feeTaken, , ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
@@ -846,7 +886,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return _calculateCR(_systemCollShare, _systemDebt, _price);
     }
 
-    // Can liquidate in RM if ICR < TCR AND Enough time has passed
+    /// @param icr The ICR of a Cdp to check if liquidatable
+    /// @param tcr The TCR of the eBTC system used to determine if Recovery Mode is triggered
+    /// @return whether the Cdp of specified icr is liquidatable with specified tcr
+    /// @dev The flag will only be set to true if enough time has passed since Grace Period starts
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) public view returns (bool) {
         return _checkICRAgainstTCR(icr, tcr) && _recoveryModeGracePeriodPassed();
     }
