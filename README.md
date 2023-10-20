@@ -68,7 +68,7 @@ We should gracefully handle the case of no fallback oracle, as well as switching
 
 ### We understand some rounding errors can happen
 Badger will:
-- Donate up to 2stETH of collateral to the system contracts as a way to prevent any shortfall due to rounding (avoids off by one errors)
+- Donate up to 2 stETH of collateral to the system contracts as a way to prevent any shortfall due to rounding (avoids off by one errors)
 - Keep open, at all times, a CDP with at least 2 stETH of Collateral with a CR between 150 and 200% (ensures its the last DP)
 
 For this reason, rounding errors related to stETH should not be accepted as valid unless they can provably break the 2stETH threshold under reasonable circumnstances (e.g. 100 billion people using the protocol would be considered above reasonable)
