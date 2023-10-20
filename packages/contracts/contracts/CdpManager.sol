@@ -77,7 +77,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // --- Cdp Liquidation functions ---
     // -----------------------------------------------------------------
-    //    Cdp ICR     |       Liquidation Behavior (TODO gas compensation?)
+    //    Cdp ICR     |  Liquidation Behavior
     //
     //  < MCR         |  debt could be fully repaid by liquidator
     //                |  and ALL collateral transferred to liquidator
