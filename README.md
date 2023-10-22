@@ -66,6 +66,12 @@ We should gracefully handle the case of no fallback oracle, as well as switching
 
 ### If Chainlink dependencies burn all gas, or the contract is destructed, then the Price Feed will revert
 
+### If Chainlink performs an upgrade, due to how PhaseId and RoundId are calculated the price will be stale
+
+This is because there will not be a valid price at roundId - 1
+
+The Oracle will resume working as intended once the CL Feed reports 2 prices from the same aggregator (see Spearibit / Cantina Reports for more details)
+
 ### We understand some rounding errors can happen
 Badger will:
 - Donate up to 2 stETH of collateral to the system contracts as a way to prevent any shortfall due to rounding (avoids off by one errors)
