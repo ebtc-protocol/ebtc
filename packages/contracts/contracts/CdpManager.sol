@@ -8,7 +8,6 @@ import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
-import "./EBTCDeployer.sol";
 import "./Dependencies/Proxy.sol";
 
 /// @title CdpManager is mainly in charge of all Cdp related core processing like collateral & debt accounting, split fee calculation, redemption, etc
