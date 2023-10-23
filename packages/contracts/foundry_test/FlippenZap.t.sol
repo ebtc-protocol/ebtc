@@ -39,7 +39,7 @@ contract FlippenZapTest is eBTCBaseInvariants {
         );
     }
 
-    function test_ZapEnterLongEth(uint256 _collAmt, uint256 _leverage) public {
+    function test_ZapEnterLongEth_Single(uint256 _collAmt, uint256 _leverage) public {
         // do some clamp on leverage parameter
         _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
         _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
@@ -47,6 +47,60 @@ contract FlippenZapTest is eBTCBaseInvariants {
         address payable[] memory _testUsrs = _utils.createUsers(1);
         address payable _testUsr = _testUsrs[0];
 
+        _zapOneLongEth(_testUsr, _collAmt, _leverage);
+    }
+
+    function test_ZapEnterLongEth_TripleZaps(uint256 _collAmt, uint256 _leverage) public {
+        // do some clamp on leverage parameter
+        _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
+        _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
+
+        address payable[] memory _testUsrs = _utils.createUsers(1);
+        address payable _testUsr = _testUsrs[0];
+
+        // First Zap
+        _zapOneLongEth(_testUsr, _collAmt, _leverage);
+
+        // open another CDP withour normally without FlippenZap
+        _openTestCdpAtICR(_testUsr, flippenZap.MIN_NET_STETH_BALANCE(), COLLATERAL_RATIO_DEFENSIVE);
+        // Second Zap
+        _zapOneLongEth(_testUsr, _collAmt + flippenZap.MIN_NET_STETH_BALANCE(), _leverage);
+
+        // open another CDP withour normally without FlippenZap
+        _openTestCdpAtICR(_testUsr, flippenZap.MIN_NET_STETH_BALANCE(), COLLATERAL_RATIO_DEFENSIVE);
+        // Third Zap
+        _zapOneLongEth(_testUsr, _collAmt + flippenZap.MIN_NET_STETH_BALANCE() * 2, _leverage);
+    }
+
+    function test_ZapEnterLongEth_MultipleUsers(uint256 _collAmt, uint256 _leverage) public {
+        // do some clamp on leverage parameter
+        _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
+        _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
+
+        address payable[] memory _testUsrs = _utils.createUsers(2);
+        address payable _testUsr = _testUsrs[0];
+        address payable _testUsr2 = _testUsrs[1];
+
+        // First Zap
+        _zapOneLongEth(_testUsr, _collAmt, _leverage);
+        _zapOneLongEth(_testUsr2, _collAmt, _leverage);
+
+        // open another CDP withour normally without FlippenZap
+        _openTestCdpAtICR(_testUsr, flippenZap.MIN_NET_STETH_BALANCE(), COLLATERAL_RATIO_DEFENSIVE);
+        _openTestCdpAtICR(_testUsr2, flippenZap.MIN_NET_STETH_BALANCE(), COLLATERAL_RATIO_DEFENSIVE);
+        // Second Zap
+        _zapOneLongEth(_testUsr, _collAmt + flippenZap.MIN_NET_STETH_BALANCE(), _leverage);
+        _zapOneLongEth(_testUsr2, _collAmt + flippenZap.MIN_NET_STETH_BALANCE(), _leverage);
+
+        // open another CDP withour normally without FlippenZap
+        _openTestCdpAtICR(_testUsr, flippenZap.MIN_NET_STETH_BALANCE(), COLLATERAL_RATIO_DEFENSIVE);
+        _openTestCdpAtICR(_testUsr2, flippenZap.MIN_NET_STETH_BALANCE(), COLLATERAL_RATIO_DEFENSIVE);
+        // Third Zap
+        _zapOneLongEth(_testUsr, _collAmt + flippenZap.MIN_NET_STETH_BALANCE() * 2, _leverage);
+        _zapOneLongEth(_testUsr2, _collAmt + flippenZap.MIN_NET_STETH_BALANCE() * 2, _leverage);
+    }
+
+    function _zapOneLongEth(address _testUsr, uint256 _collAmt, uint256 _leverage) public {
         dealCollateral(_testUsr, _collAmt);
 
         uint256 _debtBefore = eBTCToken.balanceOf(_testUsr);
@@ -56,24 +110,32 @@ contract FlippenZapTest is eBTCBaseInvariants {
             address(flippenZap),
             IPositionManagers.PositionManagerApproval.Persistent
         ); // Permanent
+        uint256 _cdpCountBefore = sortedCdps.cdpCountOf(_testUsr);
         bytes32 _cdpId = flippenZap.enterLongEth(_collAmt, _leverage);
+        uint256 _cdpCountAfter = sortedCdps.cdpCountOf(_testUsr);
         vm.stopPrank();
 
-        // ensure the leveraged Cdp is created
+        // ensure the leveraged Cdp is created successfully
+        assertTrue(_cdpCountAfter == _cdpCountBefore + 1);
         assertTrue(_cdpId != DUMMY_CDP_ID);
         assertTrue(sortedCdps.getOwnerAddress(_cdpId) == _testUsr);
 
         // ensure status is good
         uint256 _debtAfter = eBTCToken.balanceOf(_testUsr);
         if (_leverage > 1) {
-            // only one leveraged CDP left to user
+            // there is a new leveraged CDP created for user
             assertTrue(_debtBefore == _debtAfter);
+            (, , , uint256 _liquidatorRewardShares, , ) = cdpManager.Cdps(_cdpId);
             uint256 _cdpColl = collateral.getPooledEthByShares(
-                cdpManager.getSyncedCdpCollShares(_cdpId)
+                cdpManager.getSyncedCdpCollShares(_cdpId) + _liquidatorRewardShares
             );
             uint256 _leveraged = _collAmt * _leverage;
             console.log("_leveraged:", _leveraged);
             console.log("_cdpColl:", _cdpColl);
+            uint256 _diffRatioScaled = ((_leveraged - _cdpColl) * 1e18) / _leveraged;
+            console.log("_diffRatioScaled:", _diffRatioScaled);
+            uint256 _slippageScaled = (mockBalancer.slippage() * 1e18) / mockBalancer.MAX_SLIPPAGE();
+            assertTrue(_diffRatioScaled <= _slippageScaled);
         } else {
             // TODO minted eBTC sent directly to user?
             uint256 _cdpDebt = cdpManager.getSyncedCdpDebt(_cdpId);
