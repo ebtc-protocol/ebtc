@@ -95,7 +95,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @dev Non-view function - it updates and stores the last good price seen by eBTC.
     /// @dev Uses a main oracle (Chainlink) and a fallback oracle in case Chainlink fails. If both fail, it uses the last good price seen by eBTC.
     /// @dev The fallback oracle address can be swapped by the Authority. The fallback oracle must conform to the IFallbackCaller interface.
-    /// @return The latest price fetched from the Oracle
     function fetchPrice() external override returns (uint256) {
         // Get current and previous price data from Chainlink, and current price data from Fallback
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
