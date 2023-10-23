@@ -347,6 +347,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             // return Chainlink price (no status change)
             return _storeChainlinkPrice(chainlinkResponse.answer);
         }
+
+        /// @audit This should never be used, but we added it for the Certora Prover
+        return lastGoodPrice;
     }
 
     // --- Governance Functions ---
