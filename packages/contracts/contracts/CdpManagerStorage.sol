@@ -595,7 +595,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _feeSplitDistributed,
         uint256 _oldPerUnitCdp,
         uint256 _systemStEthFeePerUnitIndex
-    ) internal returns (uint256, uint256, uint256, uint256, uint256) {
+    ) internal {
         // apply split fee to given CDP
         Cdps[_cdpId].coll = _newColl;
 
