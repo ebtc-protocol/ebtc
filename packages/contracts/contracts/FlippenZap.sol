@@ -22,26 +22,27 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
     uint256 public constant MCR = 1100000000000000000; // 110%
     uint256 public constant CCR = 1250000000000000000; // 125%
     uint256 public constant MIN_NET_STETH_BALANCE = 2e18;
+    uint256 public constant LIQUIDATOR_REWARD = 2e17;
     uint256 public slippage = 500; // default 5% allowed slippage for eBTC<->stETH
     uint256 public constant MAX_SLIPPAGE = 10000;
 
     /// @notice This is the interface of BorrowerOperations contract within eBTC system
-    IBorrowerOperations public ebtcBorrowerOperations;
+    IBorrowerOperations public immutable ebtcBorrowerOperations;
 
     /// @notice This the interface of PriceFeed contract within eBTC system
-    IPriceFeed public ebtcPriceFeed;
+    IPriceFeed public immutable ebtcPriceFeed;
 
     /// @notice This the interface of CdpManager contract within eBTC system
-    ICdpManager public ebtcCdpManager;
+    ICdpManager public immutable ebtcCdpManager;
 
     /// @notice This the interface of collateral token contract used in eBTC system
-    ICollateralToken public ebtcCollToken;
+    ICollateralToken public immutable ebtcCollToken;
 
     /// @notice This the interface of eBTC token contract
-    IEBTCToken public ebtcToken;
+    IEBTCToken public immutable ebtcToken;
 
     /// @notice This the interface of balancer for eBTC<->stETH pair liquidity
-    IBalancerV2Vault public balancerVault;
+    IBalancerV2Vault public immutable balancerVault;
 
     /// @notice This the pool ID for eBTC<->stETH pair in Balancer Vault
     bytes32 public balancerPoolId;
@@ -95,7 +96,10 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
     /// @param _leverage The expected leverage for this long position, should be no more than MAX_REASONABLE_LEVERAGE
     /// @return The CdpId created with owner as the caller
     function enterLongEth(uint256 _initialStETH, uint256 _leverage) external returns (bytes32) {
-        require(_initialStETH > MIN_NET_STETH_BALANCE, "FlippenZap: initial principal too small");
+        require(
+            _initialStETH >= MIN_NET_STETH_BALANCE + LIQUIDATOR_REWARD,
+            "FlippenZap: initial principal too small"
+        );
         require(_leverage <= MAX_REASONABLE_LEVERAGE, "FlippenZap: _leverage is too big");
         require(_leverage > 0, "FlippenZap: _leverage is too small");
 
@@ -104,12 +108,13 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
         // sells the eBTC back for stETH.
 
         bytes32 _newCdp;
-        uint256 _collToLoan = _leverage > 1 ? (_leverage - 1) * _initialStETH : 0;
-        uint256 _expectedColl = _collToLoan + _initialStETH;
-        uint256 _expectedDebt;
 
         // transfer initial collateral
-        ebtcCollToken.transferFrom(msg.sender, address(this), _initialStETH);
+        uint256 _deposit = _transferInitialStETHFromCaller(_initialStETH);
+
+        uint256 _collToLoan = _leverage > 1 ? (_leverage - 1) * (_deposit - LIQUIDATOR_REWARD) : 0;
+        uint256 _expectedColl = _collToLoan + _deposit;
+        uint256 _expectedDebt;
 
         if (_collToLoan > 0) {
             _expectedDebt = _calculateCdpDebtForZap(_collToLoan, _leverage);
@@ -119,7 +124,7 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
                 IERC3156FlashBorrower(address(this)),
                 address(ebtcToken),
                 _expectedDebt,
-                abi.encode(address(msg.sender), _initialStETH, _collToLoan)
+                abi.encode(address(msg.sender), _deposit, _collToLoan)
             );
             _newCdp = _zapLeveragedCdps[msg.sender][_cdpCountBefore + 1];
 
@@ -150,6 +155,36 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
         return _newCdp;
     }
 
+    /// @notice This function allows caller to swap initial principal for eBTC.
+    /// @notice The caller has to approve this contract to spend _initialStETH amount of collateral
+    /// @param _initialStETH The initial amount of stETH used for swap
+    /// @return The output amount of eBTC from the swap
+    function enterLongBtc(uint256 _initialStETH) external returns (uint256) {
+        require(
+            _initialStETH >= MIN_NET_STETH_BALANCE + LIQUIDATOR_REWARD,
+            "FlippenZap: initial principal too small"
+        );
+
+        // transfer initial principal
+        uint256 _deposit = _transferInitialStETHFromCaller(_initialStETH);
+
+        uint256 _expectedOut = (_deposit * ebtcPriceFeed.fetchPrice()) / 1e18;
+        uint256 _eBTCBalBefore = ebtcToken.balanceOf(address(this));
+
+        _singleSwapViaBalancer(
+            address(ebtcCollToken),
+            address(ebtcToken),
+            _deposit,
+            _getOutputAmountWithSlippage(_expectedOut)
+        );
+
+        uint256 _realOutput = ebtcToken.balanceOf(address(this)) - _eBTCBalBefore;
+
+        // transfer back eBTC from swap
+        ebtcToken.transfer(msg.sender, _realOutput);
+        return _realOutput;
+    }
+
     function _calculateCdpDebtForZap(uint256 _coll, uint256 _leverage) internal returns (uint256) {
         uint256 denominator = _leverage > 1 ? 1e18 : (CCR + ICR_SMALL_BUFFER);
         uint256 _price = ebtcPriceFeed.fetchPrice();
@@ -172,6 +207,18 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
         );
         FundManagement memory funds = FundManagement(address(this), false, address(this), false);
         return balancerVault.swap(singleSwap, funds, expectedOut, block.timestamp);
+    }
+
+    function _getOutputAmountWithSlippage(uint256 _input) internal returns (uint256) {
+        return (_input * (MAX_SLIPPAGE - slippage)) / MAX_SLIPPAGE;
+    }
+
+    function _transferInitialStETHFromCaller(uint256 _initialStETH) internal returns (uint256) {
+        // check before-after balances for 1-wei corner case
+        uint256 _balBefore = ebtcCollToken.balanceOf(address(this));
+        ebtcCollToken.transferFrom(msg.sender, address(this), _initialStETH);
+        uint256 _deposit = ebtcCollToken.balanceOf(address(this)) - _balBefore;
+        return _deposit;
     }
 
     /// @inheritdoc IERC3156FlashBorrower
@@ -202,7 +249,7 @@ contract FlippenZap is IERC3156FlashBorrower, Ownable {
             address(ebtcToken),
             address(ebtcCollToken),
             amount,
-            ((_collToLoan * (MAX_SLIPPAGE - slippage)) / MAX_SLIPPAGE)
+            _getOutputAmountWithSlippage(_collToLoan)
         );
         uint256 _expectedColl = _initialColl + _outAmount;
         require(

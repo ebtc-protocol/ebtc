@@ -39,6 +39,36 @@ contract FlippenZapTest is eBTCBaseInvariants {
         );
     }
 
+    function test_ZapEnterLongBtc_Single(uint256 _collAmt) public {
+        // do some clamp on leverage parameter
+        _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
+
+        address payable[] memory _testUsrs = _utils.createUsers(1);
+        address payable _testUsr = _testUsrs[0];
+
+        dealCollateral(_testUsr, _collAmt * 2);
+
+        vm.startPrank(_testUsr);
+        collateral.approve(address(flippenZap), type(uint256).max);
+        uint256 _balBefore = eBTCToken.balanceOf(_testUsr);
+        uint256 _swapped = flippenZap.enterLongBtc(_collAmt);
+        uint256 _balAfter = eBTCToken.balanceOf(_testUsr);
+        assertTrue(_balAfter == _balBefore + _swapped);
+        vm.stopPrank();
+
+        // decrease slippage of FlippenZap
+        address _zapOwner = flippenZap.owner();
+        uint256 _newSlippage = mockBalancer.slippage() / 2;
+        vm.prank(_zapOwner);
+        flippenZap.setSlippage(_newSlippage);
+        assertTrue(flippenZap.slippage() == _newSlippage);
+
+        // expect a swap revert
+        vm.prank(_testUsr);
+        vm.expectRevert("MockBalancer: below expected limit!");
+        flippenZap.enterLongBtc(_collAmt);
+    }
+
     function test_ZapEnterLongEth_Single(uint256 _collAmt, uint256 _leverage) public {
         // do some clamp on leverage parameter
         _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
@@ -54,6 +84,8 @@ contract FlippenZapTest is eBTCBaseInvariants {
         // do some clamp on leverage parameter
         _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
         _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
+        _leverage = 2;
+        _collAmt = 2.2e18;
 
         address payable[] memory _testUsrs = _utils.createUsers(1);
         address payable _testUsr = _testUsrs[0];
@@ -76,6 +108,8 @@ contract FlippenZapTest is eBTCBaseInvariants {
         // do some clamp on leverage parameter
         _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
         _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
+        _leverage = 5;
+        _collAmt = INITITAL_COLL;
 
         address payable[] memory _testUsrs = _utils.createUsers(2);
         address payable _testUsr = _testUsrs[0];
@@ -127,9 +161,9 @@ contract FlippenZapTest is eBTCBaseInvariants {
             assertTrue(_debtBefore == _debtAfter);
             (, , , uint256 _liquidatorRewardShares, , ) = cdpManager.Cdps(_cdpId);
             uint256 _cdpColl = collateral.getPooledEthByShares(
-                cdpManager.getSyncedCdpCollShares(_cdpId) + _liquidatorRewardShares
+                cdpManager.getSyncedCdpCollShares(_cdpId)
             );
-            uint256 _leveraged = _collAmt * _leverage;
+            uint256 _leveraged = (_collAmt - _liquidatorRewardShares) * _leverage;
             console.log("_leveraged:", _leveraged);
             console.log("_cdpColl:", _cdpColl);
             uint256 _diffRatioScaled = ((_leveraged - _cdpColl) * 1e18) / _leveraged;

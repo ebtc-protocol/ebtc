@@ -26,28 +26,39 @@ contract MockBalancer {
         price = _newPrice;
     }
 
+    function setSlippage(uint256 _slippage) external {
+        slippage = _slippage;
+    }
+
     function swap(
         SingleSwap calldata singleSwap,
         FundManagement calldata funds,
         uint256 limit,
         uint256 deadline
     ) external returns (uint256) {
+        require(singleSwap.kind == SwapKind.GIVEN_IN, "MockBalancer: invalid swap kind!");
         address tokenIn = singleSwap.assetIn;
         address tokenOut = singleSwap.assetOut;
         uint256 amountIn = singleSwap.amount;
 
         if (tokenIn == address(stETH) && tokenOut == address(eBTCToken)) {
             stETH.transferFrom(msg.sender, address(this), amountIn);
-            uint256 amt = (amountIn * price) / 1e18;
+            uint256 amt = _getOutputAmountWithSlippage((amountIn * price) / 1e18);
+            require(amt >= limit, "MockBalancer: below expected limit!");
             eBTCToken.transfer(msg.sender, amt);
             return amt;
         } else if (tokenIn == address(eBTCToken) && tokenOut == address(stETH)) {
             eBTCToken.transferFrom(msg.sender, address(this), amountIn);
-            uint256 amt = (amountIn * 1e18) / price;
+            uint256 amt = _getOutputAmountWithSlippage((amountIn * 1e18) / price);
+            require(amt >= limit, "MockBalancer: below expected limit!");
             stETH.transfer(msg.sender, amt);
             return amt;
         }
 
-        revert("Invalid swap parameters");
+        revert("MockBalancer: Invalid swap parameters!");
+    }
+
+    function _getOutputAmountWithSlippage(uint256 _input) internal returns (uint256) {
+        return (_input * (MAX_SLIPPAGE - slippage)) / MAX_SLIPPAGE;
     }
 }
