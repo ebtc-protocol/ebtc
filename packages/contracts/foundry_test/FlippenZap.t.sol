@@ -84,8 +84,6 @@ contract FlippenZapTest is eBTCBaseInvariants {
         // do some clamp on leverage parameter
         _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
         _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
-        _leverage = 2;
-        _collAmt = 2.2e18;
 
         address payable[] memory _testUsrs = _utils.createUsers(1);
         address payable _testUsr = _testUsrs[0];
@@ -108,8 +106,6 @@ contract FlippenZapTest is eBTCBaseInvariants {
         // do some clamp on leverage parameter
         _leverage = bound(_leverage, 1, flippenZap.MAX_REASONABLE_LEVERAGE());
         _collAmt = bound(_collAmt, 2.2e18, INITITAL_COLL);
-        _leverage = 5;
-        _collAmt = INITITAL_COLL;
 
         address payable[] memory _testUsrs = _utils.createUsers(2);
         address payable _testUsr = _testUsrs[0];
