@@ -4,6 +4,9 @@ require("@nomiclabs/hardhat-etherscan");
 require("solidity-coverage");
 require("hardhat-gas-reporter");
 require("hardhat-contract-sizer");
+const tdly = require("@tenderly/hardhat-tenderly");
+
+tdly.setup({ automaticVerifications: false });
 
 const accounts = require("./hardhatAccountsList2k.js");
 const accountsList = accounts.accountsList;
@@ -107,6 +110,10 @@ module.exports = {
           "0x60ddfe7f579ab6867cbe7a2dc03853dc141d7a4ab6dbefc0dae2d2b1bd4e487f"
         )
       ]
+    },
+    tenderly: {
+      url: 'https://rpc.tenderly.co/fork/bd38f2a3-4192-45b5-88a0-5f94b657e9d9',
+      chainId: 1
     }
   },
   etherscan: {
@@ -119,5 +126,10 @@ module.exports = {
   },
   gasReporter: {
     enabled: process.env.REPORT_GAS ? true : false
+  },
+  tenderly: {
+    project: 'notional-v2',
+    username: 'weitianjie2000',
+    privateVerification: false
   }
 };
