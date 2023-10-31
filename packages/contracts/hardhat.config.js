@@ -112,7 +112,7 @@ module.exports = {
       ]
     },
     tenderly: {
-      url: 'https://rpc.tenderly.co/fork/bd38f2a3-4192-45b5-88a0-5f94b657e9d9',
+      url: 'https://rpc.tenderly.co/fork/aeb5f27a-8079-4cb4-bbd1-cfa32dfd818d',
       chainId: 1
     }
   },
