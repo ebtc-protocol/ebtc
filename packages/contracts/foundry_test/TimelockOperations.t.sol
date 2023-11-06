@@ -62,17 +62,17 @@ contract TimelockOperationsTest is eBTCBaseFixture {
 
         // Grant the High-Sec timelock access to all functions
         authority.setUserRole(address(highSecTimelock), 0, true); // Admin
-        authority.setUserRole(address(highSecTimelock), 1, true); // eBTCToken: mint
-        authority.setUserRole(address(highSecTimelock), 2, true); // eBTCToken: burn
+        // authority.setUserRole(address(highSecTimelock), 1, true); // eBTCToken: mint
+        // authority.setUserRole(address(highSecTimelock), 2, true); // eBTCToken: burn
         authority.setUserRole(address(highSecTimelock), 3, true); // CDPManager: all
         authority.setUserRole(address(highSecTimelock), 4, true); // PriceFeed: setFallbackCaller
-        authority.setUserRole(address(highSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps & setFlashLoansPaused
+        authority.setUserRole(address(highSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
         authority.setUserRole(address(highSecTimelock), 6, true); // ActivePool: sweep tokens & claim fee recipient coll
-        authority.setUserRole(address(highSecTimelock), 7, true); // BorrowerOperations+ActivePool: setFeeRecipientAddress
 
         // Grant the Low-Sec timelock access as per spec
         authority.setUserRole(address(lowSecTimelock), 3, true); // CDPManager: all
-        authority.setUserRole(address(lowSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps & setFlashLoansPaused
+        authority.setUserRole(address(lowSecTimelock), 4, true); // PriceFeed: setFallbackCaller
+        authority.setUserRole(address(lowSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
         authority.setUserRole(address(lowSecTimelock), 6, true); // ActivePool: sweep tokens & claim fee recipient coll
 
         // Remove roles from defaultGov
@@ -81,14 +81,13 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         authority.setUserRole(defaultGovernance, 2, false); // eBTCToken: burn
         authority.setUserRole(defaultGovernance, 3, false); // CDPManager: all
         authority.setUserRole(defaultGovernance, 4, false); // PriceFeed: setFallbackCaller
-        authority.setUserRole(defaultGovernance, 5, false); // BorrowerOperations+ActivePool: setFeeBps & setFlashLoansPaused
+        authority.setUserRole(defaultGovernance, 5, false); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
         authority.setUserRole(defaultGovernance, 6, false); // ActivePool: sweep tokens & claim fee recipient coll
-        authority.setUserRole(defaultGovernance, 7, false); // BorrowerOperations+ActivePool: setFeeRecipientAddress
 
         // Transfer Governance capabilities to high-sec timelock
-        authority.setUserRole(address(highSecTimelock), 8, true);
-        authority.setRoleName(8, "Governance");
-        _grantAllGovernorCapabilitiesToRole(8);
+        authority.setUserRole(address(highSecTimelock), 7, true);
+        authority.setRoleName(7, "Governance");
+        _grantAllGovernorCapabilitiesToRole(7);
 
         // Burn ownership (Altneratively it could be transferred to the high-sec tiemlock for a period of time before burning)
         // authority.transferOwnership(address(0));

@@ -333,10 +333,9 @@ contract eBTCBaseFixture is
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
         authority.setRoleName(
             5,
-            "BorrowerOperations+ActivePool: setFeeBps & setFlashLoansPaused"
+            "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
         );
         authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
-        authority.setRoleName(7, "BorrowerOperations+ActivePool: setFeeRecipientAddress");
 
         // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
 
@@ -360,20 +359,19 @@ contract eBTCBaseFixture is
             SET_FLASH_LOANS_PAUSED_SIG,
             true
         );
-
-        authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
-        authority.setRoleCapability(5, address(activePool), SET_FLASH_LOANS_PAUSED_SIG, true);
-
-        authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
-        authority.setRoleCapability(6, address(activePool), CLAIM_FEE_RECIPIENT_COLL_SIG, true);
-
-        authority.setRoleCapability(7, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
         authority.setRoleCapability(
-            7,
+            5,
             address(borrowerOperations),
             SET_FEE_RECIPIENT_ADDRESS_SIG,
             true
         );
+
+        authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FLASH_LOANS_PAUSED_SIG, true);
+        authority.setRoleCapability(5, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
+
+        authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
+        authority.setRoleCapability(6, address(activePool), CLAIM_FEE_RECIPIENT_COLL_SIG, true);
 
         authority.setUserRole(defaultGovernance, 0, true);
         authority.setUserRole(defaultGovernance, 1, true);
@@ -382,7 +380,6 @@ contract eBTCBaseFixture is
         authority.setUserRole(defaultGovernance, 4, true);
         authority.setUserRole(defaultGovernance, 5, true);
         authority.setUserRole(defaultGovernance, 6, true);
-        authority.setUserRole(defaultGovernance, 7, true);
 
         crLens = new CRLens(address(cdpManager), address(priceFeedMock));
         liquidationSequencer = new LiquidationSequencer(
