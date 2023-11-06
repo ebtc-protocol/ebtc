@@ -42,9 +42,6 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         address[] memory highSecManagers = new address[](1);
         highSecManagers[0] = ecosystem;
         highSecTimelock = new TimelockController(7 days, highSecManagers, highSecManagers, address(0));
-        assertTrue(highSecTimelock.hasRole(highSecTimelock.PROPOSER_ROLE(), ecosystem));
-        assertTrue(highSecTimelock.hasRole(highSecTimelock.EXECUTOR_ROLE(), ecosystem));
-        assertTrue(highSecTimelock.hasRole(highSecTimelock.CANCELLER_ROLE(), ecosystem));
 
         // Deploy Low-Sec timelock
         address[] memory lowSecManagers = new address[](3);
@@ -58,13 +55,6 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         vm.startPrank(address(lowSecTimelock));
         lowSecTimelock.revokeRole(lowSecTimelock.CANCELLER_ROLE(), systemOps);
         lowSecTimelock.revokeRole(lowSecTimelock.CANCELLER_ROLE(), techOps);
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), ecosystem));
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), ecosystem));
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.CANCELLER_ROLE(), ecosystem));
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), systemOps));
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), systemOps));
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), techOps));
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), techOps));
         vm.stopPrank();
 
         // Assign all access roles to the timelocks according to spec
@@ -106,8 +96,32 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    // Test: The address with the granted role should be able to call the Governor functions
-    function test_ActivePool_TimelockCanSweep() public {
+    function test_timelockConfiguration() public {
+        // High sec
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.PROPOSER_ROLE(), ecosystem));
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.EXECUTOR_ROLE(), ecosystem));
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.CANCELLER_ROLE(), ecosystem));
+        // Only timelock itself has DEFAULT_ADMIN
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), address(highSecTimelock)));
+        assertFalse(highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), ecosystem));
+
+        // Low sec
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), ecosystem));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), ecosystem));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.CANCELLER_ROLE(), ecosystem));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), systemOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), systemOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), techOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), techOps));
+        // Only timelock itself has DEFAULT_ADMIN
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), address(lowSecTimelock)));
+        assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), ecosystem));
+        assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), systemOps));
+        assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), techOps));
+    }
+
+    // Test: The lowsec timelock can operate in one of the functions is is given permission over
+    function test_lowsecTimelockCanOperate() public {
         uint256 amountInActivePool = 20e18;
         uint256 amountToSweep = 2e18;
 
@@ -118,9 +132,9 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         assertEq(mockToken.balanceOf(address(activePool)), amountInActivePool);
 
         // Sweep through Timelock
-        vm.startPrank(ecosystem);
+        vm.startPrank(techOps);
         _scheduleAndExecuteTimelockTx(
-            highSecTimelock,
+            lowSecTimelock,
             address(activePool),
             abi.encodeCall(
                 activePool.sweepToken,
