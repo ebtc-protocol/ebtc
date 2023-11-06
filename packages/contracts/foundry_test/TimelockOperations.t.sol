@@ -84,13 +84,12 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         authority.setUserRole(defaultGovernance, 5, false); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
         authority.setUserRole(defaultGovernance, 6, false); // ActivePool: sweep tokens & claim fee recipient coll
 
-        // Transfer Governance capabilities to high-sec timelock
-        authority.setUserRole(address(highSecTimelock), 7, true);
-        authority.setRoleName(7, "Governance");
-        _grantAllGovernorCapabilitiesToRole(7);
+        // Transfer Governance (Admin) capabilities to high-sec timelock
+        authority.setUserRole(address(highSecTimelock), 0, true);
+        _grantAllGovernorCapabilitiesToRole(0);
 
         // Burn ownership (Altneratively it could be transferred to the high-sec tiemlock for a period of time before burning)
-        // authority.transferOwnership(address(0));
+        authority.transferOwnership(address(0));
 
         vm.stopPrank();
     }
@@ -221,6 +220,11 @@ contract TimelockOperationsTest is eBTCBaseFixture {
             7 days + 1
         );
         vm.stopPrank();
+
+        // Attemt to operate admin functions from previous governance
+        vm.prank(defaultGovernance);
+        vm.expectRevert();
+        authority.setUserRole(minter, 1, true);
 
         // High sec user can use highSec timelock to perform admin operations (extensible minting, for instance)
         vm.startPrank(ecosystem);
