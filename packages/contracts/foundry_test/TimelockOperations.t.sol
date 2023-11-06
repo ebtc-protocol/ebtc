@@ -62,8 +62,8 @@ contract TimelockOperationsTest is eBTCBaseFixture {
 
         // Grant the High-Sec timelock access to all functions
         authority.setUserRole(address(highSecTimelock), 0, true); // Admin
-        // authority.setUserRole(address(highSecTimelock), 1, true); // eBTCToken: mint
-        // authority.setUserRole(address(highSecTimelock), 2, true); // eBTCToken: burn
+        // authority.setUserRole(address(highSecTimelock), 1, true); // eBTCToken: mint (timelock shouldn't mint)
+        // authority.setUserRole(address(highSecTimelock), 2, true); // eBTCToken: burn (timelock shouldn't burn)
         authority.setUserRole(address(highSecTimelock), 3, true); // CDPManager: all
         authority.setUserRole(address(highSecTimelock), 4, true); // PriceFeed: setFallbackCaller
         authority.setUserRole(address(highSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
@@ -148,6 +148,93 @@ contract TimelockOperationsTest is eBTCBaseFixture {
 
         assertEq(mockToken.balanceOf(address(activePool)), amountInActivePool - amountToSweep);
         assertEq(mockToken.balanceOf(address(feeRecipientAddress)), amountToSweep);
+    }
+
+    function test_highsecTimelockCanOperate() public {
+        uint256 amountInActivePool = 20e18;
+        uint256 amountToSweep = 2e18;
+
+        // Send a mock token for sweeping
+        vm.prank(address(activePool));
+        mockToken.deposit(amountInActivePool);
+
+        assertEq(mockToken.balanceOf(address(activePool)), amountInActivePool);
+
+        // Sweep through Timelock
+        vm.startPrank(ecosystem);
+        _scheduleAndExecuteTimelockTx(
+            highSecTimelock,
+            address(activePool),
+            abi.encodeCall(
+                activePool.sweepToken,
+                (address(mockToken), amountToSweep)
+            ),
+            7 days + 1
+        );
+        vm.stopPrank();
+
+        // confirm balances
+        address feeRecipientAddress = activePool.feeRecipientAddress();
+
+        assertEq(mockToken.balanceOf(address(activePool)), amountInActivePool - amountToSweep);
+        assertEq(mockToken.balanceOf(address(feeRecipientAddress)), amountToSweep);
+    }
+
+    function test_onlyHighsecHasAdmin() public {
+        // Dummy minter
+        address minter = _utils.getNextSpecialAddress();
+        assertFalse(authority.doesUserHaveRole(minter, 1)); // No role assigned yet
+
+        // Attempt to perform adming function from lowSec Timelock
+        vm.startPrank(techOps);
+        _scheduleTimelockTx(
+            lowSecTimelock,
+            address(authority),
+            abi.encodeCall(
+                authority.setUserRole,
+                (minter, 1, true) // minter
+            ),
+            2 days + 1
+        ); // Can schedule it but executing should revert
+        vm.warp(block.timestamp + 2 days + 1);
+        vm.expectRevert("TimelockController: underlying transaction reverted");
+        _executeTimelockTx(
+            lowSecTimelock,
+            address(authority),
+            abi.encodeCall(
+                authority.setUserRole,
+                (minter, 1, true) // minter
+            )
+        );
+        vm.stopPrank();
+
+        // Attempt to schedule from highSec timelock with lowsec account (permissions test)
+        vm.startPrank(techOps);
+        vm.expectRevert();
+        _scheduleTimelockTx(
+            highSecTimelock,
+            address(authority),
+            abi.encodeCall(
+                authority.setUserRole,
+                (minter, 1, true) // minter
+            ),
+            7 days + 1
+        );
+        vm.stopPrank();
+
+        // High sec user can use highSec timelock to perform admin operations (extensible minting, for instance)
+        vm.startPrank(ecosystem);
+        _scheduleAndExecuteTimelockTx(
+            highSecTimelock,
+            address(authority),
+            abi.encodeCall(
+                authority.setUserRole,
+                (minter, 1, true) // minter
+            ),
+            7 days + 1
+        );
+        vm.stopPrank();
+        assertTrue(authority.doesUserHaveRole(minter, 1));
     }
 
     /// @dev Helper function to grant all Governor setter capabilities to a specific role
