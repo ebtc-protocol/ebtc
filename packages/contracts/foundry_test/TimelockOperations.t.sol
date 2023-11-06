@@ -8,7 +8,6 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {WethMock} from "../contracts/TestContracts/WethMock.sol";
 
-
 contract TimelockOperationsTest is eBTCBaseFixture {
     WethMock public mockToken;
     TimelockController public lowSecTimelock;
@@ -41,7 +40,12 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         vm.startPrank(defaultGovernance);
         address[] memory highSecManagers = new address[](1);
         highSecManagers[0] = ecosystem;
-        highSecTimelock = new TimelockController(7 days, highSecManagers, highSecManagers, address(0));
+        highSecTimelock = new TimelockController(
+            7 days,
+            highSecManagers,
+            highSecManagers,
+            address(0)
+        );
 
         // Deploy Low-Sec timelock
         address[] memory lowSecManagers = new address[](3);
@@ -100,7 +104,9 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         assertTrue(highSecTimelock.hasRole(highSecTimelock.EXECUTOR_ROLE(), ecosystem));
         assertTrue(highSecTimelock.hasRole(highSecTimelock.CANCELLER_ROLE(), ecosystem));
         // Only timelock itself has DEFAULT_ADMIN
-        assertTrue(highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), address(highSecTimelock)));
+        assertTrue(
+            highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), address(highSecTimelock))
+        );
         assertFalse(highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), ecosystem));
 
         // Low sec
@@ -112,7 +118,9 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), techOps));
         assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), techOps));
         // Only timelock itself has DEFAULT_ADMIN
-        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), address(lowSecTimelock)));
+        assertTrue(
+            lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), address(lowSecTimelock))
+        );
         assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), ecosystem));
         assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), systemOps));
         assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), techOps));
@@ -134,10 +142,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         _scheduleAndExecuteTimelockTx(
             lowSecTimelock,
             address(activePool),
-            abi.encodeCall(
-                activePool.sweepToken,
-                (address(mockToken), amountToSweep)
-            ),
+            abi.encodeCall(activePool.sweepToken, (address(mockToken), amountToSweep)),
             7 days + 1
         );
         vm.stopPrank();
@@ -164,10 +169,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         _scheduleAndExecuteTimelockTx(
             highSecTimelock,
             address(activePool),
-            abi.encodeCall(
-                activePool.sweepToken,
-                (address(mockToken), amountToSweep)
-            ),
+            abi.encodeCall(activePool.sweepToken, (address(mockToken), amountToSweep)),
             7 days + 1
         );
         vm.stopPrank();
@@ -262,32 +264,33 @@ contract TimelockOperationsTest is eBTCBaseFixture {
 
     /// @dev Helper to schedule timelock transaction using default value, predecessor and salt
     /// @dev assumes prank of scheduler
-    function _scheduleTimelockTx(TimelockController timelock, address target, bytes memory data, uint256 delay) internal {
-        timelock.schedule(
-            target,
-            0,
-            data,
-            bytes32(0),
-            bytes32(0),
-            delay
-        );
+    function _scheduleTimelockTx(
+        TimelockController timelock,
+        address target,
+        bytes memory data,
+        uint256 delay
+    ) internal {
+        timelock.schedule(target, 0, data, bytes32(0), bytes32(0), delay);
     }
 
     /// @dev Helper to schedule timelock transaction using default value, predecessor and salt
     /// @dev assumes prank of executor
-    function _executeTimelockTx(TimelockController timelock, address target, bytes memory payload) internal {
-        timelock.execute(
-            target,
-            0,
-            payload,
-            bytes32(0),
-            bytes32(0)
-        );
+    function _executeTimelockTx(
+        TimelockController timelock,
+        address target,
+        bytes memory payload
+    ) internal {
+        timelock.execute(target, 0, payload, bytes32(0), bytes32(0));
     }
 
     /// @dev Helper to schedule and execute timelock transaction using default value, predecessor and salt
     /// @dev assumes prank of shceduler/executor
-    function _scheduleAndExecuteTimelockTx(TimelockController timelock, address target, bytes memory data, uint256 delay) internal {
+    function _scheduleAndExecuteTimelockTx(
+        TimelockController timelock,
+        address target,
+        bytes memory data,
+        uint256 delay
+    ) internal {
         _scheduleTimelockTx(timelock, target, data, delay);
         vm.warp(block.timestamp + delay + 1);
         _executeTimelockTx(timelock, target, data);
