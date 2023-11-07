@@ -57,8 +57,8 @@ contract TimelockOperationsTest is eBTCBaseFixture {
 
         // revoke cancelling role from systemOps and techOps as necessary
         vm.startPrank(address(lowSecTimelock));
-        lowSecTimelock.revokeRole(cancellerRole, systemOps);
-        lowSecTimelock.revokeRole(cancellerRole, techOps);
+        lowSecTimelock.revokeRole(lowSecTimelock.CANCELLER_ROLE(), systemOps);
+        lowSecTimelock.revokeRole(lowSecTimelock.CANCELLER_ROLE(), techOps);
         vm.stopPrank();
 
         // Assign all access roles to the timelocks according to spec
@@ -99,46 +99,41 @@ contract TimelockOperationsTest is eBTCBaseFixture {
     }
 
     function test_timelockConfiguration() public {
-        let proposerRole = highSecTimelock.PROPOSER_ROLE();
-        let cancellerRole = highSecTimelock.CANCELLER_ROLE();
-        let executorRole = highSecTimelock.EXECUTOR_ROLE();
-        let adminRole = highSecTimelock.TIMELOCK_ADMIN_ROLE();
-
         // High sec
-        assertTrue(highSecTimelock.hasRole(proposerRole, ecosystem));
-        assertTrue(highSecTimelock.hasRole(executorRole, ecosystem));
-        assertTrue(highSecTimelock.hasRole(cancellerRole, ecosystem));
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.PROPOSER_ROLE(), ecosystem));
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.EXECUTOR_ROLE(), ecosystem));
+        assertTrue(highSecTimelock.hasRole(highSecTimelock.CANCELLER_ROLE(), ecosystem));
         // Only timelock itself has DEFAULT_ADMIN
         assertTrue(
-            highSecTimelock.hasRole(adminRole, address(highSecTimelock))
+            highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), address(highSecTimelock))
         );
-        assertFalse(highSecTimelock.hasRole(adminRole, ecosystem));
+        assertFalse(highSecTimelock.hasRole(highSecTimelock.TIMELOCK_ADMIN_ROLE(), ecosystem));
         // Use enumerable to confirm members count per role
-        assertEq(highSecTimelock.getRoleMemberCount(proposerRole), 1);
-        assertEq(highSecTimelock.getRoleMemberCount(executorRole), 1);
-        assertEq(highSecTimelock.getRoleMemberCount(cancellerRole), 1);
-        assertEq(highSecTimelock.getRoleMemberCount(adminRole), 1);
+        assertEq(highSecTimelock.getRoleMemberCount(highSecTimelock.PROPOSER_ROLE()), 1);
+        assertEq(highSecTimelock.getRoleMemberCount(highSecTimelock.EXECUTOR_ROLE()), 1);
+        assertEq(highSecTimelock.getRoleMemberCount(highSecTimelock.CANCELLER_ROLE()), 1);
+        assertEq(highSecTimelock.getRoleMemberCount(highSecTimelock.TIMELOCK_ADMIN_ROLE()), 1);
 
         // Low sec
-        assertTrue(lowSecTimelock.hasRole(proposerRole, ecosystem));
-        assertTrue(lowSecTimelock.hasRole(executorRole, ecosystem));
-        assertTrue(lowSecTimelock.hasRole(cancellerRole, ecosystem));
-        assertTrue(lowSecTimelock.hasRole(proposerRole, systemOps));
-        assertTrue(lowSecTimelock.hasRole(executorRole, systemOps));
-        assertTrue(lowSecTimelock.hasRole(proposerRole, techOps));
-        assertTrue(lowSecTimelock.hasRole(executorRole, techOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), ecosystem));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), ecosystem));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.CANCELLER_ROLE(), ecosystem));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), systemOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), systemOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.PROPOSER_ROLE(), techOps));
+        assertTrue(lowSecTimelock.hasRole(lowSecTimelock.EXECUTOR_ROLE(), techOps));
         // Only timelock itself has DEFAULT_ADMIN
         assertTrue(
-            lowSecTimelock.hasRole(adminRole, address(lowSecTimelock))
+            lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), address(lowSecTimelock))
         );
-        assertFalse(lowSecTimelock.hasRole(adminRole, ecosystem));
-        assertFalse(lowSecTimelock.hasRole(adminRole, systemOps));
-        assertFalse(lowSecTimelock.hasRole(adminRole, techOps));
+        assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), ecosystem));
+        assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), systemOps));
+        assertFalse(lowSecTimelock.hasRole(lowSecTimelock.TIMELOCK_ADMIN_ROLE(), techOps));
         // Use enumerable to confirm members count per role
-        assertEq(lowSecTimelock.getRoleMemberCount(proposerRole), 3);
-        assertEq(lowSecTimelock.getRoleMemberCount(executorRole), 3);
-        assertEq(lowSecTimelock.getRoleMemberCount(cancellerRole), 1);
-        assertEq(lowSecTimelock.getRoleMemberCount(adminRole), 1);
+        assertEq(lowSecTimelock.getRoleMemberCount(lowSecTimelock.PROPOSER_ROLE()), 3);
+        assertEq(lowSecTimelock.getRoleMemberCount(lowSecTimelock.EXECUTOR_ROLE()), 3);
+        assertEq(lowSecTimelock.getRoleMemberCount(lowSecTimelock.CANCELLER_ROLE()), 1);
+        assertEq(lowSecTimelock.getRoleMemberCount(highSecTimelock.TIMELOCK_ADMIN_ROLE()), 1);
     }
 
     // Test: The lowsec timelock can operate in one of the functions is is given permission over
