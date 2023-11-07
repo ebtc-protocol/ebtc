@@ -3,15 +3,15 @@ pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
 import "../contracts/Dependencies/EbtcMath.sol";
-import {TimelockController} from "@openzeppelin-contracts/governance/TimelockController.sol";
+import {TimelockControllerEnumerable} from "../contracts/Dependencies/TimelockControllerEnumerable.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {Utilities} from "./utils/Utilities.sol";
 import {WethMock} from "../contracts/TestContracts/WethMock.sol";
 
 contract TimelockOperationsTest is eBTCBaseFixture {
     WethMock public mockToken;
-    TimelockController public lowSecTimelock;
-    TimelockController public highSecTimelock;
+    TimelockControllerEnumerable public lowSecTimelock;
+    TimelockControllerEnumerable public highSecTimelock;
     address ecosystem;
     address systemOps;
     address techOps;
@@ -40,7 +40,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         vm.startPrank(defaultGovernance);
         address[] memory highSecManagers = new address[](1);
         highSecManagers[0] = ecosystem;
-        highSecTimelock = new TimelockController(
+        highSecTimelock = new TimelockControllerEnumerable(
             7 days,
             highSecManagers,
             highSecManagers,
@@ -52,7 +52,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         lowSecManagers[0] = ecosystem;
         lowSecManagers[1] = systemOps;
         lowSecManagers[2] = techOps;
-        lowSecTimelock = new TimelockController(2 days, lowSecManagers, lowSecManagers, address(0));
+        lowSecTimelock = new TimelockControllerEnumerable(2 days, lowSecManagers, lowSecManagers, address(0));
         vm.stopPrank();
 
         // revoke cancelling role from systemOps and techOps as necessary
@@ -265,7 +265,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
     /// @dev Helper to schedule timelock transaction using default value, predecessor and salt
     /// @dev assumes prank of scheduler
     function _scheduleTimelockTx(
-        TimelockController timelock,
+        TimelockControllerEnumerable timelock,
         address target,
         bytes memory data,
         uint256 delay
@@ -276,7 +276,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
     /// @dev Helper to schedule timelock transaction using default value, predecessor and salt
     /// @dev assumes prank of executor
     function _executeTimelockTx(
-        TimelockController timelock,
+        TimelockControllerEnumerable timelock,
         address target,
         bytes memory payload
     ) internal {
@@ -286,7 +286,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
     /// @dev Helper to schedule and execute timelock transaction using default value, predecessor and salt
     /// @dev assumes prank of shceduler/executor
     function _scheduleAndExecuteTimelockTx(
-        TimelockController timelock,
+        TimelockControllerEnumerable timelock,
         address target,
         bytes memory data,
         uint256 delay
