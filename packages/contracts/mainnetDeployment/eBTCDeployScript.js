@@ -21,6 +21,8 @@ const FEE_RECIPIENT_STATE_NAME = 'feeRecipient';
 const EBTC_DEPLOYER_STATE_NAME = 'eBTCDeployer';
 const COLLATERAL_STATE_NAME = 'collateral';
 const MULTI_CDP_GETTER_STATE_NAME = 'multiCdpGetter';
+const HIGHSEC_TIMELOCK_STATE_NAME = 'highSecTimelock';
+const LOWSEC_TIMELOCK_STATE_NAME = 'lowSecTimelock';
 
 const chalk = require('chalk');
 
@@ -36,11 +38,19 @@ class EBTCDeployerScript {
         this.ebtcDeployer = false;
         this.collateral = false;
         this.collateralAddr = false;
-        this.configParams = configParams;		
-		
+        this.configParams = configParams;
+
         this.authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner']) ? configParams.externalAddress['authorityOwner'] : deployerWallet.address;
         this.feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : deployerWallet.address;		
-		
+        this.ecosystemMultisig = checkValidItem(configParams.externalAddress['ecosystemMultisig']) ? configParams.externalAddress['ecosystemMultisig'] : deployerWallet.address;
+        this.cdpCouncilMultisig = checkValidItem(configParams.externalAddress['cdpCouncilMultisig']) ? configParams.externalAddress['cdpCouncilMultisig'] : deployerWallet.address;
+        this.cdpTechOpsMultisig = checkValidItem(configParams.externalAddress['cdpTechOpsMultisig']) ? configParams.externalAddress['cdpTechOpsMultisig'] : deployerWallet.address;
+        this.highSecAdmin = checkValidItem(configParams.ADDITIONAL_HIGHSEC_ADMIN) ? configParams.ADDITIONAL_HIGHSEC_ADMIN : deployerWallet.address;
+        this.lowSecAdmin = checkValidItem(configParams.ADDITIONAL_LOWSEC_ADMIN) ? configParams.ADDITIONAL_LOWSEC_ADMIN : deployerWallet.address;
+
+        this.highSecDelay = configParams.HIGHSEC_MIN_DELAY; // Deployment should fail if null
+        this.lowSecDelay = configParams.LOWSEC_MIN_DELAY; // Deployment should fail if null
+
         this.collEthCLFeed = checkValidItem(configParams.externalAddress['collEthCLFeed']) ? configParams.externalAddress['collEthCLFeed'] : deployerWallet.address;
         this.ethBtcCLFeed = checkValidItem(configParams.externalAddress['ethBtcCLFeed']) ? configParams.externalAddress['ethBtcCLFeed'] : deployerWallet.address;		
     }
@@ -95,6 +105,14 @@ class EBTCDeployerScript {
             _deployedState = await DeploymentHelper.deployCollateralTestnet();
         } else if (_stateName == MULTI_CDP_GETTER_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployMultiCdpGetter(ebtcDeployer, _expectedAddr);
+        } else if (_stateName == HIGHSEC_TIMELOCK_STATE_NAME) {
+            let proposers = [this.ecosystemMultisig]
+            let executors = [this.ecosystemMultisig]
+            _deployedState = await DeploymentHelper.deployTimelock(this.highSecDelay, proposers, executors, this.highSecAdmin);
+        }  else if (_stateName == LOWSEC_TIMELOCK_STATE_NAME) {
+            let proposers = [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig]
+            let executors = [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig]
+            _deployedState = await DeploymentHelper.deployTimelock(this.lowSecDelay, proposers, executors, this.lowSecAdmin);
         }
         await this.saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, _deployedState);
         return _deployedState;
@@ -183,6 +201,39 @@ class EBTCDeployerScript {
         }
         this.collateral = _collateral;
         this.collateralAddr = _collateral.address
+    }
+
+    async loadOrDeployTimelocks() {
+        // contract dependencies
+        let _highSecTimelock;
+        let _lowSecTimelock;
+
+        // get HighSecTimelock
+        console.log(chalk.cyan("[HighSecTimelock]"))
+        let _checkExistDeployment = checkExistingDeployment(HIGHSEC_TIMELOCK_STATE_NAME, this.deploymentState);
+
+        if (_checkExistDeployment['_toDeploy']) {
+            _highSecTimelock = await this.deployStateViaHelper(HIGHSEC_TIMELOCK_STATE_NAME, "");
+            await this.verifyState(_checkExistDeployment, COLLATERAL_STATE_NAME, this.mainnetDeploymentHelper, this.deploymentState, []);
+        } else { // mainnet
+            _highSecTimelock = await ethers.getContractAt("TimelockControllerEnumerable", configParams.externalAddress[HIGHSEC_TIMELOCK_STATE_NAME])
+        }
+
+        // get LowSecTimelock
+        console.log(chalk.cyan("[HighSecTimelock]"))
+        _checkExistDeployment = checkExistingDeployment(LOWSEC_TIMELOCK_STATE_NAME, this.deploymentState);
+
+        if (_checkExistDeployment['_toDeploy']) {
+            _lowSecTimelock = await this.deployStateViaHelper(LOWSEC_TIMELOCK_STATE_NAME, "");
+            await this.verifyState(_checkExistDeployment, LOWSEC_TIMELOCK_STATE_NAME, this.mainnetDeploymentHelper, this.deploymentState, []);
+        } else { // mainnet
+            _lowSecTimelock = await ethers.getContractAt("TimelockControllerEnumerable", configParams.externalAddress[LOWSEC_TIMELOCK_STATE_NAME])
+        }
+
+        this.highSecTimelock = _highSecTimelock;
+        this.highSecTimelockAddr = _highSecTimelock.address
+        this.lowSecTimelock = _lowSecTimelock;
+        this.lowSecTimelockAddr = _lowSecTimelock.address
     }
 
     async eBTCDeployCore() {
@@ -295,9 +346,9 @@ async function main() {
     let useMockCollateral = true;
     let useMockPriceFeed = true;
 
-    // let configParams = configParamsLocal;
-   let configParams = configParamsSepolia;
-//    let configParams = configParamsMainnet;
+    let configParams = configParamsLocal;
+    // let configParams = configParamsSepolia;
+    // let configParams = configParamsMainnet;
 
     // flag override: always use mock price feed on local as no feed will exist
     if (configParams == configParamsLocal){
@@ -343,6 +394,7 @@ async function main() {
     let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer)
     await eds.loadOrDeployEBTCDeployer();
     await eds.loadOrDeployCollateral();
+    await eds.loadOrDeployTimelocks();
     await eds.eBTCDeployCore();
 }
 

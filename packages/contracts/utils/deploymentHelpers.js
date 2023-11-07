@@ -376,6 +376,18 @@ class DeploymentHelper {
     return eBTCDeployer;
   }
 
+  static async deployTimelock(delay, proposers, executors, admin) {
+    const TimelockControllerEnumerable = await ethers.getContractFactory('TimelockControllerEnumerable');
+    let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
+    const timelock = await TimelockControllerEnumerable.deploy(
+      delay,
+      proposers,
+      executors,
+      admin,
+      {nonce: _nonce});
+    return timelock;
+  }
+
   /**  
     == Local Test Environment Deploy ==
     Deploy core to a local testnet. Does not handle transaction processing.
