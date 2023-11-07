@@ -21,3 +21,5 @@ contract TimelockControllerEnumerable is TimelockController, AccessControlEnumer
         return super._grantRole(role, account);
     }
 }
+
+// Source: https://github.com/OpenZeppelin/openzeppelin-contracts/issues/3842
