@@ -52,7 +52,12 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         lowSecManagers[0] = ecosystem;
         lowSecManagers[1] = systemOps;
         lowSecManagers[2] = techOps;
-        lowSecTimelock = new TimelockControllerEnumerable(2 days, lowSecManagers, lowSecManagers, address(0));
+        lowSecTimelock = new TimelockControllerEnumerable(
+            2 days,
+            lowSecManagers,
+            lowSecManagers,
+            address(0)
+        );
         vm.stopPrank();
 
         // revoke cancelling role from systemOps and techOps as necessary
