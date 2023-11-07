@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "@openzeppelin-contracts/governance/TimelockController.sol";
-import "@openzeppelin-contracts/access/AccessControlEnumerable.sol";
+import "../../node_modules/@openzeppelin/contracts/governance/TimelockController.sol";
+import "../../node_modules/@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 
 contract TimelockControllerEnumerable is TimelockController, AccessControlEnumerable {
     constructor(uint256 minDelay, address[] memory proposers, address[] memory executors, address admin)
