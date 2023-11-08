@@ -5,7 +5,6 @@ const configParamsMainnet = require("./eBTCDeploymentParams.mainnet.js")
 const configParamsLocal = require("./eBTCDeploymentParams.local.js")
 const govSig = require('./governanceSignatures.js')
 
-const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js")
 const MainnetDeploymentHelper = require("../utils/mainnetDeploymentHelpers.js")
 
 const GOVERNOR_STATE_NAME = 'authority';
@@ -84,14 +83,14 @@ class EBTCDeployerScript {
         } else if (_stateName == CDP_MANAGER_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCdpManager(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == BORROWER_OPERATIONS_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddr);
+            _deployedState = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, this.feeRecipientOwner, collateralAddr);
         } else if (_stateName == EBTC_TOKEN_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
             _deployedState = useMockPriceFeed ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
                                                 await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr);
+            _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr, this.feeRecipientOwner);
         } else if (_stateName == COLL_SURPLUS_POOL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == SORTED_CDPS_STATE_NAME) {
