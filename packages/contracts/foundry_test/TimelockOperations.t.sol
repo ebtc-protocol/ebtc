@@ -94,7 +94,6 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         authority.setUserRole(defaultGovernance, 6, false); // ActivePool: sweep tokens & claim fee recipient coll
 
         // Transfer Governance (Admin) capabilities to high-sec timelock
-        authority.setUserRole(address(highSecTimelock), 0, true);
         _grantAllGovernorCapabilitiesToRole(0);
 
         // Burn ownership (Altneratively it could be transferred to the high-sec tiemlock for a period of time before burning)
