@@ -3,6 +3,7 @@ const configParamsSepolia = require("./eBTCDeploymentParams.sepolia.js")
 const configParamsGoerli = require("./eBTCDeploymentParams.goerli.js")
 const configParamsMainnet = require("./eBTCDeploymentParams.mainnet.js")
 const configParamsLocal = require("./eBTCDeploymentParams.local.js")
+const govSig = require('./governanceSignatures.js')
 
 const { TestHelper: th, TimeValues: timeVals } = require("../utils/testHelpers.js")
 const MainnetDeploymentHelper = require("../utils/mainnetDeploymentHelpers.js")
@@ -317,6 +318,168 @@ class EBTCDeployerScript {
         return coreContracts;
     }
 
+    async governanceWireUp(coreContracts, configParams, _deployer) {
+        console.log("Starting governance wiring...");
+        const authority = coreContracts.authority;
+
+        // === Timelocks Configuration === //
+
+        const PROPOSER_ROLE = await this.highSecTimelock.PROPOSER_ROLE();
+        const EXECUTOR_ROLE = await this.highSecTimelock.EXECUTOR_ROLE();
+        const CANCELLER_ROLE = await this.highSecTimelock.CANCELLER_ROLE();
+        const TIMELOCK_ADMIN_ROLE = await this.highSecTimelock.TIMELOCK_ADMIN_ROLE();
+
+        // HIGHSEC TIMELOCK
+        // ==========================
+        // PROPOSERS: Ecosystem
+        // CANCELLERS: Ecosystem
+        // EXECUTORS: Ecosystem
+        // Admin: Only Timelock
+        // Delay: 7 days (mainnet)
+        // ==========================
+
+        assert.isTrue(await this.highSecTimelock.getMinDelay(), configParams.HIGHSEC_MIN_DELAY);
+
+        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 1);
+        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 1);
+        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1);
+        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 2); // Set to deployer and timelock
+
+        assert.isTrue(await this.highSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.highSecTimelock.hasRole(EXECUTOR_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.highSecTimelock.hasRole(CANCELLER_ROLE, this.ecosystemMultisig));
+
+        // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
+        assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
+        assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+        await authority.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+        assert.isFalse(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+
+        // Print out final state for sanity check
+        console.log(chalk.cyan("HIGH SEC TIMELOCK CONFIGURATION"))
+        await printOutTimelockState(this.highSecTimelock);
+
+        // LOWSEC TIMELOCK
+        // ==========================
+        // PROPOSERS: Ecosystem, CDP Council, CDP TechOps
+        // CANCELLERS: Ecosystem
+        // EXECUTORS: Ecosystem, CDP Council, CDP TechOps
+        // Admin: Only Timelock
+        // Delay: 2 days (mainnet)
+        // ==========================
+
+        assert.isTrue(await this.lowSecTimelock.getMinDelay(), configParams.LOWSEC_MIN_DELAY);
+
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 3);
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 3);
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 3);
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 2); // Set to deployer and timelock
+
+        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpCouncilMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpTechOpsMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpCouncilMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpTechOpsMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpCouncilMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
+
+        // We remove the canceller from the Council and TechOps
+        await authority.revokeRole(CANCELLER_ROLE, this.cdpCouncilMultisig);
+        assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.cdpCouncilMultisig));
+        await authority.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
+        assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.cdpTechOpsMultisig));
+
+        // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
+        assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.lowSecTimelock.address));
+        assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+        await authority.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+        assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+
+        // Print out final state for sanity check
+        console.log(chalk.cyan("LOW SEC TIMELOCK CONFIGURATION"))
+        await printOutTimelockState(this.lowSecTimelock);
+
+        // === CDP Authority Configuration === //
+
+        // Create roles
+        await authority.setRoleName(0, "Admin");
+        await authority.setRoleName(1, "eBTCToken: mint");
+        await authority.setRoleName(2, "eBTCToken: burn");
+        await authority.setRoleName(3, "CDPManager: all");
+        await authority.setRoleName(4, "PriceFeed: setFallbackCaller");
+        await authority.setRoleName(
+            5,
+            "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
+        );
+        await authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
+    
+        // Asign role capabilities
+
+        // Authority Admin
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_ROLE_NAME_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_USER_ROLE_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_ROLE_CAPABILITY_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_PUBLIC_CAPABILITY_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.BURN_CAPABILITY_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.TRANSFER_OWNERSHIP_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_AUTHORITY_SIG, true);      
+
+        // eBTC Token
+        await authority.setRoleCapability(1, coreContracts.ebtcToken.address, govSig.MINT_SIG, true);
+        await authority.setRoleCapability(2, coreContracts.ebtcToken.address, govSig.BURN_SIG, true);
+        await authority.setRoleCapability(2, coreContracts.ebtcToken.address, govSig.BURN2_SIG, true);
+
+        // CDP Manager
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_STAKING_REWARD_SPLIT_SIG, true);
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPTION_FEE_FLOOR_SIG, true);
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_MINUTE_DECAY_FACTOR_SIG, true);
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_BETA_SIG, true);
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPETIONS_PAUSED_SIG, true);
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_GRACE_PERIOD_SIG, true);
+
+        // Price Feed
+        await authority.setRoleCapability(4, coreContracts.priceFeed.address, govSig.SET_FALLBACK_CALLER_SIG, true);
+
+        // Borrower Operations
+        await authority.setRoleCapability(5, coreContracts.borrowerOperations.address, govSig.SET_FEE_BPS_SIG, true);
+        await authority.setRoleCapability(
+            5,
+            coreContracts.borrowerOperations.address,
+            govSig.SET_FLASH_LOANS_PAUSED_SIG,
+            true
+        );
+        await authority.setRoleCapability(
+            5,
+            coreContracts.borrowerOperations.address,
+            govSig.SET_FEE_RECIPIENT_ADDRESS_SIG,
+            true
+        );
+
+        // Active Pool
+        await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FEE_BPS_SIG, true);
+        await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FLASH_LOANS_PAUSED_SIG, true);
+        await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FEE_RECIPIENT_ADDRESS_SIG, true);
+        await authority.setRoleCapability(6, coreContracts.activePool.address, govSig.SWEEP_TOKEN_SIG, true);
+        await authority.setRoleCapability(6, coreContracts.activePool.address, govSig.CLAIM_FEE_RECIPIENT_COLL_SIG, true);
+    
+        // Assign roles to Timelocks (Only lowsec, ownership will be transferred to HighSec which is equivalent to having all roles)
+        // LowSec timelock should have access to all functions except for minting/burning and authority admin 
+        await authority.setUserRole(this.lowSecTimelock.address, 3, true);
+        await authority.setUserRole(this.lowSecTimelock.address, 4, true);
+        await authority.setUserRole(this.lowSecTimelock.address, 5, true);
+
+        // Assign fee claiming capabilities and sweeping to fee recipient multisig
+        await authority.setUserRole(this.feeRecipientOwner, 6, true);
+
+        // Once manual wiring is performed, authority ownership is transferred to the HighSec Timelock
+        await authority.transferOwnership(this.highSecTimelock.address);
+        assert.isTrue(await authority.owner() == this.highSecTimelock.address);
+
+        console.log("Governance wiring finalized...");
+    }
+
     async verifyContractsViaPlugin(mainnetDeploymentHelper, name, deploymentState, constructorArgs) {
         console.log(this.configParams)
         if (!this.configParams.VERIFY_ETHERSCAN) {
@@ -395,7 +558,8 @@ async function main() {
     await eds.loadOrDeployEBTCDeployer();
     await eds.loadOrDeployCollateral();
     await eds.loadOrDeployTimelocks();
-    await eds.eBTCDeployCore();
+    let coreContracts = await eds.eBTCDeployCore();
+    await eds.governanceWireUp(coreContracts, configParams, _deployer);
 }
 
 function checkExistingDeployment(stateName, deploymentState) {
@@ -422,6 +586,26 @@ function checkExistingDeployment(stateName, deploymentState) {
 
 function checkValidItem(item) {
     return (item != undefined && typeof item != "undefined" && item != null && item != "");
+}
+
+async function printOutTimelockState(timelock) { 
+    console.log("PROPOSER_ROLE");
+    for (i = 0; i < await timelock.getRoleMemberCount(await timelock.PROPOSER_ROLE()); i++) {
+        console.log(await timelock.getRoleMember(await timelock.PROPOSER_ROLE(), i));
+    }
+    console.log("CANCELLER_ROLE");
+    for (i = 0; i < await timelock.getRoleMemberCount(await timelock.CANCELLER_ROLE()); i++) {
+        console.log(await timelock.getRoleMember(await timelock.CANCELLER_ROLE(), i));
+    }
+    console.log("EXECUTOR_ROLE");
+    for (i = 0; i < await timelock.getRoleMemberCount(await timelock.EXECUTOR_ROLE()); i++) {
+        console.log(await timelock.getRoleMember(await timelock.EXECUTOR_ROLE(), i));
+    }
+    console.log("TIMELOCK_ADMIN_ROLE");
+    for (i = 0; i < await timelock.getRoleMemberCount(await timelock.TIMELOCK_ADMIN_ROLE()); i++) {
+        console.log(await timelock.getRoleMember(await timelock.TIMELOCK_ADMIN_ROLE(), i));
+    }
+    console.log("MIN DELAY", await this.highSecTimelock.getMinDelay());
 }
 
 // cd <eBTCRoot>/packages/contracts
