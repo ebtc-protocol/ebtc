@@ -97,7 +97,7 @@ contract LeverageMacroBase {
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
         // Used only to check status
-        ICdpManagerData.Status expectedStatus; // TODO: THIS IS SUPERFLUOUS
+        ICdpManagerData.Status expectedStatus; // NOTE: THIS IS SUPERFLUOUS
     }
 
     /**
@@ -252,7 +252,6 @@ contract LeverageMacroBase {
         } else if (check.operator == Operator.equal) {
             require(check.value == valueToCheck, "!LeverageMacroReference: equal post check");
         } else {
-            /// @audit If proof OOB enum, then we can remove this
             revert("Operator not found");
         }
     }

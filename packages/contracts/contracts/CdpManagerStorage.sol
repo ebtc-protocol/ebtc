@@ -200,8 +200,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     uint256 public override systemStEthFeePerUnitIndexError;
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
     mapping(bytes32 => uint256) public cdpStEthFeePerUnitIndex;
-    /* Update timestamp for global index */
-    uint256 lastIndexTimestamp;
 
     // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
     bytes32[] public CdpIds;
@@ -541,7 +539,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function _syncStEthIndex(uint256 _oldIndex, uint256 _newIndex) internal {
         if (_newIndex != _oldIndex) {
             stEthIndex = _newIndex;
-            lastIndexTimestamp = block.timestamp;
             emit StEthIndexUpdated(_oldIndex, _newIndex, block.timestamp);
         }
     }
