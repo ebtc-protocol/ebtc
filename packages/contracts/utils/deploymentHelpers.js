@@ -379,12 +379,17 @@ class DeploymentHelper {
   static async deployTimelock(delay, proposers, executors, admin) {
     const TimelockControllerEnumerable = await ethers.getContractFactory('TimelockControllerEnumerable');
     let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
+    console.log(_nonce)
+    console.log(delay)
+    console.log(proposers)
+    console.log(executors)
+    console.log(admin)
     const timelock = await TimelockControllerEnumerable.deploy(
       delay,
       proposers,
       executors,
       admin,
-      {nonce: _nonce});
+      {gasLimit: 10000000, nonce: _nonce});
     return timelock;
   }
 

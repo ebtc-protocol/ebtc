@@ -158,6 +158,12 @@ class EBTCDeployerScript {
             console.log('Sanity checking: feeRecipient.NAME()=' + (await _deployedState.NAME()));
         } else if (_stateName == EBTC_DEPLOYER_STATE_NAME) {
             _deployedState = await (await ethers.getContractFactory("EBTCDeployerTester")).attach(deploymentState[EBTC_DEPLOYER_STATE_NAME]["address"])
+        } else if (_stateName == HIGHSEC_TIMELOCK_STATE_NAME) {
+            _deployedState = await (await ethers.getContractFactory("TimelockControllerEnumerable")).attach(deploymentState[HIGHSEC_TIMELOCK_STATE_NAME]["address"])
+            console.log('Sanity checking: highSecTimelock.getMinDelay()=' + (await _deployedState.getMinDelay()));
+        } else if (_stateName == LOWSEC_TIMELOCK_STATE_NAME) {
+            _deployedState = await (await ethers.getContractFactory("TimelockControllerEnumerable")).attach(deploymentState[LOWSEC_TIMELOCK_STATE_NAME]["address"])
+            console.log('Sanity checking: lowSecTimelock.getMinDelay()=' + (await _deployedState.getMinDelay()));
         }
         return _deployedState;
     }
@@ -204,34 +210,13 @@ class EBTCDeployerScript {
     }
 
     async loadOrDeployTimelocks() {
-        // contract dependencies
-        let _highSecTimelock;
-        let _lowSecTimelock;
-
-        // get HighSecTimelock
         console.log(chalk.cyan("[HighSecTimelock]"))
-        let _checkExistDeployment = checkExistingDeployment(HIGHSEC_TIMELOCK_STATE_NAME, this.deploymentState);
+        let _constructorArgs = [this.highSecDelay, [this.ecosystemMultisig], [this.ecosystemMultisig], this.highSecAdmin]
+        this.highSecTimelock = await this.deployOrLoadState(HIGHSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
 
-        if (_checkExistDeployment['_toDeploy']) {
-            _highSecTimelock = await this.deployStateViaHelper(HIGHSEC_TIMELOCK_STATE_NAME, "");
-            await this.verifyState(_checkExistDeployment, COLLATERAL_STATE_NAME, this.mainnetDeploymentHelper, this.deploymentState, []);
-        } else { // mainnet
-            _highSecTimelock = await ethers.getContractAt("TimelockControllerEnumerable", configParams.externalAddress[HIGHSEC_TIMELOCK_STATE_NAME])
-        }
-
-        // get LowSecTimelock
         console.log(chalk.cyan("[HighSecTimelock]"))
-        _checkExistDeployment = checkExistingDeployment(LOWSEC_TIMELOCK_STATE_NAME, this.deploymentState);
-
-        if (_checkExistDeployment['_toDeploy']) {
-            _lowSecTimelock = await this.deployStateViaHelper(LOWSEC_TIMELOCK_STATE_NAME, "");
-            await this.verifyState(_checkExistDeployment, LOWSEC_TIMELOCK_STATE_NAME, this.mainnetDeploymentHelper, this.deploymentState, []);
-        } else { // mainnet
-            _lowSecTimelock = await ethers.getContractAt("TimelockControllerEnumerable", configParams.externalAddress[LOWSEC_TIMELOCK_STATE_NAME])
-        }
-
-        this.highSecTimelock = _highSecTimelock;
-        this.lowSecTimelock = _lowSecTimelock;
+        _constructorArgs = [this.lowSecDelay, [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig], [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig], this.lowSecAdmin]
+        this.lowSecTimelock = await this.deployOrLoadState(LOWSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
     }
 
     async eBTCDeployCore() {
@@ -255,7 +240,7 @@ class EBTCDeployerScript {
 
         // deploy borrowerOperations
         console.log(chalk.cyan("[BorrowerOperations]"))
-        _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], this.collateralAddr];
+        _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], this.feeRecipientOwner, this.collateralAddr];
         let borrowerOperations = await this.deployOrLoadState(BORROWER_OPERATIONS_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy eBTCToken
@@ -270,7 +255,7 @@ class EBTCDeployerScript {
 
         // deploy activePool
         console.log(chalk.cyan("[ActivePool]"))
-        _constructorArgs = [_expectedAddr[3], _expectedAddr[2], this.collateralAddr, _expectedAddr[7], _expectedAddr[10]];
+        _constructorArgs = [_expectedAddr[3], _expectedAddr[2], this.collateralAddr, _expectedAddr[7], this.feeRecipientOwner];
         let activePool = await this.deployOrLoadState(ACTIVE_POOL_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy collSurplusPool
@@ -340,7 +325,6 @@ class EBTCDeployerScript {
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 1);
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 1);
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1);
-        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 2); // Set to deployer and timelock
 
         assert.isTrue(await this.highSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
         assert.isTrue(await this.highSecTimelock.hasRole(EXECUTOR_ROLE, this.ecosystemMultisig));
@@ -348,9 +332,13 @@ class EBTCDeployerScript {
 
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
-        assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
-        await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+        if (await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
+            let tx = await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+            await tx.wait();
+            console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on highSecTimelock");
+        }
         assert.isFalse(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 1);
 
         // Print out final state for sanity check
         console.log(chalk.cyan("HIGH SEC TIMELOCK CONFIGURATION"))
@@ -369,8 +357,6 @@ class EBTCDeployerScript {
 
         assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 3);
         assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 3);
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 3);
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 2); // Set to deployer and timelock
 
         assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpCouncilMultisig));
@@ -379,20 +365,31 @@ class EBTCDeployerScript {
         assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpCouncilMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpTechOpsMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.ecosystemMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpCouncilMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
 
         // We remove the canceller from the Council and TechOps
-        await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpCouncilMultisig);
-        assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.cdpCouncilMultisig));
-        await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
-        assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.cdpTechOpsMultisig));
+        if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpCouncilMultisig)) {
+            tx = await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpCouncilMultisig);
+            await tx.wait();
+            console.log("Revoked CANCELLER_ROLE of cdpCouncilMultisig on lowSecTimelock");
+        }
+        assert.isFalse(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpCouncilMultisig));
+        if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig)) {
+            tx = await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
+            await tx.wait();
+            console.log("Revoked CANCELLER_ROLE of cdpTechOpsMultisig on lowSecTimelock");
+        }
+        assert.isFalse(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1); // Only ecosystem should be canceller
 
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.lowSecTimelock.address));
-        assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
-        await this.lowSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+        if (await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
+            tx = await this.lowSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+            await tx.wait();
+            console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on lowSecTimelock");
+        }
         assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 1); // Only timelock should be admin
 
         // Print out final state for sanity check
         console.log(chalk.cyan("LOW SEC TIMELOCK CONFIGURATION"))
@@ -400,6 +397,7 @@ class EBTCDeployerScript {
 
         // === CDP Authority Configuration === //
 
+        console.log("CDP Authority Configuration...");
         // Create roles
         await authority.setRoleName(0, "Admin");
         await authority.setRoleName(1, "eBTCToken: mint");
@@ -471,8 +469,11 @@ class EBTCDeployerScript {
         await authority.setUserRole(this.feeRecipientOwner, 6, true);
 
         // Once manual wiring is performed, authority ownership is transferred to the HighSec Timelock
-        await authority.transferOwnership(this.highSecTimelock.address);
-        assert.isTrue(await authority.owner() == this.highSecTimelock.address);
+        if (await authority.owner() != this.highSecTimelock.address) {
+            tx = await authority.transferOwnership(this.highSecTimelock.address);
+            await tx.wait();
+            assert.isTrue(await authority.owner() == this.highSecTimelock.address);
+        }
 
         console.log("Governance wiring finalized...");
     }
@@ -506,9 +507,10 @@ async function main() {
     let useMockCollateral = true;
     let useMockPriceFeed = true;
 
-    let configParams = configParamsLocal;
+    // let configParams = configParamsLocal;
     // let configParams = configParamsSepolia;
     // let configParams = configParamsMainnet;
+    let configParams = configParamsGoerli;
 
     // flag override: always use mock price feed on local as no feed will exist
     if (configParams == configParamsLocal) {
