@@ -53,7 +53,7 @@ class EBTCDeployerScript {
         this.lowSecDelay = configParams.LOWSEC_MIN_DELAY; // Deployment should fail if null
 
         this.collEthCLFeed = checkValidItem(configParams.externalAddress['collEthCLFeed']) ? configParams.externalAddress['collEthCLFeed'] : deployerWallet.address;
-        this.ethBtcCLFeed = checkValidItem(configParams.externalAddress['ethBtcCLFeed']) ? configParams.externalAddress['ethBtcCLFeed'] : deployerWallet.address;		
+        this.ethBtcCLFeed = checkValidItem(configParams.externalAddress['ethBtcCLFeed']) ? configParams.externalAddress['ethBtcCLFeed'] : deployerWallet.address;
     }
 
     async verifyState(_checkExistDeployment, _stateName, _constructorArgs) {
@@ -338,7 +338,7 @@ class EBTCDeployerScript {
         // Delay: 7 days (mainnet)
         // ==========================
 
-        assert.isTrue(await this.highSecTimelock.getMinDelay(), configParams.HIGHSEC_MIN_DELAY);
+        assert.isTrue(await this.highSecTimelock.getMinDelay() == configParams.HIGHSEC_MIN_DELAY);
 
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 1);
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 1);
@@ -352,7 +352,7 @@ class EBTCDeployerScript {
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
         assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
-        await authority.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+        await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
         assert.isFalse(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
 
         // Print out final state for sanity check
@@ -368,7 +368,7 @@ class EBTCDeployerScript {
         // Delay: 2 days (mainnet)
         // ==========================
 
-        assert.isTrue(await this.lowSecTimelock.getMinDelay(), configParams.LOWSEC_MIN_DELAY);
+        assert.isTrue(await this.lowSecTimelock.getMinDelay() == configParams.LOWSEC_MIN_DELAY);
 
         assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 3);
         assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 3);
@@ -386,15 +386,15 @@ class EBTCDeployerScript {
         assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
 
         // We remove the canceller from the Council and TechOps
-        await authority.revokeRole(CANCELLER_ROLE, this.cdpCouncilMultisig);
+        await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpCouncilMultisig);
         assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.cdpCouncilMultisig));
-        await authority.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
+        await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
         assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.cdpTechOpsMultisig));
 
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.lowSecTimelock.address));
         assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
-        await authority.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+        await this.lowSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
         assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
 
         // Print out final state for sanity check
@@ -418,7 +418,7 @@ class EBTCDeployerScript {
         // Asign role capabilities
 
         // Authority Admin
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_ROLE_NAME_SIG, true);
+        await authority.setRoleCapability(0, coreContracts.authority.address, await govSig.SET_ROLE_NAME_SIG, true);
         await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_USER_ROLE_SIG, true);
         await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_ROLE_CAPABILITY_SIG, true);
         await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_PUBLIC_CAPABILITY_SIG, true);
@@ -436,7 +436,7 @@ class EBTCDeployerScript {
         await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPTION_FEE_FLOOR_SIG, true);
         await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_MINUTE_DECAY_FACTOR_SIG, true);
         await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_BETA_SIG, true);
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPETIONS_PAUSED_SIG, true);
+        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPTIONS_PAUSED_SIG, true);
         await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_GRACE_PERIOD_SIG, true);
 
         // Price Feed
@@ -554,7 +554,19 @@ async function main() {
     await DeploymentHelper.setDeployGasPrice(_gasPrice);
     await DeploymentHelper.setDeployWait(_deployWaitMilliSeonds);
 
-    let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer)
+    let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer);
+    if (configParams == configParamsLocal){
+        eds.ecosystemMultisig = (await ethers.getSigners())[1].address;
+        eds.cdpCouncilMultisig = (await ethers.getSigners())[2].address;
+        eds.cdpTechOpsMultisig = (await ethers.getSigners())[3].address;
+        eds.feeRecipientOwner = (await ethers.getSigners())[4].address;
+    }
+
+    console.log(`\nEcosystem Multisig: ${eds.ecosystemMultisig}`)
+    console.log(`CDP Council Multisig: ${eds.cdpCouncilMultisig}`)
+    console.log(`CDP TechOps Multisig: ${eds.cdpTechOpsMultisig}`)
+    console.log(`Fee Recipient Multisig: ${eds.feeRecipientOwner}`)
+
     await eds.loadOrDeployEBTCDeployer();
     await eds.loadOrDeployCollateral();
     await eds.loadOrDeployTimelocks();
@@ -589,7 +601,7 @@ function checkValidItem(item) {
 }
 
 async function printOutTimelockState(timelock) { 
-    console.log("PROPOSER_ROLE");
+    console.log("\nPROPOSER_ROLE");
     for (i = 0; i < await timelock.getRoleMemberCount(await timelock.PROPOSER_ROLE()); i++) {
         console.log(await timelock.getRoleMember(await timelock.PROPOSER_ROLE(), i));
     }
@@ -605,7 +617,7 @@ async function printOutTimelockState(timelock) {
     for (i = 0; i < await timelock.getRoleMemberCount(await timelock.TIMELOCK_ADMIN_ROLE()); i++) {
         console.log(await timelock.getRoleMember(await timelock.TIMELOCK_ADMIN_ROLE(), i));
     }
-    console.log("MIN DELAY", await this.highSecTimelock.getMinDelay());
+    console.log("MIN DELAY", await timelock.getMinDelay(), "\n");
 }
 
 // cd <eBTCRoot>/packages/contracts
