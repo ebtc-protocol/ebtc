@@ -41,7 +41,7 @@ class EBTCDeployerScript {
         this.configParams = configParams;
 
         this.authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner']) ? configParams.externalAddress['authorityOwner'] : deployerWallet.address;
-        this.feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : deployerWallet.address;		
+        this.feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : deployerWallet.address;
         this.ecosystemMultisig = checkValidItem(configParams.externalAddress['ecosystemMultisig']) ? configParams.externalAddress['ecosystemMultisig'] : deployerWallet.address;
         this.cdpCouncilMultisig = checkValidItem(configParams.externalAddress['cdpCouncilMultisig']) ? configParams.externalAddress['cdpCouncilMultisig'] : deployerWallet.address;
         this.cdpTechOpsMultisig = checkValidItem(configParams.externalAddress['cdpTechOpsMultisig']) ? configParams.externalAddress['cdpTechOpsMultisig'] : deployerWallet.address;
@@ -88,7 +88,7 @@ class EBTCDeployerScript {
             _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
             _deployedState = useMockPriceFeed ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
-                                                await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
+                await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr, this.feeRecipientOwner);
         } else if (_stateName == COLL_SURPLUS_POOL_STATE_NAME) {
@@ -109,7 +109,7 @@ class EBTCDeployerScript {
             let proposers = [this.ecosystemMultisig]
             let executors = [this.ecosystemMultisig]
             _deployedState = await DeploymentHelper.deployTimelock(this.highSecDelay, proposers, executors, this.highSecAdmin);
-        }  else if (_stateName == LOWSEC_TIMELOCK_STATE_NAME) {
+        } else if (_stateName == LOWSEC_TIMELOCK_STATE_NAME) {
             let proposers = [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig]
             let executors = [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig]
             _deployedState = await DeploymentHelper.deployTimelock(this.lowSecDelay, proposers, executors, this.lowSecAdmin);
@@ -231,9 +231,7 @@ class EBTCDeployerScript {
         }
 
         this.highSecTimelock = _highSecTimelock;
-        this.highSecTimelockAddr = _highSecTimelock.address
         this.lowSecTimelock = _lowSecTimelock;
-        this.lowSecTimelockAddr = _lowSecTimelock.address
     }
 
     async eBTCDeployCore() {
@@ -413,7 +411,7 @@ class EBTCDeployerScript {
             "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
         );
         await authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
-    
+
         // Asign role capabilities
 
         // Authority Admin
@@ -423,7 +421,7 @@ class EBTCDeployerScript {
         await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_PUBLIC_CAPABILITY_SIG, true);
         await authority.setRoleCapability(0, coreContracts.authority.address, govSig.BURN_CAPABILITY_SIG, true);
         await authority.setRoleCapability(0, coreContracts.authority.address, govSig.TRANSFER_OWNERSHIP_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_AUTHORITY_SIG, true);      
+        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_AUTHORITY_SIG, true);
 
         // eBTC Token
         await authority.setRoleCapability(1, coreContracts.ebtcToken.address, govSig.MINT_SIG, true);
@@ -462,7 +460,7 @@ class EBTCDeployerScript {
         await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FEE_RECIPIENT_ADDRESS_SIG, true);
         await authority.setRoleCapability(6, coreContracts.activePool.address, govSig.SWEEP_TOKEN_SIG, true);
         await authority.setRoleCapability(6, coreContracts.activePool.address, govSig.CLAIM_FEE_RECIPIENT_COLL_SIG, true);
-    
+
         // Assign roles to Timelocks (Only lowsec, ownership will be transferred to HighSec which is equivalent to having all roles)
         // LowSec timelock should have access to all functions except for minting/burning and authority admin 
         await authority.setUserRole(this.lowSecTimelock.address, 3, true);
@@ -513,12 +511,12 @@ async function main() {
     // let configParams = configParamsMainnet;
 
     // flag override: always use mock price feed on local as no feed will exist
-    if (configParams == configParamsLocal){
+    if (configParams == configParamsLocal) {
         useMockPriceFeed = true;
     }
 
     // flag override: always use mock collateral if not on mainnet as collateral will not exist
-    if (configParams != configParamsMainnet){
+    if (configParams != configParamsMainnet) {
         useMockCollateral = true;
     }
 
@@ -537,24 +535,24 @@ async function main() {
     let latestBlock = await ethers.provider.getBlockNumber()
     const chainId = await ethers.provider.getNetwork()
     console.log('ChainId=' + chainId.chainId + ',block number=' + latestBlock)
-    console.log('deploy with ' + (useMockCollateral? 'mock collateral & ' : ' existing collateral & ') + (useMockPriceFeed? 'mock feed' : 'original feed'));    
+    console.log('deploy with ' + (useMockCollateral ? 'mock collateral & ' : ' existing collateral & ') + (useMockPriceFeed ? 'mock feed' : 'original feed'));
 
     const mdh = new MainnetDeploymentHelper(configParams, _deployer)
-    
+
     // read from config
     let _gasPrice = configParams.GAS_PRICE;
     let _deployWaitMilliSeonds = configParams.DEPLOY_WAIT;
 
     // load deployment state
     let deploymentState = mdh.loadPreviousDeployment();
-    if (configParams == configParamsLocal){
+    if (configParams == configParamsLocal) {
         deploymentState = {};// always redeploy if localhost
     }
     await DeploymentHelper.setDeployGasPrice(_gasPrice);
     await DeploymentHelper.setDeployWait(_deployWaitMilliSeonds);
 
     let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer);
-    if (configParams == configParamsLocal){
+    if (configParams == configParamsLocal) {
         eds.ecosystemMultisig = (await ethers.getSigners())[1].address;
         eds.cdpCouncilMultisig = (await ethers.getSigners())[2].address;
         eds.cdpTechOpsMultisig = (await ethers.getSigners())[3].address;
@@ -599,7 +597,7 @@ function checkValidItem(item) {
     return (item != undefined && typeof item != "undefined" && item != null && item != "");
 }
 
-async function printOutTimelockState(timelock) { 
+async function printOutTimelockState(timelock) {
     console.log("\nPROPOSER_ROLE");
     for (i = 0; i < await timelock.getRoleMemberCount(await timelock.PROPOSER_ROLE()); i++) {
         console.log(await timelock.getRoleMember(await timelock.PROPOSER_ROLE(), i));
