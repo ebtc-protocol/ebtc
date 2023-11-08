@@ -1,9 +1,9 @@
 pragma solidity 0.8.17;
 
-import "@crytic/properties/contracts/util/PropertiesHelper.sol";
-import "../Asserts.sol";
+import "forge-std/Test.sol";
+import "../../contracts/TestContracts/invariants/Asserts.sol";
 
-abstract contract EchidnaAsserts is PropertiesAsserts, Asserts {
+abstract contract HalmosAsserts is Test, Asserts {
     function gt(uint256 a, uint256 b, string memory message) internal override {
         assertGt(a, b, message);
     }
@@ -13,11 +13,11 @@ abstract contract EchidnaAsserts is PropertiesAsserts, Asserts {
     }
 
     function gte(uint256 a, uint256 b, string memory message) internal override {
-        assertGte(a, b, message);
+        assertGe(a, b, message);
     }
 
     function lte(uint256 a, uint256 b, string memory message) internal override {
-        assertLte(a, b, message);
+        assertLe(a, b, message);
     }
 
     function eq(uint256 a, uint256 b, string memory message) internal override {
@@ -25,14 +25,19 @@ abstract contract EchidnaAsserts is PropertiesAsserts, Asserts {
     }
 
     function t(bool a, string memory message) internal override {
-        assertWithMsg(a, message);
+        assertTrue(a, message);
     }
 
-    function precondition(bool p, string memory reason) internal override {
-        require(p, reason);
+    function precondition(bool p, string memory) internal override {
+        vm.assume(p);
     }
 
-    function between(uint256 value, uint256 low, uint256 high) internal override returns (uint256) {
-        return clampBetween(value, low, high);
+    function between(
+        uint256 value,
+        uint256 low,
+        uint256 high
+    ) internal view override returns (uint256) {
+        vm.assume(low <= value && value <= high);
+        return value;
     }
 }

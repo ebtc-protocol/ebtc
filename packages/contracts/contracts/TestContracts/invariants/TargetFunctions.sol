@@ -101,7 +101,7 @@ abstract contract TargetFunctions is Properties {
         uint256 _n = between(value, 1, cdpManager.getActiveCdpsCount());
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
         uint256 _i = between(value, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
@@ -208,12 +208,12 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+        precondition(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
-        require(entireDebt > 0, "CDP must have debt");
+        precondition(entireDebt > 0, "CDP must have debt");
 
         _before(_cdpId);
 
@@ -278,12 +278,12 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+        precondition(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
-        require(entireDebt > 0, "CDP must have debt");
+        precondition(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = between(_partialAmount, 0, entireDebt);
 
@@ -366,7 +366,7 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
+        precondition(cdpManager.getActiveCdpsCount() > 1, "Cannot liquidate last CDP");
 
         _n = between(_n, 1, cdpManager.getActiveCdpsCount());
 
@@ -471,7 +471,7 @@ abstract contract TargetFunctions is Properties {
             )
         );
 
-        require(success);
+        precondition(success);
 
         _after(_cdpId);
 
@@ -544,7 +544,7 @@ abstract contract TargetFunctions is Properties {
             )
         );
 
-        require(success);
+        precondition(success);
 
         _after(bytes32(0));
 
@@ -604,7 +604,7 @@ abstract contract TargetFunctions is Properties {
         );
 
         // BorrowerOperations.flashLoan may revert due to reentrancy
-        require(success);
+        precondition(success);
 
         _after(bytes32(0));
 
@@ -729,7 +729,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
@@ -743,8 +743,8 @@ abstract contract TargetFunctions is Properties {
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
                 (_coll - collateral.balanceOf(address(actor)))
             );
-            require(success);
-            require(
+            precondition(success);
+            precondition(
                 collateral.balanceOf(address(actor)) > _coll,
                 "Actor has high enough balance to add"
             );
@@ -833,7 +833,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
@@ -907,7 +907,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
@@ -930,7 +930,7 @@ abstract contract TargetFunctions is Properties {
             )
         );
 
-        require(success);
+        precondition(success);
 
         _after(_cdpId);
 
@@ -978,7 +978,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
@@ -999,7 +999,7 @@ abstract contract TargetFunctions is Properties {
                 _cdpId
             )
         );
-        require(success);
+        precondition(success);
 
         _after(_cdpId);
 
@@ -1049,10 +1049,10 @@ abstract contract TargetFunctions is Properties {
         bool success;
         bytes memory returnData;
 
-        require(cdpManager.getActiveCdpsCount() > 1, "Cannot close last CDP");
+        precondition(cdpManager.getActiveCdpsCount() > 1, "Cannot close last CDP");
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
@@ -1137,7 +1137,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
-        require(numberOfCdps > 0, "Actor must have at least one CDP open");
+        precondition(numberOfCdps > 0, "Actor must have at least one CDP open");
 
         _i = between(_i, 0, numberOfCdps - 1);
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
@@ -1162,7 +1162,7 @@ abstract contract TargetFunctions is Properties {
             )
         );
 
-        require(success);
+        precondition(success);
 
         _after(_cdpId);
 

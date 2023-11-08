@@ -28,6 +28,10 @@ abstract contract FoundryAsserts is Test, Asserts {
         assertTrue(a, message);
     }
 
+    function precondition(bool p, string memory) internal override {
+        vm.assume(p);
+    }
+
     function between(
         uint256 value,
         uint256 low,
