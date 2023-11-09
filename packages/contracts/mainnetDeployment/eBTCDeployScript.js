@@ -495,10 +495,13 @@ class EBTCDeployerScript {
 
         console.log(chalk.cyan("\nAssigning roles to users\n"));
 
-        // Assign roles to Timelocks (Only lowsec, ownership will be transferred to HighSec which is equivalent to having all roles)
-        // LowSec timelock should have access to all functions except for minting/burning and authority admin 
+        // Assign roles to Timelocks
+        // HighSec timelock should have access to all functions except for minting/burning
+        // LowSec timelock should have access to all functions except for minting/burning and authority admin
+        // Fee recipient should be able to claim collateral and sweep
         const userAddressToRoleNumberMap = {
-            [this.lowSecTimelock.address]: [3, 4, 5],
+            [this.highSecTimelock.address]: [0, 3, 4, 5, 6],
+            [this.lowSecTimelock.address]: [3, 4, 5, 6],
             [this.feeRecipientOwner]: [6],
         };
         
@@ -508,22 +511,22 @@ class EBTCDeployerScript {
         
             // Iterate over the role numbers and set the role if it is not already set
             for (const roleNumber of roleNumbers) {
-            if (await authority.doesUserHaveRole(userAddress, roleNumber) != true) {
-                console.log(`Assigning `, + roleNumber + ` to user ` + userAddress)
-                tx = await authority.setUserRole(userAddress, roleNumber, true);
-                await tx.wait();
-            }
+                if (await authority.doesUserHaveRole(userAddress, roleNumber) != true) {
+                    console.log(`Assigning `, + roleNumber + ` to user ` + userAddress)
+                    tx = await authority.setUserRole(userAddress, roleNumber, true);
+                    await tx.wait();
+                }
             }
         }
 
-        console.log(chalk.cyan("\nTransfer ownership to HighSecTimelock\n"));
+        // console.log(chalk.cyan("\nTransfer ownership to HighSecTimelock\n"));
 
-        // Once manual wiring is performed, authority ownership is transferred to the HighSec Timelock
-        if (await authority.owner() != this.highSecTimelock.address) {
-            tx = await authority.transferOwnership(this.highSecTimelock.address);
-            await tx.wait();
-            assert.isTrue(await authority.owner() == this.highSecTimelock.address);
-        }
+        // // Once manual wiring is performed, authority ownership is transferred to the HighSec Timelock
+        // if (await authority.owner() != this.highSecTimelock.address) {
+        //     tx = await authority.transferOwnership(this.highSecTimelock.address);
+        //     await tx.wait();
+        //     assert.isTrue(await authority.owner() == this.highSecTimelock.address);
+        // }
 
         console.log("Governance wiring finalized...");
     }
