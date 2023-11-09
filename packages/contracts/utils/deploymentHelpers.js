@@ -20,6 +20,8 @@ const MultiCdpGetter = artifacts.require("./MultiCdpGetter.sol")
 const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 const EBTCDeployer = artifacts.require("./EBTCDeployer.sol")
 
+const TimelockControllerEnumerable = artifacts.require("./TimelockControllerEnumerable.sol")
+
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
@@ -377,19 +379,13 @@ class DeploymentHelper {
   }
 
   static async deployTimelock(delay, proposers, executors, admin) {
-    const TimelockControllerEnumerable = await ethers.getContractFactory('TimelockControllerEnumerable');
     let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
-    console.log(_nonce)
-    console.log(delay)
-    console.log(proposers)
-    console.log(executors)
-    console.log(admin)
-    const timelock = await TimelockControllerEnumerable.deploy(
+    const timelock = await TimelockControllerEnumerable.new(
       delay,
       proposers,
       executors,
       admin,
-      {gasLimit: 10000000, nonce: _nonce});
+      {gasLimit: 5000000, nonce: _nonce}); // Issue when not hardcoding gas limit
     return timelock;
   }
 
