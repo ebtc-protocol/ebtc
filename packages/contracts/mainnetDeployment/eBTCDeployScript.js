@@ -478,8 +478,6 @@ class EBTCDeployerScript {
             ],
         };
 
-        console.log(chalk.cyan("\nAssigning roles to users\n"));
-
         // Iterate over the role numbers and set the role capabilities
         for (const roleNumber of Object.keys(roleNumberToRoleCapabilityMap)) {
             const roleCapabilities = roleNumberToRoleCapabilityMap[roleNumber];
@@ -488,12 +486,14 @@ class EBTCDeployerScript {
             for (const roleCapability of roleCapabilities) {
             const { target, signature } = roleCapability;
                 if (!await authority.doesRoleHaveCapability(roleNumber, target.address, signature)) {
-                    console.log(`Assigning `, + signature + ` on ` + target.address + ` to role` + roleNumber)
+                    console.log(`Assigning `, + signature + ` on ` + target.address + ` to role ` + roleNumber)
                     tx = await authority.setRoleCapability(roleNumber, target.address, signature, true);
                     await tx.wait();
                 }
             }
         }
+
+        console.log(chalk.cyan("\nAssigning roles to users\n"));
 
         // Assign roles to Timelocks (Only lowsec, ownership will be transferred to HighSec which is equivalent to having all roles)
         // LowSec timelock should have access to all functions except for minting/burning and authority admin 
