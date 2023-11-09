@@ -426,7 +426,7 @@ class EBTCDeployerScript {
             // If the current role name is not the same as the expected role name, set the role name
             let tx;
             if (currentRoleName != roleName) {
-                console.log(`Setting role `, + roleNumber + `as ` + roleName)
+                console.log(`Setting role `, + roleNumber + ` as ` + roleName)
                 tx = await authority.setRoleName(roleNumber, roleName);
                 await tx.wait();
             }
@@ -474,6 +474,7 @@ class EBTCDeployerScript {
             6: [
                 { target: coreContracts.activePool, signature: govSig.SWEEP_TOKEN_SIG },
                 { target: coreContracts.activePool, signature: govSig.CLAIM_FEE_RECIPIENT_COLL_SIG },
+                { target: coreContracts.collSurplusPool, signature: govSig.SWEEP_TOKEN_SIG },
             ],
         };
 
@@ -487,7 +488,7 @@ class EBTCDeployerScript {
             for (const roleCapability of roleCapabilities) {
             const { target, signature } = roleCapability;
                 if (!await authority.doesRoleHaveCapability(roleNumber, target.address, signature)) {
-                    console.log(`Assigning `, + signature + `on ` + target.address + `to role` + roleNumber)
+                    console.log(`Assigning `, + signature + ` on ` + target.address + ` to role` + roleNumber)
                     tx = await authority.setRoleCapability(roleNumber, target.address, signature, true);
                     await tx.wait();
                 }
@@ -508,7 +509,7 @@ class EBTCDeployerScript {
             // Iterate over the role numbers and set the role if it is not already set
             for (const roleNumber of roleNumbers) {
             if (await authority.doesUserHaveRole(userAddress, roleNumber) != true) {
-                console.log(`Assigning `, + roleNumber + `to user ` + userAddress)
+                console.log(`Assigning `, + roleNumber + ` to user ` + userAddress)
                 tx = await authority.setUserRole(userAddress, roleNumber, true);
                 await tx.wait();
             }
