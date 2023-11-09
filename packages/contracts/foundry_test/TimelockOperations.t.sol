@@ -261,14 +261,14 @@ contract TimelockOperationsTest is eBTCBaseFixture {
     /// @dev Assumes default governance still has ownerships and is pranked
     function _grantAllGovernorCapabilitiesToRole(uint8 role) internal {
         // List of all setter function signatures in Governor contract
-        bytes4[] memory funcSigs = new bytes4[](9);
+        bytes4[] memory funcSigs = new bytes4[](7);
         funcSigs[0] = bytes4(keccak256("setRoleName(uint8,string)"));
         funcSigs[1] = bytes4(keccak256("setUserRole(address,uint8,bool)"));
         funcSigs[2] = bytes4(keccak256("setRoleCapability(uint8,address,bytes4,bool)"));
-        funcSigs[4] = bytes4(keccak256("setPublicCapability(address,bytes4,bool)"));
-        funcSigs[6] = bytes4(keccak256("burnCapability(address,bytes4)"));
-        funcSigs[7] = bytes4(keccak256("transferOwnership(address)"));
-        funcSigs[8] = bytes4(keccak256("setAuthority(address)"));
+        funcSigs[3] = bytes4(keccak256("setPublicCapability(address,bytes4,bool)"));
+        funcSigs[4] = bytes4(keccak256("burnCapability(address,bytes4)"));
+        funcSigs[5] = bytes4(keccak256("transferOwnership(address)"));
+        funcSigs[6] = bytes4(keccak256("setAuthority(address)"));
 
         // Grant testRole all setter capabilities on authority
         for (uint256 i = 0; i < funcSigs.length; i++) {
