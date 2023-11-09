@@ -214,7 +214,7 @@ class EBTCDeployerScript {
         let _constructorArgs = [this.highSecDelay, [this.ecosystemMultisig], [this.ecosystemMultisig], this.highSecAdmin]
         this.highSecTimelock = await this.deployOrLoadState(HIGHSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
 
-        console.log(chalk.cyan("[HighSecTimelock]"))
+        console.log(chalk.cyan("[LowhSecTimelock]"))
         _constructorArgs = [this.lowSecDelay, [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig], [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig], this.lowSecAdmin]
         this.lowSecTimelock = await this.deployOrLoadState(LOWSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
     }
@@ -301,7 +301,8 @@ class EBTCDeployerScript {
     }
 
     async governanceWireUp(coreContracts, configParams, _deployer) {
-        console.log("Starting governance wiring...");
+        console.log(chalk.green("\nStarting governance wiring..."));
+        let tx;
         const authority = coreContracts.authority;
 
         // === Timelocks Configuration === //
@@ -333,7 +334,7 @@ class EBTCDeployerScript {
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
         if (await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
-            let tx = await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+            tx = await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
             await tx.wait();
             console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on highSecTimelock");
         }
@@ -397,76 +398,124 @@ class EBTCDeployerScript {
 
         // === CDP Authority Configuration === //
 
-        console.log("CDP Authority Configuration...");
-        // Create roles
-        await authority.setRoleName(0, "Admin");
-        await authority.setRoleName(1, "eBTCToken: mint");
-        await authority.setRoleName(2, "eBTCToken: burn");
-        await authority.setRoleName(3, "CDPManager: all");
-        await authority.setRoleName(4, "PriceFeed: setFallbackCaller");
-        await authority.setRoleName(
-            5,
-            "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
-        );
-        await authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
+
+        console.log("\nCDP Authority Configuration...\n");
+
+        console.log(chalk.cyan("\nSetting up roles\n"));
+
+        const roleNumberToRoleNameMap = {
+            0: "Admin",
+            1: "eBTCToken: mint",
+            2: "eBTCToken: burn",
+            3: "CDPManager: all",
+            4: "PriceFeed: setFallbackCaller",
+            5: "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress",
+            6: "ActivePool: sweep tokens & claim fee recipient coll",
+        };
+
+        // Get the list of role numbers
+        const roleNumbers = Object.keys(roleNumberToRoleNameMap);
+
+        // Iterate over the role numbers and set the role names
+        for (const roleNumber of roleNumbers) {
+            const roleName = roleNumberToRoleNameMap[roleNumber];
+
+            // Get the current role name
+            const currentRoleName = await authority.getRoleName(roleNumber);
+
+            // If the current role name is not the same as the expected role name, set the role name
+            let tx;
+            if (currentRoleName != roleName) {
+                console.log(`Setting role `, + roleNumber + `as ` + roleName)
+                tx = await authority.setRoleName(roleNumber, roleName);
+                await tx.wait();
+            }
+        }
 
         // Asign role capabilities
+        console.log(chalk.cyan("\nSetting role capabilities\n"));
 
-        // Authority Admin
-        await authority.setRoleCapability(0, coreContracts.authority.address, await govSig.SET_ROLE_NAME_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_USER_ROLE_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_ROLE_CAPABILITY_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_PUBLIC_CAPABILITY_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.BURN_CAPABILITY_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.TRANSFER_OWNERSHIP_SIG, true);
-        await authority.setRoleCapability(0, coreContracts.authority.address, govSig.SET_AUTHORITY_SIG, true);
+        const roleNumberToRoleCapabilityMap = {
+            0: [
+                { target: coreContracts.authority, signature: govSig.SET_ROLE_NAME_SIG },
+                { target: coreContracts.authority, signature: govSig.SET_USER_ROLE_SIG },
+                { target: coreContracts.authority, signature: govSig.SET_ROLE_CAPABILITY_SIG },
+                { target: coreContracts.authority, signature: govSig.SET_PUBLIC_CAPABILITY_SIG },
+                { target: coreContracts.authority, signature: govSig.BURN_CAPABILITY_SIG },
+                { target: coreContracts.authority, signature: govSig.TRANSFER_OWNERSHIP_SIG },
+                { target: coreContracts.authority, signature: govSig.SET_AUTHORITY_SIG },
+            ],
+            1: [
+                { target: coreContracts.ebtcToken, signature: govSig.MINT_SIG },
+            ],
+            2: [
+                { target: coreContracts.ebtcToken, signature: govSig.BURN_SIG },
+                { target: coreContracts.ebtcToken, signature: govSig.BURN2_SIG },
+            ],
+            3: [
+                { target: coreContracts.cdpManager, signature: govSig.SET_STAKING_REWARD_SPLIT_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTION_FEE_FLOOR_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_MINUTE_DECAY_FACTOR_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_BETA_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTIONS_PAUSED_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_GRACE_PERIOD_SIG },
+            ],
+            4: [
+                { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
+            ],
+            5: [
+                { target: coreContracts.borrowerOperations, signature: govSig.SET_FEE_BPS_SIG },
+                { target: coreContracts.borrowerOperations, signature: govSig.SET_FLASH_LOANS_PAUSED_SIG },
+                { target: coreContracts.borrowerOperations, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
+                { target: coreContracts.activePool, signature: govSig.SET_FEE_BPS_SIG },
+                { target: coreContracts.activePool, signature: govSig.SET_FLASH_LOANS_PAUSED_SIG },
+                { target: coreContracts.activePool, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
+            ],
+            6: [
+                { target: coreContracts.activePool, signature: govSig.SWEEP_TOKEN_SIG },
+                { target: coreContracts.activePool, signature: govSig.CLAIM_FEE_RECIPIENT_COLL_SIG },
+            ],
+        };
 
-        // eBTC Token
-        await authority.setRoleCapability(1, coreContracts.ebtcToken.address, govSig.MINT_SIG, true);
-        await authority.setRoleCapability(2, coreContracts.ebtcToken.address, govSig.BURN_SIG, true);
-        await authority.setRoleCapability(2, coreContracts.ebtcToken.address, govSig.BURN2_SIG, true);
+        console.log(chalk.cyan("\nAssigning roles to users\n"));
 
-        // CDP Manager
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_STAKING_REWARD_SPLIT_SIG, true);
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPTION_FEE_FLOOR_SIG, true);
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_MINUTE_DECAY_FACTOR_SIG, true);
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_BETA_SIG, true);
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_REDEMPTIONS_PAUSED_SIG, true);
-        await authority.setRoleCapability(3, coreContracts.cdpManager.address, govSig.SET_GRACE_PERIOD_SIG, true);
-
-        // Price Feed
-        await authority.setRoleCapability(4, coreContracts.priceFeed.address, govSig.SET_FALLBACK_CALLER_SIG, true);
-
-        // Borrower Operations
-        await authority.setRoleCapability(5, coreContracts.borrowerOperations.address, govSig.SET_FEE_BPS_SIG, true);
-        await authority.setRoleCapability(
-            5,
-            coreContracts.borrowerOperations.address,
-            govSig.SET_FLASH_LOANS_PAUSED_SIG,
-            true
-        );
-        await authority.setRoleCapability(
-            5,
-            coreContracts.borrowerOperations.address,
-            govSig.SET_FEE_RECIPIENT_ADDRESS_SIG,
-            true
-        );
-
-        // Active Pool
-        await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FEE_BPS_SIG, true);
-        await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FLASH_LOANS_PAUSED_SIG, true);
-        await authority.setRoleCapability(5, coreContracts.activePool.address, govSig.SET_FEE_RECIPIENT_ADDRESS_SIG, true);
-        await authority.setRoleCapability(6, coreContracts.activePool.address, govSig.SWEEP_TOKEN_SIG, true);
-        await authority.setRoleCapability(6, coreContracts.activePool.address, govSig.CLAIM_FEE_RECIPIENT_COLL_SIG, true);
+        // Iterate over the role numbers and set the role capabilities
+        for (const roleNumber of Object.keys(roleNumberToRoleCapabilityMap)) {
+            const roleCapabilities = roleNumberToRoleCapabilityMap[roleNumber];
+            
+            // Iterate over the role capabilities and set the capability if it is not already set
+            for (const roleCapability of roleCapabilities) {
+            const { target, signature } = roleCapability;
+                if (!await authority.doesRoleHaveCapability(roleNumber, target.address, signature)) {
+                    console.log(`Assigning `, + signature + `on ` + target.address + `to role` + roleNumber)
+                    tx = await authority.setRoleCapability(roleNumber, target.address, signature, true);
+                    await tx.wait();
+                }
+            }
+        }
 
         // Assign roles to Timelocks (Only lowsec, ownership will be transferred to HighSec which is equivalent to having all roles)
         // LowSec timelock should have access to all functions except for minting/burning and authority admin 
-        await authority.setUserRole(this.lowSecTimelock.address, 3, true);
-        await authority.setUserRole(this.lowSecTimelock.address, 4, true);
-        await authority.setUserRole(this.lowSecTimelock.address, 5, true);
+        const userAddressToRoleNumberMap = {
+            [this.lowSecTimelock.address]: [3, 4, 5],
+            [this.feeRecipientOwner]: [6],
+        };
+        
+        // Iterate over the user addresses and set the role numbers
+        for (const userAddress of Object.keys(userAddressToRoleNumberMap)) {
+            const roleNumbers = userAddressToRoleNumberMap[userAddress];
+        
+            // Iterate over the role numbers and set the role if it is not already set
+            for (const roleNumber of roleNumbers) {
+            if (await authority.doesUserHaveRole(userAddress, roleNumber) != true) {
+                console.log(`Assigning `, + roleNumber + `to user ` + userAddress)
+                tx = await authority.setUserRole(userAddress, roleNumber, true);
+                await tx.wait();
+            }
+            }
+        }
 
-        // Assign fee claiming capabilities and sweeping to fee recipient multisig
-        await authority.setUserRole(this.feeRecipientOwner, 6, true);
+        console.log(chalk.cyan("\nTransfer ownership to HighSecTimelock\n"));
 
         // Once manual wiring is performed, authority ownership is transferred to the HighSec Timelock
         if (await authority.owner() != this.highSecTimelock.address) {
