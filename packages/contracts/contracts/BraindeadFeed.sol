@@ -3,11 +3,9 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IPriceFeed.sol";
-import "./Interfaces/IFallbackCaller.sol";
-import "./Dependencies/AggregatorV3Interface.sol";
-import "./Dependencies/BaseMath.sol";
+import "./Interfaces/IOracleCaller.sol";
 import "./Dependencies/AuthNoOwner.sol";
-import "./Dependencies/LiquityMath.sol";
+
 
 /*
  * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
@@ -18,206 +16,182 @@ import "./Dependencies/LiquityMath.sol";
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
  * Chainlink oracle. In addition, it contains the mechanism to add or remove the fallback oracle through governance.
  */
-contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
+contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
-
-    // Chainlink oracles in mainnet
-    AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
-    AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
-
-    // Fallback feed
-    IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
-
-    // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
-    uint256 public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
-    uint256 public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
-
-    // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
-    uint256 public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
-
-    /*
-     * The maximum relative price difference between two oracle responses allowed in order for the PriceFeed
-     * to return to using the Chainlink oracle. 18-digit precision.
-     */
-    uint256 public constant MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES = 5e16; // 5%
 
     // The last good price seen from an oracle by Liquity
     uint256 public lastGoodPrice;
 
-    // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
-    Status public status;
+    address public primaryOracle;
+    address public secondaryOracle;
+
+    uint256 INVALID_PRICE = 0;
+
+    // NOTE: Could still use Status to signal current FSM
 
     // --- Dependency setters ---
 
     /// @notice Sets the addresses of the contracts and initializes the system
-    /// @param _fallbackCallerAddress The address of the Fallback oracle contract
-    /// @param _authorityAddress The address of the Authority contract
-    /// @param _collEthCLFeed The address of the collateral-ETH ChainLink feed
-    /// @param _ethBtcCLFeed The address of the ETH-BTC ChainLink feed
-    /// @dev One time initiailziation function. The caller must be the PriceFeed contract's owner (i.e. eBTC Deployer contract) for security. Ownership is renounced after initialization.
     constructor(
-        address _fallbackCallerAddress,
-        address _authorityAddress,
-        address _collEthCLFeed,
-        address _ethBtcCLFeed
+        address _primaryOracle,
+        address _secondaryOracle
     ) {
-        fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
+        uint256 firstPrice = IOracleCaller(_primaryOracle).getLatestPrice();
+        require(firstPrice != 0, "Primary Oracle Must Work");
 
-        _initializeAuthority(_authorityAddress);
+        _storePrice(firstPrice);
 
-        emit FallbackCallerChanged(address(0), _fallbackCallerAddress);
+        primaryOracle = _primaryOracle;
 
-        ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
-        STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
+        // If secondaryOracle is known at deployment let's add it
+        if(_secondaryOracle != address(0)) {
+            uint256 secondaryOraclePrice = IOracleCaller(_secondaryOracle).getLatestPrice();
 
-        // Explicitly set initial system status after `require` checks
-        status = Status.chainlinkWorking;
+            if(secondaryOraclePrice != 0) {
+                secondaryOracle = _secondaryOracle;
+            }
+        }
     }
 
+    function setPrimaryOracle(address _newPrimary) external requiresAuth {
+        uint256 currentPrice = IOracleCaller(_newPrimary).getLatestPrice();
+        require(currentPrice != 0, "Primary Oracle Must Work");
+
+        primaryOracle = _newPrimary;
+
+    }
+
+    function setSecondaryOracle(address _newSecondary) external requiresAuth {
+        uint256 currentPrice = IOracleCaller(_newSecondary).getLatestPrice();
+        require(currentPrice != 0, "Primary Oracle Must Work");
+
+        secondaryOracle = _newSecondary;
+    }
+
+
     function fetchPrice() external override returns (uint256) {
-        ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
+        // Tinfoil Call
+        uint256 primaryResponse = tinfoilCall(primaryOracle, abi.encodeCall(IOracleCaller.getLatestPrice, ()));
 
-        // If chainlink is working, use CL
-        if (chainlinkResponse.success) {
-            _storePrice(chainlinkResponse.answer);
-
-            return chainlinkResponse.answer;
+        if(primaryResponse != INVALID_PRICE) {
+            _storePrice(primaryResponse);
+            return primaryResponse;
         }
 
-        // CL Not working, get Fallback
-        FallbackResponse memory fallbackResponse = _getCurrentFallbackResponse();
-
-        if (fallbackResponse.success) {
-            _storePrice(fallbackResponse.answer);
-
-            return fallbackResponse.answer;
+        if(secondaryOracle == address(0)){
+            return lastGoodPrice; // No fallback, just return latest
         }
 
-        // Default to last good price, most likely best to repay and close for everyone
+        // Let's try secondary
+        uint256 secondaryResponse = tinfoilCall(secondaryOracle, abi.encodeCall(IOracleCaller.getLatestPrice, ()));
+
+        if(secondaryResponse != INVALID_PRICE) {
+            _storePrice(secondaryResponse);
+            return secondaryResponse;
+        }
+
+        // No valid price, return last
+        // NOTE: We could emit something here as this means both oracles are dead
         return lastGoodPrice;
     }
 
-    function _getCurrentChainlinkResponse() internal view returns (ChainlinkResponse memory chainlinkResponse) {
-        // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals;
-        uint8 stEthEthDecimals;
+    // function _getCurrentChainlinkResponse() internal view returns (ChainlinkResponse memory chainlinkResponse) {
+    //     // Fetch decimals for both feeds:
+    //     uint8 ethBtcDecimals;
+    //     uint8 stEthEthDecimals;
 
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            ethBtcDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
+    //     try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
+    //         // If call to Chainlink succeeds, record the current decimal precision
+    //         ethBtcDecimals = decimals;
+    //     } catch {
+    //         // If call to Chainlink aggregator reverts, return a zero response with success = false
+    //         return chainlinkResponse;
+    //     }
 
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            stEthEthDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
+    //     try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
+    //         // If call to Chainlink succeeds, record the current decimal precision
+    //         stEthEthDecimals = decimals;
+    //     } catch {
+    //         // If call to Chainlink aggregator reverts, return a zero response with success = false
+    //         return chainlinkResponse;
+    //     }
 
-        // Try to get latest prices data:
-        int256 ethBtcAnswer;
-        int256 stEthEthAnswer;
-        try ETH_BTC_CL_FEED.latestRoundData() returns (
-            uint80 roundId,
-            int256 answer,
-            uint256,
-            /* startedAt */
-            uint256 timestamp,
-            uint80 /* answeredInRound */
-        ) {
-            ethBtcAnswer = answer;
-            chainlinkResponse.roundEthBtcId = roundId;
-            chainlinkResponse.timestampEthBtc = timestamp;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
+    //     // Try to get latest prices data:
+    //     int256 ethBtcAnswer;
+    //     int256 stEthEthAnswer;
+    //     try ETH_BTC_CL_FEED.latestRoundData() returns (
+    //         uint80 roundId,
+    //         int256 answer,
+    //         uint256,
+    //         /* startedAt */
+    //         uint256 timestamp,
+    //         uint80 /* answeredInRound */
+    //     ) {
+    //         ethBtcAnswer = answer;
+    //         chainlinkResponse.roundEthBtcId = roundId;
+    //         chainlinkResponse.timestampEthBtc = timestamp;
+    //     } catch {
+    //         // If call to Chainlink aggregator reverts, return a zero response with success = false
+    //         return chainlinkResponse;
+    //     }
 
-        try STETH_ETH_CL_FEED.latestRoundData() returns (
-            uint80 roundId,
-            int256 answer,
-            uint256,
-            /* startedAt */
-            uint256 timestamp,
-            uint80 /* answeredInRound */
-        ) {
-            stEthEthAnswer = answer;
-            chainlinkResponse.roundStEthEthId = roundId;
-            chainlinkResponse.timestampStEthEth = timestamp;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
+    //     try STETH_ETH_CL_FEED.latestRoundData() returns (
+    //         uint80 roundId,
+    //         int256 answer,
+    //         uint256,
+    //         /* startedAt */
+    //         uint256 timestamp,
+    //         uint80 /* answeredInRound */
+    //     ) {
+    //         stEthEthAnswer = answer;
+    //         chainlinkResponse.roundStEthEthId = roundId;
+    //         chainlinkResponse.timestampStEthEth = timestamp;
+    //     } catch {
+    //         // If call to Chainlink aggregator reverts, return a zero response with success = false
+    //         return chainlinkResponse;
+    //     }
 
-        if (
-            _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer)
-                && _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
-        ) {
-            chainlinkResponse.answer =
-                _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer, ethBtcDecimals, stEthEthDecimals);
-        } else {
-            return chainlinkResponse;
-        }
+    //     if (
+    //         _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer)
+    //             && _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
+    //     ) {
+    //         chainlinkResponse.answer =
+    //             _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer, ethBtcDecimals, stEthEthDecimals);
+    //     } else {
+    //         return chainlinkResponse;
+    //     }
 
-        chainlinkResponse.success = true;
-    }
+    //     chainlinkResponse.success = true;
+    // }
 
-    function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
-        if (_answer <= 0) return false;
-        if (_roundId == 0) return false;
+    // function _formatClAggregateAnswer(
+    //     int256 _ethBtcAnswer,
+    //     int256 _stEthEthAnswer,
+    //     uint8 _ethBtcDecimals,
+    //     uint8 _stEthEthDecimals
+    // ) internal view returns (uint256) {
+    //     uint256 _decimalDenominator = _stEthEthDecimals > _ethBtcDecimals ? _stEthEthDecimals : _ethBtcDecimals;
+    //     uint256 _scaledDecimal = _stEthEthDecimals > _ethBtcDecimals
+    //         ? 10 ** (_stEthEthDecimals - _ethBtcDecimals)
+    //         : 10 ** (_ethBtcDecimals - _stEthEthDecimals);
+    //     return (_scaledDecimal * uint256(_ethBtcAnswer) * uint256(_stEthEthAnswer) * LiquityMath.DECIMAL_PRECISION)
+    //         / 10 ** (_decimalDenominator * 2);
+    // }
 
-        return true;
-    }
+    // function _getCurrentFallbackResponse() internal view returns (FallbackResponse memory fallbackResponse) {
+    //     if (address(fallbackCaller) != address(0)) {
+    //         try fallbackCaller.getFallbackResponse() returns (uint256 answer, uint256 timestampRetrieved, bool success)
+    //         {
+    //             fallbackResponse.answer = answer;
+    //             fallbackResponse.timestamp = timestampRetrieved;
+    //             fallbackResponse.success = success;
+    //         } catch {
+    //             // If call to Fallback reverts, return a zero response with success = false
+    //         }
+    //     } // If unset we return a zero response with success = false
 
-    function _formatClAggregateAnswer(
-        int256 _ethBtcAnswer,
-        int256 _stEthEthAnswer,
-        uint8 _ethBtcDecimals,
-        uint8 _stEthEthDecimals
-    ) internal view returns (uint256) {
-        uint256 _decimalDenominator = _stEthEthDecimals > _ethBtcDecimals ? _stEthEthDecimals : _ethBtcDecimals;
-        uint256 _scaledDecimal = _stEthEthDecimals > _ethBtcDecimals
-            ? 10 ** (_stEthEthDecimals - _ethBtcDecimals)
-            : 10 ** (_ethBtcDecimals - _stEthEthDecimals);
-        return (_scaledDecimal * uint256(_ethBtcAnswer) * uint256(_stEthEthAnswer) * LiquityMath.DECIMAL_PRECISION)
-            / 10 ** (_decimalDenominator * 2);
-    }
-
-    function _bothOraclesSimilarPrice(
-        ChainlinkResponse memory _chainlinkResponse,
-        FallbackResponse memory _fallbackResponse
-    ) internal pure returns (bool) {
-        // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
-        uint256 minPrice = LiquityMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
-        if (minPrice == 0) return false;
-        uint256 maxPrice = LiquityMath._max(_fallbackResponse.answer, _chainlinkResponse.answer);
-        uint256 percentPriceDifference = ((maxPrice - minPrice) * LiquityMath.DECIMAL_PRECISION) / minPrice;
-
-        /*
-         * Return true if the relative price difference is <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES: if so, we assume both oracles are probably reporting
-         * the honest market price, as it is unlikely that both have been broken/hacked and are still in-sync.
-         */
-        return percentPriceDifference <= MAX_PRICE_DIFFERENCE_BETWEEN_ORACLES;
-    }
-
-    function _getCurrentFallbackResponse() internal view returns (FallbackResponse memory fallbackResponse) {
-        if (address(fallbackCaller) != address(0)) {
-            try fallbackCaller.getFallbackResponse() returns (uint256 answer, uint256 timestampRetrieved, bool success)
-            {
-                fallbackResponse.answer = answer;
-                fallbackResponse.timestamp = timestampRetrieved;
-                fallbackResponse.success = success;
-            } catch {
-                // If call to Fallback reverts, return a zero response with success = false
-            }
-        } // If unset we return a zero response with success = false
-
-        // Return is implicit
-    }
+    //     // Return is implicit
+    // }
 
     /// @notice Stores the latest valid price.
     /// @param _currentPrice The price to be stored.
@@ -225,4 +199,64 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         lastGoodPrice = _currentPrice;
         emit LastGoodPriceUpdated(_currentPrice);
     }
+
+    // Tinfoil Mode
+    // Give up to 2_M gas
+
+    function tinfoilCall(address _target, bytes memory _calldata) public returns (uint256) {
+        // Cap gas at 2 MLN, we don't care about 1/64 cause we expect oracles to consume way less than 200k gas
+        uint256 cappedGas = gasleft() > 2_000_000 ? 2_000_000 : gasleft();
+
+        (bool success, bytes memory res) = excessivelySafeCall(_target, cappedGas, 0, 32, _calldata);
+
+        if(success) {
+            // Parse return value as uint256
+            return abi.decode(res, (uint256));
+        }
+
+        return INVALID_PRICE;
+    }
+
+    /**
+     * excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
+     */
+    // Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
+    function excessivelySafeCall(
+        address _target,
+        uint256 _gas,
+        uint256 _value,
+        uint16 _maxCopy,
+        bytes memory _calldata
+    ) internal returns (bool, bytes memory) {
+        // set up for assembly call
+        uint256 _toCopy;
+        bool _success;
+        bytes memory _returnData = new bytes(_maxCopy);
+        // dispatch message to recipient
+        // by assembly calling "handle" function
+        // we call via assembly to avoid memcopying a very large returndata
+        // returned by a malicious contract
+        assembly {
+            _success := call(
+                _gas, // gas
+                _target, // recipient
+                _value, // ether value
+                add(_calldata, 0x20), // inloc
+                mload(_calldata), // inlen
+                0, // outloc
+                0 // outlen
+            )
+            // limit our copy to 256 bytes
+            _toCopy := returndatasize()
+            if gt(_toCopy, _maxCopy) {
+                _toCopy := _maxCopy
+            }
+            // Store the length of the copied bytes
+            mstore(_returnData, _toCopy)
+            // copy the bytes from returndata[0:_toCopy]
+            returndatacopy(add(_returnData, 0x20), 0, _toCopy)
+        }
+        return (_success, _returnData);
+    }
+
 }
