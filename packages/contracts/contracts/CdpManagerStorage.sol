@@ -169,10 +169,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     uint256 public override totalStakes;
 
-    // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
+    // Snapshot of the value of totalStakes, taken immediately after the latest liquidation
     uint256 public totalStakesSnapshot;
 
-    // Snapshot of the total collateral across the ActivePool, immediately after the latest liquidation and split fee claim
+    // Snapshot of the total collateral across the ActivePool, immediately after the latest liquidation
     uint256 public totalCollateralSnapshot;
 
     /*
@@ -516,7 +516,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
                 uint256 _perUnitError
             ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _newFeePerUnit, _perUnitError);
-            _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
 
