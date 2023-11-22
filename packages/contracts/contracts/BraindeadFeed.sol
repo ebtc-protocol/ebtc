@@ -25,7 +25,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     address public secondaryOracle;
 
     uint256 constant INVALID_PRICE = 0;
-    uint256 constant UNSET_ADDRESS = address(0);
+    address constant UNSET_ADDRESS = address(0);
 
     // NOTE: Could still use Status to signal current FSM
 
