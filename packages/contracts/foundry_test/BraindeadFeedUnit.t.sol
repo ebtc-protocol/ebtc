@@ -100,6 +100,26 @@ contract ScamRevertWithCustomError {
     }
 }
 
+contract ScamRevertWithCustomErrorAndParam {
+    uint256 DEFAULT_GOOD_PRICE = 1e18;
+
+    bool public attack;
+
+    error InvalidNumber(uint224);
+
+    function toggleAttack() external {
+        attack = !attack;
+    }
+
+    function getLatestPrice() external view returns (uint256) {
+        if (!attack) {
+            return DEFAULT_GOOD_PRICE;
+        } else {
+            revert InvalidNumber(12346);
+        }
+    }
+}
+
 contract ScamBurnAllGas {
     uint256 DEFAULT_GOOD_PRICE = 1e18;
 
@@ -251,6 +271,23 @@ contract BraindeadFeedUnit is Test {
 
     function testScamCustomError() public {
         ScamRevertWithCustomError scamCustomError = new ScamRevertWithCustomError();
+        bytes memory oracleRequestCalldata = abi.encodeCall(IOracleCaller.getLatestPrice, ());
+
+        // Normal Case
+        uint256 outcome = feed.tinfoilCall(address(scamCustomError), oracleRequestCalldata);
+        assertTrue(outcome != 0, "Not Zero");
+
+        // Revert Case
+        scamCustomError.toggleAttack();
+
+        // NOTE: Foundry doesn't allow to test selfdestruct
+        // For this reason we test this way
+        uint256 outcomeAttack = feed.tinfoilCall(address(scamCustomError), oracleRequestCalldata);
+        assertTrue(outcomeAttack == 0, "Is Zero");
+    }
+
+    function testScamCustomErrorWith32Length() public {
+        ScamRevertWithCustomErrorAndParam scamCustomError = new ScamRevertWithCustomErrorAndParam();
         bytes memory oracleRequestCalldata = abi.encodeCall(IOracleCaller.getLatestPrice, ());
 
         // Normal Case
