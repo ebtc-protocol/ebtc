@@ -24,7 +24,8 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     address public primaryOracle;
     address public secondaryOracle;
 
-    uint256 INVALID_PRICE = 0;
+    uint256 constant INVALID_PRICE = 0;
+    uint256 constant UNSET_ADDRESS = address(0);
 
     // NOTE: Could still use Status to signal current FSM
 
@@ -33,36 +34,58 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     /// @notice Sets the addresses of the contracts and initializes the system
     constructor(address _primaryOracle, address _secondaryOracle) {
         uint256 firstPrice = IOracleCaller(_primaryOracle).getLatestPrice();
-        require(firstPrice != 0, "Primary Oracle Must Work");
+        require(firstPrice != INVALID_PRICE, "Primary Oracle Must Work");
 
         _storePrice(firstPrice);
 
         primaryOracle = _primaryOracle;
 
         // If secondaryOracle is known at deployment let's add it
-        if (_secondaryOracle != address(0)) {
+        if (_secondaryOracle != UNSET_ADDRESS) {
             uint256 secondaryOraclePrice = IOracleCaller(_secondaryOracle).getLatestPrice();
 
-            if (secondaryOraclePrice != 0) {
+            if (secondaryOraclePrice != INVALID_PRICE) {
                 secondaryOracle = _secondaryOracle;
             }
         }
     }
 
+    /// @notice Allows the owner to replace the primary oracle
+    ///     The oracle must work (return non-zero value)
     function setPrimaryOracle(address _newPrimary) external requiresAuth {
         uint256 currentPrice = IOracleCaller(_newPrimary).getLatestPrice();
-        require(currentPrice != 0, "Primary Oracle Must Work");
+        require(currentPrice != INVALID_PRICE, "Primary Oracle Must Work");
 
         primaryOracle = _newPrimary;
     }
 
+    /// @notice Allows the owner to replace the secondary oracle
+    ///     The oracle must work (return non-zero value)
     function setSecondaryOracle(address _newSecondary) external requiresAuth {
         uint256 currentPrice = IOracleCaller(_newSecondary).getLatestPrice();
-        require(currentPrice != 0, "Primary Oracle Must Work");
+        require(currentPrice != INVALID_PRICE, "Primary Oracle Must Work");
 
         secondaryOracle = _newSecondary;
     }
 
+    /// @notice Fetch the Latest Valid Price
+    ///     Assumes the oracle call will return 0 if the data is invalid
+    ///     Any non-zero value will be interpreted as valid
+    ///     The security checks must be performed by the OracleCallers
+    ///
+    ///     Logic Breakdown:
+    ///
+    ///     If primary works, use that and store it as last good price
+    ///
+    ///     If not, try using secondary, if secondary works, use that and store it as last good price
+    ///
+    ///     If neither work, use the last good price
+    ///
+    ///     @dev All calls are done via `tinfoilCall` to allow the maximum resiliency we are able to provide
+    ///     Due to this, a OracleCaller has to be written, which will be responsible for calling the real oracle
+    ///     this ensures all interfaces are the same and that the logic here is to handle:
+    ///     - Functioning Case
+    ///     - All types of DOSes by the Oracles
     function fetchPrice() external override returns (uint256) {
         // Tinfoil Call
         uint256 primaryResponse = tinfoilCall(
@@ -75,7 +98,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
             return primaryResponse;
         }
 
-        if (secondaryOracle == address(0)) {
+        if (secondaryOracle == UNSET_ADDRESS) {
             return lastGoodPrice; // No fallback, just return latest
         }
 
@@ -102,8 +125,15 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
         emit LastGoodPriceUpdated(_currentPrice);
     }
 
-    // Tinfoil Mode
-    // Give up to 2_M gas
+    /// @dev Performs a TinfoilCall, with all known protections
+    ///     Against:
+    ///     GasGriefing (burning all the gas)
+    ///     Return and Revert Bombing (sending insane amounts of data to trigger memory expansion)
+    ///     Self-Destruction of contract
+    ///
+    ///     Also attempts to protect against returning incorrect data
+    ///    `excessivelySafeCall` is modified to only load data if the length is the expected one
+    ///     This would avoid against receiving gibberish data, most often arrays
     function tinfoilCall(address _target, bytes memory _calldata) public returns (uint256) {
         // Cap gas at 2 MLN, we don't care about 1/64 cause we expect oracles to consume way less than 200k gas
         uint256 cappedGas = gasleft() > 2_000_000 ? 2_000_000 : gasleft();
@@ -112,7 +142,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
 
         (bool success, bytes memory res) = excessivelySafeCall(_target, cappedGas, 0, 32, _calldata);
 
-        // Check of success and length allows to ignore checking for contract existence 
+        // Check of success and length allows to ignore checking for contract existence
         //  since non-existent contract cannot return value
         if (success && res.length == 32) {
             // Parse return value as uint256
@@ -122,10 +152,9 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
         return INVALID_PRICE;
     }
 
-    /**
-     * excessivelySafeCall to perform generic calls without getting gas bombed
-     */
-    // Credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
+    /// @dev MODIFIED excessivelySafeCall to perform generic calls without getting gas bombed
+    ///     Modified to only load the response if it has the intended length
+    /// @custom:credits to: https://github.com/nomad-xyz/ExcessivelySafeCall/blob/main/src/ExcessivelySafeCall.sol
     function excessivelySafeCall(
         address _target,
         uint256 _gas,
