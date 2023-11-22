@@ -28,6 +28,8 @@ import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariab
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
 import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
+import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
+
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 
 contract eBTCBaseFixture is
@@ -38,6 +40,11 @@ contract eBTCBaseFixture is
     BytecodeReader,
     LogUtils
 {
+    using Strings for string;
+    using Pretty for uint256;
+    using Pretty for int256;
+    using Pretty for bool;
+
     uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint256 public constant CCR = 125e16; // 125%
@@ -517,20 +524,31 @@ contract eBTCBaseFixture is
         address borrower = sortedCdps.getOwnerAddress(node);
 
         while (borrower != address(0)) {
-            console.log("=== ", bytes32ToString(node));
-            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
-            console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
-            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
-            console.log(
-                "Percent of System     :",
-                (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
-                    activePool.getSystemCollShares()
-            );
-            console.log("");
-
+            _printCdp(node, price);
             node = sortedCdps.getPrev(node);
             borrower = sortedCdps.getOwnerAddress(node);
         }
+    }
+
+    function _printCdp(bytes32 cdpId, uint256 price) internal {
+        address borrower = sortedCdps.getOwnerAddress(cdpId);
+
+        (uint256 syncedEBTCDebt, uint256 syncedCollShares) = cdpManager.getSyncedDebtAndCollShares(
+            cdpId
+        );
+        uint256 percentOfSystem = (cdpManager.getCdpCollShares(cdpId) * DECIMAL_PRECISION) /
+            activePool.getSystemCollShares();
+
+        console.log("=== ", bytes32ToString(cdpId));
+        console.log("debt       (realized) :", cdpManager.getCdpDebt(cdpId).pretty());
+        console.log("collShares (realized) :", cdpManager.getCdpCollShares(cdpId).pretty());
+        console.log("debt       (virtual)  :", syncedEBTCDebt.pretty());
+        console.log("collShares (virtual)  :", syncedCollShares.pretty());
+        console.log("stake                 :", cdpManager.getCdpStake(cdpId).pretty());
+        console.log("ICR        (cached)   :", cdpManager.getCachedICR(cdpId, price).pretty());
+        console.log("ICR        (synced)   :", cdpManager.getSyncedICR(cdpId, price).pretty());
+        console.log("Percent of System     :", percentOfSystem.pretty());
+        console.log("");
     }
 
     function _printSortedCdpsList() internal {

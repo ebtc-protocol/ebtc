@@ -2,12 +2,18 @@
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
+import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
  * It tests different cases and also does random testing against random coll amounts and amount of users
  */
 contract CdpOrderingTest is eBTCBaseInvariants {
+    using Strings for string;
+    using Pretty for uint256;
+    using Pretty for int256;
+    using Pretty for bool;
+
     function setUp() public override {
         super.setUp();
 
@@ -98,6 +104,109 @@ contract CdpOrderingTest is eBTCBaseInvariants {
             vm.stopPrank();
             _ensureSystemInvariants();
         }
+    }
+
+    function test_H1() public {
+        vm.pauseGasMetering();
+
+        address firstUser;
+        address lastUser;
+        bytes32 firstCdpId;
+        bytes32 lastCdpId;
+
+        uint loop = 5;
+
+        /// let's open 100 cdps and save the 1st and last index
+        for (uint256 i = 0; i < loop; i++) {
+            (uint256 oldIndex, uint256 newIndex) = _applyIndexChange(2000000000000000); // 0,2% stETH increase
+            // get a random user
+            address user = _utils.getNextUserAddress();
+            vm.startPrank(user);
+
+            // Randomize collateral amount used
+            vm.deal(user, 10 ether * 1000);
+            collateral.approve(address(borrowerOperations), 10 ether * 1000);
+            collateral.deposit{value: 10 ether * 1000}();
+
+            uint shareAmount = 10 ether;
+            uint256 collAmount = collateral.getPooledEthByShares(shareAmount);
+
+            uint256 borrowedAmount;
+            if (i == loop - 1)
+                // here we compute borrowedAmount to make lastCdpId NCIR very close to firstCdpId NICR
+                borrowedAmount =
+                    (1e20 * (shareAmount - collateral.getSharesByPooledEth(2e17))) /
+                    cdpManager.getSyncedNominalICR(firstCdpId); // borrowedAmount = 0.65764 ether;
+            else borrowedAmount = 0.5 ether;
+
+            bytes32 id = borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
+
+            if (i == 0) {
+                firstUser = user;
+                firstCdpId = id;
+            }
+            if (i == loop - 1) {
+                lastUser = user;
+                lastCdpId = id;
+            }
+
+            vm.stopPrank();
+        }
+
+        _printAllCdps();
+
+        console.log("=== Before opening final cdp ===");
+        logNICR(firstCdpId, lastCdpId);
+        // NICR 1st trove should be < NICR last trove
+        assertLe(
+            cdpManager.getSyncedNominalICR(firstCdpId),
+            cdpManager.getSyncedNominalICR(lastCdpId)
+        );
+
+        /// Let's increase the stETH by 40% and open a last cdp
+        (uint256 oldIndex, uint256 newIndex) = _applyIndexChange(400000000000000000); // 40% stETH increase
+        // get a random user
+        address user = _utils.getNextUserAddress();
+        vm.startPrank(user);
+
+        uint256 collAmount = 10 ether;
+        // deal ETH and deposit for collateral
+        vm.deal(user, collAmount * 1000);
+        collateral.approve(address(borrowerOperations), collAmount);
+        collateral.deposit{value: collAmount * 1000}();
+
+        uint borrowedAmount = 0.5 ether;
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
+        vm.stopPrank();
+
+        _printAllCdps();
+
+        console.log("=== After opening final cdp ===");
+        logNICR(firstCdpId, lastCdpId);
+        // NICR 1st trove should be < NICR last cdp but it's not the case
+        assertLe(
+            cdpManager.getSyncedNominalICR(firstCdpId),
+            cdpManager.getSyncedNominalICR(lastCdpId)
+        );
+    }
+
+    function logNICR(bytes32 firstCdpId, bytes32 lastCdpId) public {
+        console.log("---------------------------------- 1st cdp", bytes32ToString(firstCdpId));
+        console.log("getCdpStake         : ", cdpManager.getCdpStake(firstCdpId).pretty());
+        console.log("getCdpCollShares    : ", cdpManager.getCdpCollShares(firstCdpId).pretty());
+        console.log("getSyncedNominalICR : ", cdpManager.getSyncedNominalICR(firstCdpId).pretty());
+        console.log("---------------------------------- last cdp", bytes32ToString(lastCdpId));
+        console.log("getCdpStake         : ", cdpManager.getCdpStake(lastCdpId).pretty());
+        console.log("getCdpCollShares    : ", cdpManager.getCdpCollShares(lastCdpId).pretty());
+        console.log("getSyncedNominalICR : ", cdpManager.getSyncedNominalICR(lastCdpId).pretty());
+        console.log("---");
+        console.logInt(
+            int(
+                int(cdpManager.getSyncedNominalICR(firstCdpId)) -
+                    int(cdpManager.getSyncedNominalICR(lastCdpId))
+            )
+        );
+        console.log("----------------------------------");
     }
 
     function _getIndexChangeWithinRange(
