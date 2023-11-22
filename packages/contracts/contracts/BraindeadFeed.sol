@@ -114,7 +114,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
 
         // NOTE: Experimental logic
         // We ignore success, because you can get a return value only if the contract exists
-        if (res.length == 32) {
+        if (success && res.length == 32) {
             // Parse return value as uint256
             return abi.decode(res, (uint256));
         }
