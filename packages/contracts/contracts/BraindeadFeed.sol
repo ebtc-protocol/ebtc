@@ -112,8 +112,8 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
 
         (bool success, bytes memory res) = excessivelySafeCall(_target, cappedGas, 0, 32, _calldata);
 
-        // NOTE: Experimental logic
-        // We ignore success, because you can get a return value only if the contract exists
+        // Check of success and length allows to ignore checking for contract existence 
+        //  since non-existent contract cannot return value
         if (success && res.length == 32) {
             // Parse return value as uint256
             return abi.decode(res, (uint256));
