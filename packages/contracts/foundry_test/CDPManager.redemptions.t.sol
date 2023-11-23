@@ -493,4 +493,99 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         assertTrue(invariant_CDPM_04(vars), CDPM_04);
     }
+
+    function testSortingForPartialRedemption() public {
+        uint256 grossColl = 11e18 + cdpManager.LIQUIDATOR_REWARD();
+
+        uint256 price = priceFeedMock.fetchPrice();
+
+        uint256 debtMCR = _utils.calculateBorrowAmount(11e18, price, MINIMAL_COLLATERAL_RATIO);
+
+        uint256 debtColl = _utils.calculateBorrowAmount(11e18, price, COLLATERAL_RATIO);
+
+        address wallet = _utils.getNextUserAddress();
+
+        // 5 Cdps with the biggest NICR and the head of the sorted list
+        bytes32 zero = _openTestCDP(wallet, grossColl, debtColl - 20000);
+        bytes32 first = _openTestCDP(wallet, grossColl, debtColl - 10000);
+        bytes32 second = _openTestCDP(wallet, grossColl, debtColl - 7500);
+        bytes32 third = _openTestCDP(wallet, grossColl, debtColl - 5000);
+        bytes32 fourth = _openTestCDP(wallet, grossColl, debtMCR);
+
+        vm.startPrank(wallet);
+
+        // Check the TCR is above CCR
+        assert(cdpManager.getCachedTCR(price) > CCR);
+
+        // Lower the price so last node can go underwater
+        // and the third node is the first hint for redeeming
+        priceFeedMock.setPrice(price - 1e1);
+
+        // Extra check to ensure:
+        // Fourth node is underwater ICR < MCR
+        // Third node has ICR > MCR
+        assert(_getCachedICR(fourth) < MINIMAL_COLLATERAL_RATIO);
+        assert(_getCachedICR(third) > MINIMAL_COLLATERAL_RATIO);
+
+        uint256 _redeemAmt = debtColl + 10000;
+        (bytes32 hint, uint256 partialNICR, , ) = hintHelpers.getRedemptionHints(
+            (_redeemAmt),
+            priceFeedMock.fetchPrice(),
+            0
+        );
+
+        // Check the hint is the third node in the sorted list
+        // Which is the node above the underwater Cdp
+        assert(hint == third);
+
+        // Approve cdp manager to use ebtc tokens
+        eBTCToken.approve(address(cdpManager), eBTCToken.balanceOf(wallet));
+
+        // Fully redeem a CDP and partially redeem another with a wrong hint pair
+        // correct pair should be (zero, first)
+        bytes32 _upperHintForPartialReinsert = first;
+        bytes32 _lowerHintForPartailReinsert = fourth;
+		
+        console.log("Before redemption");
+        console.log("first NICR:  %s", cdpManager.getCachedNominalICR(first));
+        console.log("second NICR: %s", cdpManager.getCachedNominalICR(second));
+		
+        cdpManager.redeemCollateral(
+            _redeemAmt,
+            hint,
+            _upperHintForPartialReinsert,
+            _lowerHintForPartailReinsert,
+            partialNICR,
+            0,
+            1e18
+        );
+
+        // Check the third node is fully redeemed and no longer exists in the list
+        assert(!sortedCdps.contains(third));
+        // Check the lowest NICR node is still the fourth node
+        assert(fourth == sortedCdps.getLast());
+        // Check the biggest NICR node is still the first node
+        assert(zero == sortedCdps.getFirst());
+
+        // Check the second node is correctly placed, should be a bit upper after redemption
+        assert(second == sortedCdps.getPrev(first));
+        assert(second == sortedCdps.getNext(zero));
+
+        uint256 _zeroNICR = cdpManager.getCachedNominalICR(zero);
+        uint256 _firstNICR = cdpManager.getCachedNominalICR(first);
+        uint256 _secondNICR = cdpManager.getCachedNominalICR(second);
+        uint256 _fourthNICR = cdpManager.getCachedNominalICR(fourth);
+
+        console.log("After redemption");
+        console.log("zero NICR:   %s", _zeroNICR);
+        console.log("second NICR: %s", _secondNICR);
+        console.log("first NICR:  %s", _firstNICR);
+        console.log("fourth NICR: %s", _fourthNICR);
+
+        assert(_secondNICR > _firstNICR);
+        assert(_zeroNICR > _secondNICR);
+        assert(_firstNICR > _fourthNICR);
+
+        vm.stopPrank();
+    }
 }

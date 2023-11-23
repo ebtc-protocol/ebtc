@@ -206,12 +206,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 return singleRedemption;
             }
 
-            sortedCdps.reInsert(
-                _redeemColFromCdp.cdpId,
-                newNICR,
-                _redeemColFromCdp.upperPartialRedemptionHint,
-                _redeemColFromCdp.lowerPartialRedemptionHint
-            );
+            singleRedemption.newPartialNICR = newNICR;
 
             Cdps[_redeemColFromCdp.cdpId].debt = newDebt;
             Cdps[_redeemColFromCdp.cdpId].coll = newColl;
@@ -385,6 +380,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         /**
             Core Redemption Loop
         */
+        uint256 _partialRedeemedNewNICR;
         while (
             currentBorrower != address(0) && totals.remainingDebtToRedeem > 0 && _maxIterations > 0
         ) {
@@ -407,6 +403,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 // therefore we could not redeem from the last Cdp
                 if (singleRedemption.cancelledPartial) break;
 
+                // prepare for reinsertion if there is partial redemption
+                if (singleRedemption.newPartialNICR > 0) {
+                    _partialRedeemedNewNICR = singleRedemption.newPartialNICR;
+                }
+
                 totals.debtToRedeem = totals.debtToRedeem + singleRedemption.debtToRedeem;
                 totals.collSharesDrawn = totals.collSharesDrawn + singleRedemption.collSharesDrawn;
                 totals.remainingDebtToRedeem =
@@ -416,15 +417,15 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                     totals.totalCollSharesSurplus +
                     singleRedemption.collSurplus;
 
+                bytes32 _nextId = sortedCdps.getPrev(_cId);
                 if (singleRedemption.fullRedemption) {
                     _lastRedeemed = _cId;
                     _numCdpsFullyRedeemed = _numCdpsFullyRedeemed + 1;
+                    _cId = _nextId;
                 }
 
-                bytes32 _nextId = sortedCdps.getPrev(_cId);
                 address nextUserToCheck = sortedCdps.getOwnerAddress(_nextId);
                 currentBorrower = nextUserToCheck;
-                _cId = _nextId;
             }
             _maxIterations--;
         }
@@ -440,6 +441,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 _firstRedeemed
             );
             sortedCdps.batchRemove(_toRemoveIds);
+        }
+
+        // reinsert partially redemeed CDP if any
+        if (_cId != bytes32(0) && _partialRedeemedNewNICR > 0) {
+            sortedCdps.reInsert(
+                _cId,
+                _partialRedeemedNewNICR,
+                _upperPartialRedemptionHint,
+                _lowerPartialRedemptionHint
+            );
         }
 
         // Decay the baseRate due to time passed, and then increase it according to the size of this redemption.
