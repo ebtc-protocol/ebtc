@@ -8,11 +8,11 @@ import {PriceFeed} from "../contracts/PriceFeed.sol";
 import {PriceFeedTester} from "../contracts/TestContracts/PriceFeedTester.sol";
 import {MockTellor} from "../contracts/TestContracts/MockTellor.sol";
 import {MockAggregator} from "../contracts/TestContracts/MockAggregator.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 import {AggregatorV3Interface} from "../contracts/Dependencies/AggregatorV3Interface.sol";
 
-contract PriceFeedTest is eBTCBaseFixture {
+contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
     address constant STETH_ETH_CL_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 
     PriceFeedTester internal priceFeedTester;
@@ -29,9 +29,9 @@ contract PriceFeedTest is eBTCBaseFixture {
     event FeedActionOption(uint256 _action);
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+        super.connectCoreContracts();
+        super.connectLQTYContractsToCore();
 
         // Set current and prev prices in both oracles
         _mockChainLinkEthBTC = new MockAggregator();
@@ -251,14 +251,14 @@ contract PriceFeedTest is eBTCBaseFixture {
         }
         // --- CASE 2: The system fetched last price from Fallback ---
         else if (currentStatus == IPriceFeed.Status.usingFallbackChainlinkUntrusted) {
-            if (bothOraclesAliveAndUnrokenSimilarPrice) {
-                // CL and FB working, reporting similar prices (<5% difference)
-                // Chainlink is now working, return to it
-                newStatus = IPriceFeed.Status.chainlinkWorking;
-            } else if (fallbackBroken) {
+            if (fallbackBroken) {
                 // Fallback is now broken, and becomes untrusted
                 // Use last good price as both oracles are untrusted
                 newStatus = IPriceFeed.Status.bothOraclesUntrusted;
+            } else if (bothOraclesAliveAndUnrokenSimilarPrice) {
+                // CL and FB working, reporting similar prices (<5% difference)
+                // Chainlink is now working, return to it
+                newStatus = IPriceFeed.Status.chainlinkWorking;
             } else {
                 // Fallback is working, and CL still isn't. Stay in same state
                 // Use our new valid fallback price
@@ -271,7 +271,8 @@ contract PriceFeedTest is eBTCBaseFixture {
             if (
                 address(priceFeedTester.fallbackCaller()) == address(0) &&
                 !chainlinkFrozen &&
-                !chainlinkBroken
+                !chainlinkBroken &&
+                !chainlinkPriceChangeAboveMax
             ) {
                 // Chainlink is now working, return to it, but note that fallback is still untrusted
                 newStatus = IPriceFeed.Status.usingChainlinkFallbackUntrusted;
@@ -331,15 +332,19 @@ contract PriceFeedTest is eBTCBaseFixture {
             else if (chainlinkFrozen) {
                 newStatus = currentStatus;
             }
-            // CL and FB working, reporting similar prices (<5% difference)
-            // Both oracles are trusted now, use latest CL price
-            else if (bothOraclesAliveAndUnrokenSimilarPrice) {
-                newStatus = IPriceFeed.Status.chainlinkWorking;
-            }
             // CL is working, reporting suspiciously different price since previous round (>50% difference)
             // Stop trusting CL, and use last good price as we don't trust FB either
             else if (chainlinkPriceChangeAboveMax) {
                 newStatus = IPriceFeed.Status.bothOraclesUntrusted;
+            }
+            // CL and FB working, reporting similar prices (<5% difference)
+            // Both oracles are trusted now, use latest CL price
+            else if (bothOraclesAliveAndUnrokenSimilarPrice) {
+                if (address(priceFeedTester.fallbackCaller()) != address(0)) {
+                    newStatus = IPriceFeed.Status.chainlinkWorking;
+                } else {
+                    newStatus = currentStatus;
+                }
             }
             // CL is working, but FB is still not trusted (it's not live and reporting within 5% of a valid updated CL price)
             // Use CL price, and maintain this state ("chainlinkWorking" really means both oracles are trusted)
