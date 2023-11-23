@@ -114,7 +114,7 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         bytes32 firstCdpId;
         bytes32 lastCdpId;
 
-        uint loop = 5;
+        uint loop = 100;
 
         /// let's open 100 cdps and save the 1st and last index
         for (uint256 i = 0; i < loop; i++) {
