@@ -27,6 +27,11 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     uint256 constant INVALID_PRICE = 0;
     address constant UNSET_ADDRESS = address(0);
 
+    // --- Events ---
+
+    event PrimaryOracleUpdated(address indexed _oldOracle, address indexed _newOracle);
+    event SecondaryOracleUpdated(address indexed _oldOracle, address indexed _newOracle);
+
     // NOTE: Could still use Status to signal current FSM
 
     // --- Dependency setters ---
@@ -34,7 +39,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     /// @notice Sets the addresses of the contracts and initializes the system
     constructor(address _primaryOracle, address _secondaryOracle) {
         uint256 firstPrice = IOracleCaller(_primaryOracle).getLatestPrice();
-        require(firstPrice != INVALID_PRICE, "Primary Oracle Must Work");
+        require(firstPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
 
         _storePrice(firstPrice);
 
@@ -54,8 +59,9 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     ///     The oracle must work (return non-zero value)
     function setPrimaryOracle(address _newPrimary) external requiresAuth {
         uint256 currentPrice = IOracleCaller(_newPrimary).getLatestPrice();
-        require(currentPrice != INVALID_PRICE, "Primary Oracle Must Work");
+        require(currentPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
 
+        emit PrimaryOracleUpdated(primaryOracle, _newPrimary);
         primaryOracle = _newPrimary;
     }
 
@@ -63,8 +69,9 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     ///     The oracle must work (return non-zero value)
     function setSecondaryOracle(address _newSecondary) external requiresAuth {
         uint256 currentPrice = IOracleCaller(_newSecondary).getLatestPrice();
-        require(currentPrice != INVALID_PRICE, "Primary Oracle Must Work");
+        require(currentPrice != INVALID_PRICE, "BraindeadFeed: Secondary Oracle Must Work");
 
+        emit SecondaryOracleUpdated(secondaryOracle, _newSecondary);
         secondaryOracle = _newSecondary;
     }
 
