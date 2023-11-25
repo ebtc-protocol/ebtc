@@ -284,7 +284,8 @@ contract LeverageMacroBase {
     enum OperationType {
         OpenCdpOperation,
         AdjustCdpOperation,
-        CloseCdpOperation
+        CloseCdpOperation,
+        ClaimSurplusOperation
     }
 
     /// @dev Must be memory since we had to decode it
@@ -301,6 +302,8 @@ contract LeverageMacroBase {
             _closeCdpCallback(operation.OperationData);
         } else if (operation.operationType == OperationType.AdjustCdpOperation) {
             _adjustCdpCallback(operation.OperationData);
+        } else if (operation.operationType == OperationType.ClaimSurplusOperation) {
+            _claimSurplusCallback();
         }
 
         uint256 afterSwapsLength = operation.swapsAfter.length;
@@ -491,6 +494,10 @@ contract LeverageMacroBase {
             flData._lowerHint,
             flData._stEthBalanceIncrease
         );
+    }
+
+    function _claimSurplusCallback() internal {
+        borrowerOperations.claimSurplusCollShares();
     }
 
     /// @dev excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value

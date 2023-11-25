@@ -313,6 +313,10 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
     }
 
+    function test_claimCollateralSurplus() public {
+
+    }
+
     function getEncodedOpenCdpData() internal returns (bytes memory) {
         // Swaps b4 and after
         LeverageMacroBase.SwapOperation[] memory _levSwapsBefore;
