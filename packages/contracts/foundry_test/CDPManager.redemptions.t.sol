@@ -545,11 +545,11 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // correct pair should be (zero, first)
         bytes32 _upperHintForPartialReinsert = first;
         bytes32 _lowerHintForPartailReinsert = fourth;
-		
+
         console.log("Before redemption");
         console.log("first NICR:  %s", cdpManager.getCachedNominalICR(first));
         console.log("second NICR: %s", cdpManager.getCachedNominalICR(second));
-		
+
         cdpManager.redeemCollateral(
             _redeemAmt,
             hint,
