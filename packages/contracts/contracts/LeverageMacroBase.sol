@@ -76,7 +76,8 @@ contract LeverageMacroBase {
     enum PostOperationCheck {
         openCdp,
         cdpStats,
-        isClosed
+        isClosed,
+        claimSurplus
     }
 
     enum Operator {

@@ -314,7 +314,66 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
     }
 
     function test_claimCollateralSurplus() public {
+        vm.prank(user);
+        collateral.transferShares(address(collSurplusPool), 1e18);
 
+        vm.prank(address(activePool));
+        collSurplusPool.increaseTotalSurplusCollShares(1e18);
+
+        vm.prank(address(cdpManager));
+        collSurplusPool.increaseSurplusCollShares(address(wallet), 1e18);
+
+        SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](1);
+
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
+            .LeverageMacroOperation(
+                address(0),
+                0,
+                new LeverageMacroBase.SwapOperation[](0),
+                new LeverageMacroBase.SwapOperation[](0),
+                LeverageMacroBase.OperationType.ClaimSurplusOperation,
+                ""
+            );
+
+        // Post check params
+        LeverageMacroBase.PostCheckParams memory postCheckParams = LeverageMacroBase
+            .PostCheckParams({
+                expectedDebt: LeverageMacroBase.CheckValueAndType({
+                    value: 0,
+                    operator: LeverageMacroBase.Operator.skip
+                }),
+                expectedCollateral: LeverageMacroBase.CheckValueAndType({
+                    value: 0,
+                    operator: LeverageMacroBase.Operator.skip
+                }),
+                // NOTE: Unused
+                cdpId: bytes32(0),
+                // NOTE: Superfluous
+                expectedStatus: ICdpManagerData.Status.active
+            });
+
+        data[0] = SimplifiedDiamondLike.Operation({
+            to: address(address(macro_reference)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.delegatecall,
+            data: abi.encodeCall(
+                LeverageMacroBase.doOperation,
+                (
+                    LeverageMacroBase.FlashLoanType.noFlashloan,
+                    0,
+                    operation,
+                    LeverageMacroBase.PostOperationCheck.claimSurplus,
+                    postCheckParams
+                )
+            )
+        });
+
+        vm.startPrank(user);
+        wallet.execute(data);
+        vm.stopPrank();
     }
 
     function getEncodedOpenCdpData() internal returns (bytes memory) {
