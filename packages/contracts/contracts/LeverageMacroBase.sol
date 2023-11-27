@@ -23,7 +23,7 @@ interface ICdpCdps {
 /// - Via delegate call (LeverageMacroDelegateTarget)
 /// @custom:known-issue Due to slippage some dust amounts for all intermediary tokens can be left, since there's no way to ask to sell all available
 
-contract LeverageMacroBase {
+abstract contract LeverageMacroBase {
     using SafeERC20 for IERC20;
 
     IBorrowerOperations public immutable borrowerOperations;
@@ -128,6 +128,22 @@ contract LeverageMacroBase {
     ) external {
         _assertOwner();
 
+        _doOperation(
+            flType,
+            borrowAmount,
+            operation,
+            postCheckType,
+            checkParams
+        );
+    }
+
+    function _doOperation(
+        FlashLoanType flType,
+        uint256 borrowAmount,
+        LeverageMacroOperation calldata operation,
+        PostOperationCheck postCheckType,
+        PostCheckParams calldata checkParams
+    ) internal {
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
             IERC20(operation.tokenToTransferIn).safeTransferFrom(
@@ -137,14 +153,9 @@ contract LeverageMacroBase {
             );
         }
 
-        /**
-         * SETUP FOR POST CALL CHECK
-         */
-        uint256 initialCdpIndex;
-        if (postCheckType == PostOperationCheck.openCdp) {
-            // How to get owner
-            // sortedCdps.existCdpOwners(_cdpId);
-            initialCdpIndex = sortedCdps.cdpCountOf(address(this));
+        bytes32 expectedCdpId;
+        if (operation.operationType == OperationType.OpenCdpOperation) {
+            expectedCdpId = sortedCdps.toCdpId(address(this), block.number, sortedCdps.nextCdpNonce());
         }
 
         uint256 collSharesBefore;
@@ -176,13 +187,8 @@ contract LeverageMacroBase {
          * POST CALL CHECK FOR CREATION
          */
         if (postCheckType == PostOperationCheck.openCdp) {
-            // How to get owner
-            // sortedCdps.existCdpOwners(_cdpId);
-            // initialCdpIndex is initialCdpIndex + 1
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), initialCdpIndex);
-
             // Check for param details
-            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
+            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(expectedCdpId);
             _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
             _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
