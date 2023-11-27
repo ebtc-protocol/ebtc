@@ -144,6 +144,29 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
 
     function testStateTransitionsWithOracleFallback() public {}
 
+    function testPriceChangeOver50PerCentWithoutFallback() public {
+        // set empty fallback
+        _brickFallackFeed();
+
+        uint256 lastGoodPrice = priceFeedTester.lastGoodPrice();
+
+        // Price change over 50%
+        int256 newEthBTCPrice = (initEthBTCPrice * 2) + 1;
+        _mockChainLinkEthBTC.setPrice(newEthBTCPrice);
+
+        // Get price
+        uint256 newPrice = priceFeedTester.fetchPrice();
+        IPriceFeed.Status status = priceFeedTester.status();
+        assertEq(newPrice, lastGoodPrice); // last good price is used
+        assertEq(uint256(status), 2); // bothOraclesUntrusted
+
+        // Get price again in the same block (no changes in ChainLink price)
+        newPrice = priceFeedTester.fetchPrice();
+        status = priceFeedTester.status();
+        assertEq(newPrice, lastGoodPrice); // still lastGoodPrice is used
+        assertEq(uint256(status), 2); // still bothOraclesUntrusted due to CL report 50% deviation
+    }
+
     /// @dev We expect there to be a previous chainlink response on system init, real-world oracles used will have this property
     function _getOracleResponses()
         internal
