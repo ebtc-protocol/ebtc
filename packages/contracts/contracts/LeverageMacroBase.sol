@@ -94,6 +94,9 @@ contract LeverageMacroBase {
 
     struct PostCheckParams {
         CheckValueAndType expectedDebt;
+        // Expected collateral amount
+        // This represents the collateral surplus amount if 
+        // PostOperationCheck is claimSurplus
         CheckValueAndType expectedCollateral;
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
@@ -142,6 +145,11 @@ contract LeverageMacroBase {
             // How to get owner
             // sortedCdps.existCdpOwners(_cdpId);
             initialCdpIndex = sortedCdps.cdpCountOf(address(this));
+        }
+
+        uint256 collSharesBefore;
+        if (postCheckType == PostOperationCheck.claimSurplus) {
+            collSharesBefore = stETH.sharesOf(address(this));
         }
 
         // Take eBTC or stETH FlashLoan
@@ -203,6 +211,12 @@ contract LeverageMacroBase {
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: closeCDP status check"
             );
+        }
+
+        // Post check type: claim collateral surplus
+        if (postCheckType == PostOperationCheck.claimSurplus) {
+            uint256 collSharesClaimed = stETH.sharesOf(address(this)) - collSharesBefore;
+            _doCheckValueType(checkParams.expectedCollateral, collSharesClaimed);
         }
 
         // Sweep here if it's Reference, do not if it's delegate

@@ -343,8 +343,8 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
                     operator: LeverageMacroBase.Operator.skip
                 }),
                 expectedCollateral: LeverageMacroBase.CheckValueAndType({
-                    value: 0,
-                    operator: LeverageMacroBase.Operator.skip
+                    value: 1e18,
+                    operator: LeverageMacroBase.Operator.equal
                 }),
                 // NOTE: Unused
                 cdpId: bytes32(0),
