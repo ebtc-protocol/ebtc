@@ -434,7 +434,8 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             user
         );
 
-        (uint deadline, uint8 v, bytes32 r, bytes32 s) = _generateOneTimePermitFromFixedTestUser(zapRouter,
+        (uint deadline, uint8 v, bytes32 r, bytes32 s) = _generateOneTimePermitFromFixedTestUser(
+            zapRouter,
             user,
             userPrivateKey
         );
