@@ -95,7 +95,7 @@ abstract contract LeverageMacroBase {
     struct PostCheckParams {
         CheckValueAndType expectedDebt;
         // Expected collateral amount
-        // This represents the collateral surplus amount if 
+        // This represents the collateral surplus amount if
         // PostOperationCheck is claimSurplus
         CheckValueAndType expectedCollateral;
         // Used only if cdpStats || isClosed
@@ -128,13 +128,7 @@ abstract contract LeverageMacroBase {
     ) external {
         _assertOwner();
 
-        _doOperation(
-            flType,
-            borrowAmount,
-            operation,
-            postCheckType,
-            checkParams
-        );
+        _doOperation(flType, borrowAmount, operation, postCheckType, checkParams);
     }
 
     function _doOperation(
@@ -153,9 +147,25 @@ abstract contract LeverageMacroBase {
             );
         }
 
+        // Figure out the expected CDP ID using sortedCdps.toCdpId
         bytes32 expectedCdpId;
         if (operation.operationType == OperationType.OpenCdpOperation) {
-            expectedCdpId = sortedCdps.toCdpId(address(this), block.number, sortedCdps.nextCdpNonce());
+            expectedCdpId = sortedCdps.toCdpId(
+                address(this),
+                block.number,
+                sortedCdps.nextCdpNonce()
+            );
+        } else if (operation.operationType == OperationType.OpenCdpForOperation) {
+            OpenCdpForOperation memory flData = abi.decode(
+                operation.OperationData,
+                (OpenCdpForOperation)
+            );
+            // This is used to support permitPositionManagerApproval
+            expectedCdpId = sortedCdps.toCdpId(
+                flData.borrower,
+                block.number,
+                sortedCdps.nextCdpNonce()
+            );
         }
 
         uint256 collSharesBefore;
@@ -304,6 +314,7 @@ abstract contract LeverageMacroBase {
 
     enum OperationType {
         OpenCdpOperation,
+        OpenCdpForOperation,
         AdjustCdpOperation,
         CloseCdpOperation,
         ClaimSurplusOperation
@@ -319,6 +330,8 @@ abstract contract LeverageMacroBase {
         // Based on the type we do stuff
         if (operation.operationType == OperationType.OpenCdpOperation) {
             _openCdpCallback(operation.OperationData);
+        } else if (operation.operationType == OperationType.OpenCdpForOperation) {
+            _openCdpForCallback(operation.OperationData);
         } else if (operation.operationType == OperationType.CloseCdpOperation) {
             _closeCdpCallback(operation.OperationData);
         } else if (operation.operationType == OperationType.AdjustCdpOperation) {
@@ -340,6 +353,16 @@ abstract contract LeverageMacroBase {
         bytes32 _upperHint;
         bytes32 _lowerHint;
         uint256 stETHToDeposit;
+    }
+
+    // Open for
+    struct OpenCdpForOperation {
+        // Open CDP For Data
+        uint256 eBTCToMint;
+        bytes32 _upperHint;
+        bytes32 _lowerHint;
+        uint256 stETHToDeposit;
+        address borrower;
     }
 
     // Change leverage or something
@@ -483,6 +506,7 @@ abstract contract LeverageMacroBase {
     /// @dev Must be memory since we had to decode it
     function _openCdpCallback(bytes memory data) internal {
         OpenCdpOperation memory flData = abi.decode(data, (OpenCdpOperation));
+
         /**
          * Open CDP and Emit event
          */
@@ -491,6 +515,21 @@ abstract contract LeverageMacroBase {
             flData._upperHint,
             flData._lowerHint,
             flData.stETHToDeposit
+        );
+    }
+
+    function _openCdpForCallback(bytes memory data) internal {
+        OpenCdpForOperation memory flData = abi.decode(data, (OpenCdpForOperation));
+
+        /**
+         * Open CDP and Emit event
+         */
+        bytes32 _cdpId = borrowerOperations.openCdpFor(
+            flData.eBTCToMint,
+            flData._upperHint,
+            flData._lowerHint,
+            flData.stETHToDeposit,
+            flData.borrower
         );
     }
 
