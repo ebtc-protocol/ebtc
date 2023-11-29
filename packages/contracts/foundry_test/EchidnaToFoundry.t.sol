@@ -9,6 +9,8 @@ import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrow
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
 import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
+import {Strings} from "./utils/Strings.sol";
+import {Pretty} from "../contracts/TestContracts/Pretty.sol";
 
 /*
  * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
@@ -21,6 +23,10 @@ contract EToFoundry is
     TargetFunctions,
     IERC3156FlashBorrower
 {
+    using Pretty for uint256;
+    using Pretty for int256;
+    using Pretty for bool;
+
     modifier setup() override {
         _;
     }
@@ -1217,17 +1223,26 @@ contract EToFoundry is
     }
 
     function testSL05_C4_155_Fix() public {
-        openCdp(
-            99686158942256384475585699555058856948620557112153554633770539191788460073690,
-            131072
+        _printCdp(
+            openCdp(
+                99686158942256384475585699555058856948620557112153554633770539191788460073690,
+                131072
+            ),
+            priceFeedMock.fetchPrice()
         );
+
         setEthPerShare(
             34295213799102744493028306954756810003336970029694662053889504778322768018319
         );
-        openCdp(
-            115792089237316195423570985008687907853269984665640564039457584007913129574400,
-            1100000000000000000
+
+        _printCdp(
+            openCdp(
+                115792089237316195423570985008687907853269984665640564039457584007913129574400,
+                1100000000000000000
+            ),
+            priceFeedMock.fetchPrice()
         );
+
         openCdp(
             99686158942256384475585699555058856948620557112153554633770539191788460073690,
             131072
@@ -1249,10 +1264,47 @@ contract EToFoundry is
             110002484775450385652392435758253512460606485432358535837484704807517473157942
         );
         setEthPerShare(6);
+        _printSortedCdps();
         liquidateCdps(
             115792089237316195423570985008687907853269984665640564039456334007913129639936
         );
+        _printSortedCdps();
         assertTrue(invariant_SL_05(crLens, sortedCdps), "SL-05");
+    }
+
+    function _printSortedCdps() public {
+        bytes32 currentCdp = sortedCdps.getFirst();
+        while (currentCdp != bytes32(0)) {
+            _printCdp(currentCdp, priceFeedMock.fetchPrice());
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+    }
+
+    function _printCdp(bytes32 cdpId, uint256 price) internal {
+        address borrower = sortedCdps.getOwnerAddress(cdpId);
+
+        (uint256 syncedEBTCDebt, uint256 syncedCollShares) = cdpManager.getSyncedDebtAndCollShares(
+            cdpId
+        );
+        uint256 percentOfSystem = (cdpManager.getCdpCollShares(cdpId) * 1e18) /
+            activePool.getSystemCollShares();
+
+        console.log("=== ", Strings.bytes32ToString(cdpId));
+        console.log("debt       (realized) :", cdpManager.getCdpDebt(cdpId).pretty());
+        console.log("collShares (realized) :", cdpManager.getCdpCollShares(cdpId).pretty());
+        console.log("debt       (virtual)  :", syncedEBTCDebt.pretty());
+        console.log("collShares (virtual)  :", syncedCollShares.pretty());
+        console.log("stake                 :", cdpManager.getCdpStake(cdpId).pretty());
+        console.log("ICR        (cached)   :", cdpManager.getCachedICR(cdpId, price).pretty());
+        console.log("ICR        (synced)   :", cdpManager.getSyncedICR(cdpId, price).pretty());
+        console.log("Percent of System     :", percentOfSystem.pretty());
+        console.log("debt redist (system)  :", cdpManager.systemDebtRedistributionIndex().pretty());
+        console.log(
+            "debt redist (cdp)     :",
+            cdpManager.cdpDebtRedistributionIndex(cdpId).pretty()
+        );
+
+        console.log("");
     }
 
     function get_cdp(uint256 _i) internal returns (bytes32) {
