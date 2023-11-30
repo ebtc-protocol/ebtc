@@ -56,7 +56,7 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
     //////////////////////////////////////////////////////////////*/
 
     /**
-        @notice A user can call a given function signature on a given target address if:
+        @notice A user can c    all a given function signature on a given target address if:
             - The capability has not been burned
             - That capability is public, or the user has a role that has been granted the capability to call the function
      */
