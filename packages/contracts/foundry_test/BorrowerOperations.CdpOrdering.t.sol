@@ -153,7 +153,7 @@ contract CdpOrderingTest is eBTCBaseInvariants {
             vm.stopPrank();
         }
 
-        _printAllCdps();
+     //   _printAllCdps();
 
         console.log("=== Before opening final cdp ===");
         logNICR(firstCdpId, lastCdpId);
@@ -179,7 +179,7 @@ contract CdpOrderingTest is eBTCBaseInvariants {
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
         vm.stopPrank();
 
-        _printAllCdps();
+      //  _printAllCdps();
 
         console.log("=== After opening final cdp ===");
         logNICR(firstCdpId, lastCdpId);

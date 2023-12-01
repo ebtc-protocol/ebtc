@@ -10,6 +10,7 @@ import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "forge-std/console2.sol";
 
 /// @title CDP Manager storage and shared functions with LiquidationLibrary
 /// @dev All features around Cdp management are split into separate parts to get around contract size limitations.
@@ -175,6 +176,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     // Snapshot of the total collateral across the ActivePool, immediately after the latest liquidation
     uint256 public totalCollateralSnapshot;
 
+    mapping(bytes32 => uint256) public hpStake;
+    uint256 public hpFeePerUnit;
+    mapping(bytes32 => uint256) public hpCdpFeePerUnit;
+    uint256 public hpAllStakes;
+    uint256 public hpStakeSnapshot;
+
     /*
      * systemDebtRedistributionIndex track the sums of accumulated socialized liquidations per unit staked.
      * During its lifetime, each stake earns:
@@ -294,6 +301,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _totalStakesSnapshot = totalStakes;
         totalStakesSnapshot = _totalStakesSnapshot;
 
+        hpStakeSnapshot = hpAllStakes;
+
         uint256 _totalCollateralSnapshot = activePool.getSystemCollShares() - _collRemainder;
         totalCollateralSnapshot = _totalCollateralSnapshot;
 
@@ -404,6 +413,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         if (_oldPerUnitCdp != _systemStEthFeePerUnitIndex) {
             cdpStEthFeePerUnitIndex[_cdpId] = _systemStEthFeePerUnitIndex;
         }
+
+        hpCdpFeePerUnit[_cdpId] = hpFeePerUnit;
     }
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
@@ -433,6 +444,14 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 newStake = _computeNewStake(_cdp.coll);
         uint256 oldStake = _cdp.stake;
         _cdp.stake = newStake;
+
+        hpAllStakes -= hpStake[_cdpId];
+        if (totalCollateralSnapshot == 0) {
+            hpStake[_cdpId] = _cdp.coll * 1e2;
+        } else {
+            hpStake[_cdpId] = (_cdp.coll * hpStakeSnapshot) / totalCollateralSnapshot;
+        }
+        hpAllStakes += hpStake[_cdpId];
 
         return (newStake, oldStake);
     }
@@ -514,8 +533,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
                 uint256 _feeTaken,
                 uint256 _newFeePerUnit,
                 uint256 _perUnitError
-            ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+            ) = _calcSyncedGlobalAccounting2(_newIndex, _oldIndex);
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _newFeePerUnit, _perUnitError);
+            _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
 
@@ -563,7 +583,33 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
         uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
             systemStEthFeePerUnitIndexError;
+
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
+
+        uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
+        return (_feeTaken, _deltaFeePerUnit, _perUnitError);
+    }
+
+    function calcFeeUponStakingReward2(
+        uint256 _newIndex,
+        uint256 _prevIndex
+    ) public returns (uint256, uint256, uint256) {
+        require(_newIndex > _prevIndex, "CDPManager: only take fee with bigger new index");
+        uint256 deltaIndex = _newIndex - _prevIndex;
+        uint256 deltaIndexFees = (deltaIndex * stakingRewardSplit) / MAX_REWARD_SPLIT;
+
+        // we take the fee for all CDPs immediately which is scaled by index precision
+        uint256 _deltaFeeSplit = deltaIndexFees * getSystemCollShares();
+        uint256 _cachedAllStakes = totalStakes;
+        // return the values to update the global fee accumulator
+        uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
+        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
+            systemStEthFeePerUnitIndexError;
+
+        uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
+
+        hpFeePerUnit += (collateral.getSharesByPooledEth(_deltaFeeSplit)) * 1e4 / hpAllStakes;
+
         uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
         return (_feeTaken, _deltaFeePerUnit, _perUnitError);
     }
@@ -633,6 +679,41 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
         if (_scaledCdpColl > _feeSplitDistributed) {
+            console2.log("getAccumulatedFeeSplitApplied");
+            console2.logBytes32(_cdpId);
+
+            console2.log("_systemStEthFeePerUnitIndex (1e18)");
+            console2.logUint(_systemStEthFeePerUnitIndex);
+            console2.log("_systemStEthFeePerUnitIndex (1e20)");
+            console2.logUint(hpFeePerUnit);
+            console2.log("_cdpStEthFeePerUnitIndex (1e18)");
+            console2.logUint(_cdpStEthFeePerUnitIndex);
+            console2.log("_cdpStEthFeePerUnitIndex (1e20)");
+            console2.logUint(hpCdpFeePerUnit[_cdpId]);
+
+            uint256 hpFeeDist = hpStake[_cdpId] *
+                (hpFeePerUnit - hpCdpFeePerUnit[_cdpId]);
+            uint256 hpSyncedColl = _cdpCol * 1e22 - hpFeeDist;
+            uint256 syncedColl18 = (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION;
+
+            console2.log("syncedCollateral (1e20)");
+            console2.logUint(hpSyncedColl);
+            console2.log("syncedCollateral (1e18)");
+            console2.logUint(syncedColl18);
+
+            console2.log("stake (1e20)");
+            console2.logUint(hpStake[_cdpId]);
+            console2.log("stake (1e18)");
+            console2.logUint(Cdps[_cdpId].stake);
+
+            console2.log("debt (1e18)");
+            console2.logUint(Cdps[_cdpId].debt);
+
+            console2.log("NICR with syncedCollateral in 1e20");
+            console2.logUint(hpSyncedColl / Cdps[_cdpId].debt);
+            console2.log("NICR with syncedCollateral in 1e18");
+            console2.logUint(syncedColl18 * 1e20 / Cdps[_cdpId].debt);
+
             return (
                 _feeSplitDistributed,
                 (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION
@@ -768,6 +849,30 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
                 uint256 _deltaFeePerUnit,
                 uint256 _perUnitError
             ) = calcFeeUponStakingReward(_newIndex, _oldIndex);
+
+            // calculate new split per stake unit
+            uint256 _newPerUnit = systemStEthFeePerUnitIndex + _deltaFeePerUnit;
+            return (_feeTaken, _newPerUnit, _perUnitError);
+        } else {
+            return (0, systemStEthFeePerUnitIndex, systemStEthFeePerUnitIndexError);
+        }
+    }
+
+    /// @dev calculate pending global state change to be applied:
+    /// @return split fee taken (if any) AND
+    /// @return new split index per stake unit AND
+    /// @return new split index error
+    function _calcSyncedGlobalAccounting2(
+        uint256 _newIndex,
+        uint256 _oldIndex
+    ) internal returns (uint256, uint256, uint256) {
+        if (_newIndex > _oldIndex && totalStakes > 0) {
+            /// @audit-ok We don't take the fee if we had a negative rebase
+            (
+                uint256 _feeTaken,
+                uint256 _deltaFeePerUnit,
+                uint256 _perUnitError
+            ) = calcFeeUponStakingReward2(_newIndex, _oldIndex);
 
             // calculate new split per stake unit
             uint256 _newPerUnit = systemStEthFeePerUnitIndex + _deltaFeePerUnit;

@@ -57,6 +57,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         _syncStEthIndex(_oldIndex, _newIndex);
         systemStEthFeePerUnitIndex = DECIMAL_PRECISION;
+        hpFeePerUnit = 1e20;
     }
 
     // --- Getters ---
@@ -917,6 +918,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
 
         cdpStEthFeePerUnitIndex[_cdpId] = systemStEthFeePerUnitIndex; /// @audit We critically assume global accounting is synced here
+        hpCdpFeePerUnit[_cdpId] = hpFeePerUnit;
+
         _updateRedistributedDebtIndex(_cdpId);
         uint256 stake = _updateStakeAndTotalStakes(_cdpId);
         uint256 index = _addCdpIdToArray(_cdpId);
