@@ -583,9 +583,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
         uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
             systemStEthFeePerUnitIndexError;
-
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
-
         uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
         return (_feeTaken, _deltaFeePerUnit, _perUnitError);
     }
