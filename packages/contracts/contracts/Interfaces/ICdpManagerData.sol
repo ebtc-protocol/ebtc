@@ -261,4 +261,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     ) external view returns (uint256 debt, uint256 collShares);
 
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
+
+    function totalStakesSnapshot() external view returns (uint256);
+    
+    function totalCollateralSnapshot() external view returns (uint256);
 }

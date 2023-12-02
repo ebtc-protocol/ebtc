@@ -14,6 +14,8 @@ import "./Dependencies/Ownable.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/PermitNonce.sol";
+import {console2 as console} from "forge-std/console2.sol";
+
 
 /// @title BorrowerOperations is mainly in charge of all end user interactions like Cdp open, adjust, close etc
 /// @notice End users could approve delegate via IPositionManagers for authorized actions on their behalf
@@ -455,6 +457,24 @@ contract BorrowerOperations is
 
         // Update global pending index before any operations
         cdpManager.syncGlobalAccounting();
+        console.log("=== OpenCdp after syncGlobalAccounting ===");
+
+        console.log("openCdp: activePool.getSystemCollShares vs totalCollateralSnapshot: %s | %s", activePool.getSystemCollShares(), cdpManager.totalCollateralSnapshot());
+        console.log("openCdp: totalStakes vs totalStakesSnapshot: %s | %s", cdpManager.totalStakes(), cdpManager.totalStakesSnapshot());
+
+        if (cdpManager.totalCollateralSnapshot() != 0) {
+            console.log("openCdp: activePool.getSystemCollShares vs totalCollateralSnapshot Ratio: %s", (activePool.getSystemCollShares() * 1e18) / (cdpManager.totalCollateralSnapshot()));
+
+        }
+
+        if (cdpManager.totalStakesSnapshot() != 0) {
+            console.log("openCdp: totalStakes vs snapshot Ratio: %s", (cdpManager.totalStakes() * 1e18) / (cdpManager.totalStakesSnapshot()));
+        }
+
+        console.log("");
+
+        // require(activePool.getSystemCollShares() == cdpManager.totalCollateralSnapshot(), "BorrowerOperations: totalCollateralShares mismatch!");
+        // require(cdpManager.totalStakes() == cdpManager.totalStakesSnapshot(), "BorrowerOperations: totalStakes mismatch!");
 
         vars.price = priceFeed.fetchPrice();
         vars.debt = _debt;

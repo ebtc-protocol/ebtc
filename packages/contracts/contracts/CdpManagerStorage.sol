@@ -10,6 +10,7 @@ import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import {console2 as console} from "forge-std/console2.sol";
 
 /// @title CDP Manager storage and shared functions with LiquidationLibrary
 /// @dev All features around Cdp management are split into separate parts to get around contract size limitations.
@@ -434,12 +435,18 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 oldStake = _cdp.stake;
         _cdp.stake = newStake;
 
+        console.log("_updateStakeForCdp: _cdpId: %s", uint256(_cdpId));
+        console.log("_updateStakeForCdp: oldStake -> newStake: %s -> newStake", oldStake, newStake);
+        console.log("");
+
         return (newStake, oldStake);
     }
 
     // Calculate a new stake based on the snapshots of the totalStakes and totalCollateral taken at the last liquidation
     function _computeNewStake(uint256 _coll) internal view returns (uint256) {
+        uint256 totalCollShares = activePool.getSystemCollShares();
         uint256 stake;
+        uint256 stake2;
         if (totalCollateralSnapshot == 0) {
             stake = _coll;
         } else {
@@ -452,7 +459,19 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
              */
             require(totalStakesSnapshot > 0, "CdpManagerStorage: zero totalStakesSnapshot!");
             stake = (_coll * totalStakesSnapshot) / totalCollateralSnapshot;
+            stake2 = (_coll * totalStakes) / totalCollShares;
         }
+
+        console.log("_computeNewStake: activePool.getSystemCollShares vs totalCollateralSnapshot: %s | %s", totalCollShares, totalCollateralSnapshot);
+        console.log("_computeNewStake: totalStakes vs totalStakesSnapshot: %s | %s", totalStakes, totalStakesSnapshot);
+        console.log("_computeNewStake: _coll: %s", _coll);
+        console.log("_computeNewStake: stake: %s", stake);
+        console.log("_computeNewStake: stake2: %s", stake2);
+        console.log("");
+
+        // emit ComputeNewStakeSnapshot(stake);
+        // emit ComputeNewStakeLive(stake2);
+
         return stake;
     }
 
@@ -516,6 +535,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
                 uint256 _perUnitError
             ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
             _takeSplitAndUpdateFeePerUnit(_feeTaken, _newFeePerUnit, _perUnitError);
+            _updateSystemSnapshotsExcludeCollRemainder(0);
         }
     }
 

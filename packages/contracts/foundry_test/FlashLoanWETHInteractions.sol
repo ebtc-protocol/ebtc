@@ -82,6 +82,39 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         collateral.deposit{value: 30 ether}();
         borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
         vm.stopPrank();
+
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
+
+        console.log("1.1 ppfs");
+        collateral.setEthPerShare(1.1e18);
+
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
+
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
+
+         console.log("1.2 ppfs");
+        collateral.setEthPerShare(1.2e18);
+
+        vm.startPrank(user);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: 30 ether}();
+        borrowerOperations.openCdp(borrowedAmount, "hint", "hint", 30 ether);
+        vm.stopPrank();
+
+        console.log("After Setup");
+        _printAllCdps();
     }
 
     function testCanUseCDPWithFL(uint128 amount, uint128 amountToDepositInCDP) public {
@@ -97,12 +130,18 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         // Avoid over borrowing
         amount = uint128(bound(amount, 1, amountToDepositInCDP - 1));
 
+        console.log(1);
+        _printAllCdps();
+
         FlashWithDeposit macroContract = new FlashWithDeposit(
             IERC20(address(collateral)),
             IERC3156FlashLender(address(activePool)),
             borrowerOperations,
             address(collateral)
         );
+
+        console.log(2);
+        _printAllCdps();
 
         // SETUP Contract
         // Create a CDP by sending enough
@@ -124,6 +163,9 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         dealCollateral(address(macroContract), fee);
         vm.deal(address(macroContract), amountToDepositInCDP);
 
+        console.log(3);
+        _printAllCdps();
+
         // Ensure Delta between ETH and balance is marginal
         activePool.flashLoan(
             IERC3156FlashBorrower(address(macroContract)),
@@ -131,6 +173,9 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
             amount,
             abi.encodePacked(uint256(amountToDepositInCDP))
         );
+
+        console.log(4);
+        _printAllCdps();
 
         assertTrue(eBTCToken.balanceOf(address(macroContract)) > 0);
     }
