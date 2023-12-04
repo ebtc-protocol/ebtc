@@ -66,6 +66,7 @@ contract LiquidationLibrary is CdpManagerStorage {
     ) internal {
         _requireCdpIsActive(_cdpId);
 
+        uint256 totalCollBefore = activePool.getSystemCollShares();
         _syncAccounting(_cdpId);
 
         uint256 _price = priceFeed.fetchPrice();
@@ -127,14 +128,15 @@ contract LiquidationLibrary is CdpManagerStorage {
             0
         );
 
-        _liquidateIndividualCdpSetupCDP(_liqState, _rs);
+        _liquidateIndividualCdpSetupCDP(_liqState, _rs, totalCollBefore);
     }
 
     // liquidate given CDP by repaying debt in full or partially if its ICR is below MCR or TCR in recovery mode.
     // For partial liquidation, caller should use HintHelper smart contract to get correct hints for reinsertion into sorted CDP list
     function _liquidateIndividualCdpSetupCDP(
         LiquidationLocals memory _liqState,
-        LiquidationRecoveryModeLocals memory _recoveryState
+        LiquidationRecoveryModeLocals memory _recoveryState,
+        uint256 totalCollBefore
     ) internal {
         LiquidationValues memory liquidationValues;
 
@@ -177,6 +179,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             liquidationValues.collSurplus,
             startingSystemColl,
             startingSystemDebt,
+            totalCollBefore,
             _liqState.price
         );
     }
@@ -508,6 +511,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 totalSurplusCollShares,
         uint256 systemInitialCollShares,
         uint256 systemInitialDebt,
+        uint256 oldSystemColl,
         uint256 price
     ) internal {
         // update the staking and collateral snapshots
@@ -523,7 +527,7 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
-            _redistributeDebt(totalDebtToRedistribute);
+            _redistributeDebt(totalDebtToRedistribute, oldSystemColl);
         }
 
         // burn the debt from liquidator
@@ -686,6 +690,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         LiquidationTotals memory totals;
 
         // taking fee to avoid accounted for the calculation of the TCR
+        uint256 totalCollBefore = activePool.getSystemCollShares();
         _syncGlobalAccounting();
 
         vars.price = priceFeed.fetchPrice();
@@ -722,6 +727,7 @@ contract LiquidationLibrary is CdpManagerStorage {
             totals.totalCollSurplus,
             systemColl,
             systemDebt,
+            totalCollBefore,
             vars.price
         );
     }
@@ -859,7 +865,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         return newTotals;
     }
 
-    function _redistributeDebt(uint256 _debt) internal {
+    function _redistributeDebt(uint256 _debt, uint256 _oldSystemColl) internal {
         if (_debt == 0) {
             return;
         }
@@ -879,11 +885,11 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // Get the per-unit-staked terms
         uint256 _totalStakes = totalStakes;
-        uint256 EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
+        uint256 EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _oldSystemColl;
 
         lastEBTCDebtErrorRedistribution =
             EBTCDebtNumerator -
-            (EBTCDebtRewardPerUnitStaked * _totalStakes);
+            (EBTCDebtRewardPerUnitStaked * _oldSystemColl);
 
         // Add per-unit-staked terms to the running totals
         systemDebtRedistributionIndex = systemDebtRedistributionIndex + EBTCDebtRewardPerUnitStaked;

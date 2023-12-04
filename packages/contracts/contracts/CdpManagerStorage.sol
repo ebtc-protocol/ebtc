@@ -302,7 +302,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     /// @dev get the pending Cdp debt "reward" (i.e. the amount of extra debt assigned to the Cdp) from liquidation redistribution events, earned by their stake
     function _getPendingRedistributedDebt(
-        bytes32 _cdpId
+        bytes32 _cdpId,
+        uint256 _collShareBefore
     ) internal view returns (uint256 pendingEBTCDebtReward, uint256 _debtIndexDiff) {
         Cdp storage cdp = Cdps[_cdpId];
 
@@ -313,7 +314,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         _debtIndexDiff = systemDebtRedistributionIndex - cdpDebtRedistributionIndex[_cdpId];
 
         if (_debtIndexDiff > 0) {
-            pendingEBTCDebtReward = (cdp.stake * _debtIndexDiff) / DECIMAL_PRECISION;
+            pendingEBTCDebtReward = (_collShareBefore * _debtIndexDiff) / DECIMAL_PRECISION;
         } else {
             return (0, 0);
         }
@@ -719,7 +720,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getPendingRedistributedDebt(
         bytes32 _cdpId
     ) public view returns (uint256 pendingEBTCDebtReward) {
-        (uint256 _pendingDebt, ) = _getPendingRedistributedDebt(_cdpId);
+        (uint256 _pendingDebt, ) = _getPendingRedistributedDebt(_cdpId, Cdps[_cdpId].coll);
         return _pendingDebt;
     }
 
@@ -791,6 +792,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     ) internal view returns (uint256, uint256, uint256, uint256, uint256) {
         uint256 _feeSplitApplied;
         uint256 _newCollShare = Cdps[_cdpId].coll;
+        uint256 _collShareBefore = _newCollShare;
 
         // processing split fee to be applied
         if (_cdpPerUnitIdx != _systemStEthFeePerUnitIndex && _cdpPerUnitIdx > 0) {
@@ -807,7 +809,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             uint256 _newDebt,
             uint256 pendingDebtRedistributed,
             uint256 _debtIndexDelta
-        ) = _getSyncedCdpDebtAndRedistribution(_cdpId);
+        ) = _getSyncedCdpDebtAndRedistribution(_cdpId, _collShareBefore);
 
         return (
             _newCollShare,
@@ -820,10 +822,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     /// @return CDP debt and pending redistribution from liquidation applied
     function _getSyncedCdpDebtAndRedistribution(
-        bytes32 _cdpId
+        bytes32 _cdpId,
+        uint256 _collShareBefore
     ) internal view returns (uint256, uint256, uint256) {
         (uint256 pendingDebtRedistributed, uint256 _debtIndexDelta) = _getPendingRedistributedDebt(
-            _cdpId
+            _cdpId, _collShareBefore
         );
         uint256 _newDebt = Cdps[_cdpId].debt;
         if (pendingDebtRedistributed > 0) {
@@ -837,7 +840,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @return _newDebt The total debt value of the Cdp including debt redistribution considered
     /// @dev Should always use this as the first(default) choice for Cdp debt query
     function getSyncedCdpDebt(bytes32 _cdpId) public view returns (uint256) {
-        (uint256 _newDebt, , ) = _getSyncedCdpDebtAndRedistribution(_cdpId);
+        (uint256 _newDebt, , ) = _getSyncedCdpDebtAndRedistribution(_cdpId, Cdps[_cdpId].coll);
         return _newDebt;
     }
 
