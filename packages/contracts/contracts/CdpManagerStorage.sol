@@ -826,7 +826,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _collShareBefore
     ) internal view returns (uint256, uint256, uint256) {
         (uint256 pendingDebtRedistributed, uint256 _debtIndexDelta) = _getPendingRedistributedDebt(
-            _cdpId, _collShareBefore
+            _cdpId,
+            _collShareBefore
         );
         uint256 _newDebt = Cdps[_cdpId].debt;
         if (pendingDebtRedistributed > 0) {

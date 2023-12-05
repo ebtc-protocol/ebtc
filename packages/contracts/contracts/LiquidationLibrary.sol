@@ -527,7 +527,10 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
-            _redistributeDebt(totalDebtToRedistribute, oldSystemColl);
+            _redistributeDebt(
+                totalDebtToRedistribute,
+                oldSystemColl - totalCollSharesToSend - totalSurplusCollShares
+            );
         }
 
         // burn the debt from liquidator
