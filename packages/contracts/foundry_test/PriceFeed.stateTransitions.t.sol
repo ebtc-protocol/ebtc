@@ -318,14 +318,13 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
         // --- CASE 3: Both oracles were untrusted at the last price fetch ---
         else if (currentStatus == IPriceFeed.Status.bothOraclesUntrusted) {
             // Fallback isn't working so we can't compare the prices. Go ahead and trust CL for now that it's reporting and is the only valid oracle
-            if (
-                address(priceFeedTester.fallbackCaller()) == address(0) &&
-                !chainlinkFrozen &&
-                !chainlinkBroken &&
-                !chainlinkPriceChangeAboveMax
-            ) {
-                // Chainlink is now working, return to it, but note that fallback is still untrusted
-                newStatus = IPriceFeed.Status.usingChainlinkFallbackUntrusted;
+            if (address(priceFeedTester.fallbackCaller()) == address(0)) {
+                if (!chainlinkFrozen && !chainlinkBroken && !chainlinkPriceChangeAboveMax) {
+                    // Chainlink is now working, return to it, but note that fallback is still untrusted
+                    newStatus = IPriceFeed.Status.usingChainlinkFallbackUntrusted;
+                } else {
+                    newStatus = currentStatus;
+                }
             } else if (bothOraclesAliveAndUnrokenSimilarPrice) {
                 // CL and FB working, reporting similar prices (<5% difference)
                 // Chainlink is now working, return to it
