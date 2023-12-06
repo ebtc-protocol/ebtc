@@ -291,6 +291,25 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 return _storeFallbackPrice(fallbackResponse);
             }
 
+            if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
+                // if Chainlink price is deviated between rounds and fallback is broken, just use lastGoodPrice
+                if (_fallbackIsBroken(fallbackResponse)) {
+                    _changeStatus(Status.bothOraclesUntrusted);
+                    return lastGoodPrice;
+                }
+
+                // If Chainlink price is deviated between rounds, remember it and keep using fallback
+                _changeStatus(Status.usingFallbackChainlinkUntrusted);
+
+                // If fallback is frozen, just use lastGoodPrice
+                if (_fallbackIsFrozen(fallbackResponse)) {
+                    return lastGoodPrice;
+                }
+
+                // otherwise fallback is working and keep using its latest response
+                return _storeFallbackPrice(fallbackResponse);
+            }
+
             // if Chainlink is live and Fallback is broken, remember Fallback broke, and return Chainlink price
             if (_fallbackIsBroken(fallbackResponse)) {
                 _changeStatus(Status.usingChainlinkFallbackUntrusted);

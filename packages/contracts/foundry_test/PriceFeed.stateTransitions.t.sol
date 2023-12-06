@@ -119,6 +119,7 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
                 _restoreFallackFeed();
             } else if (_choice == 8) {
                 _restoreChainlinkPriceAndTimestamp(_mockChainLinkStEthETH, initStEthETHPrice);
+                _restoreChainlinkPriceAndTimestamp(_mockChainLinkEthBTC, initEthBTCPrice);
             } else if (_choice == 9) {
                 _restoreFallbackPriceAndTimestamp(initStEthBTCPrice);
             }
@@ -165,6 +166,32 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
         status = priceFeedTester.status();
         assertEq(newPrice, lastGoodPrice); // still lastGoodPrice is used
         assertEq(uint256(status), 2); // still bothOraclesUntrusted due to CL report 50% deviation
+    }
+
+    function testPriceChangeOver50PerCentWithFallback() public {
+        // froze CL
+        _frozeChainlink(_mockChainLinkEthBTC);
+
+        // update state machine
+        priceFeedTester.fetchPrice();
+        IPriceFeed.Status status = priceFeedTester.status();
+        assertEq(uint256(status), 3); // usingFallbackChainlinkFrozen
+        uint256 lastGoodPrice = priceFeedTester.lastGoodPrice();
+
+        // Now restore CL response time but with price change over 50%
+        int256 newEthBTCPrice = (initEthBTCPrice * 2) + 1;
+        _restoreChainlinkPriceAndTimestamp(_mockChainLinkEthBTC, newEthBTCPrice);
+        _restoreChainlinkPriceAndTimestamp(_mockChainLinkStEthETH, initStEthETHPrice);
+
+        // update fallback price
+        uint256 _newPrice = lastGoodPrice + 1234567890123;
+        _restoreFallbackPriceAndTimestamp(_newPrice);
+
+        // update state machine again
+        uint256 _price = priceFeedTester.fetchPrice();
+        status = priceFeedTester.status();
+        assertEq(_price, _newPrice); // still using fallback price
+        assertEq(uint256(status), 1); // usingFallbackChainlinkUntrusted
     }
 
     /// @dev We expect there to be a previous chainlink response on system init, real-world oracles used will have this property
@@ -327,6 +354,15 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
                     // Fallback is now frozen, but remains trusted as freezing can be temporary
                     // Use last good price as we don't have a newer price to use
                     newStatus = currentStatus;
+                }
+            } else if (chainlinkPriceChangeAboveMax) {
+                if (fallbackBroken) {
+                    // FB Broken
+                    // Fallback is now broken, and becomes untrusted
+                    // Use last good price as both oracles are untrusted
+                    newStatus = IPriceFeed.Status.bothOraclesUntrusted;
+                } else {
+                    newStatus = IPriceFeed.Status.usingFallbackChainlinkUntrusted;
                 }
             } else if (fallbackBroken) {
                 // Chainlink is now working, return to it
