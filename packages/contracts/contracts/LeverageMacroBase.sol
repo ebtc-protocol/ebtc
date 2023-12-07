@@ -74,10 +74,10 @@ abstract contract LeverageMacroBase {
     }
 
     enum PostOperationCheck {
+        none,
         openCdp,
         cdpStats,
-        isClosed,
-        claimSurplus
+        isClosed
     }
 
     enum Operator {
@@ -94,9 +94,6 @@ abstract contract LeverageMacroBase {
 
     struct PostCheckParams {
         CheckValueAndType expectedDebt;
-        // Expected collateral amount
-        // This represents the collateral surplus amount if
-        // PostOperationCheck is claimSurplus
         CheckValueAndType expectedCollateral;
         // Used only if cdpStats || isClosed
         bytes32 cdpId;
@@ -128,25 +125,6 @@ abstract contract LeverageMacroBase {
     ) external {
         _assertOwner();
 
-        _doOperation(flType, borrowAmount, operation, postCheckType, checkParams);
-    }
-
-    function _doOperation(
-        FlashLoanType flType,
-        uint256 borrowAmount,
-        LeverageMacroOperation calldata operation,
-        PostOperationCheck postCheckType,
-        PostCheckParams calldata checkParams
-    ) internal {
-        // Call FL Here, then the stuff below needs to happen inside the FL
-        if (operation.amountToTransferIn > 0) {
-            IERC20(operation.tokenToTransferIn).safeTransferFrom(
-                msg.sender,
-                address(this),
-                operation.amountToTransferIn
-            );
-        }
-
         // Figure out the expected CDP ID using sortedCdps.toCdpId
         bytes32 expectedCdpId;
         if (operation.operationType == OperationType.OpenCdpOperation) {
@@ -168,9 +146,33 @@ abstract contract LeverageMacroBase {
             );
         }
 
-        uint256 collSharesBefore;
-        if (postCheckType == PostOperationCheck.claimSurplus) {
-            collSharesBefore = stETH.sharesOf(address(this));
+        _doOperation(flType, borrowAmount, operation, postCheckType, checkParams, expectedCdpId);
+    }
+
+    /// @notice Internal function used by derived contracts (i.e. EbtcZapRouter)
+    /// @param flType flash loan type (eBTC, stETH or None)
+    /// @param borrowAmount flash loan amount
+    /// @param operation leverage macro operation
+    /// @param postCheckType post operation check type
+    /// @param checkParams post operation check params
+    /// @param expectedCdpId pre-computed CDP ID used to run post operation checks
+    /// @dev expectedCdpId is required for OpenCdp and OpenCdpFor, can be set to bytes32(0)
+    /// for all other operations
+    function _doOperation(
+        FlashLoanType flType,
+        uint256 borrowAmount,
+        LeverageMacroOperation memory operation,
+        PostOperationCheck postCheckType,
+        PostCheckParams memory checkParams,
+        bytes32 expectedCdpId
+    ) internal {
+        // Call FL Here, then the stuff below needs to happen inside the FL
+        if (operation.amountToTransferIn > 0) {
+            IERC20(operation.tokenToTransferIn).safeTransferFrom(
+                msg.sender,
+                address(this),
+                operation.amountToTransferIn
+            );
         }
 
         // Take eBTC or stETH FlashLoan
@@ -227,12 +229,6 @@ abstract contract LeverageMacroBase {
                 cdpInfo.status == checkParams.expectedStatus,
                 "!LeverageMacroReference: closeCDP status check"
             );
-        }
-
-        // Post check type: claim collateral surplus
-        if (postCheckType == PostOperationCheck.claimSurplus) {
-            uint256 collSharesClaimed = stETH.sharesOf(address(this)) - collSharesBefore;
-            _doCheckValueType(checkParams.expectedCollateral, collSharesClaimed);
         }
 
         // Sweep here if it's Reference, do not if it's delegate
