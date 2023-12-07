@@ -142,4 +142,5 @@ abstract contract PropertiesDescriptions {
     string constant PF_05 =
         "PF-05: The price feed should never use the fallback if chainlink is Working";
     string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
+    string constant PF_07 = "PF-07: The price feed should never return different prices when called multiple times in a single tx";
 }

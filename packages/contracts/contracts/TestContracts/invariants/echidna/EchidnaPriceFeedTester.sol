@@ -184,7 +184,19 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setPrevUpdateTime(prevUpdateTime);
     }
 
+    function fetchPriceBatch() public log {
+        uint256 price = _fetchPrice();
+        for (uint256 i; i < 2; i++) {
+            uint256 newPrice = _fetchPrice();
+            assertWithMsg(price == newPrice, PF_07);
+        }
+    }
+
     function fetchPrice() public log {
+        _fetchPrice();
+    }
+
+    function _fetchPrice() private returns (uint256) {
         IPriceFeed.Status statusBefore = priceFeed.status();
         uint256 fallbackResponse;
 
@@ -218,6 +230,8 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
                 // TODO: this is hard to test, as we may have false positives due to the random nature of the tests
                 // assertWithMsg(_hasNotDeadlocked(), PF_03);
             }
+
+            return price;
         } catch {
             assertWithMsg(false, PF_01);
         }
