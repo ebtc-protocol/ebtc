@@ -127,13 +127,19 @@ abstract contract LeverageMacroBase {
 
         // Figure out the expected CDP ID using sortedCdps.toCdpId
         bytes32 expectedCdpId;
-        if (operation.operationType == OperationType.OpenCdpOperation) {
+        if (
+            operation.operationType == OperationType.OpenCdpOperation &&
+            postCheckType != PostOperationCheck.none
+        ) {
             expectedCdpId = sortedCdps.toCdpId(
                 address(this),
                 block.number,
                 sortedCdps.nextCdpNonce()
             );
-        } else if (operation.operationType == OperationType.OpenCdpForOperation) {
+        } else if (
+            operation.operationType == OperationType.OpenCdpForOperation &&
+            postCheckType != PostOperationCheck.none
+        ) {
             OpenCdpForOperation memory flData = abi.decode(
                 operation.OperationData,
                 (OpenCdpForOperation)
@@ -309,6 +315,7 @@ abstract contract LeverageMacroBase {
     }
 
     enum OperationType {
+        None, // Swaps only
         OpenCdpOperation,
         OpenCdpForOperation,
         AdjustCdpOperation,
