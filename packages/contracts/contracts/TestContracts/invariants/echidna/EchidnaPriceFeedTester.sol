@@ -184,6 +184,15 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setPrevUpdateTime(prevUpdateTime);
     }
 
+    // TODO: We have missed a handler to check that the price feed doesn't ever change in the same block (except the scenario of CL changing which is fine)
+    // MORE SPECIFICALLY we should prevent the price feed to change if we call it twice
+
+    /**
+        Braindead Primary 
+            -> PriceFeed
+            -> no secondary
+     */
+
     function fetchPrice() public log {
         IPriceFeed.Status statusBefore = priceFeed.status();
         uint256 fallbackResponse;

@@ -20,8 +20,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 newIcrAfter;
         uint256 feeSplitBefore;
         uint256 feeSplitAfter;
-        uint256 feeRecipientTotalCollBefore;
-        uint256 feeRecipientTotalCollAfter;
+        uint256 feeRecipientTotalCollSharesBefore;
+        uint256 feeRecipientTotalCollSharesAfter;
         uint256 feeRecipientCollSharesBefore;
         uint256 feeRecipientCollSharesAfter;
         uint256 actorCollBefore;
@@ -98,7 +98,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.stEthIndex()
             )
             : (0, 0, 0);
-        vars.feeRecipientTotalCollBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientTotalCollSharesBefore = collateral.sharesOf(activePool.feeRecipientAddress());
         vars.feeRecipientCollSharesBefore = activePool.getFeeRecipientClaimableCollShares();
         vars.actorCollBefore = collateral.balanceOf(address(actor));
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
@@ -126,7 +126,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             (collateral.getPooledEthByShares(
                 vars.activePoolCollBefore +
                     vars.collSurplusPoolBefore +
-                    vars.feeRecipientTotalCollBefore
+                    vars.feeRecipientTotalCollSharesBefore
             ) * vars.priceBefore) /
                 1e18 -
                 vars.activePoolDebtBefore;
@@ -153,7 +153,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             )
             : (0, 0, 0);
 
-        vars.feeRecipientTotalCollAfter = collateral.balanceOf(activePool.feeRecipientAddress());
+        vars.feeRecipientTotalCollSharesAfter = collateral.sharesOf(activePool.feeRecipientAddress());
         vars.feeRecipientCollSharesAfter = activePool.getFeeRecipientClaimableCollShares();
         vars.actorCollAfter = collateral.balanceOf(address(actor));
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
@@ -183,7 +183,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             (collateral.getPooledEthByShares(
                 vars.activePoolCollAfter +
                     vars.collSurplusPoolAfter +
-                    vars.feeRecipientTotalCollAfter
+                    vars.feeRecipientTotalCollSharesAfter
             ) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
@@ -239,12 +239,12 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 .concat(vars.feeSplitAfter.pretty())
                 .concat("\n");
         }
-        if (vars.feeRecipientTotalCollBefore != vars.feeRecipientTotalCollAfter) {
+        if (vars.feeRecipientTotalCollSharesBefore != vars.feeRecipientTotalCollSharesAfter) {
             log = log
                 .concat("feeRecipientTotalColl\t")
-                .concat(vars.feeRecipientTotalCollBefore.pretty())
+                .concat(vars.feeRecipientTotalCollSharesBefore.pretty())
                 .concat("\t")
-                .concat(vars.feeRecipientTotalCollAfter.pretty())
+                .concat(vars.feeRecipientTotalCollSharesAfter.pretty())
                 .concat("\n");
         }
         if (vars.actorCollBefore != vars.actorCollAfter) {

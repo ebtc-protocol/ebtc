@@ -1257,7 +1257,7 @@ abstract contract TargetFunctions is Properties {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/22
                 // Claiming will increase the balance
                 // Strictly GT
-                gt(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
+                gt(vars.feeRecipientTotalCollSharesAfter, vars.feeRecipientTotalCollSharesBefore, F_01);
             }
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());

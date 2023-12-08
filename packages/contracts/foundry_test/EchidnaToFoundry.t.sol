@@ -419,11 +419,11 @@ contract EToFoundry is
         PYTHON
         >>> activePoolCollBefore = 11166023933140299463
         >>> collSurplusPoolBefore = 0
-        >>> feeRecipientTotalCollBefore = 0
+        >>> feeRecipientTotalCollSharesBefore = 0
         >>> activePoolDebtBefore = 392223419614173403
         >>> activePoolCollAfter = 8251456769332992047
         >>> collSurplusPoolAfter = 640951562503257069
-        >>> feeRecipientTotalCollAfter = 441787493250854661
+        >>> feeRecipientTotalCollSharesAfter = 441787493250854661
         >>> activePoolDebtAfter = 260972099767576354
          */
 
@@ -454,13 +454,13 @@ contract EToFoundry is
 
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.collSurplusPoolBefore +
-            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
+            vars.feeRecipientTotalCollSharesBefore) * vars.priceBefore) /
             1e18 -
             vars.activePoolDebtBefore;
 
         uint256 afterValue = ((vars.activePoolCollAfter +
             vars.collSurplusPoolAfter +
-            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
+            vars.feeRecipientTotalCollSharesAfter) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
 
@@ -469,13 +469,13 @@ contract EToFoundry is
 
         console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
         console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
-        console2.log("vars.feeRecipientTotalCollBefore", vars.feeRecipientTotalCollBefore);
+        console2.log("vars.feeRecipientTotalCollSharesBefore", vars.feeRecipientTotalCollSharesBefore);
         console2.log("vars.activePoolDebtBefore", vars.activePoolDebtBefore);
         console2.log("beforeValue", beforeValue);
 
         console2.log("vars.activePoolCollAfter", vars.activePoolCollAfter);
         console2.log("vars.collSurplusPoolAfter", vars.collSurplusPoolAfter);
-        console2.log("vars.feeRecipientTotalCollAfter", vars.feeRecipientTotalCollAfter);
+        console2.log("vars.feeRecipientTotalCollSharesAfter", vars.feeRecipientTotalCollSharesAfter);
         console2.log("vars.activePoolDebtAfter", vars.activePoolDebtAfter);
         console2.log("afterValue", afterValue);
     }
@@ -1068,14 +1068,14 @@ contract EToFoundry is
         uint256 beforeValue = ((vars.activePoolCollBefore +
             // vars.liquidatorRewardSharesBefore +
             vars.collSurplusPoolBefore +
-            vars.feeRecipientTotalCollBefore) * vars.priceBefore) /
+            vars.feeRecipientTotalCollSharesBefore) * vars.priceBefore) /
             1e18 -
             vars.activePoolDebtBefore;
 
         uint256 afterValue = ((vars.activePoolCollAfter +
             // vars.liquidatorRewardSharesAfter +
             vars.collSurplusPoolAfter +
-            vars.feeRecipientTotalCollAfter) * vars.priceAfter) /
+            vars.feeRecipientTotalCollSharesAfter) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
         console2.log(_diff());
@@ -1183,7 +1183,7 @@ contract EToFoundry is
             73117119168387963680367060438159427411497267004306122806373332532305103240544
         );
 
-        gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, "F-12 as");
+        gte(vars.feeRecipientTotalCollSharesAfter, vars.feeRecipientTotalCollSharesBefore, "F-12 as");
     }
 
     function get_cdp(uint256 _i) internal returns (bytes32) {
