@@ -123,7 +123,7 @@
         <hr />
         <table>
             <tr><th>Files: </th><td>14</td></tr>
-            <tr><th>Lines: </th><td>2145</td></tr>
+            <tr><th>Lines: </th><td>2146</td></tr>
             <tr>
                 <th>Covered: </th>
                 <td>
@@ -39412,7 +39412,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>    function fetchPrice() public log {</pre>
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -39421,6 +39421,29 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">203</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre>    function fetchPrice() public log {</pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">204</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39447,7 +39470,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">204</td>
+                        <td class="row-line-number unselectable">205</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39470,7 +39493,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">205</td>
+                        <td class="row-line-number unselectable">206</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39486,33 +39509,6 @@
                         <td class="row-source">
                             
                                     <pre></pre>
-                            
-                        </td>
-                    </tr>
-                
-                    
-                    <tr>
-                        
-                        <td class="row-line-number unselectable">206</td>
-
-                        
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed without reverting.">√</div>
-                            
-                        </td>
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
-                            
-                        </td>
-
-                        
-                        
-                        
-                        <td class="row-source">
-                            
-                                    <pre class="row-line-covered">    function _fetchPrice() private returns (uint256) {</pre>
                             
                         </td>
                     </tr>
@@ -39539,7 +39535,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">        IPriceFeed.Status statusBefore = priceFeed.status();</pre>
+                                    <pre class="row-line-covered">    function _fetchPrice() private returns (uint256) {</pre>
                             
                         </td>
                     </tr>
@@ -39566,7 +39562,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">        uint256 fallbackResponse;</pre>
+                                    <pre class="row-line-covered">        IPriceFeed.Status statusBefore = priceFeed.status();</pre>
                             
                         </td>
                     </tr>
@@ -39575,29 +39571,6 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">209</td>
-
-                        
-                        <td class="row-reverted-status unselectable">
-                            
-                        </td>
-                        <td class="row-reverted-status unselectable">
-                            
-                        </td>
-
-                        
-                        
-                        
-                        <td class="row-source">
-                            
-                                    <pre></pre>
-                            
-                        </td>
-                    </tr>
-                
-                    
-                    <tr>
-                        
-                        <td class="row-line-number unselectable">210</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39616,7 +39589,30 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">        (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();</pre>
+                                    <pre class="row-line-covered">        uint256 fallbackResponse;</pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">210</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -39643,7 +39639,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">        try priceFeed.fetchPrice() returns (uint256 price) {</pre>
+                                    <pre class="row-line-covered">        (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();</pre>
                             
                         </td>
                     </tr>
@@ -39670,7 +39666,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            IPriceFeed.Status statusAfter = priceFeed.status();</pre>
+                                    <pre class="row-line-covered">        try priceFeed.fetchPrice() returns (uint256 price) {</pre>
                             
                         </td>
                     </tr>
@@ -39697,7 +39693,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);</pre>
+                                    <pre class="row-line-covered">            IPriceFeed.Status statusAfter = priceFeed.status();</pre>
                             
                         </td>
                     </tr>
@@ -39710,8 +39706,12 @@
                         
                         <td class="row-reverted-status unselectable">
                             
+                                <div title="The source line executed without reverting.">√</div>
+                            
                         </td>
                         <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed, but was reverted.">⟳</div>
                             
                         </td>
 
@@ -39720,7 +39720,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre></pre>
+                                    <pre class="row-line-covered">            assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);</pre>
                             
                         </td>
                     </tr>
@@ -39743,7 +39743,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>            if (</pre>
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -39756,12 +39756,8 @@
                         
                         <td class="row-reverted-status unselectable">
                             
-                                <div title="The source line executed without reverting.">√</div>
-                            
                         </td>
                         <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
                             
                         </td>
 
@@ -39770,7 +39766,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.chainlinkWorking ||</pre>
+                                    <pre>            if (</pre>
                             
                         </td>
                     </tr>
@@ -39797,7 +39793,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted</pre>
+                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.chainlinkWorking ||</pre>
                             
                         </td>
                     </tr>
@@ -39806,6 +39802,33 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">218</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed without reverting.">√</div>
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed, but was reverted.">⟳</div>
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted</pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">219</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39828,7 +39851,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">219</td>
+                        <td class="row-line-number unselectable">220</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39855,7 +39878,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">220</td>
+                        <td class="row-line-number unselectable">221</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39878,7 +39901,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">221</td>
+                        <td class="row-line-number unselectable">222</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39905,7 +39928,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">222</td>
+                        <td class="row-line-number unselectable">223</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39930,7 +39953,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">223</td>
+                        <td class="row-line-number unselectable">224</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39953,7 +39976,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">224</td>
+                        <td class="row-line-number unselectable">225</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39976,7 +39999,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">225</td>
+                        <td class="row-line-number unselectable">226</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -39992,33 +40015,6 @@
                         <td class="row-source">
                             
                                     <pre></pre>
-                            
-                        </td>
-                    </tr>
-                
-                    
-                    <tr>
-                        
-                        <td class="row-line-number unselectable">226</td>
-
-                        
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed without reverting.">√</div>
-                            
-                        </td>
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
-                            
-                        </td>
-
-                        
-                        
-                        
-                        <td class="row-source">
-                            
-                                    <pre class="row-line-covered">            if (address(priceFeed.fallbackCaller()) == address(0)) {</pre>
                             
                         </td>
                     </tr>
@@ -40045,7 +40041,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                assertWithMsg(</pre>
+                                    <pre class="row-line-covered">            if (address(priceFeed.fallbackCaller()) == address(0)) {</pre>
                             
                         </td>
                     </tr>
@@ -40072,7 +40068,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                    statusAfter == IPriceFeed.Status.chainlinkWorking ||</pre>
+                                    <pre class="row-line-covered">                assertWithMsg(</pre>
                             
                         </td>
                     </tr>
@@ -40099,7 +40095,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                        statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||</pre>
+                                    <pre class="row-line-covered">                    statusAfter == IPriceFeed.Status.chainlinkWorking ||</pre>
                             
                         </td>
                     </tr>
@@ -40126,7 +40122,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                        statusAfter == IPriceFeed.Status.bothOraclesUntrusted,</pre>
+                                    <pre class="row-line-covered">                        statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||</pre>
                             
                         </td>
                     </tr>
@@ -40153,7 +40149,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                    PF_06</pre>
+                                    <pre class="row-line-covered">                        statusAfter == IPriceFeed.Status.bothOraclesUntrusted,</pre>
                             
                         </td>
                     </tr>
@@ -40166,8 +40162,12 @@
                         
                         <td class="row-reverted-status unselectable">
                             
+                                <div title="The source line executed without reverting.">√</div>
+                            
                         </td>
                         <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed, but was reverted.">⟳</div>
                             
                         </td>
 
@@ -40176,7 +40176,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>                );</pre>
+                                    <pre class="row-line-covered">                    PF_06</pre>
                             
                         </td>
                     </tr>
@@ -40199,7 +40199,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>            }</pre>
+                                    <pre>                );</pre>
                             
                         </td>
                     </tr>
@@ -40222,7 +40222,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre></pre>
+                                    <pre>            }</pre>
                             
                         </td>
                     </tr>
@@ -40231,6 +40231,29 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">235</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre></pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">236</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40257,7 +40280,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">236</td>
+                        <td class="row-line-number unselectable">237</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40280,7 +40303,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">237</td>
+                        <td class="row-line-number unselectable">238</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40303,7 +40326,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">238</td>
+                        <td class="row-line-number unselectable">239</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40326,7 +40349,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">239</td>
+                        <td class="row-line-number unselectable">240</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40349,7 +40372,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">240</td>
+                        <td class="row-line-number unselectable">241</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40372,7 +40395,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">241</td>
+                        <td class="row-line-number unselectable">242</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40399,7 +40422,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">242</td>
+                        <td class="row-line-number unselectable">243</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40422,7 +40445,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">243</td>
+                        <td class="row-line-number unselectable">244</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40447,7 +40470,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">244</td>
+                        <td class="row-line-number unselectable">245</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40470,7 +40493,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">245</td>
+                        <td class="row-line-number unselectable">246</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40493,7 +40516,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">246</td>
+                        <td class="row-line-number unselectable">247</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40516,7 +40539,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">247</td>
+                        <td class="row-line-number unselectable">248</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40539,7 +40562,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">248</td>
+                        <td class="row-line-number unselectable">249</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40562,7 +40585,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">249</td>
+                        <td class="row-line-number unselectable">250</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40578,33 +40601,6 @@
                         <td class="row-source">
                             
                                     <pre>        IPriceFeed.Status statusAfter</pre>
-                            
-                        </td>
-                    </tr>
-                
-                    
-                    <tr>
-                        
-                        <td class="row-line-number unselectable">250</td>
-
-                        
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed without reverting.">√</div>
-                            
-                        </td>
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
-                            
-                        </td>
-
-                        
-                        
-                        
-                        <td class="row-source">
-                            
-                                    <pre class="row-line-covered">    ) internal returns (bool) {</pre>
                             
                         </td>
                     </tr>
@@ -40631,7 +40627,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">        emit Log2(&#34;status transition&#34;, uint256(statusBefore), uint256(statusAfter));</pre>
+                                    <pre class="row-line-covered">    ) internal returns (bool) {</pre>
                             
                         </td>
                     </tr>
@@ -40644,8 +40640,12 @@
                         
                         <td class="row-reverted-status unselectable">
                             
+                                <div title="The source line executed without reverting.">√</div>
+                            
                         </td>
                         <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed, but was reverted.">⟳</div>
                             
                         </td>
 
@@ -40654,7 +40654,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        return</pre>
+                                    <pre class="row-line-covered">        emit Log2(&#34;status transition&#34;, uint256(statusBefore), uint256(statusAfter));</pre>
                             
                         </td>
                     </tr>
@@ -40677,7 +40677,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>            // CASE 1</pre>
+                                    <pre>        return</pre>
                             
                         </td>
                     </tr>
@@ -40686,6 +40686,29 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">254</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre>            // CASE 1</pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">255</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40712,7 +40735,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">255</td>
+                        <td class="row-line-number unselectable">256</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40737,7 +40760,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">256</td>
+                        <td class="row-line-number unselectable">257</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40764,7 +40787,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">257</td>
+                        <td class="row-line-number unselectable">258</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40789,7 +40812,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">258</td>
+                        <td class="row-line-number unselectable">259</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40816,7 +40839,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">259</td>
+                        <td class="row-line-number unselectable">260</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40841,7 +40864,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">260</td>
+                        <td class="row-line-number unselectable">261</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40868,7 +40891,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">261</td>
+                        <td class="row-line-number unselectable">262</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40891,7 +40914,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">262</td>
+                        <td class="row-line-number unselectable">263</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40918,7 +40941,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">263</td>
+                        <td class="row-line-number unselectable">264</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40941,7 +40964,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">264</td>
+                        <td class="row-line-number unselectable">265</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40964,7 +40987,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">265</td>
+                        <td class="row-line-number unselectable">266</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -40991,7 +41014,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">266</td>
+                        <td class="row-line-number unselectable">267</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41014,7 +41037,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">267</td>
+                        <td class="row-line-number unselectable">268</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41041,7 +41064,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">268</td>
+                        <td class="row-line-number unselectable">269</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41064,7 +41087,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">269</td>
+                        <td class="row-line-number unselectable">270</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41091,7 +41114,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">270</td>
+                        <td class="row-line-number unselectable">271</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41114,7 +41137,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">271</td>
+                        <td class="row-line-number unselectable">272</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41130,33 +41153,6 @@
                         <td class="row-source">
                             
                                     <pre>            // CASE 3</pre>
-                            
-                        </td>
-                    </tr>
-                
-                    
-                    <tr>
-                        
-                        <td class="row-line-number unselectable">272</td>
-
-                        
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed without reverting.">√</div>
-                            
-                        </td>
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
-                            
-                        </td>
-
-                        
-                        
-                        
-                        <td class="row-source">
-                            
-                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &amp;&amp;</pre>
                             
                         </td>
                     </tr>
@@ -41183,7 +41179,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||</pre>
+                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &amp;&amp;</pre>
                             
                         </td>
                     </tr>
@@ -41210,7 +41206,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &amp;&amp;</pre>
+                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||</pre>
                             
                         </td>
                     </tr>
@@ -41219,6 +41215,33 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">275</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed without reverting.">√</div>
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed, but was reverted.">⟳</div>
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &amp;&amp;</pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">276</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41243,7 +41266,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">276</td>
+                        <td class="row-line-number unselectable">277</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41270,7 +41293,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">277</td>
+                        <td class="row-line-number unselectable">278</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41295,7 +41318,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">278</td>
+                        <td class="row-line-number unselectable">279</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41318,7 +41341,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">279</td>
+                        <td class="row-line-number unselectable">280</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41345,7 +41368,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">280</td>
+                        <td class="row-line-number unselectable">281</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41368,7 +41391,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">281</td>
+                        <td class="row-line-number unselectable">282</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41395,7 +41418,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">282</td>
+                        <td class="row-line-number unselectable">283</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41418,7 +41441,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">283</td>
+                        <td class="row-line-number unselectable">284</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41445,7 +41468,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">284</td>
+                        <td class="row-line-number unselectable">285</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41468,7 +41491,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">285</td>
+                        <td class="row-line-number unselectable">286</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41495,7 +41518,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">286</td>
+                        <td class="row-line-number unselectable">287</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41518,7 +41541,7 @@
                     
                     <tr>
                         
-                        <td class="row-line-number unselectable">287</td>
+                        <td class="row-line-number unselectable">288</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -41534,33 +41557,6 @@
                         <td class="row-source">
                             
                                     <pre>            // CASE 5</pre>
-                            
-                        </td>
-                    </tr>
-                
-                    
-                    <tr>
-                        
-                        <td class="row-line-number unselectable">288</td>
-
-                        
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed without reverting.">√</div>
-                            
-                        </td>
-                        <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
-                            
-                        </td>
-
-                        
-                        
-                        
-                        <td class="row-source">
-                            
-                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &amp;&amp;</pre>
                             
                         </td>
                     </tr>
@@ -41587,7 +41583,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||</pre>
+                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &amp;&amp;</pre>
                             
                         </td>
                     </tr>
@@ -41605,6 +41601,8 @@
                         </td>
                         <td class="row-reverted-status unselectable">
                             
+                                <div title="The source line executed, but was reverted.">⟳</div>
+                            
                         </td>
 
                         
@@ -41612,7 +41610,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &amp;&amp;</pre>
+                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||</pre>
                             
                         </td>
                     </tr>
@@ -41637,7 +41635,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.chainlinkWorking) ||</pre>
+                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &amp;&amp;</pre>
                             
                         </td>
                     </tr>
@@ -41662,7 +41660,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &amp;&amp;</pre>
+                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.chainlinkWorking) ||</pre>
                             
                         </td>
                     </tr>
@@ -41687,7 +41685,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted);</pre>
+                                    <pre class="row-line-covered">            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &amp;&amp;</pre>
                             
                         </td>
                     </tr>
@@ -41700,6 +41698,8 @@
                         
                         <td class="row-reverted-status unselectable">
                             
+                                <div title="The source line executed without reverting.">√</div>
+                            
                         </td>
                         <td class="row-reverted-status unselectable">
                             
@@ -41710,7 +41710,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>    }</pre>
+                                    <pre class="row-line-covered">                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted);</pre>
                             
                         </td>
                     </tr>
@@ -41733,7 +41733,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre></pre>
+                                    <pre>    }</pre>
                             
                         </td>
                     </tr>
@@ -41756,7 +41756,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>    function _hasNotDeadlocked() internal returns (bool) {</pre>
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -41779,7 +41779,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        uint256 statusSeen = 0;</pre>
+                                    <pre>    function _hasNotDeadlocked() internal returns (bool) {</pre>
                             
                         </td>
                     </tr>
@@ -41802,7 +41802,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre></pre>
+                                    <pre>        uint256 statusSeen = 0;</pre>
                             
                         </td>
                     </tr>
@@ -41825,7 +41825,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        for (uint256 i = 0; i &lt; MAX_STATUS_HISTORY_OPERATIONS; &#43;&#43;i) {</pre>
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -41848,7 +41848,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>            IPriceFeed.Status status = statusHistory[i];</pre>
+                                    <pre>        for (uint256 i = 0; i &lt; MAX_STATUS_HISTORY_OPERATIONS; &#43;&#43;i) {</pre>
                             
                         </td>
                     </tr>
@@ -41871,7 +41871,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>            statusSeen |= (1 &lt;&lt; uint256(status));</pre>
+                                    <pre>            IPriceFeed.Status status = statusHistory[i];</pre>
                             
                         </td>
                     </tr>
@@ -41894,7 +41894,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        }</pre>
+                                    <pre>            statusSeen |= (1 &lt;&lt; uint256(status));</pre>
                             
                         </td>
                     </tr>
@@ -41917,7 +41917,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre></pre>
+                                    <pre>        }</pre>
                             
                         </td>
                     </tr>
@@ -41940,7 +41940,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        // has not deadlocked if during past MAX_STATUS_HISTORY_OPERATIONS all statuses have been seen</pre>
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -41963,7 +41963,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        // Note: there is a probability of false positive</pre>
+                                    <pre>        // has not deadlocked if during past MAX_STATUS_HISTORY_OPERATIONS all statuses have been seen</pre>
                             
                         </td>
                     </tr>
@@ -41986,7 +41986,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        return statusSeen == 31; // 0b1111</pre>
+                                    <pre>        // Note: there is a probability of false positive</pre>
                             
                         </td>
                     </tr>
@@ -42009,7 +42009,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>    }</pre>
+                                    <pre>        return statusSeen == 31; // 0b1111</pre>
                             
                         </td>
                     </tr>
@@ -42032,7 +42032,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre></pre>
+                                    <pre>    }</pre>
                             
                         </td>
                     </tr>
@@ -42055,7 +42055,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>    modifier log() {</pre>
+                                    <pre></pre>
                             
                         </td>
                     </tr>
@@ -42068,12 +42068,8 @@
                         
                         <td class="row-reverted-status unselectable">
                             
-                                <div title="The source line executed without reverting.">√</div>
-                            
                         </td>
                         <td class="row-reverted-status unselectable">
-                            
-                                <div title="The source line executed, but was reverted.">⟳</div>
                             
                         </td>
 
@@ -42082,7 +42078,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">        for (uint256 i = 0; i &lt; MAX_STATUS_HISTORY_OPERATIONS; &#43;&#43;i) {</pre>
+                                    <pre>    modifier log() {</pre>
                             
                         </td>
                     </tr>
@@ -42109,7 +42105,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            IPriceFeed.Status status = statusHistory[i];</pre>
+                                    <pre class="row-line-covered">        for (uint256 i = 0; i &lt; MAX_STATUS_HISTORY_OPERATIONS; &#43;&#43;i) {</pre>
                             
                         </td>
                     </tr>
@@ -42136,7 +42132,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre class="row-line-covered">            emit Log2(&#34;status&#34;, i, uint256(status));</pre>
+                                    <pre class="row-line-covered">            IPriceFeed.Status status = statusHistory[i];</pre>
                             
                         </td>
                     </tr>
@@ -42149,8 +42145,12 @@
                         
                         <td class="row-reverted-status unselectable">
                             
+                                <div title="The source line executed without reverting.">√</div>
+                            
                         </td>
                         <td class="row-reverted-status unselectable">
+                            
+                                <div title="The source line executed, but was reverted.">⟳</div>
                             
                         </td>
 
@@ -42159,7 +42159,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        }</pre>
+                                    <pre class="row-line-covered">            emit Log2(&#34;status&#34;, i, uint256(status));</pre>
                             
                         </td>
                     </tr>
@@ -42182,7 +42182,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>        _;</pre>
+                                    <pre>        }</pre>
                             
                         </td>
                     </tr>
@@ -42205,7 +42205,7 @@
                         
                         <td class="row-source">
                             
-                                    <pre>    }</pre>
+                                    <pre>        _;</pre>
                             
                         </td>
                     </tr>
@@ -42214,6 +42214,29 @@
                     <tr>
                         
                         <td class="row-line-number unselectable">316</td>
+
+                        
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+                        <td class="row-reverted-status unselectable">
+                            
+                        </td>
+
+                        
+                        
+                        
+                        <td class="row-source">
+                            
+                                    <pre>    }</pre>
+                            
+                        </td>
+                    </tr>
+                
+                    
+                    <tr>
+                        
+                        <td class="row-line-number unselectable">317</td>
 
                         
                         <td class="row-reverted-status unselectable">
@@ -51306,7 +51329,7 @@
     <center>
         Report generated by medusa
         <br />
-        2023-12-08 15:08:12.77599 &#43;0000 UTC
+        2023-12-08 16:30:23.993631 &#43;0000 UTC
         <br />
         <a href="https://github.com/crytic/medusa">github.com/crytic/medusa</a>
     </center>

@@ -1,0 +1,27 @@
+[
+ {
+  "call": {
+   "from": "0x0000000000000000000000000000000000020000",
+   "to": "0xa647ff3c36cfab592509e13860ab8c4f28781a66",
+   "nonce": 0,
+   "value": "0x0",
+   "gasLimit": 12500000,
+   "gasPrice": "0x1",
+   "gasFeeCap": "0x0",
+   "gasTipCap": "0x0",
+   "data": "0x809076700000000000000000000000000000000000000000000074dc5c3055d9d4c32e65d938fc5e4a54aa24a0e5516353654908b7f90887d4cda0b514486b9db3cc70c9000000000000000000000000000000000000000000000000000000001f540500",
+   "dataAbiValues": {
+    "methodName": "setLatestBTC",
+    "inputValues": [
+     "551859438612939383451237",
+     "98252573360338712322267898201195500123915486134719157817384385987483808854217",
+     "525600000"
+    ]
+   },
+   "AccessList": null,
+   "SkipAccountChecks": false
+  },
+  "blockNumberDelay": 1799,
+  "blockTimestampDelay": 424690
+ }
+]
