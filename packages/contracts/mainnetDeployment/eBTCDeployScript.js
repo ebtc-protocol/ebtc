@@ -561,9 +561,9 @@ async function main() {
     let useMockPriceFeed = true;
 
     // let configParams = configParamsLocal;
-    // let configParams = configParamsSepolia;
+    let configParams = configParamsSepolia;
     // let configParams = configParamsMainnet;
-    let configParams = configParamsGoerli;
+    // let configParams = configParamsGoerli;
 
     // flag override: always use mock price feed on local as no feed will exist
     if (configParams == configParamsLocal) {

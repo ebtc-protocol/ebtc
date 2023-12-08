@@ -1,4 +1,8 @@
 const externalAddress  = {
+  "ecosystemMultisig": "0xC8A7768D2a9EE15437c981a7130268622083c2BD", //sepolia
+  "cdpCouncilMultisig": "0x005E0Ad70b40B23cef409978350CA77a179de350", //sepolia
+  "cdpTechOpsMultisig": "0x664F43229dDa9fdEE00e723753f88f3Ba81967F6", //sepolia
+  "feeRecipientOwner": "0x5C1246E0b464060919301273781a266Ac119A0Bb", //sepolia
 }
 
 const OUTPUT_FILE = './mainnetDeployment/eBTCSepoliaDeploymentOutput.json'
