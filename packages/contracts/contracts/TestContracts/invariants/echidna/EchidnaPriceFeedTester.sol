@@ -12,15 +12,22 @@ import "../../../Dependencies/AuthNoOwner.sol";
 
 import "../PropertiesDescriptions.sol";
 
+
+contract MockAlwaysTrueAuthority {
+    function canCall(address user, address target, bytes4 functionSig) external view returns (bool){
+        return true;
+    }
+}
+
 contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, PropertiesDescriptions {
     event Log2(string, uint256, uint256);
     PriceFeed internal priceFeed;
     MockAggregator internal collEthCLFeed;
     MockAggregator internal ethBtcCLFeed;
-    AuthNoOwner internal authority;
+    MockAlwaysTrueAuthority internal authority;
     MockFallbackCaller internal fallbackCaller;
 
-    uint256 internal constant MAX_PRICE_CHANGE = 1.2e18;
+    uint256 internal constant MAX_PRICE_CHANGE = 5e18;
     uint256 internal constant MAX_ROUND_ID_CHANGE = 5;
     uint256 internal constant MAX_UPDATE_TIME_CHANGE = 2 days;
     uint256 internal constant MAX_STATUS_HISTORY_OPERATIONS = 32;
@@ -30,21 +37,21 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
     IPriceFeed.Status[MAX_STATUS_HISTORY_OPERATIONS] internal statusHistory;
 
     constructor() payable {
-        authority = new AuthNoOwner();
+        authority = new MockAlwaysTrueAuthority();
         collEthCLFeed = new MockAggregator();
         ethBtcCLFeed = new MockAggregator();
 
         collEthCLFeed.setLatestRoundId(2);
         collEthCLFeed.setPrevRoundId(1);
         collEthCLFeed.setUpdateTime(block.timestamp);
-        collEthCLFeed.setPrevUpdateTime(block.timestamp - 100);
+        collEthCLFeed.setPrevUpdateTime(block.timestamp);
         collEthCLFeed.setPrice(1 ether - 3);
         collEthCLFeed.setPrevPrice(1 ether - 1337);
 
         ethBtcCLFeed.setLatestRoundId(2);
         ethBtcCLFeed.setPrevRoundId(1);
         ethBtcCLFeed.setUpdateTime(block.timestamp);
-        ethBtcCLFeed.setPrevUpdateTime(block.timestamp - 77);
+        ethBtcCLFeed.setPrevUpdateTime(block.timestamp);
         ethBtcCLFeed.setPrice(3 ether - 2);
         ethBtcCLFeed.setPrevPrice(3 ether - 42);
 
@@ -70,7 +77,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         answer = (
             clampBetween(
                 answer,
-                (fallbackCaller._answer() * 1e18) / MAX_PRICE_CHANGE,
+                123456, // THIS WAS ALWAYS ZERO
                 (fallbackCaller._answer() * MAX_PRICE_CHANGE) / 1e18
             )
         );
@@ -184,7 +191,20 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setPrevUpdateTime(prevUpdateTime);
     }
 
+    function fetchPriceBatch() public log {
+        uint256 price = _fetchPrice();
+        for (uint256 i; i < 2; i++) {
+            uint256 newPrice = _fetchPrice();
+            assertWithMsg(price == newPrice, "PRICE BAD");
+        }
+    }
+
+
     function fetchPrice() public log {
+        _fetchPrice();
+    }
+
+    function _fetchPrice() private returns (uint256) {
         IPriceFeed.Status statusBefore = priceFeed.status();
         uint256 fallbackResponse;
 
@@ -218,6 +238,8 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
                 // TODO: this is hard to test, as we may have false positives due to the random nature of the tests
                 // assertWithMsg(_hasNotDeadlocked(), PF_03);
             }
+
+            return price;
         } catch {
             assertWithMsg(false, PF_01);
         }
