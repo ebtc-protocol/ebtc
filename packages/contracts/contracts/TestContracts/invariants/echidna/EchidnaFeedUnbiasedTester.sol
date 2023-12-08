@@ -111,38 +111,18 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         fallbackCaller.setFallbackResponse(answer, timestampRetrieved, success);
     }
 
-    function setGetFallbackResponseRevert(uint256 seed) public {
-        seed = clampBetween(seed, 0, 1e18);
-        bool reverted = fallbackCaller.getFallbackResponseRevert();
-        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
-            fallbackCaller.setFallbackTimeoutRevert();
-        }
+    function setFallbackTimeoutRevert() public {
+        fallbackCaller.setFallbackTimeoutRevert();
     }
 
-    function setFallbackTimeoutRevert(uint256 seed) public {
-        seed = clampBetween(seed, 0, 1e18);
-        bool reverted = fallbackCaller.fallbackTimeoutRevert();
-        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
-            fallbackCaller.setFallbackTimeoutRevert();
-        }
-    }
-
-    function setLatestRevert(bool flag, uint256 seed) public log {
+    function setLatestRevert(bool flag) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        seed = clampBetween(seed, 0, 1e18);
-        bool reverted = aggregator.latestRevert();
-        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
-            aggregator.setLatestRevert();
-        }
+        aggregator.setLatestRevert();
     }
 
     function setPrevRevert(bool flag, uint256 seed) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        seed = clampBetween(seed, 0, 1e18);
-        bool reverted = aggregator.prevRevert();
-        if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
-            aggregator.setPrevRevert();
-        }
+        aggregator.setPrevRevert();
     }
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7

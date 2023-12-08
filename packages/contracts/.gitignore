@@ -40,6 +40,8 @@ yarn-error.log
 
 # Medusa
 /medusa
+/medusa-price-bias
+/medusa-price
 
 # brownie
 __pycache__
