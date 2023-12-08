@@ -469,7 +469,10 @@ contract EToFoundry is
 
         console2.log("vars.activePoolCollBefore", vars.activePoolCollBefore);
         console2.log("vars.collSurplusPoolBefore", vars.collSurplusPoolBefore);
-        console2.log("vars.feeRecipientTotalCollSharesBefore", vars.feeRecipientTotalCollSharesBefore);
+        console2.log(
+            "vars.feeRecipientTotalCollSharesBefore",
+            vars.feeRecipientTotalCollSharesBefore
+        );
         console2.log("vars.activePoolDebtBefore", vars.activePoolDebtBefore);
         console2.log("beforeValue", beforeValue);
 
@@ -1183,7 +1186,11 @@ contract EToFoundry is
             73117119168387963680367060438159427411497267004306122806373332532305103240544
         );
 
-        gte(vars.feeRecipientTotalCollSharesAfter, vars.feeRecipientTotalCollSharesBefore, "F-12 as");
+        gte(
+            vars.feeRecipientTotalCollSharesAfter,
+            vars.feeRecipientTotalCollSharesBefore,
+            "F-12 as"
+        );
     }
 
     function get_cdp(uint256 _i) internal returns (bytes32) {

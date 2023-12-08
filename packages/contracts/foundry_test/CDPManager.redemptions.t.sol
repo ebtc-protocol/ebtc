@@ -475,7 +475,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);
         uint256 paidEbtc = (vars.actorEbtcBefore - vars.actorEbtcAfter);
-        uint256 fee = (vars.feeRecipientTotalCollSharesAfter - vars.feeRecipientTotalCollSharesBefore);
+        uint256 fee = (vars.feeRecipientTotalCollSharesAfter -
+            vars.feeRecipientTotalCollSharesBefore);
 
         uint256 beforeValue = ((vars.activePoolCollBefore +
             vars.liquidatorRewardSharesBefore +
