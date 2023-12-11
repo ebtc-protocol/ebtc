@@ -1,6 +1,7 @@
 pragma solidity 0.8.17;
 
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
+import "@crytic/properties/contracts/util/Hevm.sol";
 
 import "../../Interfaces/ICdpManagerData.sol";
 import "../../Dependencies/SafeMath.sol";
@@ -376,6 +377,11 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+function _syncSystemDebtTwapToSpotValue() internal {
+        hevm.warp(block.timestamp + activePool.PERIOD());
+        activePool.update();
     }
 
     function _openWhaleCdpAndTransferEBTC() internal {

@@ -300,6 +300,7 @@ contract EToFoundry is
         // AP + Etc...
         uint256 count = sortedCdps.cdpCountOf(address(this));
         _before(firstCdp);
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             115792089237316195423570985008687907853269984665640564039457584007913129639934,
             135941972438511685695082801964033710960734498785361969386688073429943393822,
@@ -342,6 +343,7 @@ contract EToFoundry is
             7239597706248181732406841427528500623622848712137431728409551405830913454985,
             131091200944273154
         );
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             532196406196528562753434746700243676344227539938048054616104670496,
             4890020780892971426953827393838177353120388721150155457442057090730,
@@ -371,6 +373,7 @@ contract EToFoundry is
             8515157922397009703417557607681739958843134455800791473869353135908031450320,
             131251319846597049
         );
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             289058276040013882279825268963168994859580940307359182338590061533,
             721412354899084084812938159596061041337963802121256850421410071451651,
@@ -426,7 +429,7 @@ contract EToFoundry is
         >>> feeRecipientTotalCollAfter = 441787493250854661
         >>> activePoolDebtAfter = 260972099767576354
          */
-
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             289058276040013882279825268963168994859580940307359182338590061533,
             721412354899084084812938159596061041337963802121256850421410071451651,
@@ -503,6 +506,7 @@ contract EToFoundry is
         liquidate(4);
         // TODO: ID
         _before(bytes32(0));
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             2494964906324939450636487309639740620040425748472758226468879113711198275036,
             43,
@@ -576,6 +580,7 @@ contract EToFoundry is
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         uint256 valueBeforeRedeem = _getValue();
         _before(firstCdp);
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             100000000000000000000,
             44528197469369619828452631535878582533537470583240950950026051403192050331017,
@@ -617,6 +622,8 @@ contract EToFoundry is
         liquidate(4);
         _before(_getRandomCdp(4));
         uint256 startValue = _getValue();
+
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             2494964906324939450636487309639740620040425748472758226468879113711198275036,
             43,
@@ -635,6 +642,7 @@ contract EToFoundry is
     }
 
     // https://app.fuzzy.fyi/dashboard/jobs/0d22a32b-5612-4b73-bad2-824dffb6549d
+    // "CDPM-04: The total system value does not decrease during redemptions"
     function testCdpM04ThirdTimesTheCharm() public {
         openCdp(0, 1);
         setPrice(167381130243608416929425501779011646220066545286939311441885146324);
@@ -649,6 +657,7 @@ contract EToFoundry is
         );
         _before(_getRandomCdp(4));
         uint256 startValue = _getValue();
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             2836130018220487240424649660515350581035271781043904753321251,
             1303662118734886403439420394944695180633540216476340,
@@ -876,6 +885,7 @@ contract EToFoundry is
             115792089237316195423570985008687907853269984665640564039457584007913129639917
         );
         _before(lastCdp);
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             115792089237316195423570985008687907853269984665640564039457584007913129639804,
             0,
@@ -1149,6 +1159,7 @@ contract EToFoundry is
             collateral.sharesOf(address(collSurplusPool)),
             collSurplusPool.getTotalSurplusCollShares()
         );
+        _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
             457124696465624691469821009088209599710133263214077681392799765737718,
             109056029728595120081267952673704432671053472351341847857754147758,
