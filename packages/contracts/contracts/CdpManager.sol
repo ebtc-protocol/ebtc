@@ -345,6 +345,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             totals.tcrAtStart = tcrAtStart;
             totals.systemCollSharesAtStart = systemCollSharesAtStart;
             totals.systemDebtAtStart = systemDebtAtStart;
+            totals.twapSystemDebtAtStart = EbtcMath._min(activePool.observe(), systemDebtAtStart); // @audit Return the smaller value of the two, bias towards a larger redemption scaling fee
         }
 
         _requireTCRisNotBelowMCR(totals.price, totals.tcrAtStart);
@@ -447,7 +448,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _updateBaseRateFromRedemption(
             totals.collSharesDrawn,
             totals.price,
-            totals.systemDebtAtStart
+            totals.twapSystemDebtAtStart
         );
 
         // Calculate the ETH fee
