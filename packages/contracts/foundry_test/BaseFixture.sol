@@ -29,6 +29,9 @@ import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
 import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
+import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
+import {IBaseTwapWeightedObserver} from "../contracts/Interfaces/IBaseTwapWeightedObserver.sol";
+import {EbtcMath} from "../contracts/Dependencies/EbtcMath.sol";
 
 contract eBTCBaseFixture is
     Test,
@@ -36,8 +39,16 @@ contract eBTCBaseFixture is
     BeforeAfter,
     FoundryAsserts,
     BytecodeReader,
-    LogUtils
+    LogUtils,
+    IBaseTwapWeightedObserver
 {
+    using Strings for string;
+    using Pretty for uint256;
+    using Pretty for uint128;
+    using Pretty for uint64;
+    using Pretty for int256;
+    using Pretty for bool;
+
     uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint256 public constant CCR = 125e16; // 125%
@@ -49,6 +60,9 @@ contract eBTCBaseFixture is
     uint256 internal constant AMOUNT_OF_CDPS = 3;
     uint256 internal DECIMAL_PRECISION = 1e18;
     bytes32 public constant ZERO_ID = bytes32(0);
+    bool public verbose = true;
+    uint256 internal constant ONE_DAY = 86400;
+    uint256 internal constant ONE_WEEK = 604800;
 
     uint256 internal constant MAX_BPS = 10000;
     uint256 private ICR_COMPARE_TOLERANCE = 1000000; //in the scale of 1e18
@@ -123,6 +137,8 @@ contract eBTCBaseFixture is
     Consider overriding this function if in need of custom setup
     */
     function setUp() public virtual {
+        console.log("block.timestamp", block.timestamp);
+        vm.warp(1);
         _utils = new Utilities();
 
         defaultGovernance = _utils.getNextSpecialAddress();
@@ -599,4 +615,56 @@ contract eBTCBaseFixture is
             console.log(bytes32ToString(_cdpArray[i]));
         }
     }
+
+    function _syncSystemDebtTwapToSpotValue() internal {
+        vm.warp(block.timestamp + activePool.PERIOD());
+        activePool.update();
+    }
+
+    function _printTwapState() internal {
+        PackedData memory data = activePool.getData();
+        uint256 valueToTrack = activePool.valueToTrack();
+        uint256 getRealValue = activePool.getRealValue();
+        uint256 getLatestAccumulator = activePool.getLatestAccumulator();
+        uint256 observe = activePool.observe();
+
+        console.log("=== TWAP State ===");
+        console.log("valueToTrack: ", valueToTrack.pretty());
+        console.log("getRealValue: ", getRealValue.pretty());
+        console.log("getLatestAccumulator: ", getLatestAccumulator.pretty());
+        console.log("observe: ", observe.pretty());
+        console.log("");
+        console.log("data.priceCumulative0: ", data.priceCumulative0);
+        console.log("data.accumulator: ", data.accumulator);
+        console.log("data.t0: ", data.t0);
+        console.log("data.lastUpdate: ", data.lastUpdate);
+        console.log("data.avgValue: ", data.avgValue);
+        console.log("");
+    }
+
+    function _calcSystemDebtBeforeRedemption()
+        internal
+        returns (
+            uint256 systemDebtAtStartSpot,
+            uint256 systemDebtAtStartTwap,
+            uint256 systemDebtAtStartUsed
+        )
+    {
+        systemDebtAtStartSpot = cdpManager.getSystemDebt();
+        systemDebtAtStartTwap = activePool.observe();
+        systemDebtAtStartUsed = EbtcMath._min(systemDebtAtStartTwap, systemDebtAtStartSpot);
+
+        if (verbose) {
+            console.log("systemDebtSpot: %s", systemDebtAtStartSpot.pretty());
+            console.log("systemDebtTwap: %s", systemDebtAtStartTwap.pretty());
+            console.log("systemDebtUsed: %s", systemDebtAtStartUsed.pretty());
+        }
+    }
+
+    function _calcExpectedRedemnptionFeeFromEthDrawn(
+        uint256 ETHDrawn,
+        uint256 systemDebtAtStartSpot,
+        uint256 systemDebtAtStartTwap,
+        uint256 systemDebtAtStartUsed
+    ) internal {}
 }
