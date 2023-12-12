@@ -13,6 +13,7 @@ import "../../CollSurplusPool.sol";
 import "../../SortedCdps.sol";
 import "../../HintHelpers.sol";
 import "../../FeeRecipient.sol";
+import "../../BraindeadFeed.sol";
 import "../testnet/PriceFeedTestnet.sol";
 import "../CollateralTokenTester.sol";
 import "../EBTCTokenTester.sol";
@@ -119,11 +120,13 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 )
             );
 
-            // Price Feed Mock
-            creationCode = type(PriceFeedTestnet).creationCode;
-            args = abi.encode(addr.authorityAddress);
+            priceFeedMock = new PriceFeedTestnet(addr.authorityAddress);
 
-            priceFeedMock = PriceFeedTestnet(
+            // Price Feed Mock
+            creationCode = type(BraindeadFeed).creationCode;
+            args = abi.encode(addr.authorityAddress, address(priceFeedMock), address(0));
+
+            braindeadFeed = BraindeadFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -263,6 +266,18 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 4,
                 address(priceFeedMock),
                 priceFeedMock.setFallbackCaller.selector,
+                true
+            );
+            authority.setRoleCapability(
+                4,
+                address(braindeadFeed),
+                braindeadFeed.setPrimaryOracle.selector,
+                true
+            );
+            authority.setRoleCapability(
+                4,
+                address(braindeadFeed),
+                braindeadFeed.setSecondaryOracle.selector,
                 true
             );
 
