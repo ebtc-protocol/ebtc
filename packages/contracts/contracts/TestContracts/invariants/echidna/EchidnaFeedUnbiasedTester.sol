@@ -88,7 +88,7 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
             address(ethBtcCLFeed)
         );
 
-         fallbackCaller.setFallbackResponse(priceFeed.lastGoodPrice() - 10, block.timestamp, true);
+        fallbackCaller.setFallbackResponse(priceFeed.lastGoodPrice() - 10, block.timestamp, true);
 
         statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
             .status();
