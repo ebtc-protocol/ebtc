@@ -296,7 +296,8 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       // sugardaddy some collateral staking reward by increasing its PPFS again
       let _oi = _newIndex;
       _newIndex = _newIndex.add(_deltaIndex);
-      await collToken.setEthPerShare(_newIndex);  
+      await collToken.setEthPerShare(_newIndex); 
+      await th.syncTwapSystemDebt(contracts, ethers.provider); 
 	  
       // redeem alice CDP
       await ethers.provider.send("evm_mine");

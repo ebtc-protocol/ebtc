@@ -174,6 +174,7 @@ contract('BorrowerWrappers', async accounts => {
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // whale redeems 150 EBTC
     await th.redeemCollateral(whale, contracts, redeemAmount, GAS_PRICE)
@@ -205,6 +206,7 @@ contract('BorrowerWrappers', async accounts => {
     const proxyAddress = borrowerWrappers.getProxyAddressFromUser(alice)
     assert.equal(await web3.eth.getBalance(proxyAddress), '0')
     let _aliceCdpId = await sortedCdps.cdpOfOwnerByIndex(proxyAddress, 0);
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // whale redeems 150 EBTC
     await th.redeemCollateral(whale, contracts, redeemAmount, GAS_PRICE)

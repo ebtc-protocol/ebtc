@@ -266,7 +266,11 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         uint128 newGracePeriod
     ) public {
         newGracePeriod = uint128(
-            bound(newGracePeriod, cdpManager.MINIMUM_GRACE_PERIOD() + 2, type(uint128).max / 10)
+            bound(
+                newGracePeriod,
+                cdpManager.MINIMUM_GRACE_PERIOD() + 2,
+                cdpManager.MINIMUM_GRACE_PERIOD() * 1000000
+            )
         ); // prevent unrealistic overflow
 
         (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();

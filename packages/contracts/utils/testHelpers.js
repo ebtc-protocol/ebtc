@@ -304,6 +304,13 @@ class TestHelper {
     await provider.send("evm_increaseTime", [_gracePeriod.add(web3.utils.toBN('1')).toNumber()]);
     await provider.send("evm_mine");
   }
+  
+  static async syncTwapSystemDebt(contracts, provider){
+    let _period = await contracts.activePool.PERIOD();	  	  
+    await provider.send("evm_increaseTime", [_period.add(web3.utils.toBN('1234')).toNumber()]);
+    await provider.send("evm_mine");	  
+    await contracts.activePool.update();
+  }
 
   // --- Gas compensation calculation functions ---
 
@@ -609,7 +616,6 @@ class TestHelper {
 
     return { newColl, newDebt }
   }
-
  
   // --- BorrowerOperations gas functions ---
 

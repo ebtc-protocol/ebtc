@@ -379,7 +379,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
     }
 
-function _syncSystemDebtTwapToSpotValue() internal {
+    function _syncSystemDebtTwapToSpotValue() internal {
         hevm.warp(block.timestamp + activePool.PERIOD());
         activePool.update();
     }

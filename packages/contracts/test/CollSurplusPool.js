@@ -58,6 +58,7 @@ contract('CollSurplusPool', async accounts => {
 
     const { collateral: B_coll, netDebt: B_netDebt } = await openCdp({ ICR: toBN(dec(200, 16)), extraParams: { from: B } })
     await openCdp({ extraEBTCAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // At ETH:USD = 100, this redemption should leave 1 ether of coll surplus
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)
@@ -92,6 +93,7 @@ contract('CollSurplusPool', async accounts => {
 	  
     await nonPayable.forward(borrowerOperations.address, openCdpData, { value: 0 })
     await openCdp({ extraEBTCAmount: B_netDebt, extraParams: { from: A, value: dec(3000, 'ether') } })
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // At ETH:USD = 100, this redemption should leave 1 ether of coll surplus for B
     await th.redeemCollateralAndGetTxObject(A, contracts, B_netDebt)

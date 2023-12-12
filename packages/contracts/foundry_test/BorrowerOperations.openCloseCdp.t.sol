@@ -200,7 +200,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
             // Check borrowed amount
             assertEq(eBTCToken.balanceOf(user), borrowedAmount);
             // Warp after each user to increase randomness of next collateralAmount
-            vm.warp(block.number + 1);
+            vm.warp(block.timestamp + 1);
             vm.stopPrank();
         }
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);

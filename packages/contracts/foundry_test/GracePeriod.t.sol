@@ -247,9 +247,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Pre valid
         _assertRevertOnAllLiquidations(cdps);
 
-        _execValidRMAction(cdps, action);
+        uint256 _timeWarped = _execValidRMAction(cdps, action);
 
-        _postValidActionLiquidationChecks(cdps);
+        _postValidActionLiquidationChecks(_timeWarped, cdps);
     }
 
     /// @dev Enumerate variants of ways the grace period could be reset
@@ -341,7 +341,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _postExitRMLiquidationChecks(cdps);
     }
 
-    function _execValidRMAction(bytes32[] memory cdps, uint256 action) internal {
+    function _execValidRMAction(
+        bytes32[] memory cdps,
+        uint256 action
+    ) internal returns (uint256 _timeWarped) {
         address borrower = sortedCdps.getOwnerAddress(cdps[0]);
         uint256 price = priceFeedMock.fetchPrice();
         if (action == 0) {
@@ -373,6 +376,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
                 uint256 partialRedemptionNewColl
             ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
 
+            _syncSystemDebtTwapToSpotValue();
+            _timeWarped = activePool.PERIOD();
             vm.prank(borrower);
             cdpManager.redeemCollateral(
                 toRedeem,
@@ -459,11 +464,11 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     }
 
     /// @dev Run these checks immediately after action that sets grace period
-    function _postValidActionLiquidationChecks(bytes32[] memory cdps) internal {
+    function _postValidActionLiquidationChecks(uint256 _timeWarped, bytes32[] memory cdps) internal {
         // Grace period timestamp is now
         uint256 recoveryModeSetTimestamp = block.timestamp;
         assertEq(
-            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp() + _timeWarped,
             block.timestamp,
             "lastGracePeriodStartTimestamp set time"
         );
@@ -476,7 +481,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Grace period timestamp hasn't changed
         assertEq(
-            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp() + _timeWarped,
             recoveryModeSetTimestamp,
             "lastGracePeriodStartTimestamp set time"
         );

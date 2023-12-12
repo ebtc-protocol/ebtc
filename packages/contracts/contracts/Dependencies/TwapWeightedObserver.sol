@@ -20,20 +20,24 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     }
 
     /// TWAP ///
+    event NewTrackValue(uint256 _oldValue, uint256 _newValue, uint256 _ts, uint256 _newAcc);
 
     // Set to new value, sync accumulator to now with old value
     // Changes in same block have no impact, as no time has expired
     // Effectively we use the previous block value, and we magnify it by weight
     function _setValue(uint128 newValue) internal {
-        _updateAcc(valueToTrack);
+        uint128 _newAcc = _updateAcc(valueToTrack);
 
         data.lastUpdate = uint64(block.timestamp);
+        emit NewTrackValue(valueToTrack, newValue, block.timestamp, _newAcc);
         valueToTrack = newValue;
     }
 
     // Update the accumulator based on time passed
-    function _updateAcc(uint128 oldValue) internal {
-        data.accumulator += oldValue * (timeToAccrue());
+    function _updateAcc(uint128 oldValue) internal returns (uint128) {
+        uint128 _newAcc = data.accumulator + oldValue * (timeToAccrue());
+        data.accumulator = _newAcc;
+        return _newAcc;
     }
 
     /// @notice Returns the time since the last update
@@ -96,8 +100,8 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
             return virtualAvgValue;
         }
 
-        uint256 weightedAvg = data.avgValue * (maxWeight - futureWeight);
-        uint256 weightedVirtual = virtualAvgValue * (futureWeight);
+        uint256 weightedAvg = data.avgValue * (futureWeight);
+        uint256 weightedVirtual = virtualAvgValue * (maxWeight - futureWeight);
 
         uint256 weightedMean = (weightedAvg + weightedVirtual) / PERIOD;
 
