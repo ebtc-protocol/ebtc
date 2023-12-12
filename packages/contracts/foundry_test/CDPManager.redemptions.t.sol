@@ -51,6 +51,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 _redeemDebt = 1;
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemDebt, (priceFeedMock.fetchPrice()), 0);
+
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedemptionHint,
@@ -135,6 +137,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         require(firstRedempHint == _cdpIds[0], "!firstRedempHint");
         uint256 _debtBalBefore = eBTCToken.balanceOf(_redeemer);
         vm.prank(_redeemer);
+
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedempHint,
@@ -241,6 +245,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             debt,
             firstRedemptionHint,
@@ -381,6 +386,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemedDebt, priceFeedMock.fetchPrice(), 0);
         vm.prank(_redeemer);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemedDebt,
             firstRedemptionHint,
@@ -459,7 +465,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
         _before(_cdpId);
-
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             77233452000714940,
             bytes32(0),

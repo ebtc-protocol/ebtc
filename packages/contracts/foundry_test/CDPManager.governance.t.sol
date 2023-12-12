@@ -352,6 +352,7 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         assertGe(block.timestamp, expectedGracePeriodExpiration, "before grace period complete");
 
         console.log(3);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.liquidate(toLiquidateCdpId);
 
         vm.stopPrank();

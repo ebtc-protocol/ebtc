@@ -224,6 +224,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             uint256 truncatedEBTCamount,
             uint256 partialRedemptionNewColl
         ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             toRedeem,
             firstRedemptionHint,
