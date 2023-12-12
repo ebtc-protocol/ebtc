@@ -3,7 +3,7 @@
 pragma solidity 0.8.17;
 
 import "./Interfaces/IPriceFeed.sol";
-import "./Interfaces/IOracleCaller.sol";
+import {IPriceFetcher} from "./Interfaces/IOracleCaller.sol";
 import "./Dependencies/AuthNoOwner.sol";
 
 /*
@@ -26,6 +26,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
 
     uint256 constant INVALID_PRICE = 0;
     address constant UNSET_ADDRESS = address(0);
+    uint256 constant GAS_LIMIT = 2_000_000;
 
     // --- Events ---
 
@@ -38,7 +39,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
 
     /// @notice Sets the addresses of the contracts and initializes the system
     constructor(address _primaryOracle, address _secondaryOracle) {
-        uint256 firstPrice = IOracleCaller(_primaryOracle).getLatestPrice();
+        uint256 firstPrice = IPriceFetcher(_primaryOracle).fetchPrice();
         require(firstPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
 
         _storePrice(firstPrice);
@@ -47,7 +48,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
 
         // If secondaryOracle is known at deployment let's add it
         if (_secondaryOracle != UNSET_ADDRESS) {
-            uint256 secondaryOraclePrice = IOracleCaller(_secondaryOracle).getLatestPrice();
+            uint256 secondaryOraclePrice = IPriceFetcher(_secondaryOracle).fetchPrice();
 
             if (secondaryOraclePrice != INVALID_PRICE) {
                 secondaryOracle = _secondaryOracle;
@@ -58,7 +59,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     /// @notice Allows the owner to replace the primary oracle
     ///     The oracle must work (return non-zero value)
     function setPrimaryOracle(address _newPrimary) external requiresAuth {
-        uint256 currentPrice = IOracleCaller(_newPrimary).getLatestPrice();
+        uint256 currentPrice = IPriceFetcher(_newPrimary).fetchPrice();
         require(currentPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
 
         emit PrimaryOracleUpdated(primaryOracle, _newPrimary);
@@ -68,7 +69,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     /// @notice Allows the owner to replace the secondary oracle
     ///     The oracle must work (return non-zero value)
     function setSecondaryOracle(address _newSecondary) external requiresAuth {
-        uint256 currentPrice = IOracleCaller(_newSecondary).getLatestPrice();
+        uint256 currentPrice = IPriceFetcher(_newSecondary).fetchPrice();
         require(currentPrice != INVALID_PRICE, "BraindeadFeed: Secondary Oracle Must Work");
 
         emit SecondaryOracleUpdated(secondaryOracle, _newSecondary);
@@ -97,7 +98,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
         // Tinfoil Call
         uint256 primaryResponse = tinfoilCall(
             primaryOracle,
-            abi.encodeCall(IOracleCaller.getLatestPrice, ())
+            abi.encodeCall(IPriceFetcher.fetchPrice, ())
         );
 
         if (primaryResponse != INVALID_PRICE) {
@@ -112,7 +113,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
         // Let's try secondary
         uint256 secondaryResponse = tinfoilCall(
             secondaryOracle,
-            abi.encodeCall(IOracleCaller.getLatestPrice, ())
+            abi.encodeCall(IPriceFetcher.fetchPrice, ())
         );
 
         if (secondaryResponse != INVALID_PRICE) {
@@ -143,7 +144,8 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     ///     This would avoid against receiving gibberish data, most often arrays
     function tinfoilCall(address _target, bytes memory _calldata) public returns (uint256) {
         // Cap gas at 2 MLN, we don't care about 1/64 cause we expect oracles to consume way less than 200k gas
-        uint256 cappedGas = gasleft() > 2_000_000 ? 2_000_000 : gasleft();
+        uint256 gasLeft = gasleft();
+        uint256 cappedGas = gasLeft > GAS_LIMIT ? GAS_LIMIT : gasLeft;
 
         // NOTE: We could also just check for contract existence here to avoid more issues later
 

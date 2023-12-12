@@ -5,11 +5,15 @@ import "forge-std/Test.sol";
 import "../contracts/BraindeadFeed.sol";
 import "../contracts/Interfaces/IOracleCaller.sol";
 
-contract MockCLCaller is IOracleCaller {
+contract MockCLCaller is IPriceFetcher {
     uint256 public getLatestPrice;
 
     function setPrice(uint256 newPrice) external {
         getLatestPrice = newPrice;
+    }
+
+    function fetchPrice() external returns (uint256) {
+        return getLatestPrice;
     }
 }
 
