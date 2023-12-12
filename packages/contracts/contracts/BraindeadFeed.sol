@@ -38,7 +38,9 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     // --- Dependency setters ---
 
     /// @notice Sets the addresses of the contracts and initializes the system
-    constructor(address _primaryOracle, address _secondaryOracle) {
+    constructor(address _authorityAddress, address _primaryOracle, address _secondaryOracle) {
+        _initializeAuthority(_authorityAddress);
+
         uint256 firstPrice = IPriceFetcher(_primaryOracle).fetchPrice();
         require(firstPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
 

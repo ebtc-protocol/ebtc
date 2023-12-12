@@ -177,7 +177,7 @@ contract BraindeadFeedUnit is Test {
     function setUp() public {
         mockCl = new MockCLCaller();
         mockCl.setPrice(123);
-        feed = new BraindeadFeed(address(mockCl), address(0));
+        feed = new BraindeadFeed(msg.sender, address(mockCl), address(0));
     }
 
     function testTinfoilCalls(uint256 price) public {

@@ -235,7 +235,7 @@ contract eBTCBaseFixture is
 
             // Price Feed Mock
             creationCode = type(BraindeadFeed).creationCode;
-            args = abi.encode(address(priceFeedMock), address(0));
+            args = abi.encode(addr.authorityAddress, address(priceFeedMock), address(0));
 
             braindeadFeed = BraindeadFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
