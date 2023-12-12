@@ -4120,8 +4120,12 @@ contract('CdpManager', async accounts => {
     const redemptionAmount = toBN(dec(9, 18))
     const price = await priceFeed.getPrice()
     const ETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price)
-    let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemption(ETHDrawn, price);
+	
+    let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 1);
+	
+    let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemptionWithSystemDebt(ETHDrawn, price, _weightedMean);
     let _updatedRate = _updatedBaseRate.add(await cdpManager.redemptionFeeFloor());
+
     const gasUsed = await th.redeemCollateral(A, contracts, redemptionAmount, GAS_PRICE)
 
     /*

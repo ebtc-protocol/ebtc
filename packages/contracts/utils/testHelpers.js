@@ -311,6 +311,28 @@ class TestHelper {
     await provider.send("evm_mine");	  
     await contracts.activePool.update();
   }
+  
+  static async simulateObserveForTWAP(contracts, provider, diffTimeBtwBlocks){
+    await this.syncGlobalStateAndGracePeriod(contracts, provider);
+    let blockTimestampStart = (await provider.getBlock('latest')).timestamp;
+    console.log('twap blockTimestampStart=' + blockTimestampStart);
+    let _twapDebtData = await contracts.activePool.getData();
+    console.log('twap data=' + JSON.stringify(_twapDebtData));
+    let _valToCheck = await contracts.activePool.getRealValue();
+    console.log('twap valToCheck=' + _valToCheck);	
+    let _period = await contracts.activePool.PERIOD();
+    let _diffTime = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["lastUpdate"])
+    console.log('twap diffTime=' + _diffTime);	
+    let _acc = this.toBN(_twapDebtData["accumulator"]).add(this.toBN(_valToCheck).mul(_diffTime))
+    console.log('twap acc=' + _acc);	
+    let _diffTimeT0 = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["t0"])
+    console.log('twap diffTimeT0=' + _diffTimeT0);	
+    let _avg = _acc.sub(this.toBN(_twapDebtData["priceCumulative0"])).div(_diffTimeT0);
+    console.log('twap _avg=' + _avg);	
+    let _weightedMean = (this.toBN(_twapDebtData["avgValue"]).mul(_diffTimeT0).add(_avg.mul(_period.sub(_diffTimeT0)))).div(_period);
+    console.log('twap _weightedMean=' + _weightedMean);	
+    return _weightedMean;
+  }
 
   // --- Gas compensation calculation functions ---
 

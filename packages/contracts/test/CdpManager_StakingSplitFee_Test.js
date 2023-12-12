@@ -303,19 +303,20 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       await ethers.provider.send("evm_mine");
 	  
       let _redeemDebt = _partialDebtRepaid.mul(toBN("9"));
+      const {firstRedemptionHint, partialRedemptionHintNICR, truncatedEBTCamount, partialRedemptionNewColl} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);
       let _expectedColl = toBN(_redeemDebt.toString()).mul(mv._1e18BN).div(toBN(_newPrice));
       let _expectedRedeemedColl = _expectedColl.mul(mv._1e18BN).div(_newIndex);
-      let _expectedRedeemFloor = await cdpManager.redemptionFeeFloor();
-      let _expectedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemption(_expectedRedeemedColl, _newPrice);
-      let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFloor.add(_expectedBaseRate)).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
-      const {firstRedemptionHint, partialRedemptionHintNICR, truncatedEBTCamount, partialRedemptionNewColl} = await hintHelpers.getRedemptionHints(_redeemDebt, _newPrice, 0);
+      let _expectedRedeemFloor = await cdpManager.redemptionFeeFloor();	  
       let _collBeforeRedeemer = await collToken.balanceOf(owner); 
       let _newFeeIndex = await cdpManager.calcFeeUponStakingReward(_newIndex, _oi);
       let _splitFeeAccumulated = await cdpManager.getAccumulatedFeeSplitApplied(_aliceCdpId, _newFeeIndex[1].add(await cdpManager.systemStEthFeePerUnitIndex()));
-      await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});	  
+      let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 1);
+      let _expectedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemptionWithSystemDebt(_expectedRedeemedColl, _newPrice, _weightedMean);
+      await cdpManager.redeemCollateral(_redeemDebt, firstRedemptionHint, _aliceCdpId, _aliceCdpId, partialRedemptionHintNICR, 0, th._100pct, {from: owner});
       let _collAfterRedeemer = await collToken.balanceOf(owner);	
       let _aliceCollAfterRedeem = await cdpManager.getCdpCollShares(_aliceCdpId);  
       assert.isTrue(_aliceCollAfterRedeem.eq(partialRedemptionNewColl));
+      let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFloor.add(_expectedBaseRate)).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
       th.assertIsApproximatelyEqual(_collAfterRedeemer.sub(_collBeforeRedeemer), _expectedCollAfterFee, _errorTolerance);
       th.assertIsApproximatelyEqual(_splitFeeAccumulated[1].sub(partialRedemptionNewColl), _expectedRedeemedColl, _errorTolerance);
       _aliceColl = _aliceCollAfterRedeem;
