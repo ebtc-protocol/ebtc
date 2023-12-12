@@ -12,6 +12,7 @@ import "../../../Dependencies/AuthNoOwner.sol";
 
 import "../PropertiesDescriptions.sol";
 
+import "@crytic/properties/contracts/util/Hevm.sol";
 
 contract MockAlwaysTrueAuthority {
     function canCall(address user, address target, bytes4 functionSig) external view returns (bool){
@@ -58,23 +59,27 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         collEthCLFeed = new MockAggregator();
         ethBtcCLFeed = new MockAggregator();
 
+        hevm.roll(123123131);
+
         collEthCLFeed.setLatestRoundId(2);
         collEthCLFeed.setPrevRoundId(1);
         collEthCLFeed.setUpdateTime(block.timestamp);
-        collEthCLFeed.setPrevUpdateTime(block.timestamp);
+        collEthCLFeed.setPrevUpdateTime(block.timestamp - 1);
         collEthCLFeed.setPrice(1 ether - 3);
         collEthCLFeed.setPrevPrice(1 ether - 1337);
+
+        
 
         ethBtcCLFeed.setLatestRoundId(2);
         ethBtcCLFeed.setPrevRoundId(1);
         ethBtcCLFeed.setUpdateTime(block.timestamp);
-        ethBtcCLFeed.setPrevUpdateTime(block.timestamp);
+        ethBtcCLFeed.setPrevUpdateTime(block.timestamp - 1);
         ethBtcCLFeed.setPrice(3 ether - 2);
         ethBtcCLFeed.setPrevPrice(3 ether - 42);
 
         // do we have a fallback caller?
         fallbackCaller = new MockFallbackCaller();
-        fallbackCaller.setFallbackResponse(1e18, block.timestamp, true);
+       
 
         priceFeed = new PriceFeed(
             address(fallbackCaller),
@@ -82,6 +87,8 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
             address(collEthCLFeed),
             address(ethBtcCLFeed)
         );
+
+         fallbackCaller.setFallbackResponse(priceFeed.lastGoodPrice() - 10, block.timestamp, true);
 
         statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
             .status();
@@ -111,8 +118,8 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         fallbackCaller.setFallbackResponse(answer, timestampRetrieved, success);
     }
 
-    function setFallbackTimeoutRevert() public {
-        fallbackCaller.setFallbackTimeoutRevert();
+    function setGetFallbackResponseRevert() public {
+        fallbackCaller.setGetFallbackResponseRevert();
     }
 
     function setLatestRevert(bool flag) public log {
@@ -120,7 +127,7 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         aggregator.setLatestRevert();
     }
 
-    function setPrevRevert(bool flag, uint256 seed) public log {
+    function setPrevRevert(bool flag) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setPrevRevert();
     }
@@ -258,7 +265,14 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         IPriceFeed.Status statusBefore = priceFeed.status();
         uint256 fallbackResponse;
 
-        (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();
+        if (address(priceFeed.fallbackCaller()) != address(0)) {
+            try fallbackCaller.getFallbackResponse() returns (uint256 res, uint256 , bool) {
+                fallbackResponse = res;
+            } catch {
+
+            }
+        }
+        
         try priceFeed.fetchPrice() returns (uint256 price) {
             IPriceFeed.Status statusAfter = priceFeed.status();
             assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);

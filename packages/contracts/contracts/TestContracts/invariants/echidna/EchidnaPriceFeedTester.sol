@@ -27,7 +27,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
     MockAlwaysTrueAuthority internal authority;
     MockFallbackCaller internal fallbackCaller;
 
-    uint256 internal constant MAX_PRICE_CHANGE = 5e18;
+    uint256 internal constant RECON_MAX_PRICE_CHANGE = 5e18;
     uint256 internal constant MAX_ROUND_ID_CHANGE = 5;
     uint256 internal constant MAX_UPDATE_TIME_CHANGE = 2 days;
     uint256 internal constant MAX_STATUS_HISTORY_OPERATIONS = 32;
