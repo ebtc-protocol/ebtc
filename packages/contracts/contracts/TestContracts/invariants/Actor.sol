@@ -15,25 +15,31 @@ contract Actor is IERC3156FlashBorrower {
         }
     }
 
-    function proxy(address _target, bytes memory _calldata) public returns (bool success, bytes memory returnData) {
+    function proxy(
+        address _target,
+        bytes memory _calldata
+    ) public returns (bool success, bytes memory returnData) {
         (success, returnData) = address(_target).call(_calldata);
     }
 
-    function proxy(address _target, bytes memory _calldata, uint256 value)
-        public
-        returns (bool success, bytes memory returnData)
-    {
+    function proxy(
+        address _target,
+        bytes memory _calldata,
+        uint256 value
+    ) public returns (bool success, bytes memory returnData) {
         (success, returnData) = address(_target).call{value: value}(_calldata);
     }
 
     receive() external payable {}
 
     // callback for flashloan
-    function onFlashLoan(address, address token, uint256 amount, uint256 fee, bytes calldata data)
-        external
-        override
-        returns (bytes32)
-    {
+    function onFlashLoan(
+        address,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external override returns (bytes32) {
         bool isValidCaller = false;
         for (uint256 i = 0; i < tokens.length; i++) {
             if (token == tokens[i]) {
@@ -44,9 +50,12 @@ contract Actor is IERC3156FlashBorrower {
         require(isValidCaller, "Invalid caller");
 
         if (data.length != 0) {
-            (address[] memory _targets, bytes[] memory _calldatas) = abi.decode(data, (address[], bytes[]));
+            (address[] memory _targets, bytes[] memory _calldatas) = abi.decode(
+                data,
+                (address[], bytes[])
+            );
             for (uint256 i = 0; i < _targets.length; ++i) {
-                (bool success,) = address(_targets[i]).call(_calldatas[i]);
+                (bool success, ) = address(_targets[i]).call(_calldatas[i]);
                 require(success);
             }
         }

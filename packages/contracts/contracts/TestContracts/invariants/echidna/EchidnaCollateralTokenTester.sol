@@ -1,8 +1,7 @@
 pragma solidity ^0.8.0;
 
 import {ITokenMock} from "@crytic/properties/contracts/ERC20/external/util/ITokenMock.sol";
-import {CryticERC20ExternalBasicProperties} from
-    "@crytic/properties/contracts/ERC20/external/properties/ERC20ExternalBasicProperties.sol";
+import {CryticERC20ExternalBasicProperties} from "@crytic/properties/contracts/ERC20/external/properties/ERC20ExternalBasicProperties.sol";
 import {PropertiesConstants} from "@crytic/properties/contracts/util/PropertiesConstants.sol";
 import "../../CollateralTokenTester.sol";
 

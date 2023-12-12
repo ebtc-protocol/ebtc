@@ -69,7 +69,10 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function _cdpIdsAndICRsDiff(Cdp[] memory superset, Cdp[] memory subset) internal returns (Cdp[] memory ans) {
+    function _cdpIdsAndICRsDiff(
+        Cdp[] memory superset,
+        Cdp[] memory subset
+    ) internal returns (Cdp[] memory ans) {
         ans = new Cdp[](superset.length - subset.length);
         uint256 index = 0;
         for (uint256 i = 0; i < superset.length; i++) {
@@ -111,26 +114,52 @@ abstract contract TargetFunctions is Properties {
         bytes[] memory _allCalldatas = new bytes[](6);
 
         _allTargets[0] = address(borrowerOperations);
-        _allCalldatas[0] =
-            abi.encodeWithSelector(BorrowerOperations.openCdp.selector, _EBTCAmount, bytes32(0), bytes32(0), _col);
+        _allCalldatas[0] = abi.encodeWithSelector(
+            BorrowerOperations.openCdp.selector,
+            _EBTCAmount,
+            bytes32(0),
+            bytes32(0),
+            _col
+        );
 
         _allTargets[1] = address(borrowerOperations);
         _allCalldatas[1] = abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId);
 
         _allTargets[2] = address(borrowerOperations);
-        _allCalldatas[2] = abi.encodeWithSelector(BorrowerOperations.addColl.selector, _cdpId, _cdpId, _cdpId, _col);
+        _allCalldatas[2] = abi.encodeWithSelector(
+            BorrowerOperations.addColl.selector,
+            _cdpId,
+            _cdpId,
+            _cdpId,
+            _col
+        );
 
         _allTargets[3] = address(borrowerOperations);
-        _allCalldatas[3] =
-            abi.encodeWithSelector(BorrowerOperations.withdrawColl.selector, _cdpId, _col, _cdpId, _cdpId);
+        _allCalldatas[3] = abi.encodeWithSelector(
+            BorrowerOperations.withdrawColl.selector,
+            _cdpId,
+            _col,
+            _cdpId,
+            _cdpId
+        );
 
         _allTargets[4] = address(borrowerOperations);
-        _allCalldatas[4] =
-            abi.encodeWithSelector(BorrowerOperations.withdrawDebt.selector, _cdpId, _EBTCAmount, _cdpId, _cdpId);
+        _allCalldatas[4] = abi.encodeWithSelector(
+            BorrowerOperations.withdrawDebt.selector,
+            _cdpId,
+            _EBTCAmount,
+            _cdpId,
+            _cdpId
+        );
 
         _allTargets[5] = address(borrowerOperations);
-        _allCalldatas[5] =
-            abi.encodeWithSelector(BorrowerOperations.repayDebt.selector, _cdpId, _EBTCAmount, _cdpId, _cdpId);
+        _allCalldatas[5] = abi.encodeWithSelector(
+            BorrowerOperations.repayDebt.selector,
+            _cdpId,
+            _EBTCAmount,
+            _cdpId,
+            _cdpId
+        );
 
         for (uint256 _j = 0; _j < _actions; ++_j) {
             _i = uint256(keccak256(abi.encodePacked(value, _j, _i))) % _allTargets.length;
@@ -148,7 +177,8 @@ abstract contract TargetFunctions is Properties {
         address currentBorrower = sortedCdps.getOwnerAddress(_cId);
         // Find the first cdp with ICR >= MCR
         while (
-            currentBorrower != address(0) && cdpManager.getCachedICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+            currentBorrower != address(0) &&
+            cdpManager.getCachedICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -156,13 +186,15 @@ abstract contract TargetFunctions is Properties {
         return _cId;
     }
 
-    function _atLeastOneCdpIsLiquidatable(Cdp[] memory cdps, bool isRecoveryModeBefore)
-        internal
-        view
-        returns (bool atLeastOneCdpIsLiquidatable)
-    {
+    function _atLeastOneCdpIsLiquidatable(
+        Cdp[] memory cdps,
+        bool isRecoveryModeBefore
+    ) internal view returns (bool atLeastOneCdpIsLiquidatable) {
         for (uint256 i = 0; i < cdps.length; ++i) {
-            if (cdps[i].icr < cdpManager.MCR() || (cdps[i].icr < cdpManager.CCR() && isRecoveryModeBefore)) {
+            if (
+                cdps[i].icr < cdpManager.MCR() ||
+                (cdps[i].icr < cdpManager.CCR() && isRecoveryModeBefore)
+            ) {
                 atLeastOneCdpIsLiquidatable = true;
                 break;
             }
@@ -181,13 +213,15 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt,) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _before(_cdpId);
 
-        (success, returnData) =
-            actor.proxy(address(cdpManager), abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId));
+        (success, returnData) = actor.proxy(
+            address(cdpManager),
+            abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
+        );
 
         _after(_cdpId);
 
@@ -202,17 +236,28 @@ abstract contract TargetFunctions is Properties {
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             t(
-                vars.newIcrBefore < cdpManager.MCR()
-                    || (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                vars.newIcrBefore < cdpManager.MCR() ||
+                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -221,7 +266,8 @@ abstract contract TargetFunctions is Properties {
 
             gte(
                 vars.actorCollAfter,
-                vars.actorCollBefore + collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
+                vars.actorCollBefore +
+                    collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
                 L_09
             );
         } else if (vars.sortedCdpsSizeBefore > _i) {
@@ -237,7 +283,7 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getRandomCdp(_i);
 
-        (uint256 entireDebt,) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         require(entireDebt > 0, "CDP must have debt");
 
         _partialAmount = between(_partialAmount, 0, entireDebt);
@@ -246,7 +292,13 @@ abstract contract TargetFunctions is Properties {
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
-            abi.encodeWithSelector(CdpManager.partiallyLiquidate.selector, _cdpId, _partialAmount, _cdpId, _cdpId)
+            abi.encodeWithSelector(
+                CdpManager.partiallyLiquidate.selector,
+                _cdpId,
+                _partialAmount,
+                _cdpId,
+                _cdpId
+            )
         );
 
         _after(_cdpId);
@@ -262,12 +314,16 @@ abstract contract TargetFunctions is Properties {
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             t(
-                vars.newIcrBefore < cdpManager.MCR()
-                    || (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                vars.newIcrBefore < cdpManager.MCR() ||
+                    (vars.newIcrBefore < cdpManager.CCR() && vars.isRecoveryModeBefore),
                 L_01
             );
 
-            eq(vars.sortedCdpsSizeAfter, vars.sortedCdpsSizeBefore, "L-17 : Partial Liquidations do not close Cdps");
+            eq(
+                vars.sortedCdpsSizeAfter,
+                vars.sortedCdpsSizeBefore,
+                "L-17 : Partial Liquidations do not close Cdps"
+            );
 
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
             if (vars.sortedCdpsSizeAfter == vars.sortedCdpsSizeBefore) {
@@ -279,13 +335,24 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -308,10 +375,15 @@ abstract contract TargetFunctions is Properties {
 
         _before(bytes32(0));
 
-        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(_n, vars.priceBefore);
+        bytes32[] memory batch = liquidationSequencer.sequenceLiqToBatchLiqWithPrice(
+            _n,
+            vars.priceBefore
+        );
 
-        (success, returnData) =
-            actor.proxy(address(cdpManager), abi.encodeWithSelector(CdpManager.batchLiquidateCdps.selector, batch));
+        (success, returnData) = actor.proxy(
+            address(cdpManager),
+            abi.encodeWithSelector(CdpManager.batchLiquidateCdps.selector, batch)
+        );
 
         _after(bytes32(0));
 
@@ -319,24 +391,39 @@ abstract contract TargetFunctions is Properties {
             Cdp[] memory cdpsAfter = _getCdpIdsAndICRs();
 
             Cdp[] memory cdpsLiquidated = _cdpIdsAndICRsDiff(cdpsBefore, cdpsAfter);
-            gte(cdpsLiquidated.length, 1, "liquidateCdps must liquidate at least 1 CDP when successful");
+            gte(
+                cdpsLiquidated.length,
+                1,
+                "liquidateCdps must liquidate at least 1 CDP when successful"
+            );
             lte(cdpsLiquidated.length, _n, "liquidateCdps must not liquidate more than n CDPs");
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
                 t(
-                    cdpsLiquidated[i].icr < cdpManager.MCR()
-                        || (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
+                    cdpsLiquidated[i].icr < cdpManager.MCR() ||
+                        (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
                     L_01
                 );
             }
 
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -361,7 +448,11 @@ abstract contract TargetFunctions is Properties {
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
         _maxIterations = between(_maxIterations, 0, 1);
 
-        _maxFeePercentage = between(_maxFeePercentage, cdpManager.redemptionFeeFloor(), cdpManager.DECIMAL_PRECISION());
+        _maxFeePercentage = between(
+            _maxFeePercentage,
+            cdpManager.redemptionFeeFloor(),
+            cdpManager.DECIMAL_PRECISION()
+        );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
@@ -403,12 +494,24 @@ abstract contract TargetFunctions is Properties {
         // Verify Fee Recipient Received the Fee
         gte(vars.feeRecipientCollSharesAfter, vars.feeRecipientCollSharesBefore, F_02);
 
-        if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            eq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
         }
 
         if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
         }
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -449,12 +552,24 @@ abstract contract TargetFunctions is Properties {
         uint256 _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
         eq(_balAfter - _balBefore, _fee, F_03);
 
-        if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            eq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
         }
 
         if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
         }
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -497,12 +612,24 @@ abstract contract TargetFunctions is Properties {
         uint256 _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
         eq(_balAfter - _balBefore, _fee, F_03);
 
-        if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            eq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
         }
 
         if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
         }
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -518,14 +645,20 @@ abstract contract TargetFunctions is Properties {
         uint256 price = priceFeedMock.getPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
-        uint256 minCollAmount =
-            max(cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(), requiredCollAmount);
+        uint256 minCollAmount = max(
+            cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(),
+            requiredCollAmount
+        );
         uint256 maxCollAmount = min(2 * minCollAmount, INITIAL_COLL_BALANCE / 10);
         _col = between(requiredCollAmount, minCollAmount, maxCollAmount);
 
-        (success,) = actor.proxy(
+        (success, ) = actor.proxy(
             address(collateral),
-            abi.encodeWithSelector(CollateralTokenTester.approve.selector, address(borrowerOperations), _col)
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                _col
+            )
         );
         t(success, "Approve never fails");
 
@@ -533,7 +666,13 @@ abstract contract TargetFunctions is Properties {
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
-            abi.encodeWithSelector(BorrowerOperations.openCdp.selector, _EBTCAmount, bytes32(0), bytes32(0), _col)
+            abi.encodeWithSelector(
+                BorrowerOperations.openCdp.selector,
+                _EBTCAmount,
+                bytes32(0),
+                bytes32(0),
+                _col
+            )
         );
 
         if (success) {
@@ -553,14 +692,29 @@ abstract contract TargetFunctions is Properties {
                 borrowerOperations.MIN_NET_STETH_BALANCE(),
                 GENERAL_10
             );
-            eq(vars.sortedCdpsSizeBefore + 1, vars.sortedCdpsSizeAfter, "CDPs count must have increased");
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            eq(
+                vars.sortedCdpsSizeBefore + 1,
+                vars.sortedCdpsSizeAfter,
+                "CDPs count must have increased"
+            );
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -585,18 +739,25 @@ abstract contract TargetFunctions is Properties {
         _coll = between(_coll, 0, INITIAL_COLL_BALANCE / 10);
 
         if (collateral.balanceOf(address(actor)) < _coll) {
-            (success,) = actor.proxy(
+            (success, ) = actor.proxy(
                 address(collateral),
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
                 (_coll - collateral.balanceOf(address(actor)))
             );
             require(success);
-            require(collateral.balanceOf(address(actor)) > _coll, "Actor has high enough balance to add");
+            require(
+                collateral.balanceOf(address(actor)) > _coll,
+                "Actor has high enough balance to add"
+            );
         }
 
-        (success,) = actor.proxy(
+        (success, ) = actor.proxy(
             address(collateral),
-            abi.encodeWithSelector(CollateralTokenTester.approve.selector, address(borrowerOperations), _coll)
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                _coll
+            )
         );
         t(success, "Approve never fails");
 
@@ -604,13 +765,23 @@ abstract contract TargetFunctions is Properties {
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
-            abi.encodeWithSelector(BorrowerOperations.addColl.selector, _cdpId, _cdpId, _cdpId, _coll)
+            abi.encodeWithSelector(
+                BorrowerOperations.addColl.selector,
+                _cdpId,
+                _cdpId,
+                _cdpId,
+                _coll
+            )
         );
 
         _after(_cdpId);
 
         if (success) {
-            emit L3(vars.isRecoveryModeBefore ? 1 : 0, vars.hasGracePeriodPassedBefore ? 1 : 0, vars.icrAfter);
+            emit L3(
+                vars.isRecoveryModeBefore ? 1 : 0,
+                vars.hasGracePeriodPassedBefore ? 1 : 0,
+                vars.icrAfter
+            );
             emit L3(
                 block.timestamp,
                 cdpManager.lastGracePeriodStartTimestamp(),
@@ -630,13 +801,24 @@ abstract contract TargetFunctions is Properties {
 
             t(invariant_GENERAL_01(vars), GENERAL_01);
 
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -659,13 +841,23 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         // Can only withdraw up to CDP collateral amount, otherwise will revert with assert
-        _amount = between(_amount, 0, collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)));
+        _amount = between(
+            _amount,
+            0,
+            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
+        );
 
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
-            abi.encodeWithSelector(BorrowerOperations.withdrawColl.selector, _cdpId, _amount, _cdpId, _cdpId)
+            abi.encodeWithSelector(
+                BorrowerOperations.withdrawColl.selector,
+                _cdpId,
+                _amount,
+                _cdpId,
+                _cdpId
+            )
         );
 
         _after(_cdpId);
@@ -683,13 +875,24 @@ abstract contract TargetFunctions is Properties {
                 GENERAL_10
             );
 
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -719,7 +922,13 @@ abstract contract TargetFunctions is Properties {
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
-            abi.encodeWithSelector(BorrowerOperations.withdrawDebt.selector, _cdpId, _amount, _cdpId, _cdpId)
+            abi.encodeWithSelector(
+                BorrowerOperations.withdrawDebt.selector,
+                _cdpId,
+                _amount,
+                _cdpId,
+                _cdpId
+            )
         );
 
         require(success);
@@ -728,7 +937,11 @@ abstract contract TargetFunctions is Properties {
 
         eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
         gte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawDebt must not decrease debt");
-        eq(vars.actorEbtcAfter, vars.actorEbtcBefore + _amount, "withdrawDebt must increase debt by requested amount");
+        eq(
+            vars.actorEbtcAfter,
+            vars.actorEbtcBefore + _amount,
+            "withdrawDebt must increase debt by requested amount"
+        );
         // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
         gte(
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
@@ -736,12 +949,24 @@ abstract contract TargetFunctions is Properties {
             GENERAL_10
         );
 
-        if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            eq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
         }
 
         if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
         }
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -760,14 +985,20 @@ abstract contract TargetFunctions is Properties {
         bytes32 _cdpId = sortedCdps.cdpOfOwnerByIndex(address(actor), _i);
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
-        (uint256 entireDebt,) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _amount = between(_amount, 0, entireDebt);
 
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
-            abi.encodeWithSelector(BorrowerOperations.repayDebt.selector, _cdpId, _amount, _cdpId, _cdpId)
+            abi.encodeWithSelector(
+                BorrowerOperations.repayDebt.selector,
+                _cdpId,
+                _amount,
+                _cdpId,
+                _cdpId
+            )
         );
         require(success);
 
@@ -790,12 +1021,24 @@ abstract contract TargetFunctions is Properties {
             GENERAL_10
         );
 
-        if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            eq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
         }
 
         if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
         }
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -819,7 +1062,8 @@ abstract contract TargetFunctions is Properties {
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
-            address(borrowerOperations), abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
+            address(borrowerOperations),
+            abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, _cdpId)
         );
 
         _after(_cdpId);
@@ -827,29 +1071,53 @@ abstract contract TargetFunctions is Properties {
         if (success) {
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
             eq(vars.cdpDebtAfter, 0, BO_02);
-            eq(vars.sortedCdpsSizeBefore - 1, vars.sortedCdpsSizeAfter, "closeCdp reduces list size by 1");
-            gt(vars.actorCollAfter, vars.actorCollBefore, "closeCdp increases the collateral balance of the user");
+            eq(
+                vars.sortedCdpsSizeBefore - 1,
+                vars.sortedCdpsSizeAfter,
+                "closeCdp reduces list size by 1"
+            );
+            gt(
+                vars.actorCollAfter,
+                vars.actorCollBefore,
+                "closeCdp increases the collateral balance of the user"
+            );
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
             t(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
-            emit L4(vars.actorCollBefore, vars.cdpCollBefore, vars.liquidatorRewardSharesBefore, vars.actorCollAfter);
+            emit L4(
+                vars.actorCollBefore,
+                vars.cdpCollBefore,
+                vars.liquidatorRewardSharesBefore,
+                vars.actorCollAfter
+            );
             gt(
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/11
                 // Note: not checking for strict equality since split fee is difficult to calculate a-priori, so the CDP collateral value may not be sent back to the user in full
                 vars.actorCollAfter,
-                vars.actorCollBefore
-                // ActivePool transfer SHARES not ETH directly
-                + collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
+                vars.actorCollBefore +
+                    // ActivePool transfer SHARES not ETH directly
+                    collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
                 BO_05
             );
             t(invariant_GENERAL_01(vars), GENERAL_01);
 
-            if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter)
-            {
-                eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
             }
 
             if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+                t(
+                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                        vars.lastGracePeriodStartTimestampIsSetAfter,
+                    L_15
+                );
             }
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -860,7 +1128,12 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function adjustCdp(uint256 _i, uint256 _collWithdrawal, uint256 _EBTCChange, bool _isDebtIncrease) public setup {
+    function adjustCdp(
+        uint256 _i,
+        uint256 _collWithdrawal,
+        uint256 _EBTCChange,
+        bool _isDebtIncrease
+    ) public setup {
         bool success;
         bytes memory returnData;
 
@@ -906,12 +1179,24 @@ abstract contract TargetFunctions is Properties {
             GENERAL_10
         );
 
-        if (vars.lastGracePeriodStartTimestampIsSetBefore && vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            eq(vars.lastGracePeriodStartTimestampBefore, vars.lastGracePeriodStartTimestampAfter, L_14);
+        if (
+            vars.lastGracePeriodStartTimestampIsSetBefore &&
+            vars.isRecoveryModeBefore &&
+            vars.isRecoveryModeAfter
+        ) {
+            eq(
+                vars.lastGracePeriodStartTimestampBefore,
+                vars.lastGracePeriodStartTimestampAfter,
+                L_14
+            );
         }
 
         if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetBefore && vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+            t(
+                !vars.lastGracePeriodStartTimestampIsSetBefore &&
+                    vars.lastGracePeriodStartTimestampIsSetAfter,
+                L_15
+            );
         }
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
@@ -980,11 +1265,19 @@ abstract contract TargetFunctions is Properties {
             hevm.prank(defaultGovernance);
             cdpManager.setStakingRewardSplit(value);
         } else if (parameter == 3) {
-            value = between(value, cdpManager.MIN_REDEMPTION_FEE_FLOOR(), cdpManager.DECIMAL_PRECISION());
+            value = between(
+                value,
+                cdpManager.MIN_REDEMPTION_FEE_FLOOR(),
+                cdpManager.DECIMAL_PRECISION()
+            );
             hevm.prank(defaultGovernance);
             cdpManager.setRedemptionFeeFloor(value);
         } else if (parameter == 4) {
-            value = between(value, cdpManager.MIN_MINUTE_DECAY_FACTOR(), cdpManager.MAX_MINUTE_DECAY_FACTOR());
+            value = between(
+                value,
+                cdpManager.MIN_MINUTE_DECAY_FACTOR(),
+                cdpManager.MAX_MINUTE_DECAY_FACTOR()
+            );
             hevm.prank(defaultGovernance);
             cdpManager.setMinuteDecayFactor(value);
         } else if (parameter == 5) {

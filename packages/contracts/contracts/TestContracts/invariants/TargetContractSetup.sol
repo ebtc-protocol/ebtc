@@ -57,7 +57,9 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             creationCode = type(Governor).creationCode;
             args = abi.encode(address(this));
 
-            authority = Governor(ebtcDeployer.deploy(ebtcDeployer.AUTHORITY(), abi.encodePacked(creationCode, args)));
+            authority = Governor(
+                ebtcDeployer.deploy(ebtcDeployer.AUTHORITY(), abi.encodePacked(creationCode, args))
+            );
 
             // Liquidation Library
             creationCode = type(LiquidationLibrary).creationCode;
@@ -72,7 +74,10 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
 
             liqudationLibrary = LiquidationLibrary(
-                ebtcDeployer.deploy(ebtcDeployer.LIQUIDATION_LIBRARY(), abi.encodePacked(creationCode, args))
+                ebtcDeployer.deploy(
+                    ebtcDeployer.LIQUIDATION_LIBRARY(),
+                    abi.encodePacked(creationCode, args)
+                )
             );
 
             // CDP Manager
@@ -90,8 +95,9 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 address(collateral)
             );
 
-            cdpManager =
-                CdpManager(ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args)));
+            cdpManager = CdpManager(
+                ebtcDeployer.deploy(ebtcDeployer.CDP_MANAGER(), abi.encodePacked(creationCode, args))
+            );
 
             // Borrower Operations
             creationCode = type(BorrowerOperations).creationCode;
@@ -107,22 +113,31 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
 
             borrowerOperations = BorrowerOperations(
-                ebtcDeployer.deploy(ebtcDeployer.BORROWER_OPERATIONS(), abi.encodePacked(creationCode, args))
+                ebtcDeployer.deploy(
+                    ebtcDeployer.BORROWER_OPERATIONS(),
+                    abi.encodePacked(creationCode, args)
+                )
             );
 
             // Price Feed Mock
             creationCode = type(PriceFeedTestnet).creationCode;
             args = abi.encode(addr.authorityAddress);
 
-            priceFeedMock =
-                PriceFeedTestnet(ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args)));
+            priceFeedMock = PriceFeedTestnet(
+                ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
+            );
 
             // Sorted CDPS
             creationCode = type(SortedCdps).creationCode;
-            args = abi.encode(type(uint256).max, addr.cdpManagerAddress, addr.borrowerOperationsAddress);
+            args = abi.encode(
+                type(uint256).max,
+                addr.cdpManagerAddress,
+                addr.borrowerOperationsAddress
+            );
 
-            sortedCdps =
-                SortedCdps(ebtcDeployer.deploy(ebtcDeployer.SORTED_CDPS(), abi.encodePacked(creationCode, args)));
+            sortedCdps = SortedCdps(
+                ebtcDeployer.deploy(ebtcDeployer.SORTED_CDPS(), abi.encodePacked(creationCode, args))
+            );
 
             // Active Pool
             creationCode = type(ActivePool).creationCode;
@@ -134,17 +149,24 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 addr.feeRecipientAddress
             );
 
-            activePool =
-                ActivePool(ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args)));
+            activePool = ActivePool(
+                ebtcDeployer.deploy(ebtcDeployer.ACTIVE_POOL(), abi.encodePacked(creationCode, args))
+            );
 
             // Coll Surplus Pool
             creationCode = type(CollSurplusPool).creationCode;
             args = abi.encode(
-                addr.borrowerOperationsAddress, addr.cdpManagerAddress, addr.activePoolAddress, address(collateral)
+                addr.borrowerOperationsAddress,
+                addr.cdpManagerAddress,
+                addr.activePoolAddress,
+                address(collateral)
             );
 
             collSurplusPool = CollSurplusPool(
-                ebtcDeployer.deploy(ebtcDeployer.COLL_SURPLUS_POOL(), abi.encodePacked(creationCode, args))
+                ebtcDeployer.deploy(
+                    ebtcDeployer.COLL_SURPLUS_POOL(),
+                    abi.encodePacked(creationCode, args)
+                )
             );
 
             // Hint Helpers
@@ -157,15 +179,24 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 addr.priceFeedAddress
             );
 
-            hintHelpers =
-                HintHelpers(ebtcDeployer.deploy(ebtcDeployer.HINT_HELPERS(), abi.encodePacked(creationCode, args)));
+            hintHelpers = HintHelpers(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.HINT_HELPERS(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
 
             // eBTC Token
             creationCode = type(EBTCTokenTester).creationCode;
-            args = abi.encode(addr.cdpManagerAddress, addr.borrowerOperationsAddress, addr.authorityAddress);
+            args = abi.encode(
+                addr.cdpManagerAddress,
+                addr.borrowerOperationsAddress,
+                addr.authorityAddress
+            );
 
-            eBTCToken =
-                EBTCTokenTester(ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args)));
+            eBTCToken = EBTCTokenTester(
+                ebtcDeployer.deploy(ebtcDeployer.EBTC_TOKEN(), abi.encodePacked(creationCode, args))
+            );
 
             // Fee Recipieint
             creationCode = type(FeeRecipient).creationCode;
@@ -177,8 +208,12 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 address(collateral)
             );
 
-            feeRecipient =
-                FeeRecipient(ebtcDeployer.deploy(ebtcDeployer.FEE_RECIPIENT(), abi.encodePacked(creationCode, args)));
+            feeRecipient = FeeRecipient(
+                ebtcDeployer.deploy(
+                    ebtcDeployer.FEE_RECIPIENT(),
+                    abi.encodePacked(creationCode, args)
+                )
+            );
 
             // Configure authority
             authority.setRoleName(0, "Admin");
@@ -192,23 +227,71 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
             authority.setRoleCapability(2, address(eBTCToken), BURN_SIG, true);
 
-            authority.setRoleCapability(3, address(cdpManager), cdpManager.setStakingRewardSplit.selector, true);
-            authority.setRoleCapability(3, address(cdpManager), cdpManager.setRedemptionFeeFloor.selector, true);
-            authority.setRoleCapability(3, address(cdpManager), cdpManager.setMinuteDecayFactor.selector, true);
-            authority.setRoleCapability(3, address(cdpManager), cdpManager.setBeta.selector, true);
-            authority.setRoleCapability(3, address(cdpManager), cdpManager.setGracePeriod.selector, true);
-            authority.setRoleCapability(3, address(cdpManager), cdpManager.setRedemptionsPaused.selector, true);
-
-            authority.setRoleCapability(4, address(priceFeedMock), priceFeedMock.setFallbackCaller.selector, true);
-
-            authority.setRoleCapability(5, address(borrowerOperations), borrowerOperations.setFeeBps.selector, true);
             authority.setRoleCapability(
-                5, address(borrowerOperations), borrowerOperations.setFlashLoansPaused.selector, true
+                3,
+                address(cdpManager),
+                cdpManager.setStakingRewardSplit.selector,
+                true
+            );
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setRedemptionFeeFloor.selector,
+                true
+            );
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setMinuteDecayFactor.selector,
+                true
+            );
+            authority.setRoleCapability(3, address(cdpManager), cdpManager.setBeta.selector, true);
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setGracePeriod.selector,
+                true
+            );
+            authority.setRoleCapability(
+                3,
+                address(cdpManager),
+                cdpManager.setRedemptionsPaused.selector,
+                true
+            );
+
+            authority.setRoleCapability(
+                4,
+                address(priceFeedMock),
+                priceFeedMock.setFallbackCaller.selector,
+                true
+            );
+
+            authority.setRoleCapability(
+                5,
+                address(borrowerOperations),
+                borrowerOperations.setFeeBps.selector,
+                true
+            );
+            authority.setRoleCapability(
+                5,
+                address(borrowerOperations),
+                borrowerOperations.setFlashLoansPaused.selector,
+                true
             );
 
             authority.setRoleCapability(5, address(activePool), activePool.setFeeBps.selector, true);
-            authority.setRoleCapability(5, address(activePool), activePool.setFlashLoansPaused.selector, true);
-            authority.setRoleCapability(5, address(activePool), activePool.claimFeeRecipientCollShares.selector, true);
+            authority.setRoleCapability(
+                5,
+                address(activePool),
+                activePool.setFlashLoansPaused.selector,
+                true
+            );
+            authority.setRoleCapability(
+                5,
+                address(activePool),
+                activePool.claimFeeRecipientCollShares.selector,
+                true
+            );
 
             authority.setUserRole(defaultGovernance, 0, true);
             authority.setUserRole(defaultGovernance, 1, true);
@@ -282,9 +365,9 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         Actor[] memory actorsArray = new Actor[](NUMBER_OF_ACTORS);
         for (uint256 i = 0; i < NUMBER_OF_ACTORS; i++) {
             actors[addresses[i]] = new Actor(tokens, callers);
-            (success,) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
+            (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
             assert(success);
-            (success,) = actors[addresses[i]].proxy(
+            (success, ) = actors[addresses[i]].proxy(
                 address(collateral),
                 abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
                 INITIAL_COLL_BALANCE
@@ -303,23 +386,37 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         uint256 price = priceFeedMock.getPrice();
         uint256 _EBTCAmount = (_col * price) / cdpManager.CCR();
 
-        (success,) = actor.proxy(
+        (success, ) = actor.proxy(
             address(collateral),
-            abi.encodeWithSelector(CollateralTokenTester.approve.selector, address(borrowerOperations), _col)
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                _col
+            )
         );
         assert(success);
-        (success,) = actor.proxy(
+        (success, ) = actor.proxy(
             address(borrowerOperations),
-            abi.encodeWithSelector(BorrowerOperations.openCdp.selector, _EBTCAmount, bytes32(0), bytes32(0), _col)
+            abi.encodeWithSelector(
+                BorrowerOperations.openCdp.selector,
+                _EBTCAmount,
+                bytes32(0),
+                bytes32(0),
+                _col
+            )
         );
         assert(success);
         address[] memory addresses = new address[](2);
         addresses[0] = USER1;
         addresses[1] = USER2;
         for (uint256 i = 0; i < addresses.length; i++) {
-            (success,) = actor.proxy(
+            (success, ) = actor.proxy(
                 address(eBTCToken),
-                abi.encodeWithSelector(eBTCToken.transfer.selector, actors[addresses[i]], _EBTCAmount / 3)
+                abi.encodeWithSelector(
+                    eBTCToken.transfer.selector,
+                    actors[addresses[i]],
+                    _EBTCAmount / 3
+                )
             );
             assert(success);
         }

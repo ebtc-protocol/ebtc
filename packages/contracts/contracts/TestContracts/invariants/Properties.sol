@@ -20,23 +20,32 @@ import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
 import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
 
 abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, PropertiesConstants {
-    function invariant_AP_01(ICollateralToken collateral, ActivePool activePool) internal view returns (bool) {
+    function invariant_AP_01(
+        ICollateralToken collateral,
+        ActivePool activePool
+    ) internal view returns (bool) {
         return (collateral.sharesOf(address(activePool)) >= activePool.getSystemCollShares());
     }
 
-    function invariant_AP_02(CdpManager cdpManager, ActivePool activePool) internal view returns (bool) {
+    function invariant_AP_02(
+        CdpManager cdpManager,
+        ActivePool activePool
+    ) internal view returns (bool) {
         return cdpManager.getActiveCdpsCount() > 0 ? activePool.getSystemCollShares() > 0 : true;
     }
 
-    function invariant_AP_03(EBTCToken eBTCToken, ActivePool activePool) internal view returns (bool) {
+    function invariant_AP_03(
+        EBTCToken eBTCToken,
+        ActivePool activePool
+    ) internal view returns (bool) {
         return (eBTCToken.totalSupply() == activePool.getSystemDebt());
     }
 
-    function invariant_AP_04(CdpManager cdpManager, ActivePool activePool, uint256 diff_tolerance)
-        internal
-        view
-        returns (bool)
-    {
+    function invariant_AP_04(
+        CdpManager cdpManager,
+        ActivePool activePool,
+        uint256 diff_tolerance
+    ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
@@ -48,11 +57,14 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return (_diff * 1e18 <= diff_tolerance * _activeColl);
     }
 
-    function invariant_AP_05(CdpManager cdpManager, uint256 diff_tolerance) internal view returns (bool) {
+    function invariant_AP_05(
+        CdpManager cdpManager,
+        uint256 diff_tolerance
+    ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 _sum;
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt,) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
             _sum += _debt;
         }
 
@@ -63,7 +75,10 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return oldCheck || !newCheck;
     }
 
-    function invariant_CDPM_01(CdpManager cdpManager, SortedCdps sortedCdps) internal view returns (bool) {
+    function invariant_CDPM_01(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps
+    ) internal view returns (bool) {
         return (cdpManager.getActiveCdpsCount() == sortedCdps.getSize());
     }
 
@@ -80,7 +95,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
         uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpManager.CdpIds(i))) {
+            if (
+                systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpManager.CdpIds(i))
+            ) {
                 return false;
             }
         }
@@ -91,16 +108,18 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
      * TODO: See EchidnaToFoundry._getValue
      */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
-        return vars.valueInSystemAfter >= vars.valueInSystemBefore
-            || isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
+        return
+            vars.valueInSystemAfter >= vars.valueInSystemBefore ||
+            isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
     }
 
-    function invariant_CSP_01(ICollateralToken collateral, CollSurplusPool collSurplusPool)
-        internal
-        view
-        returns (bool)
-    {
-        return collateral.sharesOf(address(collSurplusPool)) >= collSurplusPool.getTotalSurplusCollShares();
+    function invariant_CSP_01(
+        ICollateralToken collateral,
+        CollSurplusPool collSurplusPool
+    ) internal view returns (bool) {
+        return
+            collateral.sharesOf(address(collSurplusPool)) >=
+            collSurplusPool.getTotalSurplusCollShares();
     }
 
     function invariant_CSP_02(CollSurplusPool collSurplusPool) internal view returns (bool) {
@@ -135,27 +154,31 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    function invariant_SL_02(CdpManager cdpManager, SortedCdps sortedCdps, PriceFeedTestnet priceFeedMock)
-        internal
-        view
-        returns (bool)
-    {
+    function invariant_SL_02(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedMock
+    ) internal view returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
         uint256 _price = priceFeedMock.getPrice();
         uint256 _firstICR = cdpManager.getCachedICR(_first, _price);
         uint256 _TCR = cdpManager.getCachedTCR(_price);
 
-        if (_first != sortedCdps.dummyId() && _firstICR < _TCR && diffPercent(_firstICR, _TCR) > 0.01e18) {
+        if (
+            _first != sortedCdps.dummyId() &&
+            _firstICR < _TCR &&
+            diffPercent(_firstICR, _TCR) > 0.01e18
+        ) {
             return false;
         }
         return true;
     }
 
-    function invariant_SL_03(CdpManager cdpManager, PriceFeedTestnet priceFeedMock, SortedCdps sortedCdps)
-        internal
-        view
-        returns (bool)
-    {
+    function invariant_SL_03(
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedMock,
+        SortedCdps sortedCdps
+    ) internal view returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 _price = priceFeedMock.getPrice();
@@ -163,7 +186,10 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         while (currentCdp != bytes32(0)) {
             // Status
-            if (ICdpManagerData.Status(cdpManager.getCdpStatus(currentCdp)) != ICdpManagerData.Status.active) {
+            if (
+                ICdpManagerData.Status(cdpManager.getCdpStatus(currentCdp)) !=
+                ICdpManagerData.Status.active
+            ) {
                 return false;
             }
 
@@ -204,16 +230,19 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return !vars.isRecoveryModeBefore ? !vars.isRecoveryModeAfter : true;
     }
 
-    function invariant_GENERAL_02(CdpManager cdpManager, PriceFeedTestnet priceFeedMock, EBTCToken eBTCToken)
-        internal
-        view
-        returns (bool)
-    {
+    function invariant_GENERAL_02(
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedMock,
+        EBTCToken eBTCToken
+    ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
-        return cdpManager.getCachedTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
-            ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >= eBTCToken.totalSupply()
-            : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 < eBTCToken.totalSupply();
+        return
+            cdpManager.getCachedTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
+                ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
+                    eBTCToken.totalSupply()
+                : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <
+                    eBTCToken.totalSupply();
     }
 
     function invariant_GENERAL_03(
@@ -222,16 +251,18 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         EBTCToken eBTCToken,
         ICollateralToken collateral
     ) internal view returns (bool) {
-        return collateral.balanceOf(address(cdpManager)) == 0 && eBTCToken.balanceOf(address(cdpManager)) == 0
-            && collateral.balanceOf(address(borrowerOperations)) == 0
-            && eBTCToken.balanceOf(address(borrowerOperations)) == 0;
+        return
+            collateral.balanceOf(address(cdpManager)) == 0 &&
+            eBTCToken.balanceOf(address(cdpManager)) == 0 &&
+            collateral.balanceOf(address(borrowerOperations)) == 0 &&
+            eBTCToken.balanceOf(address(borrowerOperations)) == 0;
     }
 
-    function invariant_GENERAL_05(ActivePool activePool, CdpManager cdpManager, ICollateralToken collateral)
-        internal
-        view
-        returns (bool)
-    {
+    function invariant_GENERAL_05(
+        ActivePool activePool,
+        CdpManager cdpManager,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
         uint256 totalStipendShares;
 
         // Iterate over CDPs add the stipendShares
@@ -242,29 +273,34 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-        return collateral.sharesOf(address(activePool))
-            >= (activePool.getSystemCollShares() + activePool.getFeeRecipientClaimableCollShares() + totalStipendShares);
+        return
+            collateral.sharesOf(address(activePool)) >=
+            (activePool.getSystemCollShares() +
+                activePool.getFeeRecipientClaimableCollShares() +
+                totalStipendShares);
     }
 
-    function invariant_GENERAL_05_B(CollSurplusPool surplusPool, ICollateralToken collateral)
-        internal
-        view
-        returns (bool)
-    {
-        return collateral.sharesOf(address(surplusPool)) >= (surplusPool.getTotalSurplusCollShares());
+    function invariant_GENERAL_05_B(
+        CollSurplusPool surplusPool,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        return
+            collateral.sharesOf(address(surplusPool)) >= (surplusPool.getTotalSurplusCollShares());
     }
 
-    function invariant_GENERAL_06(EBTCToken eBTCToken, CdpManager cdpManager, SortedCdps sortedCdps)
-        internal
-        view
-        returns (bool)
-    {
+    function invariant_GENERAL_06(
+        EBTCToken eBTCToken,
+        CdpManager cdpManager,
+        SortedCdps sortedCdps
+    ) internal view returns (bool) {
         uint256 totalSupply = eBTCToken.totalSupply();
 
         bytes32 currentCdp = sortedCdps.getFirst();
         uint256 cdpsBalance;
         while (currentCdp != bytes32(0)) {
-            (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
+            (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(
+                currentCdp
+            );
             cdpsBalance += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -294,12 +330,19 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
 
-        uint256 tcrFromSums = EbtcMath._computeCR(collateral.getPooledEthByShares(sumOfColl), sumOfDebt, curentPrice);
+        uint256 tcrFromSums = EbtcMath._computeCR(
+            collateral.getPooledEthByShares(sumOfColl),
+            sumOfDebt,
+            curentPrice
+        );
         /// @audit 1e8 precision
         return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
     }
 
-    function invariant_GENERAL_09(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
+    function invariant_GENERAL_09(
+        CdpManager cdpManager,
+        Vars memory vars
+    ) internal view returns (bool) {
         if (vars.isRecoveryModeBefore) {
             if (vars.cdpDebtAfter > vars.cdpDebtBefore) return (vars.icrAfter > cdpManager.MCR());
             else return true;
@@ -308,10 +351,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         }
     }
 
-    function invariant_GENERAL_12(CdpManager cdpManager, PriceFeedTestnet priceFeedMock, CRLens crLens)
-        internal
-        returns (bool)
-    {
+    function invariant_GENERAL_12(
+        CdpManager cdpManager,
+        PriceFeedTestnet priceFeedMock,
+        CRLens crLens
+    ) internal returns (bool) {
         uint256 curentPrice = priceFeedMock.getPrice();
         return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
     }
@@ -340,10 +384,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    function invariant_GENERAL_14(CRLens crLens, CdpManager cdpManager, SortedCdps sortedCdps)
-        internal
-        returns (bool)
-    {
+    function invariant_GENERAL_14(
+        CRLens crLens,
+        CdpManager cdpManager,
+        SortedCdps sortedCdps
+    ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 newIcrPrevious = type(uint256).max;
@@ -363,7 +408,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     }
 
     function invariant_GENERAL_15() internal returns (bool) {
-        return crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
+        return
+            crLens.quoteAnything(simulator.simulateRepayEverythingAndCloseCdps) == simulator.TRUE();
     }
 
     function invariant_LS_01(
