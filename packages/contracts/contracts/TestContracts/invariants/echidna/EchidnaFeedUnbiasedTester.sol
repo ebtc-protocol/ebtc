@@ -11,6 +11,9 @@ import {MockFallbackCaller} from "../../MockFallbackCaller.sol";
 import "../../../Dependencies/AuthNoOwner.sol";
 
 import "../PropertiesDescriptions.sol";
+import "../Asserts.sol";
+
+import "./EchidnaAsserts.sol";
 
 import "@crytic/properties/contracts/util/Hevm.sol";
 
@@ -20,7 +23,13 @@ contract MockAlwaysTrueAuthority {
     }
 }
 
-contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, PropertiesDescriptions {
+// TODO: we're missing the failure cases
+// 0 response
+// negative response
+// timestamp in the future
+
+
+abstract contract InternalEchidnaFeedUnbiasedTester is PropertiesConstants, Asserts, PropertiesDescriptions {
     event Log2(string, uint256, uint256);
     PriceFeed internal priceFeed;
     MockAggregator internal collEthCLFeed;
@@ -37,7 +46,7 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
 
     // NOTE: These values imply BIAS, you should EDIT THESE based on the target application
     uint256 internal constant MAX_FALLBACK_VALUE = type(uint128).max;
-    uint256 internal constant MIN_FALLBACK_VALUE = 1;
+    uint256 internal constant MIN_FALLBACK_VALUE = 0; // NOTE: 0 is important as it signals an error / broken to the price feed
     
     // https://etherscan.io/address/0x86392dc19c0b719886221c78ab11eb8cf5c52812#readContract
     // Aggregator is here: https://etherscan.io/address/0x716BB759A5f6faCdfF91F0AfB613133d510e1573#readContract
@@ -102,17 +111,17 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         // We should let prices go crazy instead of clamp them
         // But we should limit them by a max and min value
         answer = (
-            clampBetween(
+            hackyClampBetween(
                 answer,
                 MIN_FALLBACK_VALUE, // THIS WAS ALWAYS ZERO
                 MAX_FALLBACK_VALUE
             )
         );
         timestampRetrieved = (
-            clampBetween(
+            hackyClampBetween(
                 timestampRetrieved,
-                fallbackCaller._timestampRetrieved(),
-                fallbackCaller._timestampRetrieved() + MAX_UPDATE_TIME_CHANGE
+                block.timestamp > MAX_UPDATE_TIME_CHANGE ? block.timestamp - MAX_UPDATE_TIME_CHANGE: 0,
+                block.timestamp + MAX_UPDATE_TIME_CHANGE
             )
         );
         fallbackCaller.setFallbackResponse(answer, timestampRetrieved, success);
@@ -122,42 +131,42 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         fallbackCaller.setGetFallbackResponseRevert();
     }
 
-    function setLatestRevert(bool flag) public log {
+    function setLatestRevert(bool flag) public internalLog {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setLatestRevert();
     }
 
-    function setPrevRevert(bool flag) public log {
+    function setPrevRevert(bool flag) public internalLog {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setPrevRevert();
     }
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
-    function setDecimals(uint8 decimals, bool flag) external {
+    function setDecimals(uint8 decimals, bool flag) public {
         // https://github.com/d-xo/weird-erc20
-        decimals = uint8(clampBetween(uint256(decimals), 2, 18));
+        decimals = uint8(hackyClampBetween(uint256(decimals), 2, 18));
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setDecimals(decimals);
     }
 
-    function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public log {
+    function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public internalLog {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.latestRoundData();
 
         latestRoundId = uint80(
-            clampBetween(
+            hackyClampBetween(
                 uint256(latestRoundId),
                 uint256(roundId),
                 uint256(roundId + MAX_ROUND_ID_CHANGE)
             )
         );
         // NOTE: Updated to clamp based on proper realistic prices
-        price = clampBetween(
+        price = hackyClampBetween(
                 price,
                 MIN_ETH_VALUE,
                 MAX_ETH_VALUE
             );
 
-        updateTime = (clampBetween(updateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE));
+        updateTime = (hackyClampBetween(updateTime, block.timestamp > MAX_UPDATE_TIME_CHANGE ? block.timestamp - MAX_UPDATE_TIME_CHANGE: 0, block.timestamp + MAX_UPDATE_TIME_CHANGE)); // WTF
         
         collEthCLFeed.setLatestRoundId(latestRoundId);
         collEthCLFeed.setPrice(int256(price));
@@ -169,35 +178,35 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         uint256 prevPrice,
         uint256 prevUpdateTime,
         bool flag
-    ) public log {
+    ) public internalLog {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.getRoundData(0);
         prevRoundId = uint80(
-            clampBetween(
+            hackyClampBetween(
                 uint256(prevRoundId),
                 uint256(roundId),
                 uint256(roundId + MAX_ROUND_ID_CHANGE)
             )
         );
         prevPrice = (
-            clampBetween(
+            hackyClampBetween(
                 prevPrice,
                 MIN_ETH_VALUE,
                 MAX_ETH_VALUE
             )
         );
         prevUpdateTime = (
-            clampBetween(prevUpdateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE)
+            hackyClampBetween(prevUpdateTime, block.timestamp > MAX_UPDATE_TIME_CHANGE ? block.timestamp - MAX_UPDATE_TIME_CHANGE: 0, block.timestamp + MAX_UPDATE_TIME_CHANGE)
         );
         collEthCLFeed.setPrevRoundId(prevRoundId);
         collEthCLFeed.setPrevPrice(int256(prevPrice));
         collEthCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function setLatestBTC(uint80 latestRoundId, uint256 price, uint256 updateTime) public log {
+    function setLatestBTC(uint80 latestRoundId, uint256 price, uint256 updateTime) public internalLog {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.latestRoundData();
 
         latestRoundId = uint80(
-            clampBetween(
+            hackyClampBetween(
                 uint256(latestRoundId),
                 uint256(roundId),
                 uint256(roundId + MAX_ROUND_ID_CHANGE)
@@ -205,14 +214,14 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         );
         // NOTE: Updated to clamp based on proper realistic prices
         price = (
-            clampBetween(
+            hackyClampBetween(
                 price,
                 MIN_BTC_VALUE,
                 MAX_BTC_VALUE
             )
         );
 
-        updateTime = (clampBetween(updateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE));
+        updateTime = (hackyClampBetween(updateTime, block.timestamp > MAX_UPDATE_TIME_CHANGE ? block.timestamp - MAX_UPDATE_TIME_CHANGE: 0, block.timestamp + MAX_UPDATE_TIME_CHANGE));
         
         ethBtcCLFeed.setLatestRoundId(latestRoundId);
         ethBtcCLFeed.setPrice(int256(price));
@@ -225,39 +234,41 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         uint256 prevPrice,
         uint256 prevUpdateTime,
         bool flag
-    ) public log {
+    ) public internalLog {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.getRoundData(0);
         prevRoundId = uint80(
-            clampBetween(
+            hackyClampBetween(
                 uint256(prevRoundId),
                 uint256(roundId),
                 uint256(roundId + MAX_ROUND_ID_CHANGE)
             )
         );
         prevPrice = (
-            clampBetween(
+            hackyClampBetween(
                 prevPrice,
                 MIN_BTC_VALUE,
                 MAX_BTC_VALUE
             )
         );
         prevUpdateTime = (
-            clampBetween(prevUpdateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE)
+            hackyClampBetween(prevUpdateTime, block.timestamp > MAX_UPDATE_TIME_CHANGE ? block.timestamp - MAX_UPDATE_TIME_CHANGE: 0, block.timestamp + MAX_UPDATE_TIME_CHANGE)
         );
         ethBtcCLFeed.setPrevRoundId(prevRoundId);
         ethBtcCLFeed.setPrevPrice(int256(prevPrice));
         ethBtcCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function fetchPriceBatch() public log {
-        uint256 price = _fetchPrice();
-        for (uint256 i; i < 2; i++) {
-            uint256 newPrice = _fetchPrice();
-            assertWithMsg(price == newPrice, "PRICE BAD");
-        }
+    function fetchPriceBatch() public internalLog {
+        uint256 price = priceFeed.fetchPrice();
+        uint256 price2 = priceFeed.fetchPrice();
+        uint256 price3 = priceFeed.fetchPrice();
+
+        eq(price, price2, "Price Change 1-2");
+        eq(price2, price3, "Price Change 2-3");
+        eq(price, price3, "Price Change 1-3");
     }
 
-    function fetchPrice() public log {
+    function fetchPrice() public internalLog {
         _fetchPrice();
     }
 
@@ -275,21 +286,22 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         
         try priceFeed.fetchPrice() returns (uint256 price) {
             IPriceFeed.Status statusAfter = priceFeed.status();
-            assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
+            t(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
 
             if (
                 statusAfter == IPriceFeed.Status.chainlinkWorking ||
                 statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
             ) {
-                assertEq(price, priceFeed.lastGoodPrice(), PF_04);
+                eq(price, priceFeed.lastGoodPrice(), PF_04);
 
                 if (address(priceFeed.fallbackCaller()) != address(0)) {
-                    assertNeq(price, fallbackResponse, PF_05);
+                    // TODO: NEQ
+                    t(!(price == fallbackResponse), PF_05);
                 }
             }
 
             if (address(priceFeed.fallbackCaller()) == address(0)) {
-                assertWithMsg(
+                t(
                     statusAfter == IPriceFeed.Status.chainlinkWorking ||
                         statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||
                         statusAfter == IPriceFeed.Status.bothOraclesUntrusted,
@@ -300,12 +312,12 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
             statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = statusAfter;
             if (statusHistoryOperations >= MAX_STATUS_HISTORY_OPERATIONS) {
                 // TODO: this is hard to test, as we may have false positives due to the random nature of the tests
-                // assertWithMsg(_hasNotDeadlocked(), PF_03);
+                // t(_hasNotDeadlocked(), PF_03);
             }
 
             return price;
         } catch {
-            assertWithMsg(false, PF_01);
+            t(false, PF_01);
         }
     }
 
@@ -371,11 +383,88 @@ contract EchidnaFeedUnbiasedTester is PropertiesConstants, PropertiesAsserts, Pr
         return statusSeen == 31; // 0b1111
     }
 
-    modifier log() {
+    modifier internalLog() {
         for (uint256 i = 0; i < MAX_STATUS_HISTORY_OPERATIONS; ++i) {
             IPriceFeed.Status status = statusHistory[i];
-            emit Log2("status", i, uint256(status));
+            // emit Log2("status", i, uint256(status));
         }
         _;
     }
+
+    // From Properties Helper
+    event LogAString(string);
+
+    /// @notice Clamps value to be between low and high, both inclusive
+    function hackyClampBetween(uint256 value, uint256 low, uint256 high) internal virtual returns (uint256) {
+        if(value < low || value > high) {
+            uint ans = low + (value % (high - low + 1));
+            string memory valueStr = PropertiesLibString.toString(value);
+            string memory ansStr = PropertiesLibString.toString(ans);
+            bytes memory message = abi.encodePacked("Clamping value ", valueStr, " to ", ansStr);
+            emit LogAString(string(message));
+            return ans;
+        }
+        return value;
+    }
+
+    /// @notice int256 version of hackyClampBetween
+    function hackyClampBetween(int256 value, int256 low, int256 high) internal virtual returns (int256) {
+        if(value < low || value > high) {
+            int range = high - low + 1;
+            int clamped = (value - low) % (range);
+            if (clamped < 0) clamped += range;
+            int ans = low + clamped;
+            string memory valueStr = PropertiesLibString.toString(value);
+            string memory ansStr = PropertiesLibString.toString(ans);
+            bytes memory message = abi.encodePacked("Clamping value ", valueStr, " to ", ansStr);
+            emit LogAString(string(message));
+            return ans;
+        }
+        return value;
+    }
+
+
+}
+
+contract EchidnaFeedUnbiasedTester is InternalEchidnaFeedUnbiasedTester, EchidnaAsserts {
+    constructor() {
+        authority = new MockAlwaysTrueAuthority();
+        collEthCLFeed = new MockAggregator();
+        ethBtcCLFeed = new MockAggregator();
+
+        // hevm.roll(123123131);
+
+        collEthCLFeed.setLatestRoundId(2);
+        collEthCLFeed.setPrevRoundId(1);
+        collEthCLFeed.setUpdateTime(block.timestamp);
+        collEthCLFeed.setPrevUpdateTime(block.timestamp);
+        collEthCLFeed.setPrice(1 ether - 3);
+        collEthCLFeed.setPrevPrice(1 ether - 1337);
+
+        
+
+        ethBtcCLFeed.setLatestRoundId(2);
+        ethBtcCLFeed.setPrevRoundId(1);
+        ethBtcCLFeed.setUpdateTime(block.timestamp);
+        ethBtcCLFeed.setPrevUpdateTime(block.timestamp);
+        ethBtcCLFeed.setPrice(3 ether - 2);
+        ethBtcCLFeed.setPrevPrice(3 ether - 42);
+
+        // do we have a fallback caller?
+        fallbackCaller = new MockFallbackCaller();
+       
+
+        // priceFeed = new PriceFeed(
+        //     address(fallbackCaller),
+        //     address(authority),
+        //     address(collEthCLFeed),
+        //     address(ethBtcCLFeed)
+        // );
+
+        fallbackCaller.setFallbackResponse(priceFeed.lastGoodPrice() - 10, block.timestamp, true);
+
+        // statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
+        //     .status();
+    }
+    
 }

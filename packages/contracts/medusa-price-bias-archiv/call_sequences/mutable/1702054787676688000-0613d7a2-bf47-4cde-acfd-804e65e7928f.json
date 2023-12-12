@@ -1,0 +1,48 @@
+[
+ {
+  "call": {
+   "from": "0x0000000000000000000000000000000000020000",
+   "to": "0xa647ff3c36cfab592509e13860ab8c4f28781a66",
+   "nonce": 0,
+   "value": "0x0",
+   "gasLimit": 12500000,
+   "gasPrice": "0x1",
+   "gasFeeCap": "0x0",
+   "gasTipCap": "0x0",
+   "data": "0x8090767000000000000000000000000000000000000000000000ffffffffffffffffffd800000000000000000000000000000000000000000000000000000000000000080000ba69dbdd3ac13d7c4a74c8111cb7aecee4bd24e8d5b85d92225b324cf679",
+   "dataAbiValues": {
+    "methodName": "setLatestBTC",
+    "inputValues": [
+     "1208925819614629174706136",
+     "8",
+     "1286578769303513282484122055652087865036333162951561822660639266754590329"
+    ]
+   },
+   "AccessList": null,
+   "SkipAccountChecks": false
+  },
+  "blockNumberDelay": 6256,
+  "blockTimestampDelay": 14854
+ },
+ {
+  "call": {
+   "from": "0x0000000000000000000000000000000000030000",
+   "to": "0xa647ff3c36cfab592509e13860ab8c4f28781a66",
+   "nonce": 1,
+   "value": "0x0",
+   "gasLimit": 12500000,
+   "gasPrice": "0x1",
+   "gasFeeCap": "0x0",
+   "gasTipCap": "0x0",
+   "data": "0xb4ebf7d7",
+   "dataAbiValues": {
+    "methodName": "fetchPriceBatch",
+    "inputValues": []
+   },
+   "AccessList": null,
+   "SkipAccountChecks": false
+  },
+  "blockNumberDelay": 0,
+  "blockTimestampDelay": 219064
+ }
+]
