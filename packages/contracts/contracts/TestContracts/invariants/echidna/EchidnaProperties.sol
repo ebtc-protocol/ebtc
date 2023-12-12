@@ -112,12 +112,6 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
     // }
 
     function echidna_LS_01() public returns (bool) {
-        return
-            invariant_LS_01(
-                cdpManager,
-                liquidationSequencer,
-                syncedLiquidationSequencer,
-                priceFeedMock
-            );
+        return invariant_LS_01(cdpManager, liquidationSequencer, syncedLiquidationSequencer, priceFeedMock);
     }
 }

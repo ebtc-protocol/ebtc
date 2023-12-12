@@ -69,6 +69,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
     }
 
     Vars vars;
+
     struct Cdp {
         bytes32 id;
         uint256 icr;
@@ -77,25 +78,22 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _before(bytes32 _cdpId) internal {
         vars.priceBefore = priceFeedMock.fetchPrice();
 
-        (uint256 debtBefore, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (uint256 debtBefore,) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
-        vars.icrBefore = _cdpId != bytes32(0)
-            ? cdpManager.getCachedICR(_cdpId, vars.priceBefore)
-            : 0;
+        vars.icrBefore = _cdpId != bytes32(0) ? cdpManager.getCachedICR(_cdpId, vars.priceBefore) : 0;
         vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
-        vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
-            ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
-            : 0;
+        vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0) ? cdpManager.getCdpLiquidatorRewardShares(_cdpId) : 0;
         vars.cdpStatusBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
 
-        vars.isRecoveryModeBefore = crLens.quoteCheckRecoveryMode() == 1; /// @audit crLens
-        (vars.feeSplitBefore, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
-            cdpManager.stEthIndex()
+        vars.isRecoveryModeBefore = crLens.quoteCheckRecoveryMode() == 1;
+
+        /// @audit crLens
+        (vars.feeSplitBefore,,) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION())
+            > cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
-                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
-                cdpManager.stEthIndex()
+                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()), cdpManager.stEthIndex()
             )
             : (0, 0, 0);
         vars.feeRecipientTotalCollBefore = collateral.balanceOf(activePool.feeRecipientAddress());
@@ -113,23 +111,18 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.lastGracePeriodStartTimestampBefore = cdpManager.lastGracePeriodStartTimestamp();
         vars.lastGracePeriodStartTimestampIsSetBefore =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
-        vars.hasGracePeriodPassedBefore =
-            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
-            block.timestamp >
-            cdpManager.lastGracePeriodStartTimestamp() +
-                cdpManager.recoveryModeGracePeriodDuration();
+        vars.hasGracePeriodPassedBefore = cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP()
+            && block.timestamp > cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
         vars.newTcrBefore = crLens.quoteRealTCR();
         vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
 
-        vars.valueInSystemBefore ==
-            (collateral.getPooledEthByShares(
-                vars.activePoolCollBefore +
-                    vars.collSurplusPoolBefore +
-                    vars.feeRecipientTotalCollBefore
-            ) * vars.priceBefore) /
-                1e18 -
-                vars.activePoolDebtBefore;
+        vars.valueInSystemBefore
+            == (
+                collateral.getPooledEthByShares(
+                    vars.activePoolCollBefore + vars.collSurplusPoolBefore + vars.feeRecipientTotalCollBefore
+                ) * vars.priceBefore
+            ) / 1e18 - vars.activePoolDebtBefore;
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -139,17 +132,16 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getCachedICR(_cdpId, vars.priceAfter) : 0;
         vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
-        vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
-            ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
-            : 0;
+        vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0) ? cdpManager.getCdpLiquidatorRewardShares(_cdpId) : 0;
         vars.cdpStatusAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStatus(_cdpId) : 0;
 
-        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter); /// @audit This is fine as is because after the system is synched
-        (vars.feeSplitAfter, , ) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()) >
-            cdpManager.stEthIndex()
+        vars.isRecoveryModeAfter = cdpManager.checkRecoveryMode(vars.priceAfter);
+
+        /// @audit This is fine as is because after the system is synched
+        (vars.feeSplitAfter,,) = collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION())
+            > cdpManager.stEthIndex()
             ? cdpManager.calcFeeUponStakingReward(
-                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()),
-                cdpManager.stEthIndex()
+                collateral.getPooledEthByShares(cdpManager.DECIMAL_PRECISION()), cdpManager.stEthIndex()
             )
             : (0, 0, 0);
 
@@ -168,223 +160,139 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.lastGracePeriodStartTimestampAfter = cdpManager.lastGracePeriodStartTimestamp();
         vars.lastGracePeriodStartTimestampIsSetAfter =
             cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP();
-        vars.hasGracePeriodPassedAfter =
-            cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP() &&
-            block.timestamp >
-            cdpManager.lastGracePeriodStartTimestamp() +
-                cdpManager.recoveryModeGracePeriodDuration();
+        vars.hasGracePeriodPassedAfter = cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP()
+            && block.timestamp > cdpManager.lastGracePeriodStartTimestamp() + cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexAfter = cdpManager.systemDebtRedistributionIndex();
 
         vars.newTcrAfter = crLens.quoteRealTCR();
         vars.newIcrAfter = crLens.quoteRealICR(_cdpId);
 
         // Value in system after
-        vars.valueInSystemAfter =
-            (collateral.getPooledEthByShares(
-                vars.activePoolCollAfter +
-                    vars.collSurplusPoolAfter +
-                    vars.feeRecipientTotalCollAfter
-            ) * vars.priceAfter) /
-            1e18 -
-            vars.activePoolDebtAfter;
+        vars.valueInSystemAfter = (
+            collateral.getPooledEthByShares(
+                vars.activePoolCollAfter + vars.collSurplusPoolAfter + vars.feeRecipientTotalCollAfter
+            ) * vars.priceAfter
+        ) / 1e18 - vars.activePoolDebtAfter;
     }
 
     function _diff() internal view returns (string memory log) {
         log = string("\n\t\t\t\tBefore\t\t\tAfter\n");
         if (vars.activePoolCollBefore != vars.activePoolCollAfter) {
-            log = log
-                .concat("activePoolColl\t\t\t")
-                .concat(vars.activePoolCollBefore.pretty())
-                .concat("\t")
-                .concat(vars.activePoolCollAfter.pretty())
-                .concat("\n");
+            log = log.concat("activePoolColl\t\t\t").concat(vars.activePoolCollBefore.pretty()).concat("\t").concat(
+                vars.activePoolCollAfter.pretty()
+            ).concat("\n");
         }
         if (vars.collSurplusPoolBefore != vars.collSurplusPoolAfter) {
-            log = log
-                .concat("collSurplusPool\t\t\t")
-                .concat(vars.collSurplusPoolBefore.pretty())
-                .concat("\t")
-                .concat(vars.collSurplusPoolAfter.pretty())
-                .concat("\n");
+            log = log.concat("collSurplusPool\t\t\t").concat(vars.collSurplusPoolBefore.pretty()).concat("\t").concat(
+                vars.collSurplusPoolAfter.pretty()
+            ).concat("\n");
         }
         if (vars.nicrBefore != vars.nicrAfter) {
-            log = log
-                .concat("nicr\t\t\t\t")
-                .concat(vars.nicrBefore.pretty())
-                .concat("\t")
-                .concat(vars.nicrAfter.pretty())
-                .concat("\n");
+            log = log.concat("nicr\t\t\t\t").concat(vars.nicrBefore.pretty()).concat("\t").concat(
+                vars.nicrAfter.pretty()
+            ).concat("\n");
         }
         if (vars.icrBefore != vars.icrAfter) {
-            log = log
-                .concat("icr\t\t\t\t")
-                .concat(vars.icrBefore.pretty())
-                .concat("\t")
-                .concat(vars.icrAfter.pretty())
+            log = log.concat("icr\t\t\t\t").concat(vars.icrBefore.pretty()).concat("\t").concat(vars.icrAfter.pretty())
                 .concat("\n");
         }
         if (vars.newIcrBefore != vars.newIcrAfter) {
-            log = log
-                .concat("newIcr\t\t\t\t")
-                .concat(vars.newIcrBefore.pretty())
-                .concat("\t")
-                .concat(vars.newIcrAfter.pretty())
-                .concat("\n");
+            log = log.concat("newIcr\t\t\t\t").concat(vars.newIcrBefore.pretty()).concat("\t").concat(
+                vars.newIcrAfter.pretty()
+            ).concat("\n");
         }
         if (vars.feeSplitBefore != vars.feeSplitAfter) {
-            log = log
-                .concat("feeSplit\t\t\t\t")
-                .concat(vars.feeSplitBefore.pretty())
-                .concat("\t")
-                .concat(vars.feeSplitAfter.pretty())
-                .concat("\n");
+            log = log.concat("feeSplit\t\t\t\t").concat(vars.feeSplitBefore.pretty()).concat("\t").concat(
+                vars.feeSplitAfter.pretty()
+            ).concat("\n");
         }
         if (vars.feeRecipientTotalCollBefore != vars.feeRecipientTotalCollAfter) {
-            log = log
-                .concat("feeRecipientTotalColl\t")
-                .concat(vars.feeRecipientTotalCollBefore.pretty())
-                .concat("\t")
-                .concat(vars.feeRecipientTotalCollAfter.pretty())
-                .concat("\n");
+            log = log.concat("feeRecipientTotalColl\t").concat(vars.feeRecipientTotalCollBefore.pretty()).concat("\t")
+                .concat(vars.feeRecipientTotalCollAfter.pretty()).concat("\n");
         }
         if (vars.actorCollBefore != vars.actorCollAfter) {
-            log = log
-                .concat("actorColl\t\t\t\t")
-                .concat(vars.actorCollBefore.pretty())
-                .concat("\t")
-                .concat(vars.actorCollAfter.pretty())
-                .concat("\n");
+            log = log.concat("actorColl\t\t\t\t").concat(vars.actorCollBefore.pretty()).concat("\t").concat(
+                vars.actorCollAfter.pretty()
+            ).concat("\n");
         }
         if (vars.actorEbtcBefore != vars.actorEbtcAfter) {
-            log = log
-                .concat("actorEbtc\t\t\t\t")
-                .concat(vars.actorEbtcBefore.pretty())
-                .concat("\t")
-                .concat(vars.actorEbtcAfter.pretty())
-                .concat("\n");
+            log = log.concat("actorEbtc\t\t\t\t").concat(vars.actorEbtcBefore.pretty()).concat("\t").concat(
+                vars.actorEbtcAfter.pretty()
+            ).concat("\n");
         }
         if (vars.actorCdpCountBefore != vars.actorCdpCountAfter) {
-            log = log
-                .concat("actorCdpCount\t\t\t")
-                .concat(vars.actorCdpCountBefore.pretty())
-                .concat("\t")
-                .concat(vars.actorCdpCountAfter.pretty())
-                .concat("\n");
+            log = log.concat("actorCdpCount\t\t\t").concat(vars.actorCdpCountBefore.pretty()).concat("\t").concat(
+                vars.actorCdpCountAfter.pretty()
+            ).concat("\n");
         }
         if (vars.cdpCollBefore != vars.cdpCollAfter) {
-            log = log
-                .concat("cdpColl\t\t\t\t")
-                .concat(vars.cdpCollBefore.pretty())
-                .concat("\t")
-                .concat(vars.cdpCollAfter.pretty())
-                .concat("\n");
+            log = log.concat("cdpColl\t\t\t\t").concat(vars.cdpCollBefore.pretty()).concat("\t").concat(
+                vars.cdpCollAfter.pretty()
+            ).concat("\n");
         }
         if (vars.cdpDebtBefore != vars.cdpDebtAfter) {
-            log = log
-                .concat("cdpDebt\t\t\t\t")
-                .concat(vars.cdpDebtBefore.pretty())
-                .concat("\t")
-                .concat(vars.cdpDebtAfter.pretty())
-                .concat("\n");
+            log = log.concat("cdpDebt\t\t\t\t").concat(vars.cdpDebtBefore.pretty()).concat("\t").concat(
+                vars.cdpDebtAfter.pretty()
+            ).concat("\n");
         }
         if (vars.liquidatorRewardSharesBefore != vars.liquidatorRewardSharesAfter) {
-            log = log
-                .concat("liquidatorRewardShares\t\t")
-                .concat(vars.liquidatorRewardSharesBefore.pretty())
-                .concat("\t")
-                .concat(vars.liquidatorRewardSharesAfter.pretty())
-                .concat("\n");
+            log = log.concat("liquidatorRewardShares\t\t").concat(vars.liquidatorRewardSharesBefore.pretty()).concat(
+                "\t"
+            ).concat(vars.liquidatorRewardSharesAfter.pretty()).concat("\n");
         }
         if (vars.sortedCdpsSizeBefore != vars.sortedCdpsSizeAfter) {
-            log = log
-                .concat("sortedCdpsSize\t\t\t")
-                .concat(vars.sortedCdpsSizeBefore.pretty(0))
-                .concat("\t\t\t")
-                .concat(vars.sortedCdpsSizeAfter.pretty(0))
-                .concat("\n");
+            log = log.concat("sortedCdpsSize\t\t\t").concat(vars.sortedCdpsSizeBefore.pretty(0)).concat("\t\t\t").concat(
+                vars.sortedCdpsSizeAfter.pretty(0)
+            ).concat("\n");
         }
         if (vars.cdpStatusBefore != vars.cdpStatusAfter) {
-            log = log
-                .concat("cdpStatus\t\t\t")
-                .concat(vars.cdpStatusBefore.pretty(0))
-                .concat("\t\t\t")
-                .concat(vars.cdpStatusAfter.pretty(0))
-                .concat("\n");
+            log = log.concat("cdpStatus\t\t\t").concat(vars.cdpStatusBefore.pretty(0)).concat("\t\t\t").concat(
+                vars.cdpStatusAfter.pretty(0)
+            ).concat("\n");
         }
         if (vars.tcrBefore != vars.tcrAfter) {
-            log = log
-                .concat("tcr\t\t\t\t")
-                .concat(vars.tcrBefore.pretty())
-                .concat("\t")
-                .concat(vars.tcrAfter.pretty())
+            log = log.concat("tcr\t\t\t\t").concat(vars.tcrBefore.pretty()).concat("\t").concat(vars.tcrAfter.pretty())
                 .concat("\n");
         }
         if (vars.newTcrBefore != vars.newTcrAfter) {
-            log = log
-                .concat("newTcr\t\t\t\t")
-                .concat(vars.newTcrBefore.pretty())
-                .concat("\t")
-                .concat(vars.newTcrAfter.pretty())
-                .concat("\n");
+            log = log.concat("newTcr\t\t\t\t").concat(vars.newTcrBefore.pretty()).concat("\t").concat(
+                vars.newTcrAfter.pretty()
+            ).concat("\n");
         }
         if (vars.ebtcTotalSupplyBefore != vars.ebtcTotalSupplyAfter) {
-            log = log
-                .concat("ebtcTotalSupply\t\t\t")
-                .concat(vars.ebtcTotalSupplyBefore.pretty())
-                .concat("\t")
-                .concat(vars.ebtcTotalSupplyAfter.pretty())
-                .concat("\n");
+            log = log.concat("ebtcTotalSupply\t\t\t").concat(vars.ebtcTotalSupplyBefore.pretty()).concat("\t").concat(
+                vars.ebtcTotalSupplyAfter.pretty()
+            ).concat("\n");
         }
         if (vars.ethPerShareBefore != vars.ethPerShareAfter) {
-            log = log
-                .concat("ethPerShare\t\t\t")
-                .concat(vars.ethPerShareBefore.pretty())
-                .concat("\t")
-                .concat(vars.ethPerShareAfter.pretty())
-                .concat("\n");
+            log = log.concat("ethPerShare\t\t\t").concat(vars.ethPerShareBefore.pretty()).concat("\t").concat(
+                vars.ethPerShareAfter.pretty()
+            ).concat("\n");
         }
         if (vars.isRecoveryModeBefore != vars.isRecoveryModeAfter) {
-            log = log
-                .concat("isRecoveryMode\t\t\t")
-                .concat(vars.isRecoveryModeBefore.pretty())
-                .concat("\t")
-                .concat(vars.isRecoveryModeAfter.pretty())
-                .concat("\n");
+            log = log.concat("isRecoveryMode\t\t\t").concat(vars.isRecoveryModeBefore.pretty()).concat("\t").concat(
+                vars.isRecoveryModeAfter.pretty()
+            ).concat("\n");
         }
         if (vars.lastGracePeriodStartTimestampBefore != vars.lastGracePeriodStartTimestampAfter) {
-            log = log
-                .concat("lastGracePeriodStartTimestamp\t")
-                .concat(vars.lastGracePeriodStartTimestampBefore.pretty())
-                .concat("\t")
-                .concat(vars.lastGracePeriodStartTimestampAfter.pretty())
-                .concat("\n");
+            log = log.concat("lastGracePeriodStartTimestamp\t").concat(
+                vars.lastGracePeriodStartTimestampBefore.pretty()
+            ).concat("\t").concat(vars.lastGracePeriodStartTimestampAfter.pretty()).concat("\n");
         }
-        if (
-            vars.lastGracePeriodStartTimestampIsSetBefore !=
-            vars.lastGracePeriodStartTimestampIsSetAfter
-        ) {
-            log = log
-                .concat("lastGracePeriodStartTimestampIsSet\t")
-                .concat(vars.lastGracePeriodStartTimestampIsSetBefore.pretty())
-                .concat("\t")
-                .concat(vars.lastGracePeriodStartTimestampIsSetAfter.pretty())
-                .concat("\n");
+        if (vars.lastGracePeriodStartTimestampIsSetBefore != vars.lastGracePeriodStartTimestampIsSetAfter) {
+            log = log.concat("lastGracePeriodStartTimestampIsSet\t").concat(
+                vars.lastGracePeriodStartTimestampIsSetBefore.pretty()
+            ).concat("\t").concat(vars.lastGracePeriodStartTimestampIsSetAfter.pretty()).concat("\n");
         }
         if (vars.hasGracePeriodPassedBefore != vars.hasGracePeriodPassedAfter) {
-            log = log
-                .concat("hasGracePeriodPassed\t\t")
-                .concat(vars.hasGracePeriodPassedBefore.pretty())
-                .concat("\t\t\t")
-                .concat(vars.hasGracePeriodPassedAfter.pretty())
-                .concat("\n");
+            log = log.concat("hasGracePeriodPassed\t\t").concat(vars.hasGracePeriodPassedBefore.pretty()).concat(
+                "\t\t\t"
+            ).concat(vars.hasGracePeriodPassedAfter.pretty()).concat("\n");
         }
         if (vars.systemDebtRedistributionIndexBefore != vars.systemDebtRedistributionIndexAfter) {
-            log = log
-                .concat("systemDebtRedistributionIndex\t\t")
-                .concat(vars.systemDebtRedistributionIndexBefore.pretty())
-                .concat("\t")
-                .concat(vars.systemDebtRedistributionIndexAfter.pretty())
-                .concat("\n");
+            log = log.concat("systemDebtRedistributionIndex\t\t").concat(
+                vars.systemDebtRedistributionIndexBefore.pretty()
+            ).concat("\t").concat(vars.systemDebtRedistributionIndexAfter.pretty()).concat("\n");
         }
     }
 }

@@ -12,15 +12,15 @@ import "../../../Dependencies/AuthNoOwner.sol";
 
 import "../PropertiesDescriptions.sol";
 
-
 contract MockAlwaysTrueAuthority {
-    function canCall(address user, address target, bytes4 functionSig) external view returns (bool){
+    function canCall(address user, address target, bytes4 functionSig) external view returns (bool) {
         return true;
     }
 }
 
 contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, PropertiesDescriptions {
     event Log2(string, uint256, uint256);
+
     PriceFeed internal priceFeed;
     MockAggregator internal collEthCLFeed;
     MockAggregator internal ethBtcCLFeed;
@@ -65,8 +65,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
             address(ethBtcCLFeed)
         );
 
-        statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
-            .status();
+        statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed.status();
     }
 
     function setFallbackCaller(bool flag) public {
@@ -133,27 +132,13 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setDecimals(decimals);
     }
 
-    function setLatest(
-        uint80 latestRoundId,
-        int256 price,
-        uint256 updateTime,
-        bool flag
-    ) public log {
+    function setLatest(uint80 latestRoundId, int256 price, uint256 updateTime, bool flag) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = aggregator.latestRoundData();
-        latestRoundId = uint80(
-            clampBetween(
-                uint256(latestRoundId),
-                uint256(roundId),
-                uint256(roundId + MAX_ROUND_ID_CHANGE)
-            )
-        );
+        (uint80 roundId, int256 answer,, uint256 updatedAt,) = aggregator.latestRoundData();
+        latestRoundId =
+            uint80(clampBetween(uint256(latestRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE)));
         price = (
-            clampBetween(
-                price,
-                (answer * 1e18) / int256(MAX_PRICE_CHANGE),
-                (answer * int256(MAX_PRICE_CHANGE)) / 1e18
-            )
+            clampBetween(price, (answer * 1e18) / int256(MAX_PRICE_CHANGE), (answer * int256(MAX_PRICE_CHANGE)) / 1e18)
         );
         updateTime = (clampBetween(updateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE));
         aggregator.setLatestRoundId(latestRoundId);
@@ -161,31 +146,17 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         aggregator.setUpdateTime(updateTime);
     }
 
-    function setPrevious(
-        uint80 prevRoundId,
-        int256 prevPrice,
-        uint256 prevUpdateTime,
-        bool flag
-    ) public log {
+    function setPrevious(uint80 prevRoundId, int256 prevPrice, uint256 prevUpdateTime, bool flag) public log {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = aggregator.getRoundData(0);
-        prevRoundId = uint80(
-            clampBetween(
-                uint256(prevRoundId),
-                uint256(roundId),
-                uint256(roundId + MAX_ROUND_ID_CHANGE)
-            )
-        );
+        (uint80 roundId, int256 answer,, uint256 updatedAt,) = aggregator.getRoundData(0);
+        prevRoundId =
+            uint80(clampBetween(uint256(prevRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE)));
         prevPrice = (
             clampBetween(
-                prevPrice,
-                (answer * 1e18) / int256(MAX_PRICE_CHANGE),
-                (answer * int256(MAX_PRICE_CHANGE)) / 1e18
+                prevPrice, (answer * 1e18) / int256(MAX_PRICE_CHANGE), (answer * int256(MAX_PRICE_CHANGE)) / 1e18
             )
         );
-        prevUpdateTime = (
-            clampBetween(prevUpdateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE)
-        );
+        prevUpdateTime = (clampBetween(prevUpdateTime, updatedAt, updatedAt + MAX_UPDATE_TIME_CHANGE));
         aggregator.setPrevRoundId(prevRoundId);
         aggregator.setPrevPrice(prevPrice);
         aggregator.setPrevUpdateTime(prevUpdateTime);
@@ -199,7 +170,6 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         }
     }
 
-
     function fetchPrice() public log {
         _fetchPrice();
     }
@@ -208,14 +178,14 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         IPriceFeed.Status statusBefore = priceFeed.status();
         uint256 fallbackResponse;
 
-        (fallbackResponse, , ) = fallbackCaller.getFallbackResponse();
+        (fallbackResponse,,) = fallbackCaller.getFallbackResponse();
         try priceFeed.fetchPrice() returns (uint256 price) {
             IPriceFeed.Status statusAfter = priceFeed.status();
             assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
 
             if (
-                statusAfter == IPriceFeed.Status.chainlinkWorking ||
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+                statusAfter == IPriceFeed.Status.chainlinkWorking
+                    || statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
             ) {
                 assertEq(price, priceFeed.lastGoodPrice(), PF_04);
 
@@ -226,9 +196,9 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
 
             if (address(priceFeed.fallbackCaller()) == address(0)) {
                 assertWithMsg(
-                    statusAfter == IPriceFeed.Status.chainlinkWorking ||
-                        statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||
-                        statusAfter == IPriceFeed.Status.bothOraclesUntrusted,
+                    statusAfter == IPriceFeed.Status.chainlinkWorking
+                        || statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+                        || statusAfter == IPriceFeed.Status.bothOraclesUntrusted,
                     PF_06
                 );
             }
@@ -245,53 +215,79 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         }
     }
 
-    function _isValidStatusTransition(
-        IPriceFeed.Status statusBefore,
-        IPriceFeed.Status statusAfter
-    ) internal returns (bool) {
+    function _isValidStatusTransition(IPriceFeed.Status statusBefore, IPriceFeed.Status statusAfter)
+        internal
+        returns (bool)
+    {
         emit Log2("status transition", uint256(statusBefore), uint256(statusAfter));
         return
-            // CASE 1
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkFrozen) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            // CASE 2
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
-            // CASE 3
-            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
-            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            // CASE 4
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            // CASE 5
-            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted);
+        // CASE 1
+        (statusBefore == IPriceFeed.Status.chainlinkWorking && statusAfter == IPriceFeed.Status.bothOraclesUntrusted)
+            || (
+                statusBefore == IPriceFeed.Status.chainlinkWorking
+                    && statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted
+            )
+            || (
+                statusBefore == IPriceFeed.Status.chainlinkWorking
+                    && statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+            )
+            || (
+                statusBefore == IPriceFeed.Status.chainlinkWorking
+                    && statusAfter == IPriceFeed.Status.usingFallbackChainlinkFrozen
+            ) || (statusBefore == IPriceFeed.Status.chainlinkWorking && statusAfter == IPriceFeed.Status.chainlinkWorking)
+        // CASE 2
+        || (
+            statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted
+                && statusAfter == IPriceFeed.Status.chainlinkWorking
+        )
+            || (
+                statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted
+                    && statusAfter == IPriceFeed.Status.bothOraclesUntrusted
+            )
+            || (
+                statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted
+                    && statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted
+            )
+        // CASE 3
+        || (
+            statusBefore == IPriceFeed.Status.bothOraclesUntrusted
+                && statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+        )
+            || (statusBefore == IPriceFeed.Status.bothOraclesUntrusted && statusAfter == IPriceFeed.Status.chainlinkWorking)
+            || (
+                statusBefore == IPriceFeed.Status.bothOraclesUntrusted
+                    && statusAfter == IPriceFeed.Status.bothOraclesUntrusted
+            )
+        // CASE 4
+        || (
+            statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen
+                && statusAfter == IPriceFeed.Status.bothOraclesUntrusted
+        )
+            || (
+                statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen
+                    && statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted
+            )
+            || (
+                statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen
+                    && statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+            )
+            || (
+                statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen
+                    && statusAfter == IPriceFeed.Status.chainlinkWorking
+            )
+        // CASE 5
+        || (
+            statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+                && statusAfter == IPriceFeed.Status.bothOraclesUntrusted
+        )
+            || (
+                statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+                    && statusAfter == IPriceFeed.Status.chainlinkWorking
+            )
+            || (
+                statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+                    && statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
+            );
     }
 
     function _hasNotDeadlocked() internal returns (bool) {

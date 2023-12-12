@@ -7,6 +7,7 @@ import {Actor} from "./Actor.sol";
 
 contract Simulator {
     uint256 public constant TRUE = uint256(keccak256(abi.encodePacked("TRUE")));
+
     event Log(string);
 
     Actor[] private actors;
@@ -32,11 +33,10 @@ contract Simulator {
         bytes32 currentCdp = sortedCdps.getFirst();
         while (currentCdp != bytes32(0) && sortedCdps.getSize() > 1) {
             Actor actor = Actor(payable(sortedCdps.getOwnerAddress(currentCdp)));
-            (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
+            (uint256 entireDebt,) = cdpManager.getSyncedDebtAndCollShares(currentCdp);
 
-            (success, ) = actor.proxy(
-                address(borrowerOperations),
-                abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, currentCdp)
+            (success,) = actor.proxy(
+                address(borrowerOperations), abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, currentCdp)
             );
             require(success);
 
