@@ -4089,7 +4089,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(feeRecipientBalanceAfter.gt(feeRecipientBalanceBefore))
   })
 
-  it.only("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - feeCollShares) to the redeemer", async () => {
+  it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - feeCollShares) to the redeemer", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
