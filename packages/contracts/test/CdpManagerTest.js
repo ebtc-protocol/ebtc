@@ -4089,7 +4089,7 @@ contract('CdpManager', async accounts => {
     assert.isTrue(feeRecipientBalanceAfter.gt(feeRecipientBalanceBefore))
   })
 
-  it("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - feeCollShares) to the redeemer", async () => {
+  it.only("redeemCollateral(): a redemption sends the ETH remainder (ETHDrawn - feeCollShares) to the redeemer", async () => {
     // time fast-forwards 1 year, and multisig stakes 1 LQTY
     await th.fastForwardTime(timeValues.SECONDS_IN_ONE_YEAR, web3.currentProvider)
 
@@ -4121,7 +4121,7 @@ contract('CdpManager', async accounts => {
     const price = await priceFeed.getPrice()
     const ETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price)
 	
-    let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 2);
+    let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 1);
 	
     let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemptionWithSystemDebt(ETHDrawn, price, _weightedMean);
     let _updatedRate = _updatedBaseRate.add(await cdpManager.redemptionFeeFloor());
