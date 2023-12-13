@@ -100,8 +100,8 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
             return virtualAvgValue;
         }
 
-        uint256 weightedAvg = data.avgValue * (futureWeight);
-        uint256 weightedVirtual = virtualAvgValue * (maxWeight - futureWeight);
+        uint256 weightedAvg = data.avgValue * (maxWeight - futureWeight);
+        uint256 weightedVirtual = virtualAvgValue * (futureWeight);
 
         uint256 weightedMean = (weightedAvg + weightedVirtual) / PERIOD;
 
