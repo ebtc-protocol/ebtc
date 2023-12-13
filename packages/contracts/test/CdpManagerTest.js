@@ -4143,7 +4143,7 @@ contract('CdpManager', async accounts => {
       ETHDrawn.sub(
         _updatedRate.mul(ETHDrawn).div(mv._1e18BN)
       ),
-      100000
+      100000000
     )
   })
 

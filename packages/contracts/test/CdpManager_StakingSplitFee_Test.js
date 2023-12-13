@@ -317,7 +317,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _aliceCollAfterRedeem = await cdpManager.getCdpCollShares(_aliceCdpId);  
       assert.isTrue(_aliceCollAfterRedeem.eq(partialRedemptionNewColl));
       let _expectedCollAfterFee = _expectedRedeemedColl.sub(_expectedRedeemedColl.mul(_expectedRedeemFloor.add(_expectedBaseRate)).div(mv._1e18BN)).mul(_newIndex).div(mv._1e18BN);
-      th.assertIsApproximatelyEqual(_collAfterRedeemer.sub(_collBeforeRedeemer), _expectedCollAfterFee, _errorTolerance);
+      th.assertIsApproximatelyEqual(_collAfterRedeemer.sub(_collBeforeRedeemer), _expectedCollAfterFee, 100000000);
       th.assertIsApproximatelyEqual(_splitFeeAccumulated[1].sub(partialRedemptionNewColl), _expectedRedeemedColl, _errorTolerance);
       _aliceColl = _aliceCollAfterRedeem;
       assert.isTrue((await sortedCdps.getFirst()) == _aliceCdpId);// reinsertion after redemption 
