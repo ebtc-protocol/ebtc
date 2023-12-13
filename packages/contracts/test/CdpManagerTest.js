@@ -4121,7 +4121,7 @@ contract('CdpManager', async accounts => {
     const price = await priceFeed.getPrice()
     const ETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price)
 	
-    let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 1);
+    let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 2);
 	
     let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemptionWithSystemDebt(ETHDrawn, price, _weightedMean);
     let _updatedRate = _updatedBaseRate.add(await cdpManager.redemptionFeeFloor());
@@ -4219,6 +4219,7 @@ contract('CdpManager', async accounts => {
     // Confirm baseRate before redemption is 0
     const baseRate = await cdpManager.baseRate()
     assert.equal(baseRate, '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);    
 
     // whale redeems EBTC.  Expect this to fully redeem A, B, C, and partially redeem D.
     await th.redeemCollateral(whale, contracts, redemptionAmount, GAS_PRICE)
@@ -4329,7 +4330,6 @@ contract('CdpManager', async accounts => {
   })
 
   it("redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner to claim", async () => {
-    await th.syncTwapSystemDebt(contracts, ethers.provider);
     const {
       A_netDebt, A_coll,
       B_netDebt, B_coll,
@@ -4363,7 +4363,6 @@ contract('CdpManager', async accounts => {
   })
 
   it("redeemCollateral(): a redemption that closes a cdp leaves the cdp's ETH surplus (collateral - ETH drawn) available for the cdp owner after re-opening cdp", async () => {
-    await th.syncTwapSystemDebt(contracts, ethers.provider);
     const {
       A_netDebt, A_coll: A_collBefore,
       B_netDebt, B_coll: B_collBefore,

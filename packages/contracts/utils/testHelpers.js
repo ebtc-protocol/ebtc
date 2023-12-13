@@ -329,7 +329,7 @@ class TestHelper {
     console.log('twap diffTimeT0=' + _diffTimeT0);	
     let _avg = _acc.sub(this.toBN(_twapDebtData["priceCumulative0"])).div(_diffTimeT0);
     console.log('twap _avg=' + _avg);	
-    let _weightedMean = (this.toBN(_twapDebtData["avgValue"]).mul(_diffTimeT0).add(_avg.mul(_period.sub(_diffTimeT0)))).div(_period);
+    let _weightedMean = (this.toBN(_twapDebtData["avgValue"]).mul(_period.sub(_diffTimeT0)).add(_avg.mul(_diffTimeT0))).div(_period);
     console.log('twap _weightedMean=' + _weightedMean);	
     return _weightedMean;
   }
