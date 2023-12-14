@@ -31,8 +31,9 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     uint256 public mintCap = 10e18;
     uint256 public mintCooldown = 60 * 60 * 24;
 
-    uint256 _getTotalShares = 0;
-    uint256 _getTotalPooledEther = 0;
+    // NOTE: Seeded a 1e18 to avoid bs
+    uint256 _getTotalShares = 1e18;
+    uint256 _getTotalPooledEther = 1e18;
     mapping (address => uint256) public shares;
     
 
@@ -151,7 +152,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     }
 
     function getEthPerShare() external view returns (uint256) {
-        return _div(_getTotalPooledEther, _getTotalShares);
+        return _div(_mul(1e18, _getTotalPooledEther), _getTotalShares);
     }
 
     /***
@@ -163,9 +164,6 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
      */
 
     function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
-        if(_getTotalShares == 0 && _getTotalPooledEther == 0) {
-            return _ethAmount;
-        }
         return _div(_mul(_ethAmount, _getTotalShares), _getTotalPooledEther);
     }
     /**
@@ -177,10 +175,6 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
      */
 
     function getPooledEthByShares(uint256 _sharesAmount) public view override returns (uint256) {
-        if(_getTotalShares == 0 && _getTotalPooledEther == 0) {
-            return _sharesAmount;
-        }
-
         return _div(_mul(_sharesAmount, _getTotalPooledEther), _getTotalShares);
     }
 

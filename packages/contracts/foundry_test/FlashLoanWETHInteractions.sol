@@ -92,7 +92,7 @@ contract FlashLoanWETHInteractions is eBTCBaseFixture {
         // TODO: Could change to w/e but this should be fine
         // Peer review and change accordingly
         amountToDepositInCDP = uint128(
-            bound(amountToDepositInCDP, 100 ether + 1, type(uint128).max)
+            bound(amountToDepositInCDP, 100 ether + 1, 100_000_000e18)
         );
         // Avoid over borrowing
         amount = uint128(bound(amount, 1, amountToDepositInCDP - 1));

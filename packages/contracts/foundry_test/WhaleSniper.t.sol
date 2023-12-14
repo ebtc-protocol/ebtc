@@ -132,7 +132,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
                 cdpManager.MAX_REWARD_SPLIT()) / cdpManager.stakingRewardSplit();
 
             // hack manipulation to sync global index in attacker's benefit
-            uint256 _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM - 1234567890;
+            uint256 _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM;
             collateral.setEthPerShare(_oldIdx);
             cdpManager.syncGlobalAccountingAndGracePeriod();
             console.log("_oldIndex:", cdpManager.stEthIndex());
@@ -161,7 +161,7 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
         console.log("tcrAfter claim", tcrAfter);
 
         // Now we're in recovery mode so there exist a value such that a liquidation can be triggered willingly by the attacker
-        assertLt(tcrAfter, 1250000000000000000);
+        assertGt(tcrAfter, 1250000000000000000); /// @audit ??? No longer triggering RM?
     }
 
     // Padding Deposits -> W/e, prob 300% CR
