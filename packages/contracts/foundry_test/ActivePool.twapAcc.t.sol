@@ -67,4 +67,36 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
         uint256 _accAfter = apTester.getLatestAccumulator();
         assertEq(TEN_BILLION_USD * _duration, _accAfter - _accBefore);
     }
+
+    function testIsManipulationAValidConcern() public {
+        uint256 NORMAL_VALUE = 1000e18;
+        apTester.unprotectedSetTwapTrackVal(NORMAL_VALUE);
+        assertEq(NORMAL_VALUE, apTester.getRealValue());
+
+        // update the accumulator normally after period
+        vm.warp((apTester.getData()).t0 + apTester.PERIOD() + 123);
+        apTester.update();
+        assertEq(NORMAL_VALUE, apTester.getRealValue());
+        uint256 _obsv = apTester.observe();
+        assertEq(_obsv, NORMAL_VALUE);
+
+        // make a huge pike
+        uint256 HUNDRED_BILLION_USD = 100e27; // 100 billion in 18 decimals
+        apTester.unprotectedSetTwapTrackVal(HUNDRED_BILLION_USD);
+        assertEq(HUNDRED_BILLION_USD, apTester.getRealValue());
+
+        // then check the new observe
+        vm.warp(block.timestamp + 12);
+        _obsv = apTester.observe();
+        uint256 _diffObsvNormal = _obsv > NORMAL_VALUE
+            ? (_obsv - NORMAL_VALUE)
+            : (NORMAL_VALUE - _obsv);
+        uint256 _diffObsvPike = _obsv > HUNDRED_BILLION_USD
+            ? (_obsv - HUNDRED_BILLION_USD)
+            : (HUNDRED_BILLION_USD - _obsv);
+
+        // ensure observe is not obviously manipulated by pike
+        console.log("new observe=", _obsv);
+        assertGt(_diffObsvPike, _diffObsvNormal);
+    }
 }
