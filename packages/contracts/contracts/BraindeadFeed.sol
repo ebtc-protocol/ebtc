@@ -69,10 +69,13 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     }
 
     /// @notice Allows the owner to replace the secondary oracle
-    ///     The oracle must work (return non-zero value)
+    ///     The oracle must work (return non-zero value), unless removed
     function setSecondaryOracle(address _newSecondary) external requiresAuth {
-        uint256 currentPrice = IPriceFetcher(_newSecondary).fetchPrice();
-        require(currentPrice != INVALID_PRICE, "BraindeadFeed: Secondary Oracle Must Work");
+        // Allow governance to remove the secondary oracle
+        if (_newSecondary != UNSET_ADDRESS) {
+            uint256 currentPrice = IPriceFetcher(_newSecondary).fetchPrice();
+            require(currentPrice != INVALID_PRICE, "BraindeadFeed: Secondary Oracle Must Work");
+        }
 
         emit SecondaryOracleUpdated(secondaryOracle, _newSecondary);
         secondaryOracle = _newSecondary;

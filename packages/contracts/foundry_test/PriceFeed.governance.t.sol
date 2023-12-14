@@ -116,4 +116,17 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
         // Confirm variable set
         assertEq(address(braindeadFeed.secondaryOracle()), address(mockOracle));
     }
+
+    function testCannotRemovePrimaryOracle() public {
+        vm.prank(defaultGovernance);
+        vm.expectRevert();
+        braindeadFeed.setPrimaryOracle(address(0));
+    }
+
+    function testCanRemoveSecondaryOracle() public {
+        vm.prank(defaultGovernance);
+        braindeadFeed.setSecondaryOracle(address(0));
+
+        assertEq(address(braindeadFeed.secondaryOracle()), address(0));
+    }
 }
