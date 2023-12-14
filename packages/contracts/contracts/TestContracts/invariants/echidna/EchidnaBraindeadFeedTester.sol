@@ -23,8 +23,6 @@ contract EchidnaBraindeadFeedTester is
     PropertiesAsserts,
     PropertiesDescriptions
 {
-    event Log2(string, uint256, uint256);
-
     BraindeadFeed internal braindeadFeed;
     PriceFeedOracleTester internal primaryTester;
     PriceFeedOracleTester internal secondaryTester;
@@ -143,12 +141,12 @@ contract EchidnaBraindeadFeedTester is
         fallbackCaller.setGetFallbackResponseRevert();
     }
 
-    function setLatestRevert(bool flag) public log {
+    function setLatestRevert(bool flag) public {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setLatestRevert();
     }
 
-    function setPrevRevert(bool flag) public log {
+    function setPrevRevert(bool flag) public {
         MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
         aggregator.setPrevRevert();
     }
@@ -183,7 +181,7 @@ contract EchidnaBraindeadFeedTester is
         secondaryTester.setErrorState(PriceFeedOracleTester.ErrorState(errorState));
     }
 
-    function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public log {
+    function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.latestRoundData();
 
         latestRoundId = uint80(
@@ -214,7 +212,7 @@ contract EchidnaBraindeadFeedTester is
         uint256 prevPrice,
         uint256 prevUpdateTime,
         bool flag
-    ) public log {
+    ) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.getRoundData(0);
         prevRoundId = uint80(
             clampBetween(
@@ -236,7 +234,7 @@ contract EchidnaBraindeadFeedTester is
         collEthCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function setLatestBTC(uint80 latestRoundId, uint256 price, uint256 updateTime) public log {
+    function setLatestBTC(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.latestRoundData();
 
         latestRoundId = uint80(
@@ -267,7 +265,7 @@ contract EchidnaBraindeadFeedTester is
         uint256 prevPrice,
         uint256 prevUpdateTime,
         bool flag
-    ) public log {
+    ) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.getRoundData(0);
         prevRoundId = uint80(
             clampBetween(
@@ -289,133 +287,24 @@ contract EchidnaBraindeadFeedTester is
         ethBtcCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function fetchPriceBatch() public log {
-        uint256 newPrice = priceFeed.fetchPrice();
-        uint256 newPrice2 = priceFeed.fetchPrice();
-        uint256 newPrice3 = priceFeed.fetchPrice();
+    function fetchPriceBraindead() public {
+        uint256 lastGoodPrice = braindeadFeed.lastGoodPrice();
 
-        assertEq(newPrice, newPrice2, "same 12");
-        assertEq(newPrice, newPrice3, "same 13");
-        assertEq(newPrice2, newPrice3, "same 23");
-    }
+        try braindeadFeed.fetchPrice() returns (uint256 price) {
+            PriceFeedOracleTester.ErrorState primaryErrorState = primaryTester.errorState();
+            PriceFeedOracleTester.ErrorState secondaryErrorState = secondaryTester.errorState();
 
-    function fetchPrice() public log {
-        _fetchPrice();
-    }
-
-    function _fetchPrice() private returns (uint256) {
-        IPriceFeed.Status statusBefore = priceFeed.status();
-        uint256 fallbackResponse;
-
-        if (address(priceFeed.fallbackCaller()) != address(0)) {
-            try fallbackCaller.getFallbackResponse() returns (uint256 res, uint256, bool) {
-                fallbackResponse = res;
-            } catch {}
-        }
-
-        try priceFeed.fetchPrice() returns (uint256 price) {
-            IPriceFeed.Status statusAfter = priceFeed.status();
-            assertWithMsg(_isValidStatusTransition(statusBefore, statusAfter), PF_02);
-
-            if (
-                statusAfter == IPriceFeed.Status.chainlinkWorking ||
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted
-            ) {
-                assertEq(price, priceFeed.lastGoodPrice(), PF_04);
-
-                if (address(priceFeed.fallbackCaller()) != address(0)) {
-                    assertNeq(price, fallbackResponse, PF_05);
+            if (primaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
+                assertWithMsg(price == primaryTester.fetchPrice(), PF_07);
+            } else {
+                if (secondaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
+                    assertWithMsg(price == secondaryTester.fetchPrice(), PF_08);
+                } else {
+                    assertWithMsg(price == lastGoodPrice, PF_09);
                 }
             }
-
-            if (address(priceFeed.fallbackCaller()) == address(0)) {
-                assertWithMsg(
-                    statusAfter == IPriceFeed.Status.chainlinkWorking ||
-                        statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted ||
-                        statusAfter == IPriceFeed.Status.bothOraclesUntrusted,
-                    PF_06
-                );
-            }
-
-            statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = statusAfter;
-            if (statusHistoryOperations >= MAX_STATUS_HISTORY_OPERATIONS) {
-                // TODO: this is hard to test, as we may have false positives due to the random nature of the tests
-                // assertWithMsg(_hasNotDeadlocked(), PF_03);
-            }
-
-            return price;
         } catch {
             assertWithMsg(false, PF_01);
         }
-    }
-
-    function _isValidStatusTransition(
-        IPriceFeed.Status statusBefore,
-        IPriceFeed.Status statusAfter
-    ) internal returns (bool) {
-        emit Log2("status transition", uint256(statusBefore), uint256(statusAfter));
-        return
-            // CASE 1
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkFrozen) ||
-            (statusBefore == IPriceFeed.Status.chainlinkWorking &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            // CASE 2
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkUntrusted &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
-            // CASE 3
-            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
-            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            (statusBefore == IPriceFeed.Status.bothOraclesUntrusted &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            // CASE 4
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.usingFallbackChainlinkUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingFallbackChainlinkFrozen &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            // CASE 5
-            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
-                statusAfter == IPriceFeed.Status.bothOraclesUntrusted) ||
-            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
-                statusAfter == IPriceFeed.Status.chainlinkWorking) ||
-            (statusBefore == IPriceFeed.Status.usingChainlinkFallbackUntrusted &&
-                statusAfter == IPriceFeed.Status.usingChainlinkFallbackUntrusted);
-    }
-
-    function _hasNotDeadlocked() internal returns (bool) {
-        uint256 statusSeen = 0;
-
-        for (uint256 i = 0; i < MAX_STATUS_HISTORY_OPERATIONS; ++i) {
-            IPriceFeed.Status status = statusHistory[i];
-            statusSeen |= (1 << uint256(status));
-        }
-
-        // has not deadlocked if during past MAX_STATUS_HISTORY_OPERATIONS all statuses have been seen
-        // Note: there is a probability of false positive
-        return statusSeen == 31; // 0b1111
-    }
-
-    modifier log() {
-        for (uint256 i = 0; i < MAX_STATUS_HISTORY_OPERATIONS; ++i) {
-            IPriceFeed.Status status = statusHistory[i];
-            emit Log2("status", i, uint256(status));
-        }
-        _;
     }
 }

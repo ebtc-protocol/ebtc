@@ -142,4 +142,10 @@ abstract contract PropertiesDescriptions {
     string constant PF_05 =
         "PF-05: The price feed should never use the fallback if chainlink is Working";
     string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
+    string constant PF_07 =
+        "PF-07: The price feed should return the primary oracle price if it is working";
+    string constant PF_08 =
+        "PF_08: The price feed should return the secondary oracle price if the primary oracle is not working";
+    string constant PF_09 =
+        "PF_09: The price feed should return the last good price if both oracles are not working";
 }
