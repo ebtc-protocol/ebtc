@@ -8,6 +8,7 @@ import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTest
 import {BraindeadFeed} from "../contracts/BraindeadFeed.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
+import {PriceFeedOracleTester} from "../contracts/TestContracts/PriceFeedOracleTester.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
@@ -232,10 +233,11 @@ contract eBTCBaseFixture is
             );
 
             priceFeedMock = new PriceFeedTestnet(addr.authorityAddress);
+            primaryOracle = new PriceFeedOracleTester(address(priceFeedMock));
 
             // Price Feed Mock
             creationCode = type(BraindeadFeed).creationCode;
-            args = abi.encode(addr.authorityAddress, address(priceFeedMock), address(0));
+            args = abi.encode(addr.authorityAddress, address(primaryOracle), address(0));
 
             braindeadFeed = BraindeadFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))

@@ -11,88 +11,12 @@ import "../../../BraindeadFeed.sol";
 import "../../MockAggregator.sol";
 import {MockFallbackCaller} from "../../MockFallbackCaller.sol";
 import "../../../Dependencies/AuthNoOwner.sol";
+import {PriceFeedOracleTester} from "../../PriceFeedOracleTester.sol";
+import {MockAlwaysTrueAuthority} from "../../MockAlwaysTrueAuthority.sol";
 
 import "../PropertiesDescriptions.sol";
 
 import "@crytic/properties/contracts/util/Hevm.sol";
-
-contract PriceFeedTestCaller {
-    PriceFeed internal priceFeed;
-    ErrorState internal errorState;
-
-    enum ErrorState {
-        NONE,
-        REVERT_BOMB,
-        RETURN_BOMB,
-        RETURN_BYTES,
-        REVERT_CUSTOM_ERROR,
-        REVERT_CUSTOM_ERROR_PARAMS,
-        BURN_ALL_GAS,
-        SELF_DESTRUCT
-    }
-
-    error InvalidAddress();
-    error InvalidNumber(uint224);
-
-    constructor(PriceFeed _priceFeed) {
-        priceFeed = _priceFeed;
-        errorState = ErrorState.NONE;
-    }
-
-    function fetchPrice() external returns (uint256) {
-        if (errorState == ErrorState.NONE) {
-            return priceFeed.fetchPrice();
-        } else if (errorState == ErrorState.REVERT_BOMB) {
-            revBytes(2_000_000);
-        } else if (errorState == ErrorState.RETURN_BOMB) {
-            retBytes(2_000_000);
-        } else if (errorState == ErrorState.RETURN_BYTES) {
-            retByteArray();
-        } else if (errorState == ErrorState.REVERT_CUSTOM_ERROR) {
-            revert InvalidAddress();
-        } else if (errorState == ErrorState.REVERT_CUSTOM_ERROR_PARAMS) {
-            revert InvalidNumber(12346);
-        } else if (errorState == ErrorState.BURN_ALL_GAS) {
-            uint256 counter;
-            while (true) {
-                counter += 1;
-            }
-        } else if (errorState == ErrorState.SELF_DESTRUCT) {
-            selfdestruct(payable(msg.sender));
-        }
-    }
-
-    function revBytes(uint256 _bytes) internal pure {
-        assembly {
-            revert(0, _bytes)
-        }
-    }
-
-    function retBytes(uint256 _bytes) public pure {
-        assembly {
-            return(0, _bytes)
-        }
-    }
-
-    function retByteArray() public pure {
-        uint256[] memory entries = new uint256[](250);
-        bytes memory retData = abi.encode(entries);
-        uint256 retLen = retData.length;
-        assembly {
-            return(add(retData, 0x20), retLen)
-        }
-    }
-
-    function setErrorState(ErrorState _errorState) external {
-        errorState = _errorState;
-    }
-}
-
-contract MockAlwaysTrueAuthority {
-    function canCall(address user, address target, bytes4 functionSig) external view returns (bool) {
-        return true;
-    }
-}
 
 contract EchidnaBraindeadFeedTester is
     PropertiesConstants,
@@ -102,8 +26,8 @@ contract EchidnaBraindeadFeedTester is
     event Log2(string, uint256, uint256);
 
     BraindeadFeed internal braindeadFeed;
-    PriceFeedTestCaller internal primaryTester;
-    PriceFeedTestCaller internal secondaryTester;
+    PriceFeedOracleTester internal primaryTester;
+    PriceFeedOracleTester internal secondaryTester;
     PriceFeed internal priceFeed;
     MockAggregator internal collEthCLFeed;
     MockAggregator internal ethBtcCLFeed;
@@ -165,8 +89,8 @@ contract EchidnaBraindeadFeedTester is
             address(ethBtcCLFeed)
         );
 
-        primaryTester = new PriceFeedTestCaller(priceFeed);
-        secondaryTester = new PriceFeedTestCaller(priceFeed);
+        primaryTester = new PriceFeedOracleTester(address(priceFeed));
+        secondaryTester = new PriceFeedOracleTester(address(priceFeed));
 
         braindeadFeed = new BraindeadFeed(
             address(authority),
@@ -241,22 +165,22 @@ contract EchidnaBraindeadFeedTester is
         errorState = uint8(
             clampBetween(
                 uint256(errorState),
-                uint256(PriceFeedTestCaller.ErrorState.NONE),
-                uint256(PriceFeedTestCaller.ErrorState.SELF_DESTRUCT)
+                uint256(PriceFeedOracleTester.ErrorState.NONE),
+                uint256(PriceFeedOracleTester.ErrorState.SELF_DESTRUCT)
             )
         );
-        primaryTester.setErrorState(PriceFeedTestCaller.ErrorState(errorState));
+        primaryTester.setErrorState(PriceFeedOracleTester.ErrorState(errorState));
     }
 
     function setSecondaryErrorState(uint8 errorState) external {
         errorState = uint8(
             clampBetween(
                 uint256(errorState),
-                uint256(PriceFeedTestCaller.ErrorState.NONE),
-                uint256(PriceFeedTestCaller.ErrorState.SELF_DESTRUCT)
+                uint256(PriceFeedOracleTester.ErrorState.NONE),
+                uint256(PriceFeedOracleTester.ErrorState.SELF_DESTRUCT)
             )
         );
-        secondaryTester.setErrorState(PriceFeedTestCaller.ErrorState(errorState));
+        secondaryTester.setErrorState(PriceFeedOracleTester.ErrorState(errorState));
     }
 
     function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public log {
