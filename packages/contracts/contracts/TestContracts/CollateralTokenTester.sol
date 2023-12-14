@@ -23,7 +23,6 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     event MintCapSet(uint256 indexed newCap);
     event MintCooldownSet(uint256 indexed newCooldown);
 
-    mapping(address => uint256) private balances;
     mapping(address => mapping(address => uint256)) public override allowance;
     mapping(address => bool) public isUncappedMinter;
     mapping(address => uint256) public lastMintTime;
@@ -32,8 +31,10 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     uint256 public mintCap = 10e18;
     uint256 public mintCooldown = 60 * 60 * 24;
 
-    uint256 private _ethPerShare = 1e18;
-    uint256 private _totalBalance;
+    uint256 _getTotalShares = 0;
+    uint256 _getTotalPooledEther = 0;
+    mapping (address => uint256) public shares;
+    
 
     uint256 private epochsPerFrame = 225;
     uint256 private slotsPerEpoch = 32;
@@ -45,8 +46,10 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
 
     function deposit() public payable {
         uint256 _share = getSharesByPooledEth(msg.value);
-        balances[msg.sender] += _share;
-        _totalBalance += _share;
+        shares[msg.sender] += _share;
+        _getTotalShares += _share;
+        _getTotalPooledEther += msg.value;
+        
         emit Deposit(msg.sender, msg.value, _share);
     }
 
@@ -62,23 +65,24 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
             lastMintTime[msg.sender] = block.timestamp;
         }
         uint256 _share = getSharesByPooledEth(ethToDeposit);
-        balances[msg.sender] += _share;
-        _totalBalance += _share;
+        shares[msg.sender] += _share;
+        _getTotalShares += _share;
+        _getTotalPooledEther += ethToDeposit;
+
         emit Deposit(msg.sender, ethToDeposit, _share);
     }
 
     function withdraw(uint256 wad) public {
         uint256 _share = getSharesByPooledEth(wad);
-        require(balances[msg.sender] >= _share);
-        balances[msg.sender] -= _share;
-        _totalBalance -= _share;
+        require(shares[msg.sender] >= _share);
+        shares[msg.sender] -= _share;
+        _getTotalShares -= _share;
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad, _share);
     }
 
     function totalSupply() public view override returns (uint) {
-        uint _tmp = _mul(_ethPerShare, _totalBalance);
-        return _div(_tmp, 1e18);
+        return _getTotalPooledEther;
     }
 
     // Permissioned functions
@@ -125,15 +129,15 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
 
     function transferFrom(address src, address dst, uint256 wad) public override returns (bool) {
         uint256 _share = getSharesByPooledEth(wad);
-        require(balances[src] >= _share, "ERC20: transfer amount exceeds balance");
+        require(shares[src] >= _share, "ERC20: transfer amount exceeds balance");
 
         if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
             require(allowance[src][msg.sender] >= wad);
             allowance[src][msg.sender] -= wad;
         }
 
-        balances[src] -= _share;
-        balances[dst] += _share;
+        shares[src] -= _share;
+        shares[dst] += _share;
 
         _emitTransferEvents(src, dst, wad, _share);
 
@@ -142,21 +146,42 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
 
     // tests should adjust the ratio by this function
     function setEthPerShare(uint256 _ePerS) external {
-        _ethPerShare = _ePerS;
+        // We change this
+        _getTotalPooledEther = _div(_mul(_getTotalShares, _ePerS), 1e18);
     }
 
     function getEthPerShare() external view returns (uint256) {
-        return _ethPerShare;
+        return _div(_getTotalPooledEther, _getTotalShares);
     }
+
+    /***
+        function getSharesByPooledEth(uint256 _ethAmount) public view returns (uint256) {
+            return _ethAmount
+                .mul(_getTotalShares())
+                .div(_getTotalPooledEther());
+        }
+     */
 
     function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
-        uint256 _tmp = _mul(1e18, _ethAmount);
-        return _div(_tmp, _ethPerShare);
+        if(_getTotalShares == 0 && _getTotalPooledEther == 0) {
+            return _ethAmount;
+        }
+        return _div(_mul(_ethAmount, _getTotalShares), _getTotalPooledEther);
     }
+    /**
+            function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
+            return _sharesAmount
+                .mul(_getTotalPooledEther())
+                .div(_getTotalShares());
+        }
+     */
 
     function getPooledEthByShares(uint256 _sharesAmount) public view override returns (uint256) {
-        uint256 _tmp = _mul(_ethPerShare, _sharesAmount);
-        return _div(_tmp, 1e18);
+        if(_getTotalShares == 0 && _getTotalPooledEther == 0) {
+            return _sharesAmount;
+        }
+
+        return _div(_mul(_sharesAmount, _getTotalPooledEther), _getTotalShares);
     }
 
     function transferShares(
@@ -166,8 +191,8 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         uint256 _tknAmt = getPooledEthByShares(_sharesAmount);
 
         // NOTE: Changed here to transfer underlying shares without rounding
-        balances[msg.sender] -= _sharesAmount;
-        balances[_recipient] += _sharesAmount;
+        shares[msg.sender] -= _sharesAmount;
+        shares[_recipient] += _sharesAmount;
 
         _emitTransferEvents(msg.sender, _recipient, _tknAmt, _sharesAmount);
 
@@ -175,7 +200,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     }
 
     function sharesOf(address _account) public view override returns (uint256) {
-        return balances[_account];
+        return shares[_account];
     }
 
     function getOracle() external view override returns (address) {
@@ -210,8 +235,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     }
 
     function balanceOf(address _usr) external view override returns (uint256) {
-        uint256 _tmp = _mul(_ethPerShare, balances[_usr]);
-        return _div(_tmp, 1e18);
+        return getPooledEthByShares(shares[_usr]);
     }
 
     function increaseAllowance(

@@ -283,7 +283,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
             vm.startPrank(user);
             vm.deal(user, type(uint256).max);
             collateral.approve(address(borrowerOperations), type(uint256).max);
-            collateral.deposit{value: 1000000000000000000000000 ether}();
+            collateral.deposit{value: 1_000_000_000e18}();
             // Random collateral for each user
             uint256 collAmount = _utils.generateRandomNumber(30 ether, 100000 ether, user);
             uint256 collAmountChunk = collAmount / AMOUNT_OF_CDPS;

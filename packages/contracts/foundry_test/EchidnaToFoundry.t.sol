@@ -32,6 +32,213 @@ contract EToFoundry is
         vm.startPrank(address(actor));
     }
 
+    function testPropertySL05ViaSplit() public {
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        console2.log("");
+        console2.log("1");
+        _logRatiosForStakeAndColl();
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        console2.log("");
+        console2.log("2");
+        _logRatiosForStakeAndColl();
+        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        console2.log("");
+        console2.log("3");
+        _logRatiosForStakeAndColl();
+        setEthPerShare(
+            97056408238157249804947318527517112967233460345516200710872440659556098645798
+        );
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
+        console2.log("");
+        console2.log("4");
+
+        _syncAllCdps();
+        _logRatiosForStakeAndColl();
+    }
+
+    function testPropertySL05ViaSplitFindingTheOne() public {
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        console2.log("");
+        console2.log("1");
+        _logRatiosForStakeAndColl();
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        console2.log("");
+        console2.log("2");
+        _logRatiosForStakeAndColl();
+        console2.log("Stakes 1ss");
+        _logStakes();
+        _syncAllCdps();
+        console2.log("Stakes 2");
+        _logStakes();
+        _syncAllCdps();
+        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        console2.log("Stakes 3");
+        _logStakes();
+
+        console2.log("");
+        console2.log("3");
+        _logRatiosForStakeAndColl();
+        setEthPerShare(
+            97056408238157249804947318527517112967233460345516200710872440659556098645798
+        );
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
+        console2.log("");
+        console2.log("4");
+
+        _logRatiosForStakeAndColl();
+    }
+
+    function testPropertySL05ViaSplitWithSync() public {
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        _syncAllCdps();
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        _syncAllCdps();
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        _syncAllCdps();
+        console2.log("");
+        console2.log("1");
+        _logRatiosForStakeAndColl();
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        _syncAllCdps();
+        console2.log("");
+        console2.log("2");
+        _logRatiosForStakeAndColl();
+        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        _syncAllCdps();
+        console2.log("");
+        console2.log("3");
+        _logRatiosForStakeAndColl();
+        setEthPerShare(
+            97056408238157249804947318527517112967233460345516200710872440659556098645798
+        );
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
+        _syncAllCdps();
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
+        
+        console2.log("");
+        console2.log("4");
+
+        _logRatiosForStakeAndColl();
+    }
+
+    function _syncAllCdps() internal {
+        bytes32 currentCdp = sortedCdps.getFirst();
+        while (currentCdp != bytes32(0)) {
+            cdpManager.syncAccounting(currentCdp);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+    }
+
+    event DebugBytes32(bytes32 e);
+    function _logStakes() internal {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        while (currentCdp != bytes32(0)) {
+            emit DebugBytes32(currentCdp);
+            console2.log("cdpManager.getCdpStake(currentCdp)", cdpManager.getCdpStake(currentCdp));
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+    }
+
+    function _logRatiosForStakeAndColl() internal {
+        bytes32 currentCdp = sortedCdps.getFirst();
+        uint256 PRECISION = 1e18;
+
+        // Reset Looop vars
+        uint256 collAcc = 0;
+        uint256 syncedCollAcc = 0;
+        uint256 stakeAcc = 0;
+
+        while (currentCdp != bytes32(0)) {
+            collAcc += cdpManager.getCdpCollShares(currentCdp);
+
+            uint256 syncedColl = cdpManager.getSyncedCdpCollShares(currentCdp);
+            syncedCollAcc += syncedColl;
+
+            stakeAcc += cdpManager.getCdpStake(currentCdp);
+
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        console2.log(
+            "Divison of Coll / total",
+            (collAcc * PRECISION) / activePool.getSystemCollShares()
+        );
+        console2.log(
+            "Divison of Stake / TotalStakes",
+            (stakeAcc * PRECISION) / cdpManager.totalStakes()
+        );
+    }
+
+    // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
+    function testPropertySL05ViaLiquidate() public {
+        setEthPerShare(
+            12137138735364853393659783413495902950573335538668689540776328203983925215811
+        );
+        setEthPerShare(30631887070343426798280082917191654654292863364863423646265020494943238699);
+        setEthPerShare(776978999485790388950919620588735464671614128565904936170116473650448744381);
+        openCdp(168266871339698218615133335629239858353993370046701339713750467499, 1);
+        setEthPerShare(
+            18259119993128374494182960141815059756667443030056035825036320914502997177865
+        );
+        addColl(
+            7128974394460579557571027269632372427504086125697185719639350284139296986,
+            53241717733798681974905139247559310444497207854177943207741265181147256271
+        );
+        openCdp(
+            37635557627948612150381079279416828011988176534495127519810996522075020800647,
+            136472217300866767
+        );
+        setEthPerShare(445556188509986934837462424);
+        openCdp(12181230440821352134148880356120823470441483581757, 1);
+        setEthPerShare(612268882000635712391494911936034158156169162782123690926313314401353750575);
+        vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
+        bytes32 currentCdp = sortedCdps.getFirst();
+        uint256 i = 0;
+        uint256 _price = priceFeedMock.getPrice();
+        console2.log("\tbefore");
+        uint256 newIcr;
+
+        uint256 PRECISION = 1e18;
+
+        _before(bytes32(0));
+        liquidateCdps(0);
+        _after(bytes32(0));
+        console2.log(_diff());
+        console2.log("\tafter");
+        i = 0;
+        currentCdp = sortedCdps.getFirst();
+
+        // Reset Looop vars
+        uint256 collAcc = 0;
+        uint256 stakeAcc = 0;
+
+        while (currentCdp != bytes32(0)) {
+            newIcr = crLens.quoteRealICR(currentCdp);
+
+            collAcc += cdpManager.getCdpCollShares(currentCdp);
+            stakeAcc += cdpManager.getCdpStake(currentCdp);
+
+            console2.log("\t", i++, cdpManager.getCachedICR(currentCdp, _price), newIcr);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        console2.log(
+            "Divison of Coll / total",
+            (collAcc * PRECISION) / activePool.getSystemCollShares()
+        );
+        console2.log(
+            "Divison of Stake / TotalStakes",
+            (stakeAcc * PRECISION) / cdpManager.totalStakes()
+        );
+
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
+    }
+
     /// @dev Example of test for invariant
     function testBO05() public {
         openCdp(0, 1);
@@ -1085,58 +1292,6 @@ contract EToFoundry is
         assertGt(valueAfterLiq, valueBeforeLiq, "Value rises");
         assertTrue(invariant_CDPM_04(vars), CDPM_04);
     }
-
-    // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
-    // function testPropertySL05() public {
-    //     setEthPerShare(
-    //         12137138735364853393659783413495902950573335538668689540776328203983925215811
-    //     );
-    //     setEthPerShare(30631887070343426798280082917191654654292863364863423646265020494943238699);
-    //     setEthPerShare(776978999485790388950919620588735464671614128565904936170116473650448744381);
-    //     openCdp(168266871339698218615133335629239858353993370046701339713750467499, 1);
-    //     setEthPerShare(
-    //         18259119993128374494182960141815059756667443030056035825036320914502997177865
-    //     );
-    //     addColl(
-    //         7128974394460579557571027269632372427504086125697185719639350284139296986,
-    //         53241717733798681974905139247559310444497207854177943207741265181147256271
-    //     );
-    //     openCdp(
-    //         37635557627948612150381079279416828011988176534495127519810996522075020800647,
-    //         136472217300866767
-    //     );
-    //     setEthPerShare(445556188509986934837462424);
-    //     openCdp(12181230440821352134148880356120823470441483581757, 1);
-    //     setEthPerShare(612268882000635712391494911936034158156169162782123690926313314401353750575);
-    //     vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
-    //     bytes32 currentCdp = sortedCdps.getFirst();
-    //     uint256 i = 0;
-    //     uint256 _price = priceFeedMock.getPrice();
-    //     console2.log("\tbefore");
-
-    //     uint256 newIcr;
-
-    //     while (currentCdp != bytes32(0)) {
-    //         newIcr = crLens.quoteRealICR(currentCdp);
-
-    //         console2.log("\t", i++, cdpManager.getCachedICR(currentCdp, _price), newIcr);
-    //         currentCdp = sortedCdps.getNext(currentCdp);
-    //     }
-    //     _before(bytes32(0));
-    //     liquidateCdps(0);
-    //     _after(bytes32(0));
-    //     console2.log(_diff());
-    //     console2.log("\tafter");
-    //     i = 0;
-    //     currentCdp = sortedCdps.getFirst();
-    //     while (currentCdp != bytes32(0)) {
-    //         newIcr = crLens.quoteRealICR(currentCdp);
-
-    //         console2.log("\t", i++, cdpManager.getCachedICR(currentCdp, _price), newIcr);
-    //         currentCdp = sortedCdps.getNext(currentCdp);
-    //     }
-    //     assertTrue(invariant_SL_05(crLens, cdpManager, priceFeedMock, sortedCdps), SL_05);
-    // }
 
     function testPropertyCSP01() public {
         openCdp(4875031885513970860143576544506802817390763544834983767953988765, 2);
