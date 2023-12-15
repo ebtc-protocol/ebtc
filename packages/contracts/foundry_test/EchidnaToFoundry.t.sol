@@ -45,7 +45,6 @@ contract EToFoundry is
         _logRatiosForStakeAndColl();
         _logStakes();
 
-
         setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
         _logRatiosForStakeAndColl();
         _logStakes();
@@ -152,16 +151,31 @@ contract EToFoundry is
             emit DebugBytes32(currentCdp);
             console2.log("CdpId", vm.toString(currentCdp));
             console2.log("cdpManager.getCdpStake(currentCdp)", cdpManager.getCdpStake(currentCdp));
-            console2.log("cdpManager.getSyncedCdpCollShares(currentCdp)", cdpManager.getSyncedCdpCollShares(currentCdp));
-            console2.log("cdpManager.getCdpCollShares(currentCdp)", cdpManager.getCdpCollShares(currentCdp));
+            console2.log(
+                "cdpManager.getSyncedCdpCollShares(currentCdp)",
+                cdpManager.getSyncedCdpCollShares(currentCdp)
+            );
+            console2.log(
+                "cdpManager.getCdpCollShares(currentCdp)",
+                cdpManager.getCdpCollShares(currentCdp)
+            );
             console2.log("cdpManager.getCdpDebt(currentCdp)", cdpManager.getCdpDebt(currentCdp));
             console2.log("cdpManager.getCdpDebt(currentCdp)", cdpManager.getCdpDebt(currentCdp));
-            console2.log("cdpManager.getSyncedNominalICR(currentCdp)", cdpManager.getSyncedNominalICR(currentCdp));
+            console2.log(
+                "cdpManager.getSyncedNominalICR(currentCdp)",
+                cdpManager.getSyncedNominalICR(currentCdp)
+            );
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-        console2.log("cdpManager.systemStEthFeePerUnitIndex", cdpManager.systemStEthFeePerUnitIndex());
-        console2.log("cdpManager.systemStEthFeePerUnitIndexError", cdpManager.systemStEthFeePerUnitIndexError());
+        console2.log(
+            "cdpManager.systemStEthFeePerUnitIndex",
+            cdpManager.systemStEthFeePerUnitIndex()
+        );
+        console2.log(
+            "cdpManager.systemStEthFeePerUnitIndexError",
+            cdpManager.systemStEthFeePerUnitIndexError()
+        );
 
         console2.log("");
         console2.log("");
