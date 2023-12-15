@@ -128,7 +128,7 @@ contract EToFoundry is
         assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
         _syncAllCdps();
         assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
-        
+
         console2.log("");
         console2.log("4");
 
@@ -144,6 +144,7 @@ contract EToFoundry is
     }
 
     event DebugBytes32(bytes32 e);
+
     function _logStakes() internal {
         bytes32 currentCdp = sortedCdps.getFirst();
 

@@ -134,6 +134,8 @@ contract WhaleSniperPOCTest is eBTCBaseFixture {
             // hack manipulation to sync global index in attacker's benefit
             uint256 _oldIdx = _newIndex - _requiredDeltaIdxTriggeRM;
             collateral.setEthPerShare(_oldIdx);
+            _oldIdx = collateral.getEthPerShare();
+            console.log("_oldIdx:", _oldIdx);
             cdpManager.syncGlobalAccountingAndGracePeriod();
             console.log("_oldIndex:", cdpManager.stEthIndex());
             assertEq(_oldIdx, cdpManager.stEthIndex());
