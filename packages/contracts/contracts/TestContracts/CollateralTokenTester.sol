@@ -34,8 +34,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     // NOTE: Seeded a 1e18 to avoid bs
     uint256 _getTotalShares = 1e18;
     uint256 _getTotalPooledEther = 1e18;
-    mapping (address => uint256) public shares;
-    
+    mapping(address => uint256) public shares;
 
     uint256 private epochsPerFrame = 225;
     uint256 private slotsPerEpoch = 32;
@@ -50,7 +49,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         shares[msg.sender] += _share;
         _getTotalShares += _share;
         _getTotalPooledEther += msg.value;
-        
+
         emit Deposit(msg.sender, msg.value, _share);
     }
 
@@ -166,6 +165,7 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     function getSharesByPooledEth(uint256 _ethAmount) public view override returns (uint256) {
         return _div(_mul(_ethAmount, _getTotalShares), _getTotalPooledEther);
     }
+
     /**
             function getPooledEthByShares(uint256 _sharesAmount) public view returns (uint256) {
             return _sharesAmount
