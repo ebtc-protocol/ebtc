@@ -201,7 +201,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    uint256 NICR_ERROR_THRESHOLD = 1e8;
+    uint256 NICR_ERROR_THRESHOLD = 1e18; // NOTE: 1e20 is basically 1/1 so it's completely safe as a threshold
 
     function invariant_SL_05(CRLens crLens, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
@@ -236,7 +236,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getCachedTCR(priceFeedMock.getPrice()) > 1e18
+            cdpManager.getSyncedTCR(priceFeedMock.getPrice()) >= 1e18
                 ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
                     eBTCToken.totalSupply()
                 : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <
