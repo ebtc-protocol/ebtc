@@ -231,15 +231,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     function invariant_GENERAL_02(
         CdpManager cdpManager,
         PriceFeedTestnet priceFeedMock,
-        EBTCToken eBTCToken
+        EBTCToken eBTCToken,
+        ICollateralToken collateral
     ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
             cdpManager.getCachedTCR(priceFeedMock.getPrice()) > 1e18
-                ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
+                ? (collateral.getPooledEthByShares(cdpManager.getSystemCollShares()) *
+                    priceFeedMock.getPrice()) /
+                    1e18 >=
                     eBTCToken.totalSupply()
-                : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <
+                : (collateral.getPooledEthByShares(cdpManager.getSystemCollShares()) *
+                    priceFeedMock.getPrice()) /
+                    1e18 <
                     eBTCToken.totalSupply();
     }
 
