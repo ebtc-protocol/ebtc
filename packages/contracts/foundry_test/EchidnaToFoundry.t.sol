@@ -32,64 +32,74 @@ contract EToFoundry is
         vm.startPrank(address(actor));
     }
 
-    function testPropertySL05ViaSplit() public {
+    function testPropertySL05ViaSplitCompareBroken() public {
         openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        _logRatiosForStakeAndColl();
+        _logStakes();
+
         openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
-        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
-        console2.log("");
-        console2.log("1");
         _logRatiosForStakeAndColl();
+        _logStakes();
+
         setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
-        console2.log("");
-        console2.log("2");
         _logRatiosForStakeAndColl();
+        _logStakes();
+
+
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        _logRatiosForStakeAndColl();
+        _logStakes();
+
         withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
-        console2.log("");
-        console2.log("3");
         _logRatiosForStakeAndColl();
+        _logStakes();
+
         setEthPerShare(
             97056408238157249804947318527517112967233460345516200710872440659556098645798
         );
+        _logRatiosForStakeAndColl();
+        _logStakes();
+
         assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
-        console2.log("");
-        console2.log("4");
 
         _syncAllCdps();
         _logRatiosForStakeAndColl();
+        _logStakes();
     }
 
-    function testPropertySL05ViaSplitFindingTheOne() public {
+    function testPropertySL05ViaSplitCompareTheOne() public {
         openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
-        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
-        console2.log("");
-        console2.log("1");
         _logRatiosForStakeAndColl();
-        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
-        console2.log("");
-        console2.log("2");
-        _logRatiosForStakeAndColl();
-        console2.log("Stakes 1ss");
-        _logStakes();
-        _syncAllCdps();
-        console2.log("Stakes 2");
-        _logStakes();
-        _syncAllCdps();
-        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
-        console2.log("Stakes 3");
         _logStakes();
 
-        console2.log("");
-        console2.log("3");
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
         _logRatiosForStakeAndColl();
+        _logStakes();
+
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        _logRatiosForStakeAndColl();
+        _logStakes();
+
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        _logRatiosForStakeAndColl();
+        _logStakes();
+        _syncAllCdps();
+
+        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        _logRatiosForStakeAndColl();
+        _logStakes();
+
         setEthPerShare(
             97056408238157249804947318527517112967233460345516200710872440659556098645798
         );
-        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
-        console2.log("");
-        console2.log("4");
-
         _logRatiosForStakeAndColl();
+        _logStakes();
+
+        assertTrue(invariant_SL_05(crLens, sortedCdps), SL_05);
+
+        _syncAllCdps();
+        _logRatiosForStakeAndColl();
+        _logStakes();
     }
 
     function testPropertySL05ViaSplitWithSync() public {
@@ -139,9 +149,21 @@ contract EToFoundry is
 
         while (currentCdp != bytes32(0)) {
             emit DebugBytes32(currentCdp);
+            console2.log("CdpId", vm.toString(currentCdp));
             console2.log("cdpManager.getCdpStake(currentCdp)", cdpManager.getCdpStake(currentCdp));
+            console2.log("cdpManager.getSyncedCdpCollShares(currentCdp)", cdpManager.getSyncedCdpCollShares(currentCdp));
+            console2.log("cdpManager.getCdpCollShares(currentCdp)", cdpManager.getCdpCollShares(currentCdp));
+            console2.log("cdpManager.getCdpDebt(currentCdp)", cdpManager.getCdpDebt(currentCdp));
+            console2.log("cdpManager.getCdpDebt(currentCdp)", cdpManager.getCdpDebt(currentCdp));
+            console2.log("cdpManager.getSyncedNominalICR(currentCdp)", cdpManager.getSyncedNominalICR(currentCdp));
             currentCdp = sortedCdps.getNext(currentCdp);
         }
+
+        console2.log("cdpManager.systemStEthFeePerUnitIndex", cdpManager.systemStEthFeePerUnitIndex());
+        console2.log("cdpManager.systemStEthFeePerUnitIndexError", cdpManager.systemStEthFeePerUnitIndexError());
+
+        console2.log("");
+        console2.log("");
     }
 
     function _logRatiosForStakeAndColl() internal {
