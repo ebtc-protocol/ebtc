@@ -236,7 +236,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
         uint256 _systemStEthFeePerUnitIndex
-    ) external view returns (uint256, uint256);
+    ) external view returns (uint256, uint256, uint256);
 
     function getCachedNominalICR(bytes32 _cdpId) external view returns (uint256);
 
