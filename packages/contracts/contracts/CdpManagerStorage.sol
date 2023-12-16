@@ -10,6 +10,7 @@ import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "forge-std/console2.sol";
 
 /// @title CDP Manager storage and shared functions with LiquidationLibrary
 /// @dev All features around Cdp management are split into separate parts to get around contract size limitations.
@@ -633,6 +634,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
 
+        console2.log("fee", _feeSplitDistributed);
+        console2.log("scaledColl", _scaledCdpColl);
+        console2.log("scaledColl - fee", _scaledCdpColl - _feeSplitDistributed);
+
         if (_scaledCdpColl > _feeSplitDistributed) {
             return (
                 _feeSplitDistributed,
@@ -745,10 +750,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getSyncedDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint256 debt, uint256 coll) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, uint256 _newDebt, , , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
-            systemStEthFeePerUnitIndex
+            _newGlobalSplitIdx
         );
         coll = _newColl;
         debt = _newDebt;
@@ -792,6 +799,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _feeSplitApplied;
         uint256 _newCollShare = Cdps[_cdpId].coll;
 
+        console2.log("cpdIndex", _cdpPerUnitIdx);
+        console2.log("systemIndex", _systemStEthFeePerUnitIndex);
+        console2.log("oldCollateral", _newCollShare);
+
         // processing split fee to be applied
         if (_cdpPerUnitIdx != _systemStEthFeePerUnitIndex && _cdpPerUnitIdx > 0) {
             (
@@ -801,6 +812,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             _feeSplitApplied = _feeSplitDistributed;
             _newCollShare = _newCollShareAfter;
         }
+        console2.log("newCollateral", _newCollShare);
 
         // processing redistributed debt to be applied
         (

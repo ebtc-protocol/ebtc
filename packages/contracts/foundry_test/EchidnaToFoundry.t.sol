@@ -32,6 +32,23 @@ contract EToFoundry is
         vm.startPrank(address(actor));
     }
 
+    function testCdpAccrual() public {
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+
+        bytes32 firstCdp = sortedCdps.getFirst();
+        bytes32 secondCdp = sortedCdps.getNext(firstCdp);
+
+        for (uint256 i = 0; i < 1000; i++) {
+            setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+            cdpManager.syncAccounting(firstCdp);
+        }
+        cdpManager.syncAccounting(secondCdp);
+
+        console2.log("firstSyncedColl", cdpManager.getCdpCollShares(firstCdp));
+        console2.log("secondSyncedColl", cdpManager.getCdpCollShares(secondCdp));
+    }
+
     function testPropertySL05ViaSplitCompareBroken() public {
         openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
         _logRatiosForStakeAndColl();
