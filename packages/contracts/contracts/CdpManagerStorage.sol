@@ -646,6 +646,13 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             return (
                 _feeSplitDistributed * DECIMAL_PRECISION,
                 finalCollateral,
+                // Calculate collateral rounding error here
+                // This number is saved and will be added to the next syncAccounting call
+                // for example:
+                // 1923019462035296455629723989062870629 becomes 1923019462035296455000000000000000000 
+                /// after downscaling (line 644) and upscaling (line 637)
+                /// cdpCollError = 629723989062870629
+                /// next round scaled CDP will be 1923019462035296455629723989062870629 instead of 1923019462035296455000000000000000000
                 (_scaledCdpColl - _feeSplitDistributed) - (finalCollateral * DECIMAL_PRECISION)
             );
         } else {
