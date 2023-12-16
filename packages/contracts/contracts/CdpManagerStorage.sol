@@ -750,12 +750,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getSyncedDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint256 debt, uint256 coll) {
-        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
-        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, uint256 _newDebt, , , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
-            _newGlobalSplitIdx
+            systemStEthFeePerUnitIndex
         );
         coll = _newColl;
         debt = _newDebt;
