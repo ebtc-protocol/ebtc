@@ -148,7 +148,7 @@ contract HintHelpers is EbtcBase {
         uint256 _newCollShareAfter = newCollShare - collShareToReceive;
         return (
             _newCollShareAfter,
-            EbtcMath._computeNominalCR(_newCollShareAfter, currentCdpDebt - maxRedeemableEBTC)
+            EbtcMath._computeNominalCR(_newCollShareAfter, 0, currentCdpDebt - maxRedeemableEBTC)
         );
     }
 
@@ -201,7 +201,7 @@ contract HintHelpers is EbtcBase {
     /// @param _debt The debt amount
     /// @return The computed nominal CR for the given collateral and debt
     function computeNominalCR(uint256 _coll, uint256 _debt) external pure returns (uint256) {
-        return EbtcMath._computeNominalCR(_coll, _debt);
+        return EbtcMath._computeNominalCR(_coll, 0, _debt);
     }
 
     /// @notice Compute CR for a specified collateral, debt amount, and price

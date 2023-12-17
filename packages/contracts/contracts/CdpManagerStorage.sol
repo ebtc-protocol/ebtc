@@ -687,7 +687,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getCachedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
 
-        uint256 NICR = EbtcMath._computeNominalCR(currentCollShares, currentEBTCDebt);
+        uint256 NICR = EbtcMath._computeNominalCR(
+            currentCollShares,
+            cdpCollErr[_cdpId],
+            currentEBTCDebt
+        );
         return NICR;
     }
 
@@ -698,13 +702,20 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
-        (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt, , ) = _calcSyncedAccounting(
-            _cdpId,
-            cdpStEthFeePerUnitIndex[_cdpId],
-            _newGlobalSplitIdx /// NOTE: This is latest index
-        );
+        (
+            uint256 _newColl,
+            uint256 _newDebt,
+            ,
+            uint256 _pendingDebt,
+            ,
+            uint256 _collErr
+        ) = _calcSyncedAccounting(
+                _cdpId,
+                cdpStEthFeePerUnitIndex[_cdpId],
+                _newGlobalSplitIdx /// NOTE: This is latest index
+            );
 
-        uint256 NICR = EbtcMath._computeNominalCR(_newColl, _newDebt);
+        uint256 NICR = EbtcMath._computeNominalCR(_newColl, _collErr, _newDebt);
         return NICR;
     }
 

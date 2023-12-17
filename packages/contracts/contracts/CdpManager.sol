@@ -190,7 +190,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             }
         } else {
             // Debt remains, reinsert Cdp
-            uint256 newNICR = EbtcMath._computeNominalCR(newColl, newDebt);
+            uint256 newNICR = EbtcMath._computeNominalCR(
+                newColl,
+                cdpCollErr[_redeemColFromCdp.cdpId],
+                newDebt
+            );
 
             /*
              * If the provided hint is out of date, we bail since trying to reinsert without a good hint will almost

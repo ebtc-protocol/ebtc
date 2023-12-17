@@ -2,6 +2,8 @@
 
 pragma solidity 0.8.17;
 
+import "forge-std/console2.sol";
+
 library EbtcMath {
     uint256 internal constant DECIMAL_PRECISION = 1e18;
     uint256 public constant MAX_TCR = type(uint256).max;
@@ -89,9 +91,17 @@ library EbtcMath {
         return (_a >= _b) ? (_a - _b) : (_b - _a);
     }
 
-    function _computeNominalCR(uint256 _collShares, uint256 _debt) internal pure returns (uint256) {
+    function _computeNominalCR(
+        uint256 _collShares,
+        uint256 _collErr,
+        uint256 _debt
+    ) internal pure returns (uint256) {
         if (_debt > 0) {
-            return (_collShares * NICR_PRECISION) / _debt;
+            // Convert _collErr to 1e38 precision because
+            // _collShares * NICR_PRECISION is in 1e38 (18 + 20)
+            // _collErr is already in 1e36, so just multiply by 1e2
+            _collErr = _collErr * 1e2;
+            return (_collShares * NICR_PRECISION + _collErr) / _debt;
         }
         // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
         else {

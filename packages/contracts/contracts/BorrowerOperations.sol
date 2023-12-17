@@ -469,7 +469,7 @@ contract BorrowerOperations is
         vars.ICR = EbtcMath._computeCR(vars.netStEthBalance, vars.debt, vars.price);
 
         // NICR uses shares to normalize NICR across Cdps opened at different pooled ETH / shares ratios
-        vars.NICR = EbtcMath._computeNominalCR(_netCollAsShares, vars.debt);
+        vars.NICR = EbtcMath._computeNominalCR(_netCollAsShares, 0, vars.debt);
 
         /**
             In recovery move, ICR must be greater than CCR
@@ -996,7 +996,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint256 newNICR = EbtcMath._computeNominalCR(newCollShares, newDebt);
+        uint256 newNICR = EbtcMath._computeNominalCR(newCollShares, 0, newDebt);
         return newNICR;
     }
 
