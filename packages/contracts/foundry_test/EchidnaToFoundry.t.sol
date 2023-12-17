@@ -47,8 +47,11 @@ contract EToFoundry is
         }
         cdpManager.syncAccounting(secondCdp);
 
-        console2.log("firstSyncedColl", cdpManager.getCdpCollShares(firstCdp));
-        console2.log("secondSyncedColl", cdpManager.getCdpCollShares(secondCdp));
+        assertEq(cdpManager.getCdpCollShares(firstCdp), cdpManager.getCdpCollShares(secondCdp));
+        assertEq(
+            cdpManager.getSyncedCdpCollShares(firstCdp),
+            cdpManager.getSyncedCdpCollShares(secondCdp)
+        );
     }
 
     function testPropertySL05ViaSplitCompareBroken() public {
