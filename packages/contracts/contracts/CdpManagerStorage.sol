@@ -10,7 +10,6 @@ import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
-import "forge-std/console2.sol";
 
 /// @title CDP Manager storage and shared functions with LiquidationLibrary
 /// @dev All features around Cdp management are split into separate parts to get around contract size limitations.
@@ -623,41 +622,39 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     ) public view returns (uint256, uint256, uint256) {
         uint256 _cdpStEthFeePerUnitIndex = cdpStEthFeePerUnitIndex[_cdpId];
         uint256 _cdpCol = Cdps[_cdpId].coll;
+        uint256 _collErr = cdpCollErr[_cdpId];
 
         if (
             _cdpStEthFeePerUnitIndex == 0 ||
             _cdpCol == 0 ||
             _cdpStEthFeePerUnitIndex == _systemStEthFeePerUnitIndex
         ) {
-            return (0, _cdpCol, cdpCollErr[_cdpId]);
+            return (0, _cdpCol, _collErr);
         }
 
         uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
             (_systemStEthFeePerUnitIndex - _cdpStEthFeePerUnitIndex);
-        uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION + cdpCollErr[_cdpId];
-
-        console2.log("fee", _feeSplitDistributed);
-        console2.log("scaledColl", _scaledCdpColl);
-        console2.log("scaledColl - fee", _scaledCdpColl - _feeSplitDistributed);
+        uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION + _collErr;
 
         if (_scaledCdpColl > _feeSplitDistributed) {
-            uint256 finalCollateral = (_scaledCdpColl - _feeSplitDistributed) / DECIMAL_PRECISION;
+            uint256 finalCollateralHighPrec = _scaledCdpColl - _feeSplitDistributed;
+            uint256 finalCollateral = finalCollateralHighPrec / DECIMAL_PRECISION;
 
             return (
-                _feeSplitDistributed * DECIMAL_PRECISION,
+                _feeSplitDistributed,
                 finalCollateral,
                 // Calculate collateral rounding error here
                 // This number is saved and will be added to the next syncAccounting call
                 // for example:
-                // 1923019462035296455629723989062870629 becomes 1923019462035296455000000000000000000 
+                // 1923019462035296455629723989062870629 becomes 1923019462035296455000000000000000000
                 /// after downscaling (line 644) and upscaling (line 637)
                 /// cdpCollError = 629723989062870629
                 /// next round scaled CDP will be 1923019462035296455629723989062870629 instead of 1923019462035296455000000000000000000
-                (_scaledCdpColl - _feeSplitDistributed) - (finalCollateral * DECIMAL_PRECISION)
+                finalCollateralHighPrec - (finalCollateral * DECIMAL_PRECISION)
             );
         } else {
             // extreme unlikely case to skip fee split on this CDP to avoid revert
-            return (0, _cdpCol, cdpCollErr[_cdpId]);
+            return (0, _cdpCol, _collErr);
         }
     }
 
@@ -701,7 +698,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
-        (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt, ,) = _calcSyncedAccounting(
+        (uint256 _newColl, uint256 _newDebt, , uint256 _pendingDebt, , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
             _newGlobalSplitIdx /// NOTE: This is latest index
@@ -762,10 +759,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getSyncedDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint256 debt, uint256 coll) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, uint256 _newDebt, , , , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
-            systemStEthFeePerUnitIndex
+            _newGlobalSplitIdx
         );
         coll = _newColl;
         debt = _newDebt;
@@ -808,11 +807,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     ) internal view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
         uint256 _feeSplitApplied;
         uint256 _newCollShare = Cdps[_cdpId].coll;
-        uint256 _collErr;
-
-        console2.log("cpdIndex", _cdpPerUnitIdx);
-        console2.log("systemIndex", _systemStEthFeePerUnitIndex);
-        console2.log("oldCollateral", _newCollShare);
+        uint256 _collErr = cdpCollErr[_cdpId];
 
         // processing split fee to be applied
         if (_cdpPerUnitIdx != _systemStEthFeePerUnitIndex && _cdpPerUnitIdx > 0) {
@@ -825,7 +820,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             _newCollShare = _newCollShareAfter;
             _collErr = _newCollErr;
         }
-        console2.log("newCollateral", _newCollShare);
 
         // processing redistributed debt to be applied
         (

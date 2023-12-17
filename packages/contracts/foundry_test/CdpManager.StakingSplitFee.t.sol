@@ -97,7 +97,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _applySplitFee(bytes32 _cdpId, address _user) internal {
         uint256 _systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
-        (uint256 _feeSplitDistributed,, ) = cdpManager.getAccumulatedFeeSplitApplied(
+        (uint256 _feeSplitDistributed, , ) = cdpManager.getAccumulatedFeeSplitApplied(
             _cdpId,
             _systemStEthFeePerUnitIndex
         );
@@ -445,7 +445,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _expectedCollShare,
         uint256 _expectedPerUnit
     ) internal {
-        (uint256 _scaledFee,, ) = cdpManager.getAccumulatedFeeSplitApplied(_cdpId, _expectedPerUnit);
+        (uint256 _scaledFee, , ) = cdpManager.getAccumulatedFeeSplitApplied(
+            _cdpId,
+            _expectedPerUnit
+        );
         uint256 _appliedFee = _scaledFee / 1e18;
 
         // sync given CDP

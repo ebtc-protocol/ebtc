@@ -40,7 +40,9 @@ contract EToFoundry is
         bytes32 secondCdp = sortedCdps.getNext(firstCdp);
 
         for (uint256 i = 0; i < 1000; i++) {
-            setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+            setEthPerShare(
+                4737424871052165462567343556913648738078620766275360444075220128633451887691
+            );
             cdpManager.syncAccounting(firstCdp);
         }
         cdpManager.syncAccounting(secondCdp);
@@ -221,6 +223,10 @@ contract EToFoundry is
         console2.log(
             "Divison of Coll / total",
             (collAcc * PRECISION) / activePool.getSystemCollShares()
+        );
+        console2.log(
+            "Divison of syncedCollAcc / total",
+            (syncedCollAcc * PRECISION) / activePool.getSystemCollShares()
         );
         console2.log(
             "Divison of Stake / TotalStakes",
