@@ -759,10 +759,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function getSyncedDebtAndCollShares(
         bytes32 _cdpId
     ) public view returns (uint256 debt, uint256 coll) {
-        /// TODO: if feels right to sync global account here, 
+        /// TODO: if feels right to sync global account here,
         // but sync'ing global accounting here breaks some unit tests, need to investigate some more
-//      (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
-//      (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+        //      (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        //      (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
         (uint256 _newColl, uint256 _newDebt, , , , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
