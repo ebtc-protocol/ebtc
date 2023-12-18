@@ -116,7 +116,6 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         unchecked {
             totalSurplusCollShares = cachedTotalSurplusCollShares - claimableColl;
         }
-        emit SurplusCollSharesClaimed(_account, claimableColl);
         emit CollSharesTransferred(_account, claimableColl);
 
         // NOTE: No need for safe transfer if the collateral asset is standard. Make sure this is the case!
