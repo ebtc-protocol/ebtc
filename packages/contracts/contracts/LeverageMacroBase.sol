@@ -23,7 +23,7 @@ interface ICdpCdps {
 /// - Via delegate call (LeverageMacroDelegateTarget)
 /// @custom:known-issue Due to slippage some dust amounts for all intermediary tokens can be left, since there's no way to ask to sell all available
 
-contract LeverageMacroBase {
+abstract contract LeverageMacroBase {
     using SafeERC20 for IERC20;
 
     IBorrowerOperations public immutable borrowerOperations;
@@ -74,6 +74,7 @@ contract LeverageMacroBase {
     }
 
     enum PostOperationCheck {
+        none,
         openCdp,
         cdpStats,
         isClosed
@@ -124,6 +125,53 @@ contract LeverageMacroBase {
     ) external {
         _assertOwner();
 
+        // Figure out the expected CDP ID using sortedCdps.toCdpId
+        bytes32 expectedCdpId;
+        if (
+            operation.operationType == OperationType.OpenCdpOperation &&
+            postCheckType != PostOperationCheck.none
+        ) {
+            expectedCdpId = sortedCdps.toCdpId(
+                address(this),
+                block.number,
+                sortedCdps.nextCdpNonce()
+            );
+        } else if (
+            operation.operationType == OperationType.OpenCdpForOperation &&
+            postCheckType != PostOperationCheck.none
+        ) {
+            OpenCdpForOperation memory flData = abi.decode(
+                operation.OperationData,
+                (OpenCdpForOperation)
+            );
+            // This is used to support permitPositionManagerApproval
+            expectedCdpId = sortedCdps.toCdpId(
+                flData.borrower,
+                block.number,
+                sortedCdps.nextCdpNonce()
+            );
+        }
+
+        _doOperation(flType, borrowAmount, operation, postCheckType, checkParams, expectedCdpId);
+    }
+
+    /// @notice Internal function used by derived contracts (i.e. EbtcZapRouter)
+    /// @param flType flash loan type (eBTC, stETH or None)
+    /// @param borrowAmount flash loan amount
+    /// @param operation leverage macro operation
+    /// @param postCheckType post operation check type
+    /// @param checkParams post operation check params
+    /// @param expectedCdpId pre-computed CDP ID used to run post operation checks
+    /// @dev expectedCdpId is required for OpenCdp and OpenCdpFor, can be set to bytes32(0)
+    /// for all other operations
+    function _doOperation(
+        FlashLoanType flType,
+        uint256 borrowAmount,
+        LeverageMacroOperation memory operation,
+        PostOperationCheck postCheckType,
+        PostCheckParams memory checkParams,
+        bytes32 expectedCdpId
+    ) internal {
         // Call FL Here, then the stuff below needs to happen inside the FL
         if (operation.amountToTransferIn > 0) {
             IERC20(operation.tokenToTransferIn).safeTransferFrom(
@@ -131,16 +179,6 @@ contract LeverageMacroBase {
                 address(this),
                 operation.amountToTransferIn
             );
-        }
-
-        /**
-         * SETUP FOR POST CALL CHECK
-         */
-        uint256 initialCdpIndex;
-        if (postCheckType == PostOperationCheck.openCdp) {
-            // How to get owner
-            // sortedCdps.existCdpOwners(_cdpId);
-            initialCdpIndex = sortedCdps.cdpCountOf(address(this));
         }
 
         // Take eBTC or stETH FlashLoan
@@ -167,13 +205,8 @@ contract LeverageMacroBase {
          * POST CALL CHECK FOR CREATION
          */
         if (postCheckType == PostOperationCheck.openCdp) {
-            // How to get owner
-            // sortedCdps.existCdpOwners(_cdpId);
-            // initialCdpIndex is initialCdpIndex + 1
-            bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(address(this), initialCdpIndex);
-
             // Check for param details
-            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(cdpId);
+            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(expectedCdpId);
             _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
             _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
@@ -282,9 +315,12 @@ contract LeverageMacroBase {
     }
 
     enum OperationType {
+        None, // Swaps only
         OpenCdpOperation,
+        OpenCdpForOperation,
         AdjustCdpOperation,
-        CloseCdpOperation
+        CloseCdpOperation,
+        ClaimSurplusOperation
     }
 
     /// @dev Must be memory since we had to decode it
@@ -297,10 +333,14 @@ contract LeverageMacroBase {
         // Based on the type we do stuff
         if (operation.operationType == OperationType.OpenCdpOperation) {
             _openCdpCallback(operation.OperationData);
+        } else if (operation.operationType == OperationType.OpenCdpForOperation) {
+            _openCdpForCallback(operation.OperationData);
         } else if (operation.operationType == OperationType.CloseCdpOperation) {
             _closeCdpCallback(operation.OperationData);
         } else if (operation.operationType == OperationType.AdjustCdpOperation) {
             _adjustCdpCallback(operation.OperationData);
+        } else if (operation.operationType == OperationType.ClaimSurplusOperation) {
+            _claimSurplusCallback();
         }
 
         uint256 afterSwapsLength = operation.swapsAfter.length;
@@ -316,6 +356,16 @@ contract LeverageMacroBase {
         bytes32 _upperHint;
         bytes32 _lowerHint;
         uint256 stETHToDeposit;
+    }
+
+    // Open for
+    struct OpenCdpForOperation {
+        // Open CDP For Data
+        uint256 eBTCToMint;
+        bytes32 _upperHint;
+        bytes32 _lowerHint;
+        uint256 stETHToDeposit;
+        address borrower;
     }
 
     // Change leverage or something
@@ -459,6 +509,7 @@ contract LeverageMacroBase {
     /// @dev Must be memory since we had to decode it
     function _openCdpCallback(bytes memory data) internal {
         OpenCdpOperation memory flData = abi.decode(data, (OpenCdpOperation));
+
         /**
          * Open CDP and Emit event
          */
@@ -467,6 +518,21 @@ contract LeverageMacroBase {
             flData._upperHint,
             flData._lowerHint,
             flData.stETHToDeposit
+        );
+    }
+
+    function _openCdpForCallback(bytes memory data) internal {
+        OpenCdpForOperation memory flData = abi.decode(data, (OpenCdpForOperation));
+
+        /**
+         * Open CDP and Emit event
+         */
+        bytes32 _cdpId = borrowerOperations.openCdpFor(
+            flData.eBTCToMint,
+            flData._upperHint,
+            flData._lowerHint,
+            flData.stETHToDeposit,
+            flData.borrower
         );
     }
 
@@ -491,6 +557,10 @@ contract LeverageMacroBase {
             flData._lowerHint,
             flData._stEthBalanceIncrease
         );
+    }
+
+    function _claimSurplusCallback() internal {
+        borrowerOperations.claimSurplusCollShares();
     }
 
     /// @dev excessivelySafeCall to perform generic calls without getting gas bombed | useful if you don't care about return value
