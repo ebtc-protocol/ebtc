@@ -87,7 +87,7 @@ interface ISortedCdps {
         address owner,
         uint256 blockHeight,
         uint256 nonce
-    ) external view returns (bytes32);
+    ) external pure returns (bytes32);
 
     function nextCdpNonce() external view returns (uint256);
 }
