@@ -5,7 +5,6 @@ pragma solidity 0.8.17;
 interface ICollSurplusPool {
     // --- Events ---
 
-    event SurplusCollSharesClaimed(address indexed _account, uint256 _collShares);
     event SurplusCollSharesAdded(
         bytes32 indexed _cdpId,
         address indexed _account,
