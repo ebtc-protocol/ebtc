@@ -358,7 +358,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             uint _pendingDebt,
             uint256 _debtIndexDelta,
             uint256 _collErr
-        ) = _calcSyncedAccounting(_cdpId, _oldPerUnitCdp, _systemStEthFeePerUnitIndex);
+        ) = _calcSyncedAccounting(_cdpId, _oldPerUnitCdp, _systemStEthFeePerUnitIndex, false); // no index error
 
         // If any collShares or debt changes occured
         if (_feeSplitDistributed > 0 || _debtIndexDelta > 0) {
@@ -564,12 +564,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _deltaFeeSplit = deltaIndexFees * getSystemCollShares();
         uint256 _cachedAllStakes = totalStakes;
         // return the values to update the global fee accumulator
-        uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
-        uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
-            systemStEthFeePerUnitIndexError;
+        uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit);
+        uint256 _deltaFeeSplitShare = _feeTaken + systemStEthFeePerUnitIndexError;
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
         uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
-        return (_feeTaken, _deltaFeePerUnit, _perUnitError);
+        return (_feeTaken / DECIMAL_PRECISION, _deltaFeePerUnit, _perUnitError);
     }
 
     // Take the cut from staking reward
@@ -611,6 +610,13 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         );
     }
 
+    function getAccumulatedFeeSplitApplied(
+        bytes32 _cdpId,
+        uint256 _systemStEthFeePerUnitIndex
+    ) public view returns (uint256, uint256, uint256) {
+        return getAccumulatedFeeSplitApplied(_cdpId, _systemStEthFeePerUnitIndex, false);
+    }
+
     /// @notice Calculate the applied split fee(scaled by 1e18) and the resulting CDP collateral share after applied
     /// @param _cdpId The Cdp to which the calculated split fee is going to be applied
     /// @param _systemStEthFeePerUnitIndex The fee-per-stake-unit value to be used in fee split calculation, could be result of calcFeeUponStakingReward()
@@ -618,7 +624,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @return _cdpCol The new collateral share of the specified Cdp after fe split applied
     function getAccumulatedFeeSplitApplied(
         bytes32 _cdpId,
-        uint256 _systemStEthFeePerUnitIndex
+        uint256 _systemStEthFeePerUnitIndex,
+        bool includeIndexError
     ) public view returns (uint256, uint256, uint256) {
         uint256 _cdpStEthFeePerUnitIndex = cdpStEthFeePerUnitIndex[_cdpId];
         uint256 _cdpCol = Cdps[_cdpId].coll;
@@ -632,8 +639,16 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             return (0, _cdpCol, _collErr);
         }
 
+        uint256 _indexErrShare;
+        if (includeIndexError && totalStakesSnapshot > 0) {
+            _indexErrShare =
+                (systemStEthFeePerUnitIndexError * Cdps[_cdpId].stake) /
+                totalStakesSnapshot;
+        }
+
         uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
-            (_systemStEthFeePerUnitIndex - _cdpStEthFeePerUnitIndex);
+            (_systemStEthFeePerUnitIndex - _cdpStEthFeePerUnitIndex) +
+            _indexErrShare;
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION + _collErr;
 
         if (_scaledCdpColl > _feeSplitDistributed) {
@@ -712,7 +727,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         ) = _calcSyncedAccounting(
                 _cdpId,
                 cdpStEthFeePerUnitIndex[_cdpId],
-                _newGlobalSplitIdx /// NOTE: This is latest index
+                _newGlobalSplitIdx, /// NOTE: This is latest index
+                true // include index error
             );
 
         uint256 NICR = EbtcMath._computeNominalCR(_newColl, _collErr, _newDebt);
@@ -777,7 +793,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         (uint256 _newColl, uint256 _newDebt, , , , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
-            systemStEthFeePerUnitIndex // TODO: maybe _newGlobalSplitIdx?
+            systemStEthFeePerUnitIndex, // TODO: maybe _newGlobalSplitIdx?
+            true // include index error
         );
         coll = _newColl;
         debt = _newDebt;
@@ -808,46 +825,44 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     }
 
     /// @dev calculate pending state change to be applied for given CDP and global split index(typically already synced):
-    /// @return new CDP collateral share after pending change applied
-    /// @return new CDP debt after pending change applied
-    /// @return split fee applied to given CDP
-    /// @return redistributed debt applied to given CDP
-    /// @return delta between debt redistribution index of given CDP and global tracking index
+    /// @return _newCollShare new CDP collateral share after pending change applied
+    /// @return _newDebt new CDP debt after pending change applied
+    /// @return _feeSplitApplied split fee applied to given CDP
+    /// @return pendingDebtRedistributed redistributed debt applied to given CDP
+    /// @return _debtIndexDelta delta between debt redistribution index of given CDP and global tracking index
+    /// @return _collErr collateral rounding error (1e36)
     function _calcSyncedAccounting(
         bytes32 _cdpId,
         uint256 _cdpPerUnitIdx,
-        uint256 _systemStEthFeePerUnitIndex
-    ) internal view returns (uint256, uint256, uint256, uint256, uint256, uint256) {
-        uint256 _feeSplitApplied;
-        uint256 _newCollShare = Cdps[_cdpId].coll;
-        uint256 _collErr = cdpCollErr[_cdpId];
+        uint256 _systemStEthFeePerUnitIndex,
+        bool includeIndexError
+    )
+        internal
+        view
+        returns (
+            uint256 _newCollShare,
+            uint256 _newDebt,
+            uint256 _feeSplitApplied,
+            uint256 pendingDebtRedistributed,
+            uint256 _debtIndexDelta,
+            uint256 _collErr
+        )
+    {
+        _newCollShare = Cdps[_cdpId].coll;
+        _collErr = cdpCollErr[_cdpId];
 
         // processing split fee to be applied
         if (_cdpPerUnitIdx != _systemStEthFeePerUnitIndex && _cdpPerUnitIdx > 0) {
-            (
-                uint256 _feeSplitDistributed,
-                uint256 _newCollShareAfter,
-                uint256 _newCollErr
-            ) = getAccumulatedFeeSplitApplied(_cdpId, _systemStEthFeePerUnitIndex);
-            _feeSplitApplied = _feeSplitDistributed;
-            _newCollShare = _newCollShareAfter;
-            _collErr = _newCollErr;
+            (_feeSplitApplied, _newCollShare, _collErr) = getAccumulatedFeeSplitApplied(
+                _cdpId,
+                _systemStEthFeePerUnitIndex,
+                includeIndexError
+            );
         }
 
         // processing redistributed debt to be applied
-        (
-            uint256 _newDebt,
-            uint256 pendingDebtRedistributed,
-            uint256 _debtIndexDelta
-        ) = _getSyncedCdpDebtAndRedistribution(_cdpId);
-
-        return (
-            _newCollShare,
-            _newDebt,
-            _feeSplitApplied,
-            pendingDebtRedistributed,
-            _debtIndexDelta,
-            _collErr
+        (_newDebt, pendingDebtRedistributed, _debtIndexDelta) = _getSyncedCdpDebtAndRedistribution(
+            _cdpId
         );
     }
 
@@ -884,9 +899,24 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         (uint256 _newColl, , , , , ) = _calcSyncedAccounting(
             _cdpId,
             cdpStEthFeePerUnitIndex[_cdpId],
-            _newGlobalSplitIdx
+            _newGlobalSplitIdx,
+            true // include index error
         );
         return _newColl;
+    }
+
+    function getSyncedCdpCollSharesWithCollErr(
+        bytes32 _cdpId
+    ) public view returns (uint256, uint256) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+        (uint256 _newColl, , , , , uint256 _collErr) = _calcSyncedAccounting(
+            _cdpId,
+            cdpStEthFeePerUnitIndex[_cdpId],
+            _newGlobalSplitIdx,
+            true // include index error
+        );
+        return (_newColl, _collErr);
     }
 
     /// @notice Calculate the Cdps ICR, including pending debt distribution and fee split to be applied

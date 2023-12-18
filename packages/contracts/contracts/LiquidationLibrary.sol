@@ -428,7 +428,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         {
             _reInsertPartialLiquidation(
                 _partialState,
-                EbtcMath._computeNominalCR(newColl, 0, newDebt),
+                EbtcMath._computeNominalCR(newColl, cdpCollErr[_cdpId], newDebt),
                 _debtAndColl.debt,
                 _debtAndColl.collShares
             );
