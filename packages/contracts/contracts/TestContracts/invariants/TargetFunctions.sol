@@ -472,11 +472,10 @@ abstract contract TargetFunctions is Properties {
 
             _firstRedemptionHintFromMedusa = useProperFirstHint ? firstRedemptionHintVal : _firstRedemptionHintFromMedusa;
 
-
-
-            _partialRedemptionHintNICRFromMedusa = useProperPartialHint ? partialRedemptionHintNICR : _partialRedemptionHintNICRFromMedusa;
+            _partialRedemptionHintNICRFromMedusa = useProperPartialHint
+                ? partialRedemptionHintNICR
+                : _partialRedemptionHintNICRFromMedusa;
         }
-
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
