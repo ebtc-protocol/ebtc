@@ -270,8 +270,6 @@ contract EToFoundry is
         assertGt(vars.nicrAfter, vars.nicrBefore, "GT");
     }
 
-    
-
     /**
      * 1) EchidnaTester.setEthPerShare(86688896451552136001225523381455512999487671226724657278887281953146484774479) (block=32358, time=34290, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
      *     2) EchidnaTester.setEthPerShare(2) (block=33152, time=35290, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000020000)
@@ -428,8 +426,6 @@ contract EToFoundry is
         }
     }
 
-    
-
     function testGeneral14() public {
         setEthPerShare(12);
         openCdp(
@@ -439,7 +435,6 @@ contract EToFoundry is
 
         assertTrue(invariant_GENERAL_14(crLens, cdpManager, sortedCdps), "G-14");
     }
-
 
     /// @dev Debunk false positives for L-12
     ///     These will happen exclusively if all CDPs are Underwater, and instead of liquidating the riskiest, the one above is liquidated
@@ -541,8 +536,6 @@ contract EToFoundry is
         setEthPerShare(55516200804822679866310029419499170992281118179349982013988952907);
         repayDebt(1, 509846657665200610349434642309205663062);
     }
-
-    
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
     // function testPropertySL05() public {
