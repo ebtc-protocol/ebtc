@@ -437,7 +437,9 @@ abstract contract TargetFunctions is Properties {
 
     function redeemCollateral(
         uint _EBTCAmount,
+        bytes32 _firstRedemptionHintFromMedusa,
         uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
         bool useProperPartialHint,
         uint _maxFeePercentage,
         uint _maxIterations
@@ -458,8 +460,6 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
-        bytes32 firstRedemptionHint;
-
         {
         uint price = priceFeedMock.getPrice();
         
@@ -470,7 +470,7 @@ abstract contract TargetFunctions is Properties {
                 
             ) = hintHelpers.getRedemptionHints(_EBTCAmount, price, _maxIterations);
 
-            firstRedemptionHint = firstRedemptionHintVal;
+            _firstRedemptionHintFromMedusa = useProperFirstHint ? firstRedemptionHintVal : _firstRedemptionHintFromMedusa;
 
 
 
@@ -483,7 +483,7 @@ abstract contract TargetFunctions is Properties {
             abi.encodeWithSelector(
                 CdpManager.redeemCollateral.selector,
                 _EBTCAmount,
-                firstRedemptionHint,
+                _firstRedemptionHintFromMedusa,
                 bytes32(0),
                 bytes32(0),
                 _partialRedemptionHintNICRFromMedusa,
