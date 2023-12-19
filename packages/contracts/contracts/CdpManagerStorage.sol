@@ -889,6 +889,24 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return _newColl;
     }
 
+    /// @notice Calculate the Cdps entire collateral, including pending fee split to be applied
+    /// @param _cdpId The CdpId to be queried
+    /// @return _newColl The total collateral value of the Cdp including fee split considered
+    /// @return _collErr collateral rounding error
+    /// @dev Should always use this as the first(default) choice for Cdp collateral query
+    function getSyncedCdpCollSharesWithCollErr(
+        bytes32 _cdpId
+    ) public view returns (uint256, uint256) {
+        (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+        (uint256 _newColl, , , , , uint256 _collErr) = _calcSyncedAccounting(
+            _cdpId,
+            cdpStEthFeePerUnitIndex[_cdpId],
+            _newGlobalSplitIdx
+        );
+        return (_newColl, _collErr);
+    }
+
     /// @notice Calculate the Cdps ICR, including pending debt distribution and fee split to be applied
     /// @param _cdpId The CdpId to be queried
     /// @param _price The ETH:eBTC price to be used in ICR calculation

@@ -4884,9 +4884,11 @@ contract('CdpManager', async accounts => {
     assert.isTrue(truncatedEBTCamount.eq(_partialRedeem_EBTC));	
     let _deltaFeePerUnit = (await cdpManager.calcFeeUponStakingReward(_newIndex, _oldIndex))[1];
     let _newStFeePerUnit = _deltaFeePerUnit.add(await cdpManager.systemStEthFeePerUnitIndex());
-    let _collAfterFee = (await cdpManager.getAccumulatedFeeSplitApplied(_aCdpID, _newStFeePerUnit))[1];
+    let _collData = await cdpManager.getAccumulatedFeeSplitApplied(_aCdpID, _newStFeePerUnit);
+    let _collAfterFee = _collData[1];
+    let _collErr = _collData[2].mul(toBN(dec(1,2)));
     let _partialNewColl = _collAfterFee.sub(await collToken.getSharesByPooledEth(_partialRedeem_EBTC.mul(mv._1e18BN).div(price)));	
-    let _newPartialNICR = _partialNewColl.mul(toBN(dec(1,20))).div(A_totalDebt.sub(_partialRedeem_EBTC))
+    let _newPartialNICR = (_partialNewColl.mul(toBN(dec(1,20))).add(_collErr)).div(A_totalDebt.sub(_partialRedeem_EBTC))
     assert.isTrue(partialRedemptionHintNICR.eq(_newPartialNICR));
     //console.log('truncatedEBTCamount=' + truncatedEBTCamount + ', A_totalDebt=' + A_totalDebt + ', _partialRedeem_EBTC=' + _partialRedeem_EBTC + ', partialRedemptionHintNICR=' + partialRedemptionHintNICR + ', partialRedemptionNewColl=' + partialRedemptionNewColl + ', _partialNewColl=' + _partialNewColl)
     assert.isTrue(partialRedemptionNewColl.eq(_partialNewColl));

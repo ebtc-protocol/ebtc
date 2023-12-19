@@ -381,13 +381,15 @@ contract BorrowerOperations is
         );
 
         // Check the adjustment satisfies all conditions for the current system mode
-        bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
-        _requireValidAdjustmentInCurrentMode(
-            isRecoveryMode,
-            _stEthBalanceDecrease,
-            _isDebtIncrease,
-            vars
-        );
+        {
+            bool isRecoveryMode = _checkRecoveryModeForTCR(_getCachedTCR(vars.price));
+            _requireValidAdjustmentInCurrentMode(
+                isRecoveryMode,
+                _stEthBalanceDecrease,
+                _isDebtIncrease,
+                vars
+            );
+        }
 
         // When the adjustment is a debt repayment, check it's a valid amount, that the caller has enough EBTC, and that the resulting debt is >0
         if (!_isDebtIncrease && _debtChange > 0) {
@@ -418,7 +420,11 @@ contract BorrowerOperations is
 
         // Re-insert cdp in to the sorted list
         {
-            uint256 newNICR = _getNewNominalICRFromCdpChange(vars, _isDebtIncrease);
+            uint256 newNICR = _getNewNominalICRFromCdpChange(
+                vars,
+                _isDebtIncrease,
+                cdpManager.cdpCollErr(_cdpId)
+            );
             sortedCdps.reInsert(_cdpId, newNICR, _upperHint, _lowerHint);
         }
 
@@ -985,7 +991,8 @@ contract BorrowerOperations is
     // Compute the new collateral ratio, considering the change in coll and debt. Assumes 0 pending rewards.
     function _getNewNominalICRFromCdpChange(
         AdjustCdpLocals memory vars,
-        bool _isDebtIncrease
+        bool _isDebtIncrease,
+        uint256 _cdpCollErr
     ) internal pure returns (uint256) {
         (uint256 newCollShares, uint256 newDebt) = _getNewCdpAmounts(
             vars.collShares,
@@ -996,7 +1003,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
-        uint256 newNICR = EbtcMath._computeNominalCR(newCollShares, 0, newDebt);
+        uint256 newNICR = EbtcMath._computeNominalCR(newCollShares, _cdpCollErr, newDebt);
         return newNICR;
     }
 

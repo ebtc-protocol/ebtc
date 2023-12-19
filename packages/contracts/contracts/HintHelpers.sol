@@ -138,7 +138,9 @@ contract HintHelpers is EbtcBase {
         // maxReemable = min(remainingToRedeem, currentDebt)
         uint256 maxRedeemableEBTC = EbtcMath._min(vars.remainingEbtcToRedeem, currentCdpDebt);
 
-        uint256 newCollShare = cdpManager.getSyncedCdpCollShares(vars.currentCdpId);
+        (uint256 newCollShare, uint256 newCollErr) = cdpManager.getSyncedCdpCollSharesWithCollErr(
+            vars.currentCdpId
+        );
 
         vars.remainingEbtcToRedeem = vars.remainingEbtcToRedeem - maxRedeemableEBTC;
         uint256 collShareToReceive = collateral.getSharesByPooledEth(
@@ -148,7 +150,11 @@ contract HintHelpers is EbtcBase {
         uint256 _newCollShareAfter = newCollShare - collShareToReceive;
         return (
             _newCollShareAfter,
-            EbtcMath._computeNominalCR(_newCollShareAfter, 0, currentCdpDebt - maxRedeemableEBTC)
+            EbtcMath._computeNominalCR(
+                _newCollShareAfter,
+                newCollErr,
+                currentCdpDebt - maxRedeemableEBTC
+            )
         );
     }
 
@@ -202,6 +208,19 @@ contract HintHelpers is EbtcBase {
     /// @return The computed nominal CR for the given collateral and debt
     function computeNominalCR(uint256 _coll, uint256 _debt) external pure returns (uint256) {
         return EbtcMath._computeNominalCR(_coll, 0, _debt);
+    }
+
+    /// @notice Compute nominal CR for a specified collateral and debt amount
+    /// @param _coll The collateral amount, in shares
+    /// @param _collErr collateral rounding error
+    /// @param _debt The debt amount
+    /// @return The computed nominal CR for the given collateral and debt
+    function computeNominalCRWithCollErr(
+        uint256 _coll,
+        uint256 _collErr,
+        uint256 _debt
+    ) external pure returns (uint256) {
+        return EbtcMath._computeNominalCR(_coll, _collErr, _debt);
     }
 
     /// @notice Compute CR for a specified collateral, debt amount, and price

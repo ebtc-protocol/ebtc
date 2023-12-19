@@ -222,6 +222,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function systemStEthFeePerUnitIndexError() external view returns (uint256);
 
+    function cdpCollErr(bytes32 _cdpId) external view returns (uint256);
+
     function stEthIndex() external view returns (uint256);
 
     function calcFeeUponStakingReward(
@@ -245,6 +247,10 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     function getSyncedCdpDebt(bytes32 _cdpId) external view returns (uint256);
 
     function getSyncedCdpCollShares(bytes32 _cdpId) external view returns (uint256);
+
+    function getSyncedCdpCollSharesWithCollErr(
+        bytes32 _cdpId
+    ) external view returns (uint256, uint256);
 
     function getSyncedICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
 
