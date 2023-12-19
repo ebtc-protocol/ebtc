@@ -5,8 +5,10 @@ import "forge-std/Test.sol";
 import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
+import {BraindeadFeed} from "../contracts/BraindeadFeed.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
+import {PriceFeedOracleTester} from "../contracts/TestContracts/PriceFeedOracleTester.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
@@ -81,6 +83,10 @@ contract eBTCBaseFixture is
     // PriceFeed
     bytes4 public constant SET_FALLBACK_CALLER_SIG =
         bytes4(keccak256(bytes("setFallbackCaller(address)")));
+    bytes4 public constant SET_PRIMARY_ORACLE_SIG =
+        bytes4(keccak256(bytes("setPrimaryOracle(address)")));
+    bytes4 public constant SET_SECONDARY_ORACLE_SIG =
+        bytes4(keccak256(bytes("setSecondaryOracle(address)")));
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
@@ -226,11 +232,14 @@ contract eBTCBaseFixture is
                 )
             );
 
-            // Price Feed Mock
-            creationCode = type(PriceFeedTestnet).creationCode;
-            args = abi.encode(addr.authorityAddress);
+            priceFeedMock = new PriceFeedTestnet(addr.authorityAddress);
+            primaryOracle = new PriceFeedOracleTester(address(priceFeedMock));
 
-            priceFeedMock = PriceFeedTestnet(
+            // Price Feed Mock
+            creationCode = type(BraindeadFeed).creationCode;
+            args = abi.encode(addr.authorityAddress, address(primaryOracle), address(0));
+
+            braindeadFeed = BraindeadFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -351,6 +360,8 @@ contract eBTCBaseFixture is
         authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
+        authority.setRoleCapability(4, address(braindeadFeed), SET_PRIMARY_ORACLE_SIG, true);
+        authority.setRoleCapability(4, address(braindeadFeed), SET_SECONDARY_ORACLE_SIG, true);
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(
@@ -381,11 +392,11 @@ contract eBTCBaseFixture is
         authority.setUserRole(defaultGovernance, 5, true);
         authority.setUserRole(defaultGovernance, 6, true);
 
-        crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+        crLens = new CRLens(address(cdpManager), address(braindeadFeed));
         liquidationSequencer = new LiquidationSequencer(
             address(cdpManager),
             address(sortedCdps),
-            address(priceFeedMock),
+            address(braindeadFeed),
             address(activePool),
             address(collateral)
         );

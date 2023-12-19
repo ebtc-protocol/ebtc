@@ -4,12 +4,17 @@ pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import "../contracts/BraindeadFeed.sol";
 import "../contracts/Interfaces/IOracleCaller.sol";
+import "../contracts/TestContracts/MockAlwaysTrueAuthority.sol";
 
-contract MockCLCaller is IOracleCaller {
+contract MockCLCaller is IPriceFetcher {
     uint256 public getLatestPrice;
 
     function setPrice(uint256 newPrice) external {
         getLatestPrice = newPrice;
+    }
+
+    function fetchPrice() external returns (uint256) {
+        return getLatestPrice;
     }
 }
 
@@ -169,11 +174,13 @@ contract ScamSelfDestruct {
 contract BraindeadFeedUnit is Test {
     MockCLCaller mockCl;
     BraindeadFeed feed;
+    MockAlwaysTrueAuthority internal authority;
 
     function setUp() public {
+        authority = new MockAlwaysTrueAuthority();
         mockCl = new MockCLCaller();
         mockCl.setPrice(123);
-        feed = new BraindeadFeed(address(mockCl), address(0));
+        feed = new BraindeadFeed(address(authority), address(mockCl), address(0));
     }
 
     function testTinfoilCalls(uint256 price) public {
