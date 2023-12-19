@@ -35,7 +35,6 @@ contract EchidnaBraindeadFeedTester is
     uint256 internal constant MAX_PRICE_CHANGE = 5e18;
     uint256 internal constant MAX_ROUND_ID_CHANGE = 5;
     uint256 internal constant MAX_UPDATE_TIME_CHANGE = 2 days;
-    uint256 internal constant MAX_STATUS_HISTORY_OPERATIONS = 32;
     uint256 internal constant MAX_REVERT_PERCENTAGE = 0.1e18;
 
     // NOTE: These values imply BIAS, you should EDIT THESE based on the target application
@@ -52,9 +51,6 @@ contract EchidnaBraindeadFeedTester is
     // https://etherscan.io/address/0x0f00392FcB466c0E4E4310d81b941e07B4d5a079
     uint256 internal constant MAX_BTC_VALUE = 1000000000;
     uint256 internal constant MIN_BTC_VALUE = 10000;
-
-    uint256 internal statusHistoryOperations = 0;
-    IPriceFeed.Status[MAX_STATUS_HISTORY_OPERATIONS] internal statusHistory;
 
     constructor() payable {
         authority = new MockAlwaysTrueAuthority();
@@ -97,9 +93,6 @@ contract EchidnaBraindeadFeedTester is
         );
 
         fallbackCaller.setFallbackResponse(priceFeed.lastGoodPrice() - 10, block.timestamp, true);
-
-        statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
-            .status();
     }
 
     // Risk of overflow, so we cap to 0
@@ -113,8 +106,8 @@ contract EchidnaBraindeadFeedTester is
         return block.timestamp + MAX_UPDATE_TIME_CHANGE;
     }
 
-    function setFallbackCaller(bool flag) public {
-        priceFeed.setFallbackCaller(flag ? address(fallbackCaller) : address(0));
+    function setFallbackCaller(bool useFallbackCallerFlag) public {
+        priceFeed.setFallbackCaller(useFallbackCallerFlag ? address(fallbackCaller) : address(0));
     }
 
     function setFallbackResponse(uint256 answer, uint256 timestampRetrieved, bool success) public {
@@ -181,6 +174,12 @@ contract EchidnaBraindeadFeedTester is
         secondaryTester.setErrorState(PriceFeedOracleTester.ErrorState(errorState));
     }
 
+    function setSecondaryOracle(bool useSecondaryOracleFlag) public {
+        braindeadFeed.setSecondaryOracle(
+            useSecondaryOracleFlag ? address(secondaryTester) : address(0)
+        );
+    }
+
     function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.latestRoundData();
 
@@ -207,12 +206,7 @@ contract EchidnaBraindeadFeedTester is
         collEthCLFeed.setUpdateTime(updateTime);
     }
 
-    function setPreviousEth(
-        uint80 prevRoundId,
-        uint256 prevPrice,
-        uint256 prevUpdateTime,
-        bool flag
-    ) public {
+    function setPreviousEth(uint80 prevRoundId, uint256 prevPrice, uint256 prevUpdateTime) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.getRoundData(0);
         prevRoundId = uint80(
             clampBetween(
@@ -260,12 +254,7 @@ contract EchidnaBraindeadFeedTester is
         ethBtcCLFeed.setUpdateTime(updateTime);
     }
 
-    function setPreviousBTC(
-        uint80 prevRoundId,
-        uint256 prevPrice,
-        uint256 prevUpdateTime,
-        bool flag
-    ) public {
+    function setPreviousBTC(uint80 prevRoundId, uint256 prevPrice, uint256 prevUpdateTime) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.getRoundData(0);
         prevRoundId = uint80(
             clampBetween(
@@ -297,8 +286,12 @@ contract EchidnaBraindeadFeedTester is
             if (primaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
                 assertWithMsg(price == primaryTester.fetchPrice(), PF_07);
             } else {
-                if (secondaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
-                    assertWithMsg(price == secondaryTester.fetchPrice(), PF_08);
+                if (braindeadFeed.secondaryOracle() != address(0)) {
+                    if (secondaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
+                        assertWithMsg(price == secondaryTester.fetchPrice(), PF_08);
+                    } else {
+                        assertWithMsg(price == lastGoodPrice, PF_09);
+                    }
                 } else {
                     assertWithMsg(price == lastGoodPrice, PF_09);
                 }
