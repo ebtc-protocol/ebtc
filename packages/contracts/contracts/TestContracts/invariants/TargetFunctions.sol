@@ -461,16 +461,14 @@ abstract contract TargetFunctions is Properties {
         _before(_cdpId);
 
         {
-        uint price = priceFeedMock.getPrice();
-        
-            (
-                bytes32 firstRedemptionHintVal,
-                uint256 partialRedemptionHintNICR,
-                ,
-                
-            ) = hintHelpers.getRedemptionHints(_EBTCAmount, price, _maxIterations);
+            uint price = priceFeedMock.getPrice();
 
-            _firstRedemptionHintFromMedusa = useProperFirstHint ? firstRedemptionHintVal : _firstRedemptionHintFromMedusa;
+            (bytes32 firstRedemptionHintVal, uint256 partialRedemptionHintNICR, , ) = hintHelpers
+                .getRedemptionHints(_EBTCAmount, price, _maxIterations);
+
+            _firstRedemptionHintFromMedusa = useProperFirstHint
+                ? firstRedemptionHintVal
+                : _firstRedemptionHintFromMedusa;
 
             _partialRedemptionHintNICRFromMedusa = useProperPartialHint
                 ? partialRedemptionHintNICR
