@@ -269,7 +269,9 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
             bound(newGracePeriod, cdpManager.MINIMUM_GRACE_PERIOD() + 2, type(uint128).max / 10)
         ); // prevent unrealistic overflow
 
-        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode();
+        (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) = _initSystemInRecoveryMode(
+            false
+        );
 
         uint256 oldGracePeriod = cdpManager.recoveryModeGracePeriodDuration();
 
@@ -361,6 +363,12 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         internal
         returns (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale)
     {
+        return _initSystemInRecoveryMode(true);
+    }
+
+    function _initSystemInRecoveryMode(
+        bool icrEqualsTcr
+    ) internal returns (bytes32 whaleCdpId, bytes32 toLiquidateCdpId, address whale) {
         // Create a whale
         whale = _utils.getNextUserAddress();
 
@@ -368,21 +376,32 @@ contract CDPManagerGovernanceTest is eBTCBaseFixture {
         priceFeedMock.setPrice(2 ether);
         uint256 price = priceFeedMock.fetchPrice();
 
-        // Open whale CDPs at 220%
-        whaleCdpId = _openTestCDP(whale, 1100.2e18, 1000e18);
-
         /// @audit this liquidation fails, because the check is _ICR < _TCR
         /// @audit this is an edge case where _ICR == _TCR and liquidation is in RM
-        toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 10e18);
+        if (icrEqualsTcr) {
+            // Open whale CDPs at 220%
+            whaleCdpId = _openTestCDP(whale, 1100.2e18, 1000e18);
 
-        assertEq(cdpManager.getCachedICR(whaleCdpId, price), 220e16, "unexpected ICR");
-        assertEq(cdpManager.getCachedTCR(price), 220e16, "unexpected TCR");
+            toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 10e18);
 
-        // original price
-        priceFeedMock.setPrice(1 ether);
-        price = priceFeedMock.fetchPrice();
+            assertEq(cdpManager.getCachedICR(whaleCdpId, price), 220e16, "unexpected ICR");
+            assertEq(cdpManager.getCachedTCR(price), 220e16, "unexpected TCR");
 
-        assertEq(cdpManager.getCachedICR(whaleCdpId, price), 110e16, "unexpected ICR");
-        assertEq(cdpManager.getCachedTCR(price), 110e16, "unexpected TCR");
+            // original price
+            priceFeedMock.setPrice(1 ether);
+            price = priceFeedMock.fetchPrice();
+
+            assertEq(cdpManager.getCachedICR(whaleCdpId, price), 110e16, "unexpected ICR");
+            assertEq(cdpManager.getCachedTCR(price), 110e16, "unexpected TCR");
+        } else {
+            // Open whale CDPs at 220%
+            whaleCdpId = _openTestCDP(whale, 1100.2e18, 900e18);
+
+            toLiquidateCdpId = _openTestCDP(whale, 11.2e18, 9.9e18);
+
+            // original price
+            priceFeedMock.setPrice(1 ether);
+            price = priceFeedMock.fetchPrice();
+        }
     }
 }

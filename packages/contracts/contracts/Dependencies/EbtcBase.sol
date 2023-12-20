@@ -140,6 +140,8 @@ contract EbtcBase is BaseMath, IEbtcBase {
     function _checkICRAgainstTCR(uint256 _icr, uint _tcr) internal view returns (bool) {
         /// @audit is _icr <= _tcr more dangerous for overal system safety?
         /// @audit Should we use _icr < CCR to allow any risky CDP being liquidated?
-        return _icr <= _tcr;
+        /// TODO: _icr <= _tcr breaks testLS01_C4_155_Fix, which one is correct?
+        //return _icr <= _tcr;
+        return _icr < _tcr;
     }
 }

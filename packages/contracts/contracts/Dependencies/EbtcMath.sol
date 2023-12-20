@@ -133,9 +133,13 @@ library EbtcMath {
         uint256 _price
     ) internal pure returns (uint256) {
         if (_debt > 0) {
-            uint256 newCollRatio = (_stEthBalance * _price) +
-                ((_stEthBalanceErr * _price) / 1e18) /
-                _debt;
+            // _stEthBalanceErr is in 1e36
+            // (1e36 + (1e36 * 1e18 / 1e18)) / 1e18 = 1e18 final precision
+            // _stEthBalanceErr * _price shouldn't overflow because
+            // the magnitude of the rounding error is generally
+            // quite small
+            uint256 newCollRatio = ((_stEthBalance * _price) +
+                ((_stEthBalanceErr * _price) / DECIMAL_PRECISION)) / _debt;
 
             return newCollRatio;
         }
