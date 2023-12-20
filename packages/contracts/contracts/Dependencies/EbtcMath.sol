@@ -125,4 +125,24 @@ library EbtcMath {
             return MAX_TCR;
         }
     }
+
+    function _computeCRWithCollErr(
+        uint256 _stEthBalance,
+        uint256 _stEthBalanceErr,
+        uint256 _debt,
+        uint256 _price
+    ) internal pure returns (uint256) {
+        if (_debt > 0) {
+            uint256 newCollRatio = (_stEthBalance * _price) +
+                ((_stEthBalanceErr * _price) / 1e18) /
+                _debt;
+
+            return newCollRatio;
+        }
+        // Return the maximal value for uint256 if the Cdp has a debt of 0. Represents "infinite" CR.
+        else {
+            // if (_debt == 0)
+            return MAX_TCR;
+        }
+    }
 }

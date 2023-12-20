@@ -724,8 +724,12 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @return The Individual Collateral Ratio (ICR) of the specified Cdp.
     /// @dev Use getSyncedICR() instead if pending fee split and debt redistribution should be considered
     function getCachedICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
-        (uint256 currentEBTCDebt, uint256 currentCollShares) = getSyncedDebtAndCollShares(_cdpId);
-        uint256 ICR = _calculateCR(currentCollShares, currentEBTCDebt, _price);
+        (
+            uint256 currentEBTCDebt,
+            uint256 currentCollShares,
+            uint256 collErr
+        ) = getSyncedDebtAndCollSharesWithCollErr(_cdpId);
+        uint256 ICR = _calculateCRWithCollErr(currentCollShares, collErr, currentEBTCDebt, _price);
         return ICR;
     }
 
@@ -736,6 +740,23 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     ) internal view returns (uint256) {
         uint256 _underlyingCollateral = collateral.getPooledEthByShares(currentCollShare);
         return EbtcMath._computeCR(_underlyingCollateral, currentDebt, _price);
+    }
+
+    function _calculateCRWithCollErr(
+        uint256 currentCollShare,
+        uint256 currentCollErr,
+        uint256 currentDebt,
+        uint256 _price
+    ) internal view returns (uint256) {
+        uint256 _underlyingCollateral = collateral.getPooledEthByShares(currentCollShare);
+        uint256 _underlyingCollErr = collateral.getPooledEthByShares(currentCollErr);
+        return
+            EbtcMath._computeCRWithCollErr(
+                _underlyingCollateral,
+                _underlyingCollErr,
+                currentDebt,
+                _price
+            );
     }
 
     /// @notice Return the pending extra debt assigned to the Cdp from liquidation redistribution, calcualted by Cdp's stake
@@ -781,6 +802,23 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         );
         coll = _newColl;
         debt = _newDebt;
+    }
+
+    function getSyncedDebtAndCollSharesWithCollErr(
+        bytes32 _cdpId
+    ) public view returns (uint256 debt, uint256 coll, uint256 collErr) {
+        /// TODO: if feels right to sync global account here,
+        // but sync'ing global accounting here breaks some unit tests, need to investigate some more
+        //      (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
+        //      (, uint256 _newGlobalSplitIdx, ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
+        (uint256 _newColl, uint256 _newDebt, , , , uint256 _collErr) = _calcSyncedAccounting(
+            _cdpId,
+            cdpStEthFeePerUnitIndex[_cdpId],
+            systemStEthFeePerUnitIndex // TODO: maybe _newGlobalSplitIdx?
+        );
+        coll = _newColl;
+        debt = _newDebt;
+        collErr = _collErr;
     }
 
     /// @dev calculate pending global state change to be applied:
@@ -914,8 +952,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /// @dev Should always use this as the first(default) choice for Cdp ICR query
     function getSyncedICR(bytes32 _cdpId, uint256 _price) public view returns (uint256) {
         uint256 _debt = getSyncedCdpDebt(_cdpId);
-        uint256 _collShare = getSyncedCdpCollShares(_cdpId);
-        return _calculateCR(_collShare, _debt, _price);
+        (uint256 _collShare, uint256 _collErr) = getSyncedCdpCollSharesWithCollErr(_cdpId);
+        return _calculateCRWithCollErr(_collShare, _collErr, _debt, _price);
     }
 
     /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken

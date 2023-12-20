@@ -266,5 +266,9 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bytes32 _cdpId
     ) external view returns (uint256 debt, uint256 collShares);
 
+    function getSyncedDebtAndCollSharesWithCollErr(
+        bytes32 _cdpId
+    ) external view returns (uint256 debt, uint256 collShares, uint256 collErr);
+
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
 }
