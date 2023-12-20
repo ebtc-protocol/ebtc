@@ -254,7 +254,12 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         activePool.decreaseSystemDebt(_EBTC);
 
         // Register stETH surplus from upcoming transfers of stETH collateral and liquidator reward shares
-        collSurplusPool.increaseSurplusCollShares(_borrower, _collSurplus + _liquidatorRewardShares);
+        collSurplusPool.increaseSurplusCollShares(
+            _cdpId,
+            _borrower,
+            _collSurplus,
+            _liquidatorRewardShares
+        );
 
         // CEI: send stETH coll and liquidator reward shares from Active Pool to CollSurplus Pool
         activePool.transferSystemCollSharesAndLiquidatorReward(
