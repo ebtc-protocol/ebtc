@@ -9,8 +9,6 @@ interface ITwapWeightedObserver is IBaseTwapWeightedObserver {
 
     function timeToAccrue() external view returns (uint64);
 
-    function getRealValue() external view returns (uint256);
-
     function getLatestAccumulator() external view returns (uint128);
 
     // function setValue(uint128 newValue) external;

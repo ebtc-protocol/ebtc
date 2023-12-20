@@ -318,7 +318,7 @@ class TestHelper {
     console.log('twap blockTimestampStart=' + blockTimestampStart);
     let _twapDebtData = await contracts.activePool.getData();
     console.log('twap data=' + JSON.stringify(_twapDebtData));
-    let _valToCheck = await contracts.activePool.getRealValue();
+    let _valToCheck = await contracts.activePool.valueToTrack();
     console.log('twap valToCheck=' + _valToCheck);	
     let _period = await contracts.activePool.PERIOD();
     let _diffTime = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["lastUpdate"])

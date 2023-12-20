@@ -624,7 +624,7 @@ contract eBTCBaseFixture is
     function _printTwapState() internal {
         PackedData memory data = activePool.getData();
         uint256 valueToTrack = activePool.valueToTrack();
-        uint256 getRealValue = activePool.getRealValue();
+        uint256 getRealValue = activePool.valueToTrack();
         uint256 getLatestAccumulator = activePool.getLatestAccumulator();
         uint256 observe = activePool.observe();
 

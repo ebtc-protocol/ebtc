@@ -55,11 +55,6 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
 
     // == Getters == //
 
-    /// @notice Returns the current value
-    function getRealValue() public view returns (uint256) {
-        return valueToTrack;
-    }
-
     /// @notice Returns the accumulator value, adjusted according to the current value and block timestamp
     function getLatestAccumulator() public view returns (uint128) {
         return _syncToNow();

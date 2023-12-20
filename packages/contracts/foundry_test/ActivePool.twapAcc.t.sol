@@ -42,7 +42,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
                 _val = (apTester.valueToTrack() * (5 - randomSeed)) / 10;
             }
             apTester.unprotectedSetTwapTrackVal(_val);
-            assertEq(_val, apTester.getRealValue());
+            assertEq(_val, apTester.valueToTrack());
 
             uint256 _accBefore = apTester.getLatestAccumulator();
             vm.warp((apTester.getData()).lastUpdate + apTester.PERIOD());
@@ -59,7 +59,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
         uint256 TEN_BILLION_USD = 10e27; // 10 billion in 18 decimals
 
         apTester.unprotectedSetTwapTrackVal(TEN_BILLION_USD);
-        assertEq(TEN_BILLION_USD, apTester.getRealValue());
+        assertEq(TEN_BILLION_USD, apTester.valueToTrack());
 
         uint256 _accBefore = apTester.getLatestAccumulator();
         vm.warp(MANY_YEARS);
@@ -71,19 +71,19 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
     function testIsManipulationAValidConcern() public {
         uint256 NORMAL_VALUE = 1000e18;
         apTester.unprotectedSetTwapTrackVal(NORMAL_VALUE);
-        assertEq(NORMAL_VALUE, apTester.getRealValue());
+        assertEq(NORMAL_VALUE, apTester.valueToTrack());
 
         // update the accumulator normally after period
         vm.warp((apTester.getData()).t0 + apTester.PERIOD() + 123);
         apTester.update();
-        assertEq(NORMAL_VALUE, apTester.getRealValue());
+        assertEq(NORMAL_VALUE, apTester.valueToTrack());
         uint256 _obsv = apTester.observe();
         assertEq(_obsv, NORMAL_VALUE);
 
         // make a huge pike
         uint256 HUNDRED_BILLION_USD = 100e27; // 100 billion in 18 decimals
         apTester.unprotectedSetTwapTrackVal(HUNDRED_BILLION_USD);
-        assertEq(HUNDRED_BILLION_USD, apTester.getRealValue());
+        assertEq(HUNDRED_BILLION_USD, apTester.valueToTrack());
 
         // then check the new observe
         vm.warp(block.timestamp + 12);
