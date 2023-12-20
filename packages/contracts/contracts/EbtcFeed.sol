@@ -15,7 +15,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * switching oracles based on oracle failures, timeouts, and conditions for returning to the primary
  * Chainlink oracle. In addition, it contains the mechanism to add or remove the fallback oracle through governance.
  */
-contract BraindeadFeed is IPriceFeed, AuthNoOwner {
+contract EbtcFeed is IPriceFeed, AuthNoOwner {
     string public constant NAME = "PriceFeed";
 
     // The last good price seen from an oracle by Liquity
@@ -42,7 +42,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
         _initializeAuthority(_authorityAddress);
 
         uint256 firstPrice = IPriceFetcher(_primaryOracle).fetchPrice();
-        require(firstPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
+        require(firstPrice != INVALID_PRICE, "EbtcFeed: Primary Oracle Must Work");
 
         _storePrice(firstPrice);
 
@@ -62,7 +62,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
     ///     The oracle must work (return non-zero value)
     function setPrimaryOracle(address _newPrimary) external requiresAuth {
         uint256 currentPrice = IPriceFetcher(_newPrimary).fetchPrice();
-        require(currentPrice != INVALID_PRICE, "BraindeadFeed: Primary Oracle Must Work");
+        require(currentPrice != INVALID_PRICE, "EbtcFeed: Primary Oracle Must Work");
 
         emit PrimaryOracleUpdated(primaryOracle, _newPrimary);
         primaryOracle = _newPrimary;
@@ -74,7 +74,7 @@ contract BraindeadFeed is IPriceFeed, AuthNoOwner {
         // Allow governance to remove the secondary oracle
         if (_newSecondary != UNSET_ADDRESS) {
             uint256 currentPrice = IPriceFetcher(_newSecondary).fetchPrice();
-            require(currentPrice != INVALID_PRICE, "BraindeadFeed: Secondary Oracle Must Work");
+            require(currentPrice != INVALID_PRICE, "EbtcFeed: Secondary Oracle Must Work");
         }
 
         emit SecondaryOracleUpdated(secondaryOracle, _newSecondary);

@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import "forge-std/Test.sol";
-import "../contracts/BraindeadFeed.sol";
+import "../contracts/EbtcFeed.sol";
 import "../contracts/Interfaces/IOracleCaller.sol";
 import "../contracts/TestContracts/MockAlwaysTrueAuthority.sol";
 
@@ -171,16 +171,16 @@ contract ScamSelfDestruct {
     - Contract doesn't exist
 */
 
-contract BraindeadFeedUnit is Test {
+contract EbtcFeedUnit is Test {
     MockCLCaller mockCl;
-    BraindeadFeed feed;
+    EbtcFeed feed;
     MockAlwaysTrueAuthority internal authority;
 
     function setUp() public {
         authority = new MockAlwaysTrueAuthority();
         mockCl = new MockCLCaller();
         mockCl.setPrice(123);
-        feed = new BraindeadFeed(address(authority), address(mockCl), address(0));
+        feed = new EbtcFeed(address(authority), address(mockCl), address(0));
     }
 
     function testTinfoilCalls(uint256 price) public {

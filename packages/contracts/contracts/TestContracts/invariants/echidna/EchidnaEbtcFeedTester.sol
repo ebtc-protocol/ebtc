@@ -7,7 +7,7 @@ import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 
 import "../../../Interfaces/IOracleCaller.sol";
 import "../../../PriceFeed.sol";
-import "../../../BraindeadFeed.sol";
+import "../../../EbtcFeed.sol";
 import "../../MockAggregator.sol";
 import {MockFallbackCaller} from "../../MockFallbackCaller.sol";
 import "../../../Dependencies/AuthNoOwner.sol";
@@ -18,12 +18,8 @@ import "../PropertiesDescriptions.sol";
 
 import "@crytic/properties/contracts/util/Hevm.sol";
 
-contract EchidnaBraindeadFeedTester is
-    PropertiesConstants,
-    PropertiesAsserts,
-    PropertiesDescriptions
-{
-    BraindeadFeed internal braindeadFeed;
+contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, PropertiesDescriptions {
+    EbtcFeed internal ebtcFeed;
     PriceFeedOracleTester internal primaryTester;
     PriceFeedOracleTester internal secondaryTester;
     PriceFeed internal priceFeed;
@@ -86,7 +82,7 @@ contract EchidnaBraindeadFeedTester is
         primaryTester = new PriceFeedOracleTester(address(priceFeed));
         secondaryTester = new PriceFeedOracleTester(address(priceFeed));
 
-        braindeadFeed = new BraindeadFeed(
+        ebtcFeed = new EbtcFeed(
             address(authority),
             address(primaryTester),
             address(secondaryTester)
@@ -175,9 +171,7 @@ contract EchidnaBraindeadFeedTester is
     }
 
     function setSecondaryOracle(bool useSecondaryOracleFlag) public {
-        braindeadFeed.setSecondaryOracle(
-            useSecondaryOracleFlag ? address(secondaryTester) : address(0)
-        );
+        ebtcFeed.setSecondaryOracle(useSecondaryOracleFlag ? address(secondaryTester) : address(0));
     }
 
     function setLatestEth(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
@@ -276,17 +270,17 @@ contract EchidnaBraindeadFeedTester is
         ethBtcCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function fetchPriceBraindead() public {
-        uint256 lastGoodPrice = braindeadFeed.lastGoodPrice();
+    function fetchPriceEbtcFeed() public {
+        uint256 lastGoodPrice = ebtcFeed.lastGoodPrice();
 
-        try braindeadFeed.fetchPrice() returns (uint256 price) {
+        try ebtcFeed.fetchPrice() returns (uint256 price) {
             PriceFeedOracleTester.ErrorState primaryErrorState = primaryTester.errorState();
             PriceFeedOracleTester.ErrorState secondaryErrorState = secondaryTester.errorState();
 
             if (primaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
                 assertWithMsg(price == primaryTester.fetchPrice(), PF_07);
             } else {
-                if (braindeadFeed.secondaryOracle() != address(0)) {
+                if (ebtcFeed.secondaryOracle() != address(0)) {
                     if (secondaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
                         assertWithMsg(price == secondaryTester.fetchPrice(), PF_08);
                     } else {
