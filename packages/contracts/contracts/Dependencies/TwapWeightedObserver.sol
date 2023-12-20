@@ -2,6 +2,9 @@
 pragma solidity 0.8.17;
 import {ITwapWeightedObserver} from "../Interfaces/ITwapWeightedObserver.sol";
 
+/// @title TwapWeightedObserver
+/// @notice Given a value, applies a time-weighted TWAP that smooths out changes over a 7 days period
+/// @dev Used to get the lowest value of total supply to prevent underpaying redemptions
 contract TwapWeightedObserver is ITwapWeightedObserver {
     PackedData public data;
     uint128 public valueToTrack;
