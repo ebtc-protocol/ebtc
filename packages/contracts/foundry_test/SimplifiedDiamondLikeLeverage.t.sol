@@ -323,7 +323,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         collSurplusPool.increaseTotalSurplusCollShares(1e18);
 
         vm.prank(address(cdpManager));
-        collSurplusPool.increaseSurplusCollShares(address(wallet), 1e18);
+        collSurplusPool.increaseSurplusCollShares(bytes32(0), address(wallet), 1e18, 0);
 
         SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](1);
 
