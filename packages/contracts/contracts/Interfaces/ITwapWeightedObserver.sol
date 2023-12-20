@@ -11,7 +11,6 @@ interface ITwapWeightedObserver is IBaseTwapWeightedObserver {
 
     function getLatestAccumulator() external view returns (uint128);
 
-    // function setValue(uint128 newValue) external;
     function observe() external returns (uint256);
 
     function update() external;
