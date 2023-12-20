@@ -90,7 +90,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         uint128 priceCum0 = getLatestAccumulator();
         uint128 virtualAvgValue = (priceCum0 - data.priceCumulative0) /
             (uint64(block.timestamp) - data.t0);
-        
+
         uint256 maxWeight = PERIOD;
         if (futureWeight > maxWeight) {
             _update(virtualAvgValue, priceCum0, uint64(block.timestamp)); // May as well update
