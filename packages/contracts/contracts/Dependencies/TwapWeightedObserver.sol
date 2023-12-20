@@ -74,7 +74,9 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     function observe() external returns (uint256) {
         // Here, we need to apply the new accumulator to skew the price in some way
         // The weight of the skew should be proportional to the time passed
-        if (block.timestamp - data.t0 == 0) {
+        uint256 futureWeight = block.timestamp - data.t0;
+
+        if (futureWeight == 0) {
             return data.avgValue;
         }
 
@@ -85,10 +87,8 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         uint128 priceCum0 = getLatestAccumulator();
         uint128 virtualAvgValue = (priceCum0 - data.priceCumulative0) /
             (uint64(block.timestamp) - data.t0);
-
-        uint256 futureWeight = block.timestamp - data.t0;
+        
         uint256 maxWeight = PERIOD;
-
         if (futureWeight > maxWeight) {
             _update(virtualAvgValue, priceCum0, uint64(block.timestamp)); // May as well update
             // Return virtual
