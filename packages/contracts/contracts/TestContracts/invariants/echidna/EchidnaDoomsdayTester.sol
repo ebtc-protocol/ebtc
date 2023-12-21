@@ -57,7 +57,7 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
         // we pass in CCR instead of MCR in case it's the first one
         {
             uint price = priceFeedMock.getPrice();
-            
+
             uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
             uint256 minCollAmount = max(
                 cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(),
@@ -76,7 +76,7 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
             )
         );
         t(success, "Approve never fails");
-        
+
         {
             (success, returnData) = actor.proxy(
                 address(borrowerOperations),
@@ -91,7 +91,7 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
         }
 
         bytes32 newCdpId;
-        if(success) {
+        if (success) {
             newCdpId = abi.decode(returnData, (bytes32));
         }
 
@@ -105,7 +105,7 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
 
         (bool success, bytes32 newCdpId) = _openCdp(_col, _EBTCAmount);
 
-        if(success) {
+        if (success) {
             victimCdps.push(newCdpId); // Set as closable
         }
     }
@@ -116,13 +116,13 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
 
         // Check if RM
         cdpManager.syncGlobalAccountingAndGracePeriod();
-        
+
         if (cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP()) {
             return; // Skip if in RM since you can't close in RM
         }
 
         // If this cannot be done at any time, then the invariant is broken
-        for(uint256 i; i < victimCdps.length; i++) {
+        for (uint256 i; i < victimCdps.length; i++) {
             _closeCdp(victimCdps[i]);
         }
 
@@ -130,7 +130,7 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
     }
 
     function _closeCdp(bytes32 cdpId) internal {
-        if(cdpManager.getCdpStatus(cdpId) != 1) {
+        if (cdpManager.getCdpStatus(cdpId) != 1) {
             return; // CDP May have been redeemed or closed for some other reason, in those cases we ignore
         }
         (bool success, ) = actor.proxy(
