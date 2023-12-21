@@ -8,11 +8,11 @@ import {PriceFeed} from "../contracts/PriceFeed.sol";
 import {PriceFeedTester} from "../contracts/TestContracts/PriceFeedTester.sol";
 import {MockTellor} from "../contracts/TestContracts/MockTellor.sol";
 import {MockAggregator} from "../contracts/TestContracts/MockAggregator.sol";
-import {eBTCBaseFixture} from "./BaseFixture.sol";
+import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {TellorCaller} from "../contracts/Dependencies/TellorCaller.sol";
 import {AggregatorV3Interface} from "../contracts/Dependencies/AggregatorV3Interface.sol";
 
-contract PriceFeedTest is eBTCBaseFixture {
+contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
     address constant STETH_ETH_CL_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 
     PriceFeedTester internal priceFeedTester;
@@ -29,9 +29,9 @@ contract PriceFeedTest is eBTCBaseFixture {
     event FeedActionOption(uint256 _action);
 
     function setUp() public override {
-        eBTCBaseFixture.setUp();
-        eBTCBaseFixture.connectCoreContracts();
-        eBTCBaseFixture.connectLQTYContractsToCore();
+        super.setUp();
+        super.connectCoreContracts();
+        super.connectLQTYContractsToCore();
 
         // Set current and prev prices in both oracles
         _mockChainLinkEthBTC = new MockAggregator();
@@ -119,6 +119,7 @@ contract PriceFeedTest is eBTCBaseFixture {
                 _restoreFallackFeed();
             } else if (_choice == 8) {
                 _restoreChainlinkPriceAndTimestamp(_mockChainLinkStEthETH, initStEthETHPrice);
+                _restoreChainlinkPriceAndTimestamp(_mockChainLinkEthBTC, initEthBTCPrice);
             } else if (_choice == 9) {
                 _restoreFallbackPriceAndTimestamp(initStEthBTCPrice);
             }
@@ -143,6 +144,55 @@ contract PriceFeedTest is eBTCBaseFixture {
     }
 
     function testStateTransitionsWithOracleFallback() public {}
+
+    function testPriceChangeOver50PerCentWithoutFallback() public {
+        // set empty fallback
+        _brickFallackFeed();
+
+        uint256 lastGoodPrice = priceFeedTester.lastGoodPrice();
+
+        // Price change over 50%
+        int256 newEthBTCPrice = (initEthBTCPrice * 2) + 1;
+        _mockChainLinkEthBTC.setPrice(newEthBTCPrice);
+
+        // Get price
+        uint256 newPrice = priceFeedTester.fetchPrice();
+        IPriceFeed.Status status = priceFeedTester.status();
+        assertEq(newPrice, lastGoodPrice); // last good price is used
+        assertEq(uint256(status), 2); // bothOraclesUntrusted
+
+        // Get price again in the same block (no changes in ChainLink price)
+        newPrice = priceFeedTester.fetchPrice();
+        status = priceFeedTester.status();
+        assertEq(newPrice, lastGoodPrice); // still lastGoodPrice is used
+        assertEq(uint256(status), 2); // still bothOraclesUntrusted due to CL report 50% deviation
+    }
+
+    function testPriceChangeOver50PerCentWithFallback() public {
+        // froze CL
+        _frozeChainlink(_mockChainLinkEthBTC);
+
+        // update state machine
+        priceFeedTester.fetchPrice();
+        IPriceFeed.Status status = priceFeedTester.status();
+        assertEq(uint256(status), 3); // usingFallbackChainlinkFrozen
+        uint256 lastGoodPrice = priceFeedTester.lastGoodPrice();
+
+        // Now restore CL response time but with price change over 50%
+        int256 newEthBTCPrice = (initEthBTCPrice * 2) + 1;
+        _restoreChainlinkPriceAndTimestamp(_mockChainLinkEthBTC, newEthBTCPrice);
+        _restoreChainlinkPriceAndTimestamp(_mockChainLinkStEthETH, initStEthETHPrice);
+
+        // update fallback price
+        uint256 _newPrice = lastGoodPrice + 1234567890123;
+        _restoreFallbackPriceAndTimestamp(_newPrice);
+
+        // update state machine again
+        uint256 _price = priceFeedTester.fetchPrice();
+        status = priceFeedTester.status();
+        assertEq(_price, _newPrice); // still using fallback price
+        assertEq(uint256(status), 1); // usingFallbackChainlinkUntrusted
+    }
 
     /// @dev We expect there to be a previous chainlink response on system init, real-world oracles used will have this property
     function _getOracleResponses()
@@ -251,14 +301,14 @@ contract PriceFeedTest is eBTCBaseFixture {
         }
         // --- CASE 2: The system fetched last price from Fallback ---
         else if (currentStatus == IPriceFeed.Status.usingFallbackChainlinkUntrusted) {
-            if (bothOraclesAliveAndUnrokenSimilarPrice) {
-                // CL and FB working, reporting similar prices (<5% difference)
-                // Chainlink is now working, return to it
-                newStatus = IPriceFeed.Status.chainlinkWorking;
-            } else if (fallbackBroken) {
+            if (fallbackBroken) {
                 // Fallback is now broken, and becomes untrusted
                 // Use last good price as both oracles are untrusted
                 newStatus = IPriceFeed.Status.bothOraclesUntrusted;
+            } else if (bothOraclesAliveAndUnrokenSimilarPrice) {
+                // CL and FB working, reporting similar prices (<5% difference)
+                // Chainlink is now working, return to it
+                newStatus = IPriceFeed.Status.chainlinkWorking;
             } else {
                 // Fallback is working, and CL still isn't. Stay in same state
                 // Use our new valid fallback price
@@ -268,13 +318,13 @@ contract PriceFeedTest is eBTCBaseFixture {
         // --- CASE 3: Both oracles were untrusted at the last price fetch ---
         else if (currentStatus == IPriceFeed.Status.bothOraclesUntrusted) {
             // Fallback isn't working so we can't compare the prices. Go ahead and trust CL for now that it's reporting and is the only valid oracle
-            if (
-                address(priceFeedTester.fallbackCaller()) == address(0) &&
-                !chainlinkFrozen &&
-                !chainlinkBroken
-            ) {
-                // Chainlink is now working, return to it, but note that fallback is still untrusted
-                newStatus = IPriceFeed.Status.usingChainlinkFallbackUntrusted;
+            if (address(priceFeedTester.fallbackCaller()) == address(0)) {
+                if (!chainlinkFrozen && !chainlinkBroken && !chainlinkPriceChangeAboveMax) {
+                    // Chainlink is now working, return to it, but note that fallback is still untrusted
+                    newStatus = IPriceFeed.Status.usingChainlinkFallbackUntrusted;
+                } else {
+                    newStatus = currentStatus;
+                }
             } else if (bothOraclesAliveAndUnrokenSimilarPrice) {
                 // CL and FB working, reporting similar prices (<5% difference)
                 // Chainlink is now working, return to it
@@ -304,6 +354,15 @@ contract PriceFeedTest is eBTCBaseFixture {
                     // Use last good price as we don't have a newer price to use
                     newStatus = currentStatus;
                 }
+            } else if (chainlinkPriceChangeAboveMax) {
+                if (fallbackBroken) {
+                    // FB Broken
+                    // Fallback is now broken, and becomes untrusted
+                    // Use last good price as both oracles are untrusted
+                    newStatus = IPriceFeed.Status.bothOraclesUntrusted;
+                } else {
+                    newStatus = IPriceFeed.Status.usingFallbackChainlinkUntrusted;
+                }
             } else if (fallbackBroken) {
                 // Chainlink is now working, return to it
                 newStatus = IPriceFeed.Status.usingChainlinkFallbackUntrusted;
@@ -331,15 +390,19 @@ contract PriceFeedTest is eBTCBaseFixture {
             else if (chainlinkFrozen) {
                 newStatus = currentStatus;
             }
-            // CL and FB working, reporting similar prices (<5% difference)
-            // Both oracles are trusted now, use latest CL price
-            else if (bothOraclesAliveAndUnrokenSimilarPrice) {
-                newStatus = IPriceFeed.Status.chainlinkWorking;
-            }
             // CL is working, reporting suspiciously different price since previous round (>50% difference)
             // Stop trusting CL, and use last good price as we don't trust FB either
             else if (chainlinkPriceChangeAboveMax) {
                 newStatus = IPriceFeed.Status.bothOraclesUntrusted;
+            }
+            // CL and FB working, reporting similar prices (<5% difference)
+            // Both oracles are trusted now, use latest CL price
+            else if (bothOraclesAliveAndUnrokenSimilarPrice) {
+                if (address(priceFeedTester.fallbackCaller()) != address(0)) {
+                    newStatus = IPriceFeed.Status.chainlinkWorking;
+                } else {
+                    newStatus = currentStatus;
+                }
             }
             // CL is working, but FB is still not trusted (it's not live and reporting within 5% of a valid updated CL price)
             // Use CL price, and maintain this state ("chainlinkWorking" really means both oracles are trusted)

@@ -188,18 +188,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         // --- CASE 2: The system fetched last price from Fallback ---
         if (status == Status.usingFallbackChainlinkUntrusted) {
-            // If both Fallback and Chainlink are live, unbroken, and reporting similar prices, switch back to Chainlink
-            if (
-                _bothOraclesLiveAndUnbrokenAndSimilarPrice(
-                    chainlinkResponse,
-                    prevChainlinkResponse,
-                    fallbackResponse
-                )
-            ) {
-                _changeStatus(Status.chainlinkWorking);
-                return _storeChainlinkPrice(chainlinkResponse.answer);
-            }
-
             if (_fallbackIsBroken(fallbackResponse)) {
                 _changeStatus(Status.bothOraclesUntrusted);
                 return lastGoodPrice;
@@ -211,6 +199,18 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
              */
             if (_fallbackIsFrozen(fallbackResponse)) {
                 return lastGoodPrice;
+            }
+
+            // If both Fallback and Chainlink are live, unbroken, and reporting similar prices, switch back to Chainlink
+            if (
+                _bothOraclesLiveAndUnbrokenAndSimilarPrice(
+                    chainlinkResponse,
+                    prevChainlinkResponse,
+                    fallbackResponse
+                )
+            ) {
+                _changeStatus(Status.chainlinkWorking);
+                return _storeChainlinkPrice(chainlinkResponse.answer);
             }
 
             // Otherwise, use Fallback price
@@ -226,10 +226,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // If CL has resumed working
                 if (
                     !_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse) &&
-                    !_chainlinkIsFrozen(chainlinkResponse)
+                    !_chainlinkIsFrozen(chainlinkResponse) &&
+                    !_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)
                 ) {
                     _changeStatus(Status.usingChainlinkFallbackUntrusted);
                     return _storeChainlinkPrice(chainlinkResponse.answer);
+                } else {
+                    return lastGoodPrice;
                 }
             }
 
@@ -288,6 +291,25 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 return _storeFallbackPrice(fallbackResponse);
             }
 
+            if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
+                // if Chainlink price is deviated between rounds and fallback is broken, just use lastGoodPrice
+                if (_fallbackIsBroken(fallbackResponse)) {
+                    _changeStatus(Status.bothOraclesUntrusted);
+                    return lastGoodPrice;
+                }
+
+                // If Chainlink price is deviated between rounds, remember it and keep using fallback
+                _changeStatus(Status.usingFallbackChainlinkUntrusted);
+
+                // If fallback is frozen, just use lastGoodPrice
+                if (_fallbackIsFrozen(fallbackResponse)) {
+                    return lastGoodPrice;
+                }
+
+                // otherwise fallback is working and keep using its latest response
+                return _storeFallbackPrice(fallbackResponse);
+            }
+
             // if Chainlink is live and Fallback is broken, remember Fallback broke, and return Chainlink price
             if (_fallbackIsBroken(fallbackResponse)) {
                 _changeStatus(Status.usingChainlinkFallbackUntrusted);
@@ -324,6 +346,13 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 return lastGoodPrice;
             }
 
+            // If Chainlink is live but deviated >50% from it's previous price and Fallback is still untrusted, switch
+            // to bothOraclesUntrusted and return last good price
+            if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
+                _changeStatus(Status.bothOraclesUntrusted);
+                return lastGoodPrice;
+            }
+
             // If Chainlink and Fallback are both live, unbroken and similar price, switch back to chainlinkWorking and return Chainlink price
             if (
                 _bothOraclesLiveAndUnbrokenAndSimilarPrice(
@@ -332,15 +361,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                     fallbackResponse
                 )
             ) {
-                _changeStatus(Status.chainlinkWorking);
+                if (address(fallbackCaller) != address(0)) {
+                    _changeStatus(Status.chainlinkWorking);
+                }
                 return _storeChainlinkPrice(chainlinkResponse.answer);
-            }
-
-            // If Chainlink is live but deviated >50% from it's previous price and Fallback is still untrusted, switch
-            // to bothOraclesUntrusted and return last good price
-            if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
-                _changeStatus(Status.bothOraclesUntrusted);
-                return lastGoodPrice;
             }
 
             // Otherwise if Chainlink is live and deviated <50% from it's previous price and Fallback is still untrusted,
@@ -508,8 +532,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     ) internal view returns (bool) {
         // Return false if either oracle is broken or frozen
         if (
-            _fallbackIsBroken(_fallbackResponse) ||
-            _fallbackIsFrozen(_fallbackResponse) ||
+            (address(fallbackCaller) != address(0) &&
+                (_fallbackIsBroken(_fallbackResponse) || _fallbackIsFrozen(_fallbackResponse))) ||
             _chainlinkIsBroken(_chainlinkResponse, _prevChainlinkResponse) ||
             _chainlinkIsFrozen(_chainlinkResponse)
         ) {
@@ -527,7 +551,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     function _bothOraclesSimilarPrice(
         ChainlinkResponse memory _chainlinkResponse,
         FallbackResponse memory _fallbackResponse
-    ) internal pure returns (bool) {
+    ) internal view returns (bool) {
+        if (address(fallbackCaller) == address(0)) {
+            return true;
+        }
         // Get the relative price difference between the oracles. Use the lower price as the denominator, i.e. the reference for the calculation.
         uint256 minPrice = EbtcMath._min(_fallbackResponse.answer, _chainlinkResponse.answer);
         if (minPrice == 0) return false;
