@@ -15,13 +15,13 @@ interface IBaseTwapWeightedObserver {
 
         // Slot 1
         /// @dev last update timestamp for TWAP Observer
-        uint64 observerUpdTs; // Thousands of Years, if we use relative time we can use u32 | Relative to deploy time (as immutable)
+        uint64 lastObserved; // Thousands of Years, if we use relative time we can use u32 | Relative to deploy time (as immutable)
         /// @dev last update timestamp for TWAP global track(spot) value
-        uint64 lastTrackUpdTs; // Thousands of years
+        uint64 lastAccrued; // Thousands of years
         // Expect eBTC debt to never surpass 100e27, which is 100 BILLION eBTC
         // log_2(100e27) = 96.3359147517 | log_2(100e27 / 1e18) = 36.5412090438
         // We could use a u64
         /// @dev average value since last observe
-        uint128 avgSinceLastObs;
+        uint128 lastObservedAverage;
     }
 }
