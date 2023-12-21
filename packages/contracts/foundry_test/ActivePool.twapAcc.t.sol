@@ -23,7 +23,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
 
     function testBasicTwap() public {
         uint256 entropy = 67842918170911949682054359726922204181906323355453850;
-        vm.warp((apTester.getData()).lastTrackUpdTs + apTester.PERIOD());
+        vm.warp((apTester.getData()).lastAccrued + apTester.PERIOD());
         apTester.unprotectedSetTwapTrackVal(100);
 
         while (entropy > 0) {
@@ -45,8 +45,8 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
             assertEq(_val, apTester.valueToTrack());
 
             uint256 _accBefore = apTester.getLatestAccumulator();
-            vm.warp((apTester.getData()).lastTrackUpdTs + apTester.PERIOD());
-            uint256 _duration = block.timestamp - (apTester.getData()).lastTrackUpdTs;
+            vm.warp((apTester.getData()).lastAccrued + apTester.PERIOD());
+            uint256 _duration = block.timestamp - (apTester.getData()).lastAccrued;
             uint256 _accAfter = apTester.getLatestAccumulator();
             assertEq(_duration * _val, _accAfter - _accBefore);
         }
@@ -63,7 +63,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
 
         uint256 _accBefore = apTester.getLatestAccumulator();
         vm.warp(MANY_YEARS);
-        uint256 _duration = block.timestamp - (apTester.getData()).lastTrackUpdTs;
+        uint256 _duration = block.timestamp - (apTester.getData()).lastAccrued;
         uint256 _accAfter = apTester.getLatestAccumulator();
         assertEq(TEN_BILLION_USD * _duration, _accAfter - _accBefore);
     }
@@ -74,7 +74,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
         assertEq(NORMAL_VALUE, apTester.valueToTrack());
 
         // update the accumulator normally after period
-        vm.warp((apTester.getData()).observerUpdTs + apTester.PERIOD() + 123);
+        vm.warp((apTester.getData()).lastObserved + apTester.PERIOD() + 123);
         apTester.update();
         assertEq(NORMAL_VALUE, apTester.valueToTrack());
         uint256 _obsv = apTester.observe();
