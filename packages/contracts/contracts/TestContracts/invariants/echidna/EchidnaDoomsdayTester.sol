@@ -114,6 +114,13 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
         // We CRLens the withdrawal
         actor = actors[VICTIM];
 
+        // Check if RM
+        cdpManager.syncGlobalAccountingAndGracePeriod();
+        
+        if (cdpManager.lastGracePeriodStartTimestamp() != cdpManager.UNSET_TIMESTAMP()) {
+            return; // Skip if in RM since you can't close in RM
+        }
+
         // If this cannot be done at any time, then the invariant is broken
         for(uint256 i; i < victimCdps.length; i++) {
             _closeCdp(victimCdps[i]);
@@ -123,6 +130,9 @@ contract EchidnaDoomsdayTester is EchidnaAsserts, EchidnaProperties, TargetFunct
     }
 
     function _closeCdp(bytes32 cdpId) internal {
+        if(cdpManager.getCdpStatus(cdpId) != 1) {
+            return; // CDP May have been redeemed or closed for some other reason, in those cases we ignore
+        }
         (bool success, ) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(BorrowerOperations.closeCdp.selector, cdpId)
