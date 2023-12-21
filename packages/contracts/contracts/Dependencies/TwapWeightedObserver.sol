@@ -103,6 +103,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         return weightedMean;
     }
 
+    /// @dev Usual Accumulator Math, (newAcc - acc0) / (now - t0)
     function _calcUpdatedAvg() internal view returns (uint128, uint128) {
         uint128 latestAcc = getLatestAccumulator();
         uint128 avgValue = (latestAcc - data.observerCumuVal) /
@@ -110,12 +111,14 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         return (avgValue, latestAcc);
     }
 
+    /// @dev Utility to update internal data
     function _update(uint128 avgValue, uint128 obsAcc) internal {
         data.lastObservedAverage = avgValue;
         data.observerCumuVal = obsAcc;
         data.lastObserved = uint64(block.timestamp);
     }
 
+    /// @dev Should we update in observe?
     function _checkUpdatePeriod() internal returns (bool) {
         return block.timestamp >= (data.lastObserved + PERIOD);
     }
