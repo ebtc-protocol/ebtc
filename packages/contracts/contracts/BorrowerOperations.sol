@@ -347,10 +347,10 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         if (_isDebtIncrease) {
-            _requireNonZeroDebtChange(_debtChange);
+            _requireMinDebtChange(_debtChange);
         }
         _requireSingularCollChange(_stEthBalanceIncrease, _stEthBalanceDecrease);
-        _requireNonZeroAdjustment(_stEthBalanceIncrease, _stEthBalanceDecrease, _debtChange);
+        _requireMinAdjustment(_stEthBalanceIncrease, _stEthBalanceDecrease, _debtChange);
 
         // Get the collSharesChange based on the collateral value transferred in the transaction
         (vars.collSharesChange, vars.isCollIncrease) = _getCollSharesChangeFromStEthChange(
@@ -393,7 +393,7 @@ contract BorrowerOperations is
         if (!_isDebtIncrease && _debtChange > 0) {
             _requireValidDebtRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEbtcTokenBalance(msg.sender, vars.netDebtChange);
-            _requireNonZeroDebt(vars.debt - vars.netDebtChange);
+            _requireMinDebt(vars.debt - vars.netDebtChange);
         }
 
         (vars.newCollShares, vars.newDebt) = _getNewCdpAmounts(
@@ -443,7 +443,7 @@ contract BorrowerOperations is
         uint256 _stEthBalance,
         address _borrower
     ) internal returns (bytes32) {
-        _requireNonZeroDebt(_debt);
+        _requireMinDebt(_debt);
         _requireBorrowerOrPositionManagerAndUpdateManagerApproval(_borrower);
 
         OpenCdpLocals memory vars;
@@ -810,13 +810,13 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireNonZeroAdjustment(
+    function _requireMinAdjustment(
         uint256 _stEthBalanceIncrease,
         uint256 _debtChange,
         uint256 _stEthBalanceDecrease
     ) internal pure {
         require(
-            _stEthBalanceIncrease != 0 || _stEthBalanceDecrease != 0 || _debtChange != 0,
+            _stEthBalanceIncrease >= MIN_CHANGE || _stEthBalanceDecrease >= MIN_CHANGE || _debtChange >= MIN_CHANGE,
             "BorrowerOperations: There must be either a collateral change or a debt change"
         );
     }
@@ -831,8 +831,8 @@ contract BorrowerOperations is
         require(status == 0, "BorrowerOperations: Cdp is active or has been previously closed");
     }
 
-    function _requireNonZeroDebtChange(uint _debtChange) internal pure {
-        require(_debtChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
+    function _requireMinDebtChange(uint _debtChange) internal pure {
+        require(_debtChange >= MIN_CHANGE, "BorrowerOperations: Debt increase requires min debtChange");
     }
 
     function _requireNotInRecoveryMode(uint256 _tcr) internal view {
@@ -932,8 +932,8 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireNonZeroDebt(uint256 _debt) internal pure {
-        require(_debt > 0, "BorrowerOperations: Debt must be non-zero");
+    function _requireMinDebt(uint256 _debt) internal pure {
+        require(_debt >= MIN_CHANGE, "BorrowerOperations: Debt must be above min");
     }
 
     function _requireAtLeastMinNetStEthBalance(uint256 _stEthBalance) internal pure {

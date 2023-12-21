@@ -103,6 +103,7 @@ contract eBTCBaseFixture is
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_DEBT = "BorrowerOperations: Debt must be above min";
 
     MultiCdpGetter internal cdpGetter;
     Utilities internal _utils;
