@@ -13,9 +13,9 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         PackedData memory cachedData = PackedData({
             observerCumuVal: initialValue,
             accumulator: initialValue,
-            observerUpdTs: uint64(block.timestamp),
-            lastTrackUpdTs: uint64(block.timestamp),
-            avgSinceLastObs: initialValue
+            lastObserved: uint64(block.timestamp),
+            lastAccrued: uint64(block.timestamp),
+            lastObservedAverage: initialValue
         });
 
         valueToTrack = initialValue;
@@ -31,7 +31,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     function _setValue(uint128 newValue) internal {
         uint128 _newAcc = _updateAcc(valueToTrack);
 
-        data.lastTrackUpdTs = uint64(block.timestamp);
+        data.lastAccrued = uint64(block.timestamp);
         emit NewTrackValue(valueToTrack, newValue, block.timestamp, _newAcc);
         valueToTrack = newValue;
     }
@@ -47,7 +47,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     /// @return Duration since last update
     /// @dev Safe from overflow for tens of thousands of years
     function timeToAccrue() public view returns (uint64) {
-        return uint64(block.timestamp) - data.lastTrackUpdTs;
+        return uint64(block.timestamp) - data.lastAccrued;
     }
 
     /// @notice Returns the accumulator value, adjusted according to the current value and block timestamp
@@ -77,10 +77,10 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     function observe() external returns (uint256) {
         // Here, we need to apply the new accumulator to skew the price in some way
         // The weight of the skew should be proportional to the time passed
-        uint256 futureWeight = block.timestamp - data.observerUpdTs;
+        uint256 futureWeight = block.timestamp - data.lastObserved;
 
         if (futureWeight == 0) {
-            return data.avgSinceLastObs;
+            return data.lastObservedAverage;
         }
 
         // A reference period is 7 days
@@ -95,7 +95,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
             return virtualAvgValue;
         }
 
-        uint256 weightedAvg = data.avgSinceLastObs * (PERIOD - futureWeight);
+        uint256 weightedAvg = data.lastObservedAverage * (PERIOD - futureWeight);
         uint256 weightedVirtual = virtualAvgValue * (futureWeight);
 
         uint256 weightedMean = (weightedAvg + weightedVirtual) / PERIOD;
@@ -106,18 +106,18 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     function _calcUpdatedAvg() internal view returns (uint128, uint128) {
         uint128 latestAcc = getLatestAccumulator();
         uint128 avgValue = (latestAcc - data.observerCumuVal) /
-            (uint64(block.timestamp) - data.observerUpdTs);
+            (uint64(block.timestamp) - data.lastObserved);
         return (avgValue, latestAcc);
     }
 
     function _update(uint128 avgValue, uint128 obsAcc) internal {
-        data.avgSinceLastObs = avgValue;
+        data.lastObservedAverage = avgValue;
         data.observerCumuVal = obsAcc;
-        data.observerUpdTs = uint64(block.timestamp);
+        data.lastObserved = uint64(block.timestamp);
     }
 
     function _checkUpdatePeriod() internal returns (bool) {
-        return block.timestamp >= (data.observerUpdTs + PERIOD);
+        return block.timestamp >= (data.lastObserved + PERIOD);
     }
 
     /// @dev update time-weighted Observer
