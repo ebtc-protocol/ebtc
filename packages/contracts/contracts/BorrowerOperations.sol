@@ -405,6 +405,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
+        _requireMinDebt(vars.newDebt);
         _requireAtLeastMinNetStEthBalance(collateral.getPooledEthByShares(vars.newCollShares));
 
         cdpManager.updateCdp(
@@ -935,7 +936,7 @@ contract BorrowerOperations is
     function _requireMinDebt(uint256 _debt) internal pure {
         require(_debt >= MIN_CHANGE, "BorrowerOperations: Debt must be above min");
     }
-
+    
     function _requireAtLeastMinNetStEthBalance(uint256 _stEthBalance) internal pure {
         require(
             _stEthBalance >= MIN_NET_STETH_BALANCE,
