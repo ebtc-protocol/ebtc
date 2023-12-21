@@ -206,8 +206,8 @@ contract ActivePool is
 
         uint256 cachedSystemDebt = systemDebt + _amount;
 
-        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP spot value
-        update(); // @audit update TWAP accumulator and weighted average
+        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
+        update(); // @audit update TWAP Observer accumulator and weighted average
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
@@ -222,8 +222,8 @@ contract ActivePool is
 
         uint256 cachedSystemDebt = systemDebt - _amount;
 
-        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP spot value
-        update(); // @audit update TWAP accumulator and weighted average
+        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
+        update(); // @audit update TWAP Observer accumulator and weighted average
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);

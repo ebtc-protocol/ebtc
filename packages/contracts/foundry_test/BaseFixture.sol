@@ -634,11 +634,11 @@ contract eBTCBaseFixture is
         console.log("getLatestAccumulator: ", getLatestAccumulator.pretty());
         console.log("observe: ", observe.pretty());
         console.log("");
-        console.log("data.priceCumulative0: ", data.priceCumulative0);
+        console.log("data.priceCumulative0: ", data.observerCumuVal);
         console.log("data.accumulator: ", data.accumulator);
-        console.log("data.t0: ", data.t0);
-        console.log("data.lastUpdate: ", data.lastUpdate);
-        console.log("data.avgValue: ", data.avgValue);
+        console.log("data.t0: ", data.observerUpdTs);
+        console.log("data.lastUpdate: ", data.lastTrackUpdTs);
+        console.log("data.avgValue: ", data.avgSinceLastObs);
         console.log("");
     }
 

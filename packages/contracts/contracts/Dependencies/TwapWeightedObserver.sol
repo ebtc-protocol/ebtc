@@ -11,11 +11,11 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
 
     constructor(uint128 initialValue) {
         PackedData memory cachedData = PackedData({
-            priceCumulative0: initialValue,
+            observerCumuVal: initialValue,
             accumulator: initialValue,
-            t0: uint64(block.timestamp),
-            lastUpdate: uint64(block.timestamp),
-            avgValue: initialValue
+            observerUpdTs: uint64(block.timestamp),
+            lastTrackUpdTs: uint64(block.timestamp),
+            avgSinceLastObs: initialValue
         });
 
         valueToTrack = initialValue;
@@ -31,7 +31,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     function _setValue(uint128 newValue) internal {
         uint128 _newAcc = _updateAcc(valueToTrack);
 
-        data.lastUpdate = uint64(block.timestamp);
+        data.lastTrackUpdTs = uint64(block.timestamp);
         emit NewTrackValue(valueToTrack, newValue, block.timestamp, _newAcc);
         valueToTrack = newValue;
     }
@@ -47,7 +47,7 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     /// @return Duration since last update
     /// @dev Safe from overflow for tens of thousands of years
     function timeToAccrue() public view returns (uint64) {
-        return uint64(block.timestamp) - data.lastUpdate;
+        return uint64(block.timestamp) - data.lastTrackUpdTs;
     }
 
     /// @notice Returns the accumulator value, adjusted according to the current value and block timestamp
@@ -77,28 +77,25 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
     function observe() external returns (uint256) {
         // Here, we need to apply the new accumulator to skew the price in some way
         // The weight of the skew should be proportional to the time passed
-        uint256 futureWeight = block.timestamp - data.t0;
+        uint256 futureWeight = block.timestamp - data.observerUpdTs;
 
         if (futureWeight == 0) {
-            return data.avgValue;
+            return data.avgSinceLastObs;
         }
 
         // A reference period is 7 days
         // For each second passed after update
         // Let's virtally sync TWAP
         // With a weight, that is higher, the more time has passed
-        uint128 priceCum0 = getLatestAccumulator();
-        uint128 virtualAvgValue = (priceCum0 - data.priceCumulative0) /
-            (uint64(block.timestamp) - data.t0);
+        (uint128 virtualAvgValue, uint128 obsAcc) = _calcUpdatedAvg();
 
-        uint256 maxWeight = PERIOD;
-        if (futureWeight > maxWeight) {
-            _update(virtualAvgValue, priceCum0, uint64(block.timestamp)); // May as well update
+        if (_checkUpdatePeriod()) {
+            _update(virtualAvgValue, obsAcc); // May as well update
             // Return virtual
             return virtualAvgValue;
         }
 
-        uint256 weightedAvg = data.avgValue * (maxWeight - futureWeight);
+        uint256 weightedAvg = data.avgSinceLastObs * (PERIOD - futureWeight);
         uint256 weightedVirtual = virtualAvgValue * (futureWeight);
 
         uint256 weightedMean = (weightedAvg + weightedVirtual) / PERIOD;
@@ -106,26 +103,29 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         return weightedMean;
     }
 
-    function update() public {
-        // On epoch flip, we update as intended
-        if (block.timestamp >= data.t0 + PERIOD) {
-            uint128 latestAcc = getLatestAccumulator();
-
-            // Compute based on delta
-            uint128 avgValue = (latestAcc - data.priceCumulative0) /
-                (uint64(block.timestamp) - data.t0);
-            uint128 priceCum0 = latestAcc;
-            uint64 time0 = uint64(block.timestamp);
-
-            _update(avgValue, priceCum0, time0);
-        }
+    function _calcUpdatedAvg() internal view returns (uint128, uint128) {
+        uint128 latestAcc = getLatestAccumulator();
+        uint128 avgValue = (latestAcc - data.observerCumuVal) /
+            (uint64(block.timestamp) - data.observerUpdTs);
+        return (avgValue, latestAcc);
     }
 
-    /// Internal update so we can call it both in _update and in observe
-    function _update(uint128 avgValue, uint128 priceCum0, uint64 time0) internal {
-        data.avgValue = avgValue;
-        data.priceCumulative0 = priceCum0;
-        data.t0 = time0;
+    function _update(uint128 avgValue, uint128 obsAcc) internal {
+        data.avgSinceLastObs = avgValue;
+        data.observerCumuVal = obsAcc;
+        data.observerUpdTs = uint64(block.timestamp);
+    }
+
+    function _checkUpdatePeriod() internal returns (bool) {
+        return block.timestamp >= (data.observerUpdTs + PERIOD);
+    }
+
+    /// @dev update time-weighted Observer
+    function update() public {
+        if (_checkUpdatePeriod()) {
+            (uint128 avgValue, uint128 latestAcc) = _calcUpdatedAvg();
+            _update(avgValue, latestAcc);
+        }
     }
 
     function getData() external view returns (PackedData memory) {

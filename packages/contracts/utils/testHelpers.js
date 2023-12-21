@@ -321,15 +321,15 @@ class TestHelper {
     let _valToCheck = await contracts.activePool.valueToTrack();
     console.log('twap valToCheck=' + _valToCheck);	
     let _period = await contracts.activePool.PERIOD();
-    let _diffTime = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["lastUpdate"])
+    let _diffTime = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["lastTrackUpdTs"])
     console.log('twap diffTime=' + _diffTime);	
     let _acc = this.toBN(_twapDebtData["accumulator"]).add(this.toBN(_valToCheck).mul(_diffTime))
     console.log('twap acc=' + _acc);	
-    let _diffTimeT0 = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["t0"])
+    let _diffTimeT0 = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["observerUpdTs"])
     console.log('twap diffTimeT0=' + _diffTimeT0);	
-    let _avg = _acc.sub(this.toBN(_twapDebtData["priceCumulative0"])).div(_diffTimeT0);
+    let _avg = _acc.sub(this.toBN(_twapDebtData["observerCumuVal"])).div(_diffTimeT0);
     console.log('twap _avg=' + _avg);	
-    let _weightedMean = (this.toBN(_twapDebtData["avgValue"]).mul(_period.sub(_diffTimeT0)).add(_avg.mul(_diffTimeT0))).div(_period);
+    let _weightedMean = (this.toBN(_twapDebtData["avgSinceLastObs"]).mul(_period.sub(_diffTimeT0)).add(_avg.mul(_diffTimeT0))).div(_period);
     console.log('twap _weightedMean=' + _weightedMean);	
     return _weightedMean;
   }
