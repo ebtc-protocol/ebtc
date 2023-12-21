@@ -30,6 +30,7 @@ contract ActivePool is
 {
     using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
+    uint256 public constant MAXIMUM_DEBT = 1e27; // Maximum debt value allowed. Prevents TWAP accumulator overflow for any viable timescale. 1e27 = 1e18 * 1e9
 
     address public immutable borrowerOperationsAddress;
     address public immutable cdpManagerAddress;
@@ -205,6 +206,7 @@ contract ActivePool is
         _requireCallerIsBOorCdpM();
 
         uint256 cachedSystemDebt = systemDebt + _amount;
+        require(cachedSystemDebt <= MAXIMUM_DEBT, "ActivePool: Maximum system debt exceeded");
 
         _setValue(uint128(cachedSystemDebt)); // @audit update TWAP spot value
         update(); // @audit update TWAP accumulator and weighted average
