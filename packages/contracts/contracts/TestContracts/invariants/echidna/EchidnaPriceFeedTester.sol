@@ -197,7 +197,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         uint256 price = _fetchPrice();
         for (uint256 i; i < 2; i++) {
             uint256 newPrice = _fetchPrice();
-            assertWithMsg(price == newPrice, PF_07);
+            assertWithMsg(price == newPrice, PF_10);
         }
     }
 

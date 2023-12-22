@@ -143,5 +143,11 @@ abstract contract PropertiesDescriptions {
         "PF-05: The price feed should never use the fallback if chainlink is Working";
     string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
     string constant PF_07 =
-        "PF-07: The price feed should never return different prices when called multiple times in a single tx";
+        "PF-07: The price feed should return the primary oracle price if it is working";
+    string constant PF_08 =
+        "PF-08: The price feed should return the secondary oracle price if the primary oracle is not working";
+    string constant PF_09 =
+        "PF-09: The price feed should return the last good price if both oracles are not working";
+    string constant PF_10 =
+        "PF-10: The price feed should never return different prices when called multiple times in a single tx";
 }
