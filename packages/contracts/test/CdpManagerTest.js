@@ -4858,6 +4858,8 @@ contract('CdpManager', async accounts => {
     await ethers.provider.send("evm_increaseTime", [86400]);
     await ethers.provider.send("evm_mine");
     await collToken.setEthPerShare(_newIndex);
+    _newIndex = await collToken.getEthPerShare();
+    console.log('_newIndex=' + _newIndex);
 
     const _leftColl = MIN_CDP_SIZE.mul(toBN("10001")).div(toBN("10000"))
     assert.isTrue((await collToken.getSharesByPooledEth(_leftColl)).lt(MIN_CDP_SIZE));

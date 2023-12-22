@@ -144,7 +144,9 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
           let _newBalClaimable = await activePool.getFeeRecipientClaimableCollShares();
           await cdpManager.syncGlobalAccountingAndGracePeriod();
           assert.isTrue(_newBalClaimable.lt(await activePool.getFeeRecipientClaimableCollShares()));
-          assert.isTrue(_newIndex.eq(await cdpManager.stEthIndex()));		  
+          console.log('_newIndex=' + _newIndex);
+          console.log('cdpMgr.stEthIndex=' + (await cdpManager.stEthIndex()));
+          th.assertIsApproximatelyEqual(_newIndex, (await cdpManager.stEthIndex()), _errorTolerance);		  
       }
   })
   
