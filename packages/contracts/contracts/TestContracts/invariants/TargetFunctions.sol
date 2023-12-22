@@ -445,6 +445,11 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
+
+        if (_EBTCAmount < borrowerOperations.MIN_CHANGE()) {
+            _EBTCAmount = borrowerOperations.MIN_CHANGE();
+        }
+
         _maxIterations = between(_maxIterations, 0, 1);
 
         _maxFeePercentage = between(
@@ -455,25 +460,28 @@ abstract contract TargetFunctions is Properties {
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
-        _before(_cdpId);
+        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        if (entireDebt > _EBTCAmount && (entireDebt - _EBTCAmount) >= borrowerOperations.MIN_CHANGE()) {
+            _before(_cdpId);
 
-        (success, returnData) = actor.proxy(
-            address(cdpManager),
-            abi.encodeWithSelector(
-                CdpManager.redeemCollateral.selector,
-                _EBTCAmount,
-                bytes32(0),
-                bytes32(0),
-                bytes32(0),
-                _partialRedemptionHintNICR,
-                _maxIterations,
-                _maxFeePercentage
-            )
-        );
+            (success, returnData) = actor.proxy(
+                address(cdpManager),
+                abi.encodeWithSelector(
+                    CdpManager.redeemCollateral.selector,
+                    _EBTCAmount,
+                    bytes32(0),
+                    bytes32(0),
+                    bytes32(0),
+                    _partialRedemptionHintNICR,
+                    _maxIterations,
+                    _maxFeePercentage
+                )
+            );
 
-        require(success);
+            require(success);
 
-        _after(_cdpId);
+            _after(_cdpId);
+        }
 
         gt(vars.tcrBefore, cdpManager.MCR(), EBTC_02);
         if (_maxIterations == 1) {
@@ -643,6 +651,8 @@ abstract contract TargetFunctions is Properties {
         // we pass in CCR instead of MCR in case it's the first one
         uint price = priceFeedMock.getPrice();
 
+        _EBTCAmount = max(_EBTCAmount, borrowerOperations.MIN_CHANGE());
+
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
             cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(),
@@ -736,6 +746,10 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         _coll = between(_coll, 0, INITIAL_COLL_BALANCE / 10);
+
+        if (_coll < borrowerOperations.MIN_CHANGE()) {
+            _coll = borrowerOperations.MIN_CHANGE();
+        }
 
         if (collateral.balanceOf(address(actor)) < _coll) {
             (success, ) = actor.proxy(
@@ -846,6 +860,10 @@ abstract contract TargetFunctions is Properties {
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
         );
 
+        if (_amount < borrowerOperations.MIN_CHANGE()) {
+            _amount = borrowerOperations.MIN_CHANGE();
+        }
+
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
@@ -917,22 +935,24 @@ abstract contract TargetFunctions is Properties {
         // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflow
         _amount = between(_amount, 0, type(uint128).max);
 
-        _before(_cdpId);
+        if (_amount >= borrowerOperations.MIN_CHANGE()) {
+            _before(_cdpId);
 
-        (success, returnData) = actor.proxy(
-            address(borrowerOperations),
-            abi.encodeWithSelector(
-                BorrowerOperations.withdrawDebt.selector,
-                _cdpId,
-                _amount,
-                _cdpId,
-                _cdpId
-            )
-        );
+            (success, returnData) = actor.proxy(
+                address(borrowerOperations),
+                abi.encodeWithSelector(
+                    BorrowerOperations.withdrawDebt.selector,
+                    _cdpId,
+                    _amount,
+                    _cdpId,
+                    _cdpId
+                )
+            );
 
-        require(success);
+            require(success);
 
-        _after(_cdpId);
+            _after(_cdpId);            
+        }
 
         eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
         gte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawDebt must not decrease debt");
@@ -985,23 +1005,31 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+
         _amount = between(_amount, 0, entireDebt);
 
-        _before(_cdpId);
+        if (_amount < borrowerOperations.MIN_CHANGE()) {
+            _amount = borrowerOperations.MIN_CHANGE();
+        }
 
-        (success, returnData) = actor.proxy(
-            address(borrowerOperations),
-            abi.encodeWithSelector(
-                BorrowerOperations.repayDebt.selector,
-                _cdpId,
-                _amount,
-                _cdpId,
-                _cdpId
-            )
-        );
-        require(success);
+        // Do not fall under min debt
+        if (entireDebt > _amount && (entireDebt - _amount) >= borrowerOperations.MIN_CHANGE()) {
+            _before(_cdpId);
 
-        _after(_cdpId);
+            (success, returnData) = actor.proxy(
+                address(borrowerOperations),
+                abi.encodeWithSelector(
+                    BorrowerOperations.repayDebt.selector,
+                    _cdpId,
+                    _amount,
+                    _cdpId,
+                    _cdpId
+                )
+            );
+            require(success);
+
+            _after(_cdpId);
+        }
 
         eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
@@ -1146,6 +1174,19 @@ abstract contract TargetFunctions is Properties {
         (uint256 entireDebt, uint256 entireColl) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         _collWithdrawal = between(_collWithdrawal, 0, entireColl);
         _EBTCChange = between(_EBTCChange, 0, entireDebt);
+
+        if (_collWithdrawal < borrowerOperations.MIN_CHANGE()) {
+            _collWithdrawal = borrowerOperations.MIN_CHANGE();
+        }
+
+        // Do not fall below min debt
+        if (_EBTCChange < borrowerOperations.MIN_CHANGE()) {
+            _EBTCChange =  borrowerOperations.MIN_CHANGE();  
+        }
+
+        if (entireDebt > _EBTCChange && (entireDebt - _EBTCChange) < borrowerOperations.MIN_CHANGE()) {
+            _EBTCChange = 0;
+        }
 
         _before(_cdpId);
 

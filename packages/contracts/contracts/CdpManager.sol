@@ -190,6 +190,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 );
             }
         } else {
+            // New debt needs to be above 1000 wei
+            _requireMinDebt(newDebt);
+
             // Debt remains, reinsert Cdp
             uint256 newNICR = EbtcMath._computeNominalCR(newColl, newDebt);
 
@@ -749,6 +752,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             callerBalance <= _totalSupply,
             "CdpManager: redeemer's EBTC balance exceeds total supply!"
         );
+    }
+
+    function _requireMinDebt(uint256 _debt) internal pure {
+        require(_debt >= MIN_CHANGE, "CdpManager: Debt must be above min");
     }
 
     function _requireAmountGreaterThanMin(uint256 _amount) internal pure {

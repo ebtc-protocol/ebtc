@@ -110,11 +110,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
         uint256 coll1 = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
 
-        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_DEBT);
-        cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll1);
+        cdpId = borrowerOperations.openCdp(borrowerOperations.MIN_CHANGE(), HINT, HINT, coll1);
 
-        cdpId = borrowerOperations.openCdp(1000, HINT, HINT, coll1);
-        
         emit log_string("col1");
         emit log_uint(cdpManager.getCdpCollShares(cdpId));
 
@@ -123,10 +120,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 coll2 = 1999995586570936579 +
             collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD());
 
-        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_DEBT);
-        cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll2);        
-
-        cdpId = borrowerOperations.openCdp(1000, HINT, HINT, coll2);        
+        cdpId = borrowerOperations.openCdp(borrowerOperations.MIN_CHANGE(), HINT, HINT, coll2);
 
         emit log_string("col2");
         emit log_uint(cdpManager.getCdpCollShares(cdpId));
@@ -136,10 +130,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         uint256 coll3 = 2096314780549457901 +
             collateral.getSharesByPooledEth(borrowerOperations.LIQUIDATOR_REWARD());
 
-        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_DEBT);
-        cdpId = borrowerOperations.openCdp(1, HINT, HINT, coll3);
-
-        cdpId = borrowerOperations.openCdp(1000, HINT, HINT, coll2);        
+        cdpId = borrowerOperations.openCdp(borrowerOperations.MIN_CHANGE(), HINT, HINT, coll2);
 
         emit log_string("col3");
         emit log_uint(cdpManager.getCdpCollShares(cdpId));

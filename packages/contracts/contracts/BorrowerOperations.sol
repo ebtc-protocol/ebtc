@@ -817,8 +817,10 @@ contract BorrowerOperations is
         uint256 _stEthBalanceDecrease
     ) internal pure {
         require(
-            _stEthBalanceIncrease >= MIN_CHANGE || _stEthBalanceDecrease >= MIN_CHANGE || _debtChange >= MIN_CHANGE,
-            "BorrowerOperations: There must be either a collateral change or a debt change"
+            _stEthBalanceIncrease >= MIN_CHANGE ||
+                _stEthBalanceDecrease >= MIN_CHANGE ||
+                _debtChange >= MIN_CHANGE,
+            "BorrowerOperations: There must be either a collateral or debt change above min"
         );
     }
 
@@ -833,7 +835,10 @@ contract BorrowerOperations is
     }
 
     function _requireMinDebtChange(uint _debtChange) internal pure {
-        require(_debtChange >= MIN_CHANGE, "BorrowerOperations: Debt increase requires min debtChange");
+        require(
+            _debtChange >= MIN_CHANGE,
+            "BorrowerOperations: Debt increase requires min debtChange"
+        );
     }
 
     function _requireNotInRecoveryMode(uint256 _tcr) internal view {
@@ -936,7 +941,7 @@ contract BorrowerOperations is
     function _requireMinDebt(uint256 _debt) internal pure {
         require(_debt >= MIN_CHANGE, "BorrowerOperations: Debt must be above min");
     }
-    
+
     function _requireAtLeastMinNetStEthBalance(uint256 _stEthBalance) internal pure {
         require(
             _stEthBalance >= MIN_NET_STETH_BALANCE,

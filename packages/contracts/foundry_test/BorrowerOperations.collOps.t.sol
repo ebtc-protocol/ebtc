@@ -64,8 +64,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         vm.stopPrank();
     }
 
-    // Expect revert if trying to pass 0 as coll increase value
-    function testIncreaseCRWithZeroAmount() public {
+    // Expect revert if trying to pass a value less than MIN_CHANGE as coll increase value
+    function testIncreaseCRWithLessThanMinAmount() public {
         uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.deal(user, type(uint96).max);
@@ -79,10 +79,12 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        vm.expectRevert(
-            bytes("BorrowerOperations: There must be either a collateral change or a debt change")
-        );
+        // Test with 0
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
         borrowerOperations.addColl(cdpId, "hint", "hint", 0);
+        // Test with MIN_CHANGE - 1
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+        borrowerOperations.addColl(cdpId, "hint", "hint", minChange - 1);
         vm.stopPrank();
     }
 
@@ -120,6 +122,12 @@ contract CDPOpsTest is eBTCBaseFixture {
             return;
         }
 
+        if (borrowedAmount < borrowerOperations.MIN_CHANGE()) {
+            vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_DEBT);
+            borrowerOperations.openCdp(borrowedAmount, "hint", "hint", collAmount);
+            return;
+        }
+
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         // Make TCR snapshot before increasing collateral
         uint256 initialTcr = cdpManager.getCachedTCR(priceFeedMock.fetchPrice());
@@ -131,6 +139,13 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
         // Add more collateral and make sure ICR changes
+
+        if (increaseAmnt < borrowerOperations.MIN_CHANGE()) {
+            vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+            borrowerOperations.addColl(cdpId, "hint", "hint", increaseAmnt);
+            return;
+        }
+
         borrowerOperations.addColl(cdpId, "hint", "hint", increaseAmnt);
         uint256 newIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(newIcr, initialIcr);
@@ -297,8 +312,8 @@ contract CDPOpsTest is eBTCBaseFixture {
         assertGt(initialTcr, newTcr);
     }
 
-    // Expect revert if trying to withdraw 0
-    function testWithdrawZeroAmnt() public {
+    // Expect revert if trying to withdraw less than min
+    function testWithdrawLessThanMinAmnt() public {
         uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -312,10 +327,12 @@ contract CDPOpsTest is eBTCBaseFixture {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        vm.expectRevert(
-            bytes("BorrowerOperations: There must be either a collateral change or a debt change")
-        );
+        // Test with 0
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
         borrowerOperations.withdrawColl(cdpId, 0, HINT, HINT);
+        // Test with MIN_CHANGE() - 1
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+        borrowerOperations.withdrawColl(cdpId, minChange - 1, HINT, HINT);
         vm.stopPrank();
     }
 
