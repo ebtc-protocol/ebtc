@@ -768,10 +768,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    function _requireMinDebt(uint256 _debt) internal pure {
-        require(_debt >= MIN_CHANGE, "CdpManager: Debt must be above min");
-    }
-
     function _requireAmountGreaterThanMin(uint256 _amount) internal pure {
         require(_amount >= EbtcBase.MIN_CHANGE, "CdpManager: Amount must be greater than min");
     }
