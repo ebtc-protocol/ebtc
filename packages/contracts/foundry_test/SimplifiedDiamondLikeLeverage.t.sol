@@ -7,8 +7,10 @@ import {SimplifiedDiamondLike} from "../contracts/SimplifiedDiamondLike.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
 import {LeverageMacroDelegateTarget} from "../contracts/LeverageMacroDelegateTarget.sol";
 import {LeverageMacroBase} from "../contracts/LeverageMacroBase.sol";
+import {LeverageMacroReference} from "../contracts/LeverageMacroReference.sol";
 import {Mock1Inch} from "../contracts/TestContracts/Mock1Inch.sol";
 import {ICdpManagerData} from "../contracts/Interfaces/ICdpManagerData.sol";
+import {IPositionManagers} from "../contracts/Interfaces/IPositionManagers.sol";
 
 interface IOwnerLike {
     function owner() external view returns (address);
@@ -311,6 +313,242 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
 
         // Verify token balance to user
         assertTrue(eBTCToken.balanceOf(address(wallet)) > 0);
+    }
+
+    function test_claimCollateralSurplus() public {
+        vm.prank(user);
+        collateral.transferShares(address(collSurplusPool), 1e18);
+
+        vm.prank(address(activePool));
+        collSurplusPool.increaseTotalSurplusCollShares(1e18);
+
+        vm.prank(address(cdpManager));
+        collSurplusPool.increaseSurplusCollShares(bytes32(0), address(wallet), 1e18, 0);
+
+        SimplifiedDiamondLike.Operation[] memory data = new SimplifiedDiamondLike.Operation[](1);
+
+        LeverageMacroBase.LeverageMacroOperation memory operation = LeverageMacroBase
+            .LeverageMacroOperation(
+                address(0),
+                0,
+                new LeverageMacroBase.SwapOperation[](0),
+                new LeverageMacroBase.SwapOperation[](0),
+                LeverageMacroBase.OperationType.ClaimSurplusOperation,
+                ""
+            );
+
+        // Post check params
+        LeverageMacroBase.PostCheckParams memory postCheckParams = LeverageMacroBase
+            .PostCheckParams({
+                expectedDebt: LeverageMacroBase.CheckValueAndType({
+                    value: 0,
+                    operator: LeverageMacroBase.Operator.skip
+                }),
+                expectedCollateral: LeverageMacroBase.CheckValueAndType({
+                    value: 0,
+                    operator: LeverageMacroBase.Operator.skip
+                }),
+                // NOTE: Unused
+                cdpId: bytes32(0),
+                // NOTE: Superfluous
+                expectedStatus: ICdpManagerData.Status.active
+            });
+
+        data[0] = SimplifiedDiamondLike.Operation({
+            to: address(address(macro_reference)),
+            checkSuccess: true,
+            value: 0,
+            gas: 9999999,
+            capGas: false,
+            opType: SimplifiedDiamondLike.OperationType.delegatecall,
+            data: abi.encodeCall(
+                LeverageMacroBase.doOperation,
+                (
+                    LeverageMacroBase.FlashLoanType.noFlashloan,
+                    0,
+                    operation,
+                    LeverageMacroBase.PostOperationCheck.none,
+                    postCheckParams
+                )
+            )
+        });
+
+        vm.startPrank(user);
+        wallet.execute(data);
+        vm.stopPrank();
+    }
+
+    function _generatePermitSignature(
+        address _signer,
+        address _positionManager,
+        IPositionManagers.PositionManagerApproval _approval,
+        uint _deadline
+    ) internal returns (bytes32) {
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                borrowerOperations.DOMAIN_SEPARATOR(),
+                keccak256(
+                    abi.encode(
+                        borrowerOperations.permitTypeHash(),
+                        _signer,
+                        _positionManager,
+                        _approval,
+                        borrowerOperations.nonces(_signer),
+                        _deadline
+                    )
+                )
+            )
+        );
+        return digest;
+    }
+
+    function _generateOneTimePermitFromFixedTestUser(
+        LeverageMacroBase zapRouter,
+        address user,
+        uint256 userPrivateKey
+    ) internal returns (uint deadline, uint8 v, bytes32 r, bytes32 s) {
+        deadline = (block.timestamp + deadline);
+        IPositionManagers.PositionManagerApproval _approval = IPositionManagers
+            .PositionManagerApproval
+            .OneTime;
+
+        // Generate signature to one-time approve zap
+        bytes32 digest = _generatePermitSignature(user, address(zapRouter), _approval, deadline);
+        (v, r, s) = vm.sign(userPrivateKey, digest);
+    }
+
+    function test_openCdpFor() public {
+        uint256 userPrivateKey = 0xaabbccdd;
+        address user = vm.addr(userPrivateKey);
+
+        dealCollateral(user, 1e20);
+
+        LeverageMacroBase zapRouter = new LeverageMacroReference(
+            address(borrowerOperations),
+            address(activePool),
+            address(cdpManager),
+            address(eBTCToken),
+            address(collateral),
+            address(sortedCdps),
+            user
+        );
+
+        (uint deadline, uint8 v, bytes32 r, bytes32 s) = _generateOneTimePermitFromFixedTestUser(
+            zapRouter,
+            user,
+            userPrivateKey
+        );
+
+        borrowerOperations.permitPositionManagerApproval(
+            user,
+            address(zapRouter),
+            IPositionManagers.PositionManagerApproval.OneTime,
+            deadline,
+            v,
+            r,
+            s
+        );
+
+        uint256 debt = 1e18;
+        uint256 margin = 5 ether;
+        uint256 flAmount = _debtToCollateral(debt);
+        uint256 totalCollateral = ((flAmount + margin) * 9995) / 1e4;
+
+        LeverageMacroBase.OpenCdpForOperation memory cdp;
+
+        cdp.eBTCToMint = debt;
+        cdp._upperHint = bytes32(0);
+        cdp._lowerHint = bytes32(0);
+        cdp.stETHToDeposit = totalCollateral;
+        cdp.borrower = user;
+
+        // simulate transferFrom inside zap router
+        vm.prank(user);
+        collateral.approve(address(zapRouter), type(uint256).max);
+
+        _openCdpForOperation({
+            _zapRouter: zapRouter,
+            _cdp: cdp,
+            _flAmount: flAmount,
+            _stEthBalance: margin,
+            _exchangeData: abi.encodeWithSelector(
+                Mock1Inch.swap.selector,
+                address(eBTCToken),
+                address(collateral),
+                debt
+            )
+        });
+    }
+
+    function _getSwapOperations(
+        address _tokenForSwap,
+        uint256 _exactApproveAmount,
+        bytes memory _exchangeData
+    ) internal view returns (LeverageMacroBase.SwapOperation[] memory swaps) {
+        swaps = new LeverageMacroBase.SwapOperation[](1);
+
+        swaps[0].tokenForSwap = _tokenForSwap;
+        swaps[0].addressForApprove = address(_mock1Inch);
+        swaps[0].exactApproveAmount = _exactApproveAmount;
+        swaps[0].addressForSwap = address(_mock1Inch);
+        swaps[0].calldataForSwap = _exchangeData;
+    }
+
+    function _debtToCollateral(uint256 _debt) public returns (uint256) {
+        uint256 price = priceFeedMock.fetchPrice();
+        return (_debt * 1e18) / price;
+    }
+
+    function _openCdpForOperation(
+        LeverageMacroBase _zapRouter,
+        LeverageMacroBase.OpenCdpForOperation memory _cdp,
+        uint256 _flAmount,
+        uint256 _stEthBalance,
+        bytes memory _exchangeData
+    ) internal {
+        LeverageMacroBase.LeverageMacroOperation memory op;
+
+        op.tokenToTransferIn = address(collateral);
+        op.amountToTransferIn = _stEthBalance;
+        op.operationType = LeverageMacroBase.OperationType.OpenCdpOperation;
+        op.OperationData = abi.encode(_cdp);
+        op.swapsAfter = _getSwapOperations(address(eBTCToken), _cdp.eBTCToMint, _exchangeData);
+
+        vm.prank(_cdp.borrower);
+        _zapRouter.doOperation(
+            LeverageMacroBase.FlashLoanType.stETH,
+            _flAmount,
+            op,
+            LeverageMacroBase.PostOperationCheck.openCdp,
+            _getPostCheckParams(
+                bytes32(0),
+                _cdp.eBTCToMint,
+                _cdp.stETHToDeposit,
+                ICdpManagerData.Status.active
+            )
+        );
+    }
+
+    function _getPostCheckParams(
+        bytes32 _cdpId,
+        uint256 _debt,
+        uint256 _totalCollateral,
+        ICdpManagerData.Status _status
+    ) internal view returns (LeverageMacroBase.PostCheckParams memory) {
+        return
+            LeverageMacroBase.PostCheckParams({
+                expectedDebt: LeverageMacroBase.CheckValueAndType({
+                    value: _debt,
+                    operator: LeverageMacroBase.Operator.lte
+                }),
+                expectedCollateral: LeverageMacroBase.CheckValueAndType({
+                    value: _totalCollateral,
+                    operator: LeverageMacroBase.Operator.gte
+                }),
+                cdpId: _cdpId,
+                expectedStatus: _status
+            });
     }
 
     function getEncodedOpenCdpData() internal returns (bytes memory) {

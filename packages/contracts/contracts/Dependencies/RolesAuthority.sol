@@ -118,7 +118,11 @@ contract RolesAuthority is IRolesAuthority, Auth, Authority {
             }
         } else {
             getRolesWithCapability[target][functionSig] &= ~bytes32(1 << role);
-            enabledFunctionSigsByTarget[target].remove(bytes32(functionSig));
+
+            // If no role exist for this target & functionSig, mark it as disabled
+            if (getRolesWithCapability[target][functionSig] == bytes32(0)) {
+                enabledFunctionSigsByTarget[target].remove(bytes32(functionSig));
+            }
 
             // If no enabled function signatures exist for this target, remove target
             if (enabledFunctionSigsByTarget[target].length() == 0) {
