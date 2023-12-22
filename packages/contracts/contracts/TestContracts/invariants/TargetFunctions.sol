@@ -460,9 +460,6 @@ abstract contract TargetFunctions is Properties {
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
-        console2.log("entireDebt", entireDebt);
-        console2.log("_EBTCAmount", _EBTCAmount);
-
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
@@ -746,8 +743,6 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         _coll = between(_coll, 0, INITIAL_COLL_BALANCE / 10);
-
-        console2.log("addColl", _coll);
 
         require(_coll >= borrowerOperations.MIN_CHANGE());
 
