@@ -82,4 +82,12 @@ interface ISortedCdps {
         bytes32 startNodeId,
         uint maxNodes
     ) external view returns (bytes32, bool);
+
+    function toCdpId(
+        address owner,
+        uint256 blockHeight,
+        uint256 nonce
+    ) external pure returns (bytes32);
+
+    function nextCdpNonce() external view returns (uint256);
 }

@@ -334,7 +334,12 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _totalColToSend
             );
             if (_collSurplus > 0) {
-                collSurplusPool.increaseSurplusCollShares(_borrower, _collSurplus);
+                collSurplusPool.increaseSurplusCollShares(
+                    _recoveryState.cdpId,
+                    _borrower,
+                    _collSurplus,
+                    0
+                );
                 _recoveryState.totalSurplusCollShares =
                     _recoveryState.totalSurplusCollShares +
                     _collSurplus;

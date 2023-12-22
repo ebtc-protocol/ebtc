@@ -26,6 +26,60 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
         _testRoleWithCapabilitiesCanCallGovernorFunctions(testUser, testRole);
     }
 
+    // Test: The address with the granted roles should be able to retrieve all roles
+    function test_RolesRetrievalWithMaxAllowed() public {
+        address testUser = address(0x1);
+
+        vm.startPrank(defaultGovernance);
+        for (uint8 i = 0; i <= type(uint8).max; ) {
+            authority.setUserRole(testUser, i, true);
+            authority.setRoleName(i, "TestRole");
+            if (i < type(uint8).max) {
+                i = i + 1;
+            } else {
+                break;
+            }
+        }
+        vm.stopPrank();
+
+        uint8[] memory rolesForUser = authority.getRolesForUser(testUser);
+        for (uint8 i = 0; i <= type(uint8).max; ) {
+            assertEq(rolesForUser[i], i, "!retrieved role msimatch");
+            if (i < type(uint8).max) {
+                i = i + 1;
+            } else {
+                break;
+            }
+        }
+    }
+
+    // Test: The address with the granted roles should be able to retrieve all roles via bitmap
+    function test_RolesRetrievalWithMaxAllowedViaMap() public {
+        uint8[] memory rolesForMapGiven = new uint8[](256);
+        vm.startPrank(defaultGovernance);
+        for (uint8 i = 0; i <= type(uint8).max; ) {
+            authority.setRoleName(i, "TestRole");
+            rolesForMapGiven[i] = i;
+            if (i < type(uint8).max) {
+                i = i + 1;
+            } else {
+                break;
+            }
+        }
+        vm.stopPrank();
+
+        bytes32 _roleMap = authority.getByteMapFromRoles(rolesForMapGiven);
+        uint8[] memory rolesForMap = authority.getRolesFromByteMap(_roleMap);
+        for (uint8 i = 0; i <= type(uint8).max; ) {
+            assertEq(rolesForMap[i], i, "!retrieved role msimatch");
+            if (i < type(uint8).max) {
+                i = i + 1;
+            } else {
+                break;
+            }
+        }
+    }
+
     // Setup: Assign capabilities for all functions to the contract owner and then renounce ownership
     // Test: The previous owner should still be able to call all Governor functions because of the granted capabilities
     function test_OwnerCanCallAllFunctionsAfterGainingProperCapabilitiesAndRenouncingOwnership(
@@ -113,6 +167,42 @@ contract GovernorFundamentalsTest is eBTCBaseFixture {
     function test_GetEnabledFunctionsInTargetReturnsExpectedAfterAddingAndRemovingFunctions()
         public
     {}
+
+    function test_GetEnabledFunctionsInTargetReturnsExpectedAfterRoleModification() public {
+        // set all capabilities to two roles
+        _grantAllGovernorCapabilitiesToRole(1);
+        _grantAllGovernorCapabilitiesToRole(2);
+
+        // retrieve all funcs enabled
+        bytes4[] memory funcSigsOriginal = authority.getEnabledFunctionsInTarget(address(authority));
+        bytes4 _firstFunc = bytes4(keccak256("setRoleName(uint8,string)"));
+        bytes4 _lastFunc = bytes4(keccak256("burnCapability(address,bytes4)"));
+        assertEq(funcSigsOriginal[0], _firstFunc, "!mismatch first enabled function sig");
+
+        // now revoke capability from one role
+        vm.startPrank(defaultGovernance);
+        authority.setRoleCapability(1, address(authority), _firstFunc, false);
+        vm.stopPrank();
+
+        // check again the function, should still enabled since there is a second role 2 could call
+        bytes4[] memory funcSigsAgain = authority.getEnabledFunctionsInTarget(address(authority));
+        assertEq(funcSigsAgain[0], _firstFunc, "!!mismatch first enabled function sig");
+        assertEq(funcSigsAgain.length, funcSigsOriginal.length, "!!mismatch enabled function count");
+
+        // now revoke capability from the second role
+        vm.startPrank(defaultGovernance);
+        authority.setRoleCapability(2, address(authority), _firstFunc, false);
+        vm.stopPrank();
+
+        // check again the function, should disabled since there is no role could call
+        bytes4[] memory funcSigsLast = authority.getEnabledFunctionsInTarget(address(authority));
+        assertEq(funcSigsLast[0], _lastFunc, "!!!mismatch first enabled function sig");
+        assertEq(
+            funcSigsLast.length,
+            funcSigsOriginal.length - 1,
+            "!!!mismatch enabled function count"
+        );
+    }
 
     /// @dev Helper function to grant all Governor setter capabilities to a specific role
     /// @dev Assumes default governance still has ownerships
