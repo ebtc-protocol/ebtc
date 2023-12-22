@@ -130,7 +130,10 @@ contract('CdpManager', async accounts => {
     console.log(`B stake after L1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
 
     // adjust cdp B 1 wei: apply rewards
-    await borrowerOperations.adjustCdp(_bCdpId, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // B repays 1 wei
+    await borrowerOperations.adjustCdp(
+      _bCdpId, 0, await borrowerOperations.MIN_CHANGE(), false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 
+      {from: B}
+    )  // B repays borrowerOperations.MIN_CHANGE() wei
     console.log(`B stake after A1: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
     console.log(`Snapshots ratio after A1: ${await getSnapshotsRatio()}`)
 
@@ -141,7 +144,10 @@ contract('CdpManager', async accounts => {
       await cdpManager.liquidate(_tinyCdpIds[cdp], {from: owner})
       console.log(`B stake after L${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
       console.log(`Snapshots ratio after L${idx + 2}: ${await getSnapshotsRatio()}`)
-      await borrowerOperations.adjustCdp(_bCdpId, 0, 1, false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, {from: B})  // A repays 1 wei
+      await borrowerOperations.adjustCdp(
+        _bCdpId, 0, await borrowerOperations.MIN_CHANGE(), false, th.DUMMY_BYTES32, th.DUMMY_BYTES32, 
+        {from: B}
+      )  // A repays await borrowerOperations.MIN_CHANGE() wei
       console.log(`B stake after A${idx + 2}: ${(await cdpManager.Cdps(_bCdpId))[2]}`)
     }
   })
