@@ -429,7 +429,7 @@ contract EToFoundry is
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         partialLiquidate(
             51745835282927565687010251523416875790034155913406312339604760725754223914917,
-            19
+            1000
         );
         vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
         setEthPerShare(
@@ -440,10 +440,7 @@ contract EToFoundry is
         // Accrue here (will trigger recovery mode due to index change)
         // cdpManager.syncGlobalAccountingAndGracePeriod(); /// @audit: Issue with invariants is we need this to change
         _before(cdpToTrack);
-        partialLiquidate(
-            257,
-            71149553722330727595372666179561318863321173766102370975927893395343749396843
-        );
+        partialLiquidate(257, 1000);
         _after(cdpToTrack);
 
         console2.log("vars.newIcrBefore", vars.newIcrBefore);
@@ -1061,7 +1058,7 @@ contract EToFoundry is
         setEthPerShare(
             88579253913579105526224682439871956245251055820069560960533630083319393319956
         );
-        openCdp(0, 1000);
+        openCdp(0, 2000);
         setEthPerShare(0);
         setEthPerShare(284895597005704535247502731285036474904903416448491451905968026529048971064);
         openCdp(0, 1222182215362783394);
@@ -1074,7 +1071,7 @@ contract EToFoundry is
         // // Trigger RM
         // cdpManager.syncGlobalAccountingAndGracePeriod();
         // vm.warp(block.timestamp + cdpManager.recoveryModeGracePeriodDuration() + 1);
-        partialLiquidate(1, 77);
+        partialLiquidate(1, 1000);
         _after(targetCdpId);
 
         if (

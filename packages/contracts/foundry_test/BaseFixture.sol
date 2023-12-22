@@ -107,8 +107,10 @@ contract eBTCBaseFixture is
         "BorrowerOperations: Debt must be above min";
     bytes internal constant ERR_BORROWER_OPERATIONS_MIN_DEBT_CHANGE =
         "BorrowerOperations: Debt increase requires min debtChange";
+    bytes internal constant ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE =
+        "BorrowerOperations: There must be either a collateral or debt change";
     bytes internal constant ERR_BORROWER_OPERATIONS_MIN_CHANGE =
-        "BorrowerOperations: There must be either a collateral or debt change above min";
+        "BorrowerOperations: Collateral or debt change must be zero or above min";
 
     MultiCdpGetter internal cdpGetter;
     Utilities internal _utils;

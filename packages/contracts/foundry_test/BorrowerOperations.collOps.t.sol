@@ -80,7 +80,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Test with 0
-        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE);
         borrowerOperations.addColl(cdpId, "hint", "hint", 0);
         // Test with MIN_CHANGE - 1
         vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
@@ -139,6 +139,12 @@ contract CDPOpsTest is eBTCBaseFixture {
         uint256 initialIcr = cdpManager.getCachedICR(cdpId, priceFeedMock.fetchPrice());
         assertGt(initialIcr, MINIMAL_COLLATERAL_RATIO);
         // Add more collateral and make sure ICR changes
+
+        if (increaseAmnt == 0) {
+            vm.expectRevert(ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE);
+            borrowerOperations.addColl(cdpId, "hint", "hint", increaseAmnt);
+            return;
+        }
 
         if (increaseAmnt < borrowerOperations.MIN_CHANGE()) {
             vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
@@ -328,7 +334,7 @@ contract CDPOpsTest is eBTCBaseFixture {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Test with 0
-        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE);
         borrowerOperations.withdrawColl(cdpId, 0, HINT, HINT);
         // Test with MIN_CHANGE() - 1
         vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);

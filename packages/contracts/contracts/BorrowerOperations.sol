@@ -348,9 +348,15 @@ contract BorrowerOperations is
 
         if (_isDebtIncrease) {
             _requireMinDebtChange(_debtChange);
+        } else {
+            _requireZeroOrMinAdjustment(_debtChange);
         }
+
         _requireSingularCollChange(_stEthBalanceIncrease, _stEthBalanceDecrease);
-        _requireMinAdjustment(_stEthBalanceIncrease, _stEthBalanceDecrease, _debtChange);
+        _requireNonZeroAdjustment(_stEthBalanceIncrease, _stEthBalanceDecrease, _debtChange);
+        _requireZeroOrMinAdjustment(_stEthBalanceIncrease);
+        _requireZeroOrMinAdjustment(_stEthBalanceDecrease);
+        // min debt adjustment checked above
 
         // Get the collSharesChange based on the collateral value transferred in the transaction
         (vars.collSharesChange, vars.isCollIncrease) = _getCollSharesChangeFromStEthChange(
@@ -811,16 +817,21 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireMinAdjustment(
+    function _requireNonZeroAdjustment(
         uint256 _stEthBalanceIncrease,
         uint256 _debtChange,
         uint256 _stEthBalanceDecrease
     ) internal pure {
         require(
-            _stEthBalanceIncrease >= MIN_CHANGE ||
-                _stEthBalanceDecrease >= MIN_CHANGE ||
-                _debtChange >= MIN_CHANGE,
-            "BorrowerOperations: There must be either a collateral or debt change above min"
+            _stEthBalanceIncrease > 0 || _stEthBalanceDecrease > 0 || _debtChange > 0,
+            "BorrowerOperations: There must be either a collateral or debt change"
+        );
+    }
+
+    function _requireZeroOrMinAdjustment(uint256 _change) internal pure {
+        require(
+            _change == 0 || _change >= MIN_CHANGE,
+            "BorrowerOperations: Collateral or debt change must be zero or above min"
         );
     }
 

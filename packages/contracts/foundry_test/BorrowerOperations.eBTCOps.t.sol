@@ -72,7 +72,7 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Repay eBTC and make sure it reverts for 0 amount
-        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE);
         borrowerOperations.repayDebt(cdpId, 0, HINT, HINT);
         // Repay eBTC and make sure it reverts for MIN_CHANGE - 1 amount
         vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);

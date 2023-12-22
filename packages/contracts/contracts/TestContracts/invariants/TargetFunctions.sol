@@ -357,6 +357,8 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
