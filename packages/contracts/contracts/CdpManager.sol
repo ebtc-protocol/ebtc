@@ -190,9 +190,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 );
             }
         } else {
-            // New debt needs to be above 1000 wei
-            _requireMinDebt(newDebt);
-
             // Debt remains, reinsert Cdp
             uint256 newNICR = EbtcMath._computeNominalCR(newColl, newDebt);
 
@@ -204,7 +201,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              */
             if (
                 newNICR != _redeemColFromCdp.partialRedemptionHintNICR ||
-                collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE
+                collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE ||
+                newDebt < EbtcBase.MIN_CHANGE
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;

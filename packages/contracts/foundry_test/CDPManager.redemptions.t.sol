@@ -445,7 +445,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-        bytes32 _cdpId1 = borrowerOperations.openCdp(4 * minChange, bytes32(0), bytes32(0), 2200000000000000067);
+        bytes32 _cdpId1 = borrowerOperations.openCdp(
+            4 * minChange,
+            bytes32(0),
+            bytes32(0),
+            2200000000000000067
+        );
 
         bytes32 _cdpId2 = borrowerOperations.openCdp(
             136273187309674429,
