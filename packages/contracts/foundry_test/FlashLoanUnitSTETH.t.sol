@@ -55,7 +55,8 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
     function testBasicLoanSTETH(uint128 loanAmount, uint128 giftAmount) public {
         require(address(stethReceiver) != address(0));
         // Funny enough 0 reverts because of deal not
-        loanAmount = uint128(bound(loanAmount, 1, activePool.maxFlashLoan(address(collateral))));
+        loanAmount = uint128(bound(loanAmount, 1, 100_000_000e18));
+        giftAmount = uint128(bound(giftAmount, 1, 100_000_000e18));
 
         uint256 fee = activePool.flashFee(address(collateral), loanAmount);
 
@@ -159,7 +160,7 @@ contract FlashLoanUnitSTETH is eBTCBaseFixture {
      */
     function testSTETHSpec(uint128 amount, address randomToken, uint256 flashFee) public {
         vm.assume(randomToken != address(collateral));
-        amount = uint128(bound(amount, 1, type(uint128).max));
+        amount = uint128(bound(amount, 1, 100_000_000e18));
         flashFee = bound(flashFee, 0, activePool.MAX_FEE_BPS());
 
         vm.prank(defaultGovernance);

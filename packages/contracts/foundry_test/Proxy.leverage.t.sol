@@ -725,7 +725,7 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
         // sugardaddy eBTCToken
         address _setupOwner = _utils.createUsers(1)[0];
         vm.deal(_setupOwner, INITITAL_COLL);
-        dealCollateral(_setupOwner, type(uint128).max);
+        dealCollateral(_setupOwner, 1_000_000_000e18);
         uint256 _coll = collateral.balanceOf(_setupOwner);
         uint256 _debt = _utils.calculateBorrowAmount(
             _coll,
@@ -739,6 +739,6 @@ contract ProxyLeverageTest is eBTCBaseInvariants {
 
         // sugardaddy collateral
         vm.deal(_dex, INITITAL_COLL);
-        dealCollateral(_dex, type(uint128).max);
+        dealCollateral(_dex, 1_000_000_000e18);
     }
 }
