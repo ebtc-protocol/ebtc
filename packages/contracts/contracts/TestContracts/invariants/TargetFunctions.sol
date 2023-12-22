@@ -437,7 +437,10 @@ abstract contract TargetFunctions is Properties {
 
     function redeemCollateral(
         uint _EBTCAmount,
-        uint _partialRedemptionHintNICR,
+        bytes32 _firstRedemptionHintFromMedusa,
+        uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
+        bool useProperPartialHint,
         uint _maxFeePercentage,
         uint _maxIterations
     ) public setup {
@@ -445,7 +448,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
-        _maxIterations = between(_maxIterations, 0, 1);
+        _maxIterations = between(_maxIterations, 0, 10);
 
         _maxFeePercentage = between(
             _maxFeePercentage,
@@ -457,15 +460,30 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
+        {
+            uint price = priceFeedMock.getPrice();
+
+            (bytes32 firstRedemptionHintVal, uint256 partialRedemptionHintNICR, , ) = hintHelpers
+                .getRedemptionHints(_EBTCAmount, price, _maxIterations);
+
+            _firstRedemptionHintFromMedusa = useProperFirstHint
+                ? firstRedemptionHintVal
+                : _firstRedemptionHintFromMedusa;
+
+            _partialRedemptionHintNICRFromMedusa = useProperPartialHint
+                ? partialRedemptionHintNICR
+                : _partialRedemptionHintNICRFromMedusa;
+        }
+
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(
                 CdpManager.redeemCollateral.selector,
                 _EBTCAmount,
+                _firstRedemptionHintFromMedusa,
                 bytes32(0),
                 bytes32(0),
-                bytes32(0),
-                _partialRedemptionHintNICR,
+                _partialRedemptionHintNICRFromMedusa,
                 _maxIterations,
                 _maxFeePercentage
             )
@@ -522,7 +540,7 @@ abstract contract TargetFunctions is Properties {
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal setup {
+    function flashLoanColl(uint _amount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -580,7 +598,7 @@ abstract contract TargetFunctions is Properties {
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) internal setup {
+    function flashLoanEBTC(uint _amount) public setup {
         bool success;
         bytes memory returnData;
 

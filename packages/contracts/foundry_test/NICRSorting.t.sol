@@ -20,18 +20,21 @@ contract NICRSortingTest is eBTCBaseInvariants {
     /// @dev Should maintain despite switch in ordering due to applying fee split to just one of the Cdps after a large rebase
     /// @dev Note the current example does not swtich ordering if outdated NICR data was used.
     function test_NICROrderingShouldStaySameAfterFeeSplit() public {
-        // Deposit 100 shares (A)
-        (, bytes32 cdp0) = _openTestCdpAtICR(users[0], 100e18, 150e16);
+        // stEth increase by 100%
+        uint256 _newIndex = 2e18;
+        uint256 _sameShare = 200e18;
 
-        // stEth increase by 20%
-        collateral.setEthPerShare(1.2e18);
+        // Deposit for (A)
+        (, bytes32 cdp0) = _openTestCdpAtICR(users[0], _sameShare, 150e16);
 
-        // Deposit 100 shares (B)
-        uint newCdpStEthBalance = (100e18 * collateral.getPooledEthByShares(100e18)) / 100e18;
+        collateral.setEthPerShare(_newIndex);
+
+        // Deposit same share for (B)
+        uint newCdpStEthBalance = collateral.getPooledEthByShares(_sameShare);
         (, bytes32 cdp1) = _openTestCdpAtICR(users[1], newCdpStEthBalance, 150e16);
 
-        console.log(cdpManager.getCdpCollShares(cdp0));
-        console.log(cdpManager.getCdpCollShares(cdp1));
+        console.log("cdp0 coll share=", cdpManager.getCdpCollShares(cdp0));
+        console.log("cdp1 coll share=", cdpManager.getCdpCollShares(cdp1));
 
         console.log("Before syncAccounting");
         _printAllCdps();

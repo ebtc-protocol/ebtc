@@ -70,17 +70,33 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
 
     // --- Pool functionality ---
 
-    /// @notice Increase collateral surplus balance for owner _account by _amount
-    /// @param _account The owner address whose surplus balance is increased
-    /// @param _amount The surplus increase value
-    /// @dev only CdpManager is allowed to call this function
-    function increaseSurplusCollShares(address _account, uint256 _amount) external override {
+    /// @notice Increases the claimable surplus collateral shares for the specified account.
+    /// @notice Internal permissioned system function, can track amounts added from collateral shares and liquidator reward shares separately for accounting purposes.
+    /// @dev Only the CdpManager contract can call this function.
+    /// @param _cdpId CdpId surplus collateral shares come from, for accounting purposes.
+    /// @param _account The account to increase collateral surplus balance for.
+    /// @param _collateralShares The number of collateral shares to be added to the owner's surplus balance, from Cdp collateral shares.
+    /// @param _liquidatorRewardShares The number of collateral shares to be added to the owner's surplus balance, from liquidator reward shares.
+    function increaseSurplusCollShares(
+        bytes32 _cdpId,
+        address _account,
+        uint256 _collateralShares,
+        uint256 _liquidatorRewardShares
+    ) external override {
         _requireCallerIsCdpManager();
 
-        uint256 newAmount = balances[_account] + _amount;
-        balances[_account] = newAmount;
+        uint256 _totalClaimableSurplusCollShares = balances[_account] +
+            _collateralShares +
+            _liquidatorRewardShares;
+        balances[_account] = _totalClaimableSurplusCollShares;
 
-        emit SurplusCollSharesUpdated(_account, newAmount);
+        emit SurplusCollSharesAdded(
+            _cdpId,
+            _account,
+            _totalClaimableSurplusCollShares,
+            _collateralShares,
+            _liquidatorRewardShares
+        );
     }
 
     /// @notice Allow owner to claim all its surplus recorded in this pool
@@ -92,7 +108,6 @@ contract CollSurplusPool is ICollSurplusPool, ReentrancyGuard, AuthNoOwner {
         require(claimableColl > 0, "CollSurplusPool: No collateral available to claim");
 
         balances[_account] = 0;
-        emit SurplusCollSharesUpdated(_account, 0);
 
         uint256 cachedTotalSurplusCollShares = totalSurplusCollShares;
 

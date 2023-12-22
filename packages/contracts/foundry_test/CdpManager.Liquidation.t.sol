@@ -826,15 +826,17 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         deal(address(eBTCToken), _liquidator, cdpManager.getCdpDebt(userCdpid)); // sugardaddy liquidator
 
         uint256 _liquidatorBalBefore = collateral.balanceOf(_liquidator);
-        uint256 _liqStipend = cdpManager.getCdpLiquidatorRewardShares(userCdpid);
-        uint256 _maxReward = _userColl + _liqStipend;
         uint256 _expectedReward;
-        if (_noNeedRM) {
-            _expectedReward = _maxReward;
-        } else {
-            _expectedReward = _liqStipend + ((_userDebt * cdpManager.MCR()) / _newPrice);
-            if (_expectedReward > _maxReward) {
+        {
+            uint256 _liqStipend = cdpManager.getCdpLiquidatorRewardShares(userCdpid);
+            uint256 _maxReward = _userColl + _liqStipend;
+            if (_noNeedRM) {
                 _expectedReward = _maxReward;
+            } else {
+                _expectedReward = _liqStipend + ((_userDebt * cdpManager.MCR()) / _newPrice);
+                if (_expectedReward > _maxReward) {
+                    _expectedReward = _maxReward;
+                }
             }
         }
 

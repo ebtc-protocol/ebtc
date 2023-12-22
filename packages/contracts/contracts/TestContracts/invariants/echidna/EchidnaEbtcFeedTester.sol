@@ -69,15 +69,15 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
         ethBtcCLFeed.setPrice(3 ether - 2);
         ethBtcCLFeed.setPrevPrice(3 ether - 42);
 
-        // do we have a fallback caller?
-        fallbackCaller = new MockFallbackCaller();
-
         priceFeed = new PriceFeed(
             address(fallbackCaller),
             address(authority),
             address(collEthCLFeed),
             address(ethBtcCLFeed)
         );
+
+        // do we have a fallback caller?
+        fallbackCaller = new MockFallbackCaller(priceFeed.fetchPrice());
 
         primaryTester = new PriceFeedOracleTester(address(priceFeed));
         secondaryTester = new PriceFeedOracleTester(address(priceFeed));

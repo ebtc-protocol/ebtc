@@ -37,6 +37,7 @@ yarn-error.log
 
 # echidna
 /crytic-export
+/echidna
 
 # Medusa
 /medusa
