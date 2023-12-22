@@ -437,6 +437,23 @@ abstract contract TargetFunctions is Properties {
 
     function redeemCollateral(
         uint _EBTCAmount,
+        uint _partialRedemptionHintNICR,
+        uint _maxFeePercentage,
+        uint _maxIterations
+    ) public setup {
+        _redeemCollateral(
+            _EBTCAmount,
+            bytes32(0),
+            _partialRedemptionHintNICR,
+            false,
+            false,
+            _maxFeePercentage,
+            _maxIterations
+        );
+    }
+
+    function redeemCollateral(
+        uint _EBTCAmount,
         bytes32 _firstRedemptionHintFromMedusa,
         uint256 _partialRedemptionHintNICRFromMedusa,
         bool useProperFirstHint,
@@ -444,9 +461,26 @@ abstract contract TargetFunctions is Properties {
         uint _maxFeePercentage,
         uint _maxIterations
     ) public setup {
-        bool success;
-        bytes memory returnData;
+        _redeemCollateral(
+            _EBTCAmount,
+            _firstRedemptionHintFromMedusa,
+            _partialRedemptionHintNICRFromMedusa,
+            useProperFirstHint,
+            useProperPartialHint,
+            _maxFeePercentage,
+            _maxIterations
+        );
+    }
 
+    function _redeemCollateral(
+        uint _EBTCAmount,
+        bytes32 _firstRedemptionHintFromMedusa,
+        uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
+        bool useProperPartialHint,
+        uint _maxFeePercentage,
+        uint _maxIterations
+    ) internal {
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
 
         require(_EBTCAmount >= borrowerOperations.MIN_CHANGE(), "redeemCollateral: min _EBTCAmount");
@@ -460,8 +494,6 @@ abstract contract TargetFunctions is Properties {
         );
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
-
-        (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         _before(_cdpId);
 
@@ -480,21 +512,25 @@ abstract contract TargetFunctions is Properties {
                 : _partialRedemptionHintNICRFromMedusa;
         }
 
-        (success, returnData) = actor.proxy(
-            address(cdpManager),
-            abi.encodeWithSelector(
-                CdpManager.redeemCollateral.selector,
-                _EBTCAmount,
-                _firstRedemptionHintFromMedusa,
-                bytes32(0),
-                bytes32(0),
-                _partialRedemptionHintNICRFromMedusa,
-                _maxIterations,
-                _maxFeePercentage
-            )
-        );
+        {
+            bool success;
 
-        require(success);
+            (success, ) = actor.proxy(
+                address(cdpManager),
+                abi.encodeWithSelector(
+                    CdpManager.redeemCollateral.selector,
+                    _EBTCAmount,
+                    _firstRedemptionHintFromMedusa,
+                    bytes32(0),
+                    bytes32(0),
+                    _partialRedemptionHintNICRFromMedusa,
+                    _maxIterations,
+                    _maxFeePercentage
+                )
+            );
+
+            require(success);
+        }
 
         _after(_cdpId);
 

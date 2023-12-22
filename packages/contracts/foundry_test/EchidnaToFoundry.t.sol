@@ -33,15 +33,11 @@ contract EToFoundry is
     }
 
     function testPropertySL05ViaSplitCompareBroken() public {
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _logRatiosForStakeAndColl();
         _logStakes();
 
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
-        _logRatiosForStakeAndColl();
-        _logStakes();
-
-        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _logRatiosForStakeAndColl();
         _logStakes();
 
@@ -49,7 +45,11 @@ contract EToFoundry is
         _logRatiosForStakeAndColl();
         _logStakes();
 
-        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
+        _logRatiosForStakeAndColl();
+        _logStakes();
+
+        withdrawColl(1000, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
         _logRatiosForStakeAndColl();
         _logStakes();
 
@@ -67,11 +67,11 @@ contract EToFoundry is
     }
 
     function testPropertySL05ViaSplitCompareTheOne() public {
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _logRatiosForStakeAndColl();
         _logStakes();
 
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _logRatiosForStakeAndColl();
         _logStakes();
 
@@ -84,7 +84,7 @@ contract EToFoundry is
         _logStakes();
         _syncAllCdps();
 
-        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        withdrawColl(1000, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
         _logRatiosForStakeAndColl();
         _logStakes();
 
@@ -102,9 +102,9 @@ contract EToFoundry is
     }
 
     function testPropertySL05ViaSplitWithSync() public {
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _syncAllCdps();
-        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 209);
+        openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _syncAllCdps();
         setEthPerShare(4737424871052165462567343556913648738078620766275360444075220128633451887691);
         _syncAllCdps();
@@ -116,7 +116,7 @@ contract EToFoundry is
         console2.log("");
         console2.log("2");
         _logRatiosForStakeAndColl();
-        withdrawColl(1, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        withdrawColl(1000, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
         _syncAllCdps();
         console2.log("");
         console2.log("3");
