@@ -89,6 +89,10 @@ abstract contract PropertiesDescriptions {
         "GENERAL-13: The SynchedICR of every CDP in the Linked List Matches the ICR the CDPs will have the call (as returned by CrLens)";
     string constant GENERAL_14 =
         "GENERAL-14: The NominalICR from `getNominalICR` matches `quoteRealNICR` (as returned by CrLens)";
+    string constant GENERAL_15 =
+        "GENERAL-15: CDP debt should always be greater than MIN_CHANGE (1000 Wei)";
+    string constant GENERAL_16 =
+        "GENERAL-16: Collateral and debt change amounts should always be greater than MIN_CHANGE (1000 Wei)";
 
     ///////////////////////////////////////////////////////
     // Redemptions

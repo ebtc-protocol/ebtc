@@ -483,8 +483,6 @@ abstract contract TargetFunctions is Properties {
     ) internal {
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
 
-        require(_EBTCAmount >= borrowerOperations.MIN_CHANGE(), "redeemCollateral: min _EBTCAmount");
-
         _maxIterations = between(_maxIterations, 0, 10);
 
         _maxFeePercentage = between(
@@ -702,8 +700,6 @@ abstract contract TargetFunctions is Properties {
         // we pass in CCR instead of MCR in case it's the first one
         uint price = priceFeedMock.getPrice();
 
-        _EBTCAmount = max(_EBTCAmount, borrowerOperations.MIN_CHANGE());
-
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
             cdpManager.MIN_NET_STETH_BALANCE() + borrowerOperations.LIQUIDATOR_REWARD(),
@@ -780,6 +776,9 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -797,8 +796,6 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         _coll = between(_coll, 0, INITIAL_COLL_BALANCE / 10);
-
-        require(_coll >= borrowerOperations.MIN_CHANGE());
 
         if (collateral.balanceOf(address(actor)) < _coll) {
             (success, ) = actor.proxy(
@@ -886,6 +883,8 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_coll, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -908,8 +907,6 @@ abstract contract TargetFunctions is Properties {
             0,
             collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId))
         );
-
-        require(_amount >= borrowerOperations.MIN_CHANGE());
 
         _before(_cdpId);
 
@@ -962,6 +959,8 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -981,8 +980,6 @@ abstract contract TargetFunctions is Properties {
         // TODO verify the assumption below, maybe there's a more sensible (or Governance-defined/hardcoded) limit for the maximum amount of minted eBTC at a single operation
         // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflow
         _amount = between(_amount, 0, type(uint128).max);
-
-        require(_amount >= borrowerOperations.MIN_CHANGE(), "withdrawDebt: _amount");
 
         _before(_cdpId);
 
@@ -1038,6 +1035,9 @@ abstract contract TargetFunctions is Properties {
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     function repayDebt(uint _amount, uint256 _i) public setup {
@@ -1054,10 +1054,6 @@ abstract contract TargetFunctions is Properties {
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         _amount = between(_amount, 0, entireDebt);
-
-        // Do not fall under min debt
-        require(_amount >= borrowerOperations.MIN_CHANGE());
-        require(entireDebt >= _amount && (entireDebt - _amount) >= borrowerOperations.MIN_CHANGE());
 
         _before(_cdpId);
 
@@ -1115,6 +1111,9 @@ abstract contract TargetFunctions is Properties {
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     function closeCdp(uint _i) public setup {
@@ -1219,13 +1218,6 @@ abstract contract TargetFunctions is Properties {
         _collWithdrawal = between(_collWithdrawal, 0, entireColl);
         _EBTCChange = between(_EBTCChange, 0, entireDebt);
 
-        require(_collWithdrawal >= borrowerOperations.MIN_CHANGE());
-        require(_EBTCChange >= borrowerOperations.MIN_CHANGE());
-        require(
-            entireDebt >= _EBTCChange &&
-                (entireDebt - _EBTCChange) >= borrowerOperations.MIN_CHANGE()
-        );
-
         _before(_cdpId);
 
         (success, returnData) = actor.proxy(
@@ -1280,6 +1272,10 @@ abstract contract TargetFunctions is Properties {
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        gte(_collWithdrawal, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     ///////////////////////////////////////////////////////
