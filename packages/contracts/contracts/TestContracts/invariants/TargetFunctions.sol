@@ -359,6 +359,7 @@ abstract contract TargetFunctions is Properties {
             }
 
             gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1275,8 +1276,18 @@ abstract contract TargetFunctions is Properties {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
 
-        gte(_collWithdrawal, borrowerOperations.MIN_CHANGE(), GENERAL_16);
-        gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        if (_collWithdrawal > 0) {
+            gte(_collWithdrawal, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        }
+
+        if (_isDebtIncrease) {
+            gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        } else {
+            // it's ok for _EBTCChange to be 0 if we are not increasing debt (coll only operation)
+            if (_EBTCChange > 0) {
+                gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            }
+        }
         gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 

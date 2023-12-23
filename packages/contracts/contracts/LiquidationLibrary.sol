@@ -462,8 +462,12 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _coll = _cdp.coll;
         uint256 _debt = _cdp.debt;
 
+        uint256 newDebt = _debt - _partialDebt;
+
+        _requireMinDebt(newDebt);
+
         _cdp.coll = _coll - _partialColl;
-        _cdp.debt = _debt - _partialDebt;
+        _cdp.debt = newDebt;
         _updateStakeAndTotalStakes(_cdpId);
     }
 
@@ -915,5 +919,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             _entireColl >= MIN_NET_STETH_BALANCE,
             "LiquidationLibrary: Coll remaining in partially liquidated CDP must be >= minimum"
         );
+    }
+
+    function _requireMinDebt(uint256 _debt) internal pure {
+        require(_debt >= MIN_CHANGE, "LiquidationLibrary: Debt must be above min");
     }
 }

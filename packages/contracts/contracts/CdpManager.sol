@@ -113,6 +113,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
     ) external override {
+        _requireAmountGreaterThanMin(_partialAmount);
         _delegate(liquidationLibrary);
     }
 
