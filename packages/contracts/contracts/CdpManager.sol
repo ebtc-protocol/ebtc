@@ -203,7 +203,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             if (
                 newNICR != _redeemColFromCdp.partialRedemptionHintNICR ||
                 collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE ||
-                newDebt < EbtcBase.MIN_CHANGE
+                newDebt < MIN_CHANGE
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
@@ -770,7 +770,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     }
 
     function _requireAmountGreaterThanMin(uint256 _amount) internal pure {
-        require(_amount >= EbtcBase.MIN_CHANGE, "CdpManager: Amount must be greater than min");
+        require(_amount >= MIN_CHANGE, "CdpManager: Amount must be greater than min");
     }
 
     function _requireTCRisNotBelowMCR(uint256 _price, uint256 _TCR) internal view {
