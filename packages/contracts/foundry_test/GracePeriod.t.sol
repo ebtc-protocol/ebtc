@@ -355,14 +355,14 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             borrowerOperations.openCdp(debt, ZERO_ID, ZERO_ID, coll);
         } else if (action == 1) {
             // adjustCdp: addColl
-            dealCollateral(borrower, 1);
+            dealCollateral(borrower, minChange);
 
             vm.prank(borrower);
-            borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, 1);
+            borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, minChange);
         } else if (action == 2) {
             //adjustCdp: repayDebt
             vm.prank(borrower);
-            borrowerOperations.repayDebt(cdps[0], 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], minChange, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             uint256 toRedeem = 5e17;
             //redemption
@@ -414,7 +414,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             console.log(debt);
 
             vm.prank(borrower);
-            borrowerOperations.repayDebt(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], debt - minChange, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             //adjustCdp: adjustCdpWithColl (reduce debt + increase coll)
             debt = cdpManager.getCdpDebt(cdps[0]);
@@ -424,7 +424,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             borrowerOperations.adjustCdpWithColl(
                 cdps[0],
                 0,
-                debt - 1,
+                debt - minChange,
                 false,
                 ZERO_ID,
                 ZERO_ID,

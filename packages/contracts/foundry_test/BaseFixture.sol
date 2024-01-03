@@ -109,9 +109,18 @@ contract eBTCBaseFixture is
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_DEBT =
+        "BorrowerOperations: Debt must be above min";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_DEBT_CHANGE =
+        "BorrowerOperations: Debt increase requires min debtChange";
+    bytes internal constant ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE =
+        "BorrowerOperations: There must be either a collateral or debt change";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_CHANGE =
+        "BorrowerOperations: Collateral or debt change must be zero or above min";
 
     MultiCdpGetter internal cdpGetter;
     Utilities internal _utils;
+    uint256 internal minChange;
 
     address[] internal emptyAddresses;
 
@@ -402,6 +411,8 @@ contract eBTCBaseFixture is
         );
 
         vm.stopPrank();
+
+        minChange = borrowerOperations.MIN_CHANGE();
     }
 
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure

@@ -675,7 +675,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.expectRevert(
             "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
         );
-        cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(safeCdpId, 1234, bytes32(0), bytes32(0));
     }
 
     // Can NEVER liquidate if CDP above TCR
@@ -724,11 +724,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.expectRevert(
             "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
         );
-        cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(safeCdpId, 1234, bytes32(0), bytes32(0));
 
         uint256 liquidationCheckpoint = vm.snapshot();
         // Liquidate the Whale
-        cdpManager.partiallyLiquidate(vulnerableCdpId, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(vulnerableCdpId, 1234, bytes32(0), bytes32(0));
 
         vm.revertTo(liquidationCheckpoint); // Revert to ensure we can always liquidate
         // Some liquidations could end up undoing RM
@@ -771,7 +771,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         vm.startPrank(users[0]);
         // Liquidate the Whale
-        cdpManager.partiallyLiquidate(liquidatableCdp, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(liquidatableCdp, 1234, bytes32(0), bytes32(0));
 
         cdpManager.liquidate(liquidatableCdp);
     }

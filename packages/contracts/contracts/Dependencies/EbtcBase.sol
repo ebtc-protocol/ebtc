@@ -38,6 +38,8 @@ contract EbtcBase is BaseMath, IEbtcBase {
 
     uint256 public constant MAX_REWARD_SPLIT = 10_000;
 
+    uint256 public constant MIN_CHANGE = 1000;
+
     IActivePool public immutable activePool;
 
     IPriceFeed public immutable override priceFeed;

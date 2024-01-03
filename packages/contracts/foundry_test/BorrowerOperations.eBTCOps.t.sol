@@ -56,8 +56,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         vm.stopPrank();
     }
 
-    // Case when trying to repay 0 eBTC
-    function testRepayWithZeroAmnt() public {
+    // Case when trying to repay less than min eBTC
+    function testRepayWithLessThanMinAmnt() public {
         uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -72,10 +72,11 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
         // Repay eBTC and make sure it reverts for 0 amount
-        vm.expectRevert(
-            bytes("BorrowerOperations: There must be either a collateral change or a debt change")
-        );
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE);
         borrowerOperations.repayDebt(cdpId, 0, HINT, HINT);
+        // Repay eBTC and make sure it reverts for MIN_CHANGE - 1 amount
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_CHANGE);
+        borrowerOperations.repayDebt(cdpId, minChange - 1, HINT, HINT);
         vm.stopPrank();
     }
 
@@ -201,8 +202,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         vm.stopPrank();
     }
 
-    // Fail when trying to withdraw 0 ebtc
-    function testWithdrawWithZeroAmnt() public {
+    // Fail when trying to withdraw less than min ebtc
+    function testWithdrawWithLessThanMinAmnt() public {
         uint256 collAmount = 30 ether;
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
@@ -216,8 +217,14 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
         );
         borrowerOperations.openCdp(borrowedAmount, HINT, HINT, collAmount);
         bytes32 cdpId = sortedCdps.cdpOfOwnerByIndex(user, 0);
-        vm.expectRevert(bytes("BorrowerOperations: Debt increase requires non-zero debtChange"));
+
+        // Test with 0 debt
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_DEBT_CHANGE);
         borrowerOperations.withdrawDebt(cdpId, 0, "hint", "hint");
+
+        // Test with <1000 debt
+        vm.expectRevert(ERR_BORROWER_OPERATIONS_MIN_DEBT_CHANGE);
+        borrowerOperations.withdrawDebt(cdpId, 999, "hint", "hint");
         vm.stopPrank();
     }
 
@@ -336,9 +343,9 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
     function testrepayDebtMustImproveTCR() public {
         uint collAmount = 2000000000000000016 + borrowerOperations.LIQUIDATOR_REWARD();
-        uint borrowedAmount = 1;
-        uint debtAmount = 28;
-        uint repayAmount = 1;
+        uint borrowedAmount = borrowerOperations.MIN_CHANGE();
+        uint debtAmount = 28 * borrowerOperations.MIN_CHANGE();
+        uint repayAmount = borrowerOperations.MIN_CHANGE();
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
@@ -378,8 +385,8 @@ contract CDPOpsTest is eBTCBaseFixture, Properties {
 
     function testrepayDebtMustBurn() public {
         uint collAmount = 2000000000000000033 + borrowerOperations.LIQUIDATOR_REWARD();
-        uint borrowedAmount = 2;
-        uint repayAmount = 1;
+        uint borrowedAmount = 2 * borrowerOperations.MIN_CHANGE();
+        uint repayAmount = borrowerOperations.MIN_CHANGE();
         address user = _utils.getNextUserAddress();
         vm.startPrank(user);
         vm.deal(user, type(uint96).max);
