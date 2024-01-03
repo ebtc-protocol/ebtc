@@ -54,17 +54,17 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             // == Adjust CDP == //
             console2.log("Adjust");
 
-            dealCollateral(safeUser, 12345);
+            dealCollateral(safeUser, 12345 * minChange);
             uint256 adjustSnap = vm.snapshot();
 
             vm.startPrank(safeUser);
-            borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123);
+            borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123 * minChange);
             uint256 EXPECTED_ADJUST_TCR = cdpManager.getCachedTCR(price);
             vm.revertTo(adjustSnap);
 
             vm.expectEmit(false, false, false, true);
             emit TCRNotified(EXPECTED_ADJUST_TCR);
-            borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123);
+            borrowerOperations.addColl(safeId, ZERO_ID, ZERO_ID, 123 * minChange);
             vm.stopPrank();
             vm.revertTo(adjustSnap);
         }

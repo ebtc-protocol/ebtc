@@ -25,6 +25,7 @@ contract Mock1Inch {
         price = _newPrice;
     }
 
+    // swapExactIn, keeping name for compatibility
     function swap(address tokenIn, address tokenOut, uint256 amountIn) external returns (uint256) {
         if (tokenIn == address(stETH) && tokenOut == address(eBTCToken)) {
             stETH.transferFrom(msg.sender, address(this), amountIn);
@@ -35,6 +36,27 @@ contract Mock1Inch {
             eBTCToken.transferFrom(msg.sender, address(this), amountIn);
             uint256 amt = (amountIn * 1e18) / price;
             stETH.transfer(msg.sender, amt);
+            return amt;
+        }
+
+        revert("No match");
+    }
+
+    // Needed by EbtcZapRouter with leverage
+    function swapExactOut(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountOut
+    ) external returns (uint256) {
+        if (tokenIn == address(stETH) && tokenOut == address(eBTCToken)) {
+            uint256 amt = (amountOut * 1e18) / price;
+            stETH.transferFrom(msg.sender, address(this), amt);
+            eBTCToken.transfer(msg.sender, amountOut);
+            return amt;
+        } else if (tokenIn == address(eBTCToken) && tokenOut == address(stETH)) {
+            uint256 amt = (amountOut * price) / 1e18;
+            eBTCToken.transferFrom(msg.sender, address(this), amt);
+            stETH.transfer(msg.sender, amountOut);
             return amt;
         }
 

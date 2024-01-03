@@ -73,18 +73,28 @@ contract Governor is RolesAuthority {
     function getRolesForUser(address user) external view returns (uint8[] memory rolesForUser) {
         // Enumerate over all possible roles and check if enabled
         uint256 count;
-        for (uint8 i = 0; i < type(uint8).max; i++) {
+        for (uint8 i = 0; i <= type(uint8).max; ) {
             if (doesUserHaveRole(user, i)) {
                 count += 1;
+            }
+            if (i < type(uint8).max) {
+                i = i + 1;
+            } else {
+                break;
             }
         }
         if (count > 0) {
             uint256 j = 0;
             rolesForUser = new uint8[](count);
-            for (uint8 i = 0; i < type(uint8).max; i++) {
+            for (uint8 i = 0; i <= type(uint8).max; ) {
                 if (doesUserHaveRole(user, i)) {
                     rolesForUser[j] = i;
                     j++;
+                }
+                if (i < type(uint8).max) {
+                    i = i + 1;
+                } else {
+                    break;
                 }
             }
         }
@@ -95,20 +105,30 @@ contract Governor is RolesAuthority {
     /// @return roleIds An array of role IDs extracted from the byte map.
     function getRolesFromByteMap(bytes32 byteMap) public pure returns (uint8[] memory roleIds) {
         uint256 count;
-        for (uint8 i = 0; i < type(uint8).max; i++) {
+        for (uint8 i = 0; i <= type(uint8).max; ) {
             bool roleEnabled = (uint256(byteMap >> i) & 1) != 0;
             if (roleEnabled) {
                 count += 1;
+            }
+            if (i < type(uint8).max) {
+                i = i + 1;
+            } else {
+                break;
             }
         }
         if (count > 0) {
             uint256 j = 0;
             roleIds = new uint8[](count);
-            for (uint8 i = 0; i < type(uint8).max; i++) {
+            for (uint8 i = 0; i <= type(uint8).max; ) {
                 bool roleEnabled = (uint256(byteMap >> i) & 1) != 0;
                 if (roleEnabled) {
                     roleIds[j] = i;
                     j++;
+                }
+                if (i < type(uint8).max) {
+                    i = i + 1;
+                } else {
+                    break;
                 }
             }
         }
@@ -119,7 +139,7 @@ contract Governor is RolesAuthority {
     /// @return A bytes32 value encoding the roles.
     function getByteMapFromRoles(uint8[] memory roleIds) public pure returns (bytes32) {
         bytes32 _data;
-        for (uint8 i = 0; i < roleIds.length; i++) {
+        for (uint256 i = 0; i < roleIds.length; i++) {
             _data |= bytes32(1 << uint256(roleIds[i]));
         }
         return _data;

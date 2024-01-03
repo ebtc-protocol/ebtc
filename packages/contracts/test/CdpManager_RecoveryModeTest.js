@@ -137,8 +137,11 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode_Before)
 
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
-    await contracts.collateral.deposit({from: alice, value: '1'});
-    await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, '1', { from: alice, value: 0 })
+    await contracts.collateral.deposit({from: alice, value: await borrowerOperations.MIN_CHANGE()});
+    await borrowerOperations.addColl(
+      _aliceCdpId, _aliceCdpId, _aliceCdpId, await borrowerOperations.MIN_CHANGE(), 
+      { from: alice, value: 0 }
+    )
 
     const recoveryMode_After = await th.checkRecoveryMode(contracts);
     assert.isTrue(recoveryMode_After)

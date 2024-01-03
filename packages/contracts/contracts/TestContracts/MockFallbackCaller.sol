@@ -7,11 +7,16 @@ import {IFallbackCaller} from "../Interfaces/IFallbackCaller.sol";
 contract MockFallbackCaller is IFallbackCaller {
     uint256 public _answer;
     uint256 public _timestampRetrieved;
-    uint256 public _fallbackTimeout;
+    uint256 public _fallbackTimeout = 90000; // NOTE: MAYBE BEST TO CUSTOMIZE
     bool public _success;
+    uint256 public _initAnswer;
 
     bool public getFallbackResponseRevert;
     bool public fallbackTimeoutRevert;
+
+    constructor(uint256 answer) {
+        _initAnswer = answer;
+    }
 
     function setGetFallbackResponseRevert() external {
         getFallbackResponseRevert = !getFallbackResponseRevert;

@@ -213,6 +213,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 liquidatorRewardShares;
         bool cancelledPartial;
         bool fullRedemption;
+        uint256 newPartialNICR;
     }
 
     function totalStakes() external view returns (uint256);
