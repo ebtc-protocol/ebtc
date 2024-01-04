@@ -14,7 +14,7 @@ import "../../CollSurplusPool.sol";
 import "../../SortedCdps.sol";
 import "../../HintHelpers.sol";
 import "../../FeeRecipient.sol";
-import "../../BraindeadFeed.sol";
+import "../../EbtcFeed.sol";
 import "../testnet/PriceFeedTestnet.sol";
 import "../CollateralTokenTester.sol";
 import "../EBTCTokenTester.sol";
@@ -124,10 +124,10 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             priceFeedMock = new PriceFeedTestnet(addr.authorityAddress);
 
             // Price Feed Mock
-            creationCode = type(BraindeadFeed).creationCode;
+            creationCode = type(EbtcFeed).creationCode;
             args = abi.encode(addr.authorityAddress, address(priceFeedMock), address(0));
 
-            braindeadFeed = BraindeadFeed(
+            ebtcFeed = EbtcFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -271,14 +271,14 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
             authority.setRoleCapability(
                 4,
-                address(braindeadFeed),
-                braindeadFeed.setPrimaryOracle.selector,
+                address(ebtcFeed),
+                ebtcFeed.setPrimaryOracle.selector,
                 true
             );
             authority.setRoleCapability(
                 4,
-                address(braindeadFeed),
-                braindeadFeed.setSecondaryOracle.selector,
+                address(ebtcFeed),
+                ebtcFeed.setSecondaryOracle.selector,
                 true
             );
 

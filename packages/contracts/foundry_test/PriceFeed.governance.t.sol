@@ -59,7 +59,7 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
         vm.startPrank(user);
         vm.expectRevert("Auth: UNAUTHORIZED");
-        braindeadFeed.setPrimaryOracle(address(mockOracle));
+        ebtcFeed.setPrimaryOracle(address(mockOracle));
         vm.stopPrank();
     }
 
@@ -69,7 +69,7 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
         vm.startPrank(user);
         vm.expectRevert("Auth: UNAUTHORIZED");
-        braindeadFeed.setSecondaryOracle(address(mockOracle));
+        ebtcFeed.setSecondaryOracle(address(mockOracle));
         vm.stopPrank();
     }
 
@@ -83,16 +83,16 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
         assertEq(authority.doesUserHaveRole(user, 4), true);
         assertEq(
-            authority.doesRoleHaveCapability(4, address(braindeadFeed), SET_PRIMARY_ORACLE_SIG),
+            authority.doesRoleHaveCapability(4, address(ebtcFeed), SET_PRIMARY_ORACLE_SIG),
             true
         );
 
         vm.startPrank(user);
-        braindeadFeed.setPrimaryOracle(address(mockOracle));
+        ebtcFeed.setPrimaryOracle(address(mockOracle));
         vm.stopPrank();
 
         // Confirm variable set
-        assertEq(address(braindeadFeed.primaryOracle()), address(mockOracle));
+        assertEq(address(ebtcFeed.primaryOracle()), address(mockOracle));
     }
 
     function testSetSecondaryOracleWithPermission() public {
@@ -105,28 +105,28 @@ contract PriceFeedGovernanceTest is eBTCBaseFixture {
 
         assertEq(authority.doesUserHaveRole(user, 4), true);
         assertEq(
-            authority.doesRoleHaveCapability(4, address(braindeadFeed), SET_SECONDARY_ORACLE_SIG),
+            authority.doesRoleHaveCapability(4, address(ebtcFeed), SET_SECONDARY_ORACLE_SIG),
             true
         );
 
         vm.startPrank(user);
-        braindeadFeed.setSecondaryOracle(address(mockOracle));
+        ebtcFeed.setSecondaryOracle(address(mockOracle));
         vm.stopPrank();
 
         // Confirm variable set
-        assertEq(address(braindeadFeed.secondaryOracle()), address(mockOracle));
+        assertEq(address(ebtcFeed.secondaryOracle()), address(mockOracle));
     }
 
     function testCannotRemovePrimaryOracle() public {
         vm.prank(defaultGovernance);
         vm.expectRevert();
-        braindeadFeed.setPrimaryOracle(address(0));
+        ebtcFeed.setPrimaryOracle(address(0));
     }
 
     function testCanRemoveSecondaryOracle() public {
         vm.prank(defaultGovernance);
-        braindeadFeed.setSecondaryOracle(address(0));
+        ebtcFeed.setSecondaryOracle(address(0));
 
-        assertEq(address(braindeadFeed.secondaryOracle()), address(0));
+        assertEq(address(ebtcFeed.secondaryOracle()), address(0));
     }
 }

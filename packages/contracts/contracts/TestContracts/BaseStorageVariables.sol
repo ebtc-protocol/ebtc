@@ -5,7 +5,7 @@ import {WETH9} from "./WETH9.sol";
 import {BorrowerOperations} from "../BorrowerOperations.sol";
 import {PriceFeedTestnet} from "./testnet/PriceFeedTestnet.sol";
 import {PriceFeedOracleTester} from "./PriceFeedOracleTester.sol";
-import {BraindeadFeed} from "../BraindeadFeed.sol";
+import {EbtcFeed} from "../EbtcFeed.sol";
 import {SortedCdps} from "../SortedCdps.sol";
 import {CdpManager} from "../CdpManager.sol";
 import {LiquidationLibrary} from "../LiquidationLibrary.sol";
@@ -26,7 +26,7 @@ import {Simulator} from "./invariants/Simulator.sol";
 
 abstract contract BaseStorageVariables {
     PriceFeedTestnet internal priceFeedMock;
-    BraindeadFeed internal braindeadFeed;
+    EbtcFeed internal ebtcFeed;
     PriceFeedOracleTester internal primaryOracle;
     SortedCdps internal sortedCdps;
     CdpManager internal cdpManager;

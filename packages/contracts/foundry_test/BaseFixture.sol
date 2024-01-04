@@ -5,7 +5,7 @@ import "forge-std/Test.sol";
 import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
-import {BraindeadFeed} from "../contracts/BraindeadFeed.sol";
+import {EbtcFeed} from "../contracts/EbtcFeed.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
 import {PriceFeedOracleTester} from "../contracts/TestContracts/PriceFeedOracleTester.sol";
@@ -261,10 +261,10 @@ contract eBTCBaseFixture is
             primaryOracle = new PriceFeedOracleTester(address(priceFeedMock));
 
             // Price Feed Mock
-            creationCode = type(BraindeadFeed).creationCode;
+            creationCode = type(EbtcFeed).creationCode;
             args = abi.encode(addr.authorityAddress, address(primaryOracle), address(0));
 
-            braindeadFeed = BraindeadFeed(
+            ebtcFeed = EbtcFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -385,8 +385,8 @@ contract eBTCBaseFixture is
         authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
-        authority.setRoleCapability(4, address(braindeadFeed), SET_PRIMARY_ORACLE_SIG, true);
-        authority.setRoleCapability(4, address(braindeadFeed), SET_SECONDARY_ORACLE_SIG, true);
+        authority.setRoleCapability(4, address(ebtcFeed), SET_PRIMARY_ORACLE_SIG, true);
+        authority.setRoleCapability(4, address(ebtcFeed), SET_SECONDARY_ORACLE_SIG, true);
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(
@@ -417,11 +417,11 @@ contract eBTCBaseFixture is
         authority.setUserRole(defaultGovernance, 5, true);
         authority.setUserRole(defaultGovernance, 6, true);
 
-        crLens = new CRLens(address(cdpManager), address(braindeadFeed));
+        crLens = new CRLens(address(cdpManager), address(ebtcFeed));
         liquidationSequencer = new LiquidationSequencer(
             address(cdpManager),
             address(sortedCdps),
-            address(braindeadFeed),
+            address(ebtcFeed),
             address(activePool),
             address(collateral)
         );

@@ -104,14 +104,14 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
 
     function testPrimaryFeedSuccess() public {
         priceFeedMock.setPrice(1e18);
-        assertEq(braindeadFeed.fetchPrice(), 1e18);
+        assertEq(ebtcFeed.fetchPrice(), 1e18);
     }
 
     function testPrimaryFeedFail() public {
         priceFeedMock.setPrice(1e18);
 
         // Store last good price (1e18)
-        braindeadFeed.fetchPrice();
+        ebtcFeed.fetchPrice();
 
         // Updating primary price should have no effect
         priceFeedMock.setPrice(1.15e18);
@@ -119,11 +119,11 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         // Check all error states (no fallback, returns last known state)
         for (uint256 i = 1; i < uint256(PriceFeedOracleTester.ErrorState.COUNT); i++) {
             primaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(i));
-            assertEq(braindeadFeed.fetchPrice(), 1e18);
+            assertEq(ebtcFeed.fetchPrice(), 1e18);
         }
 
         vm.prank(defaultGovernance);
-        braindeadFeed.setSecondaryOracle(address(secondaryOracle));
+        ebtcFeed.setSecondaryOracle(address(secondaryOracle));
 
         // Updating prices should have no effect
         priceFeedMock.setPrice(1.2e18);
@@ -132,7 +132,7 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         // Check all error states (with secondary, returns secondary price = 1.1e18)
         for (uint256 i = 1; i < uint256(PriceFeedOracleTester.ErrorState.COUNT); i++) {
             primaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(i));
-            assertEq(braindeadFeed.fetchPrice(), 1.1e18);
+            assertEq(ebtcFeed.fetchPrice(), 1.1e18);
         }
 
         // Updating prices should have no effect
@@ -144,7 +144,7 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
             primaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(i));
             for (uint256 j = 1; j < uint256(PriceFeedOracleTester.ErrorState.COUNT); j++) {
                 secondaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(j));
-                assertEq(braindeadFeed.fetchPrice(), 1.1e18);
+                assertEq(ebtcFeed.fetchPrice(), 1.1e18);
             }
         }
     }
