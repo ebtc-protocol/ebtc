@@ -201,6 +201,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 decayedBaseRate;
         uint256 price;
         uint256 systemDebtAtStart;
+        uint256 twapSystemDebtAtStart;
         uint256 systemCollSharesAtStart;
         uint256 tcrAtStart;
     }

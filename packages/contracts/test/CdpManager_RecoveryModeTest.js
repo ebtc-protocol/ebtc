@@ -137,8 +137,11 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode_Before)
 
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
-    await contracts.collateral.deposit({from: alice, value: '1'});
-    await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, '1', { from: alice, value: 0 })
+    await contracts.collateral.deposit({from: alice, value: await borrowerOperations.MIN_CHANGE()});
+    await borrowerOperations.addColl(
+      _aliceCdpId, _aliceCdpId, _aliceCdpId, await borrowerOperations.MIN_CHANGE(), 
+      { from: alice, value: 0 }
+    )
 
     const recoveryMode_After = await th.checkRecoveryMode(contracts);
     assert.isTrue(recoveryMode_After)
@@ -1730,6 +1733,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // check Bob’s collateral surplus: 5.76 * 100 - 480 * 1.1
     const bob_remainingCollateral = B_coll.sub(B_coll)
     th.assertIsApproximatelyEqual('0', bob_remainingCollateral.toString())
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Bob re-opens the cdp, price 200, total debt 80 EBTC, ICR = 120% (lowest one)
     // Dennis redeems 30, so Bob has a surplus of (200 * 0.48 - 30) / 200 = 0.33 ETH
@@ -1760,6 +1764,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_netDebt, extraParams: { from: dennis } })
 
     // --- TEST ---
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Dennis redeems 40, so Bob has a surplus of (200 * 1 - 40) / 200 = 0.8 ETH	
     await th.redeemCollateral(dennis, contracts, B_netDebt, GAS_PRICE)

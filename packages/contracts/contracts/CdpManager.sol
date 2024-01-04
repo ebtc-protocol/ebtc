@@ -9,6 +9,7 @@ import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 import "./Dependencies/Proxy.sol";
+import "./Dependencies/EbtcBase.sol";
 
 /// @title CdpManager is mainly in charge of all Cdp related core processing like collateral & debt accounting, split fee calculation, redemption, etc
 /// @notice Except for redemption, end user typically will interact with BorrowerOeprations for individual Cdp actions
@@ -112,6 +113,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         bytes32 _upperPartialHint,
         bytes32 _lowerPartialHint
     ) external override {
+        _requireAmountGreaterThanMin(_partialAmount);
         _delegate(liquidationLibrary);
     }
 
@@ -200,7 +202,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
              */
             if (
                 newNICR != _redeemColFromCdp.partialRedemptionHintNICR ||
-                collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE
+                collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE ||
+                newDebt < MIN_CHANGE
             ) {
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
@@ -345,10 +348,11 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             totals.tcrAtStart = tcrAtStart;
             totals.systemCollSharesAtStart = systemCollSharesAtStart;
             totals.systemDebtAtStart = systemDebtAtStart;
+            totals.twapSystemDebtAtStart = EbtcMath._min(activePool.observe(), systemDebtAtStart); // @audit Return the smaller value of the two, bias towards a larger redemption scaling fee
         }
 
         _requireTCRisNotBelowMCR(totals.price, totals.tcrAtStart);
-        _requireAmountGreaterThanZero(_debt);
+        _requireAmountGreaterThanMin(_debt);
 
         _requireEbtcBalanceCoversRedemptionAndWithinSupply(
             msg.sender,
@@ -463,7 +467,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         _updateBaseRateFromRedemption(
             totals.collSharesDrawn,
             totals.price,
-            totals.systemDebtAtStart
+            totals.twapSystemDebtAtStart
         );
 
         // Calculate the ETH fee
@@ -766,8 +770,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         );
     }
 
-    function _requireAmountGreaterThanZero(uint256 _amount) internal pure {
-        require(_amount > 0, "CdpManager: Amount must be greater than zero");
+    function _requireAmountGreaterThanMin(uint256 _amount) internal pure {
+        require(_amount >= MIN_CHANGE, "CdpManager: Amount must be greater than min");
     }
 
     function _requireTCRisNotBelowMCR(uint256 _price, uint256 _TCR) internal view {

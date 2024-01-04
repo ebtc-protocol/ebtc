@@ -25,12 +25,24 @@ contract ActivePoolTester is ActivePool {
     bytes4 public constant FUNC_SIG_FL_FEE = 0x72c27b62; //setFeeBps(uint256)
     bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x246d4569; //setMaxFeeBps(uint256)
 
-    function unprotectedIncreaseSystemDebt(uint256 _amount) external {
+    function unprotectedIncreaseSystemDebt(uint256 _amount) public {
         systemDebt = systemDebt + _amount;
     }
 
-    function unprotectedReceiveColl(uint256 _amount) external {
+    function unprotectedReceiveColl(uint256 _amount) public {
         systemCollShares = systemCollShares + _amount;
+    }
+
+    function unprotectedIncreaseSystemDebtAndUpdate(uint256 _amount) external {
+        unprotectedIncreaseSystemDebt(_amount);
+        _setValue(uint128(systemDebt));
+        update();
+    }
+
+    function unprotectedReceiveCollAndUpdate(uint256 _amount) external {
+        unprotectedReceiveColl(_amount);
+        _setValue(uint128(systemDebt));
+        update();
     }
 
     function unprotectedallocateSystemCollSharesToFeeRecipient(uint256 _shares) external {
@@ -39,6 +51,10 @@ contract ActivePoolTester is ActivePool {
 
         emit SystemCollSharesUpdated(systemCollShares);
         emit FeeRecipientClaimableCollSharesIncreased(feeRecipientCollShares, _shares);
+    }
+
+    function unprotectedSetTwapTrackVal(uint256 _val) public {
+        _setValue(uint128(_val));
     }
 
     // dummy test functions for sweepToken()

@@ -48,9 +48,11 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // Set the initial baseRate to a non-zero value via rdemption
         console.log("balance: %s", eBTCToken.balanceOf(user));
         eBTCToken.approve(address(cdpManager), type(uint256).max);
-        uint256 _redeemDebt = 1;
+        uint256 _redeemDebt = borrowerOperations.MIN_CHANGE();
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemDebt, (priceFeedMock.fetchPrice()), 0);
+
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedemptionHint,
@@ -134,7 +136,9 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         );
         require(firstRedempHint == _cdpIds[0], "!firstRedempHint");
         uint256 _debtBalBefore = eBTCToken.balanceOf(_redeemer);
+        _syncSystemDebtTwapToSpotValue();
         vm.prank(_redeemer);
+
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedempHint,
@@ -229,7 +233,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
     function test_ValidRedemptionNoLongerRevertsWhenUnpausedAfterBeingPaused() public {
         (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
-        uint256 debt = 1;
+        uint256 debt = minChange;
 
         vm.startPrank(defaultGovernance);
         cdpManager.setRedemptionsPaused(true);
@@ -241,6 +245,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             debt,
             firstRedemptionHint,
@@ -380,6 +385,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     ) internal {
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemedDebt, priceFeedMock.fetchPrice(), 0);
+        _syncSystemDebtTwapToSpotValue();
         vm.prank(_redeemer);
         cdpManager.redeemCollateral(
             _redeemedDebt,
@@ -445,7 +451,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-        bytes32 _cdpId1 = borrowerOperations.openCdp(4, bytes32(0), bytes32(0), 2200000000000000067);
+        bytes32 _cdpId1 = borrowerOperations.openCdp(
+            4 * minChange,
+            bytes32(0),
+            bytes32(0),
+            2200000000000000067
+        );
 
         bytes32 _cdpId2 = borrowerOperations.openCdp(
             136273187309674429,
@@ -459,7 +470,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
         _before(_cdpId);
-
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             77233452000714940,
             bytes32(0),
@@ -550,6 +561,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         console.log("first NICR:  %s", cdpManager.getCachedNominalICR(first));
         console.log("second NICR: %s", cdpManager.getCachedNominalICR(second));
 
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemAmt,
             hint,

@@ -54,6 +54,22 @@ library Pretty {
         return _pretty(n, decimals);
     }
 
+    function pretty(uint128 n) external pure returns (string memory) {
+        return _pretty(uint128(n), DEFAULT_DECIMALS);
+    }
+
+    function pretty(uint128 n, uint8 decimals) external pure returns (string memory) {
+        return _pretty(uint128(n), decimals);
+    }
+
+    function pretty(uint64 n) external pure returns (string memory) {
+        return _pretty(uint64(n), DEFAULT_DECIMALS);
+    }
+
+    function pretty(uint64 n, uint8 decimals) external pure returns (string memory) {
+        return _pretty(uint64(n), decimals);
+    }
+
     function pretty(int256 n) external pure returns (string memory) {
         return _prettyInt(n, DEFAULT_DECIMALS);
     }
