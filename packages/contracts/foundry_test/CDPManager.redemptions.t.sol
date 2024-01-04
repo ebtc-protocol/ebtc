@@ -561,6 +561,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         console.log("first NICR:  %s", cdpManager.getCachedNominalICR(first));
         console.log("second NICR: %s", cdpManager.getCachedNominalICR(second));
 
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemAmt,
             hint,
