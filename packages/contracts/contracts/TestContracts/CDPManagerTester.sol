@@ -106,7 +106,15 @@ contract CdpManagerTester is CdpManager {
         uint256 _ETHDrawn,
         uint256 _price
     ) external view returns (uint256) {
-        uint256 _totalEBTCSupply = _getSystemDebt();
+        return getUpdatedBaseRateFromRedemptionWithSystemDebt(_ETHDrawn, _price, _getSystemDebt());
+    }
+
+    function getUpdatedBaseRateFromRedemptionWithSystemDebt(
+        uint256 _ETHDrawn,
+        uint256 _price,
+        uint256 _systemDebt
+    ) public view returns (uint256) {
+        uint256 _totalEBTCSupply = EbtcMath._min(_getSystemDebt(), _systemDebt);
         uint256 decayedBaseRate = _calcDecayedBaseRate();
         uint256 redeemedEBTCFraction = (collateral.getPooledEthByShares(_ETHDrawn) * _price) /
             _totalEBTCSupply;

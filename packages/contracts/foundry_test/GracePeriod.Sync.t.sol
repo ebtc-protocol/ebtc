@@ -107,11 +107,13 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         uint256 biggerSnap = vm.snapshot();
         vm.startPrank(safeUser);
+        _syncSystemDebtTwapToSpotValue();
         _partialRedemption(1e17, price);
         // Get TCR here
         uint256 EXPECTED_REDEMPTION_TCR = cdpManager.getCachedTCR(price);
         vm.revertTo(biggerSnap);
 
+        _syncSystemDebtTwapToSpotValue();
         vm.expectEmit(false, false, false, true);
         emit TCRNotified(EXPECTED_REDEMPTION_TCR);
         _partialRedemption(1e17, price);

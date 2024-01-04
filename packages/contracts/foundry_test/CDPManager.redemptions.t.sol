@@ -51,6 +51,8 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         uint256 _redeemDebt = borrowerOperations.MIN_CHANGE();
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemDebt, (priceFeedMock.fetchPrice()), 0);
+
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedemptionHint,
@@ -134,7 +136,9 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         );
         require(firstRedempHint == _cdpIds[0], "!firstRedempHint");
         uint256 _debtBalBefore = eBTCToken.balanceOf(_redeemer);
+        _syncSystemDebtTwapToSpotValue();
         vm.prank(_redeemer);
+
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedempHint,
@@ -241,6 +245,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             debt,
             firstRedemptionHint,
@@ -380,6 +385,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     ) internal {
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemedDebt, priceFeedMock.fetchPrice(), 0);
+        _syncSystemDebtTwapToSpotValue();
         vm.prank(_redeemer);
         cdpManager.redeemCollateral(
             _redeemedDebt,
@@ -464,7 +470,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
         _before(_cdpId);
-
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             77233452000714940,
             bytes32(0),
@@ -555,6 +561,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         console.log("first NICR:  %s", cdpManager.getCachedNominalICR(first));
         console.log("second NICR: %s", cdpManager.getCachedNominalICR(second));
 
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemAmt,
             hint,

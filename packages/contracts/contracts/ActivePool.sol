@@ -11,6 +11,7 @@ import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/BaseMath.sol";
+import "./Dependencies/TwapWeightedObserver.sol";
 
 /**
  * @title The Active Pool holds the collateral and EBTC debt (only accounting but not EBTC tokens) for all active cdps.
@@ -19,7 +20,14 @@ import "./Dependencies/BaseMath.sol";
  * @notice (destination may vary depending on the liquidation conditions).
  * @dev ActivePool also allows ERC3156 compatible flashloan of stETH token
  */
-contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMath, AuthNoOwner {
+contract ActivePool is
+    IActivePool,
+    ERC3156FlashLender,
+    ReentrancyGuard,
+    BaseMath,
+    AuthNoOwner,
+    TwapWeightedObserver
+{
     using SafeERC20 for IERC20;
     string public constant NAME = "ActivePool";
 
@@ -49,7 +57,7 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         address _collTokenAddress,
         address _collSurplusAddress,
         address _feeRecipientAddress
-    ) {
+    ) TwapWeightedObserver(0) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         collateral = ICollateralToken(_collTokenAddress);
@@ -63,6 +71,8 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         }
 
         emit FeeRecipientAddressChanged(_feeRecipientAddress);
+
+        require(systemDebt == 0, "ActivePool: systemDebt should be 0 for TWAP initialization");
     }
 
     // --- Getters for public variables. Required by IPool interface ---
@@ -196,6 +206,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
 
         uint256 cachedSystemDebt = systemDebt + _amount;
 
+        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
+        update(); // @audit update TWAP Observer accumulator and weighted average
+
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
@@ -208,6 +221,9 @@ contract ActivePool is IActivePool, ERC3156FlashLender, ReentrancyGuard, BaseMat
         _requireCallerIsBOorCdpM();
 
         uint256 cachedSystemDebt = systemDebt - _amount;
+
+        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
+        update(); // @audit update TWAP Observer accumulator and weighted average
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);

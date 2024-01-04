@@ -3,8 +3,9 @@
 pragma solidity 0.8.17;
 
 import "./IPool.sol";
+import "./ITwapWeightedObserver.sol";
 
-interface IActivePool is IPool {
+interface IActivePool is IPool, ITwapWeightedObserver {
     // --- Events ---
     event ActivePoolEBTCDebtUpdated(uint256 _EBTCDebt);
     event SystemCollSharesUpdated(uint256 _coll);
