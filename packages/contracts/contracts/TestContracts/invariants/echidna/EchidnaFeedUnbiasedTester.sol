@@ -79,7 +79,7 @@ contract EchidnaFeedUnbiasedTester is
         ethBtcCLFeed.setPrevPrice(3 ether - 42);
 
         // do we have a fallback caller?
-        fallbackCaller = new MockFallbackCaller();
+        fallbackCaller = new MockFallbackCaller(priceFeed.fetchPrice());
 
         priceFeed = new PriceFeed(
             address(fallbackCaller),
