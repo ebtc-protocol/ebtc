@@ -20,6 +20,8 @@ const MultiCdpGetter = artifacts.require("./MultiCdpGetter.sol")
 const FeeRecipient = artifacts.require("./FeeRecipient.sol")
 const EBTCDeployer = artifacts.require("./EBTCDeployer.sol")
 
+const TimelockControllerEnumerable = artifacts.require("./TimelockControllerEnumerable.sol")
+
 const ActivePoolTester = artifacts.require("./ActivePoolTester.sol")
 const EbtcMathTester = artifacts.require("./EbtcMathTester.sol")
 const BorrowerOperationsTester = artifacts.require("./BorrowerOperationsTester.sol")
@@ -334,9 +336,9 @@ class DeploymentHelper {
     return await CdpManager.at(_deployedAddr);
   }
 
-  static async deployBorrowerOperations(ebtcDeployer, _expectedAddr, collateralAddress){
+  static async deployBorrowerOperations(ebtcDeployer, _expectedAddr, feeRecipient, collateralAddress){
     const _argTypes = ['address', 'address', 'address', 'address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], _expectedAddr[10], collateralAddress];
+    const _argValues = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], feeRecipient, collateralAddress];
 
     const _salt = await ebtcDeployer.BORROWER_OPERATIONS();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, BorrowerOperations, _salt);
@@ -344,9 +346,9 @@ class DeploymentHelper {
     return await BorrowerOperations.at(_deployedAddr);
   }
 
-  static async deployActivePool(ebtcDeployer, _expectedAddr, collateralAddress){
+  static async deployActivePool(ebtcDeployer, _expectedAddr, collateralAddress, feeRecipient){
     const _argTypes = ['address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], _expectedAddr[10]];
+    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], feeRecipient];
 
     const _salt = await ebtcDeployer.ACTIVE_POOL();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, ActivePool, _salt);
@@ -374,6 +376,17 @@ class DeploymentHelper {
     let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
     const eBTCDeployer = await EBTCDeployer.new({gasLimit: await EBTCDeployer.new.estimateGas(), nonce: _nonce});
     return eBTCDeployer;
+  }
+
+  static async deployTimelock(delay, proposers, executors, admin) {
+    let _nonce = await ethers.provider.getTransactionCount((await ethers.getSigners())[0].address);
+    const timelock = await TimelockControllerEnumerable.new(
+      delay,
+      proposers,
+      executors,
+      admin,
+      {gasLimit: 5000000, nonce: _nonce}); // Issue when not hardcoding gas limit
+    return timelock;
   }
 
   /**  

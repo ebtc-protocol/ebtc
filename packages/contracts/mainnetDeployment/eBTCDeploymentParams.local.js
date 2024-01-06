@@ -11,6 +11,13 @@ const TX_CONFIRMATIONS = 1
 
 const VERIFY_ETHERSCAN = false
 
+// Timelock configuration parameters
+const HIGHSEC_MIN_DELAY = 600 // 10 mins
+const LOWSEC_MIN_DELAY = 300 // 5 mins
+
+const ADDITIONAL_HIGHSEC_ADMIN = ""
+const ADDITIONAL_LOWSEC_ADMIN = ""
+
 module.exports = {
   OUTPUT_FILE,
   DEPLOY_WAIT,
@@ -18,5 +25,9 @@ module.exports = {
   MAX_FEE_PER_GAS,
   TX_CONFIRMATIONS,
   VERIFY_ETHERSCAN,
-  externalAddress
+  externalAddress,
+  HIGHSEC_MIN_DELAY,
+  LOWSEC_MIN_DELAY,
+  ADDITIONAL_HIGHSEC_ADMIN,
+  ADDITIONAL_LOWSEC_ADMIN
 };

@@ -6,6 +6,8 @@ import "forge-std/Test.sol";
 import {IPriceFeed} from "../contracts/Interfaces/IPriceFeed.sol";
 import {PriceFeed} from "../contracts/PriceFeed.sol";
 import {PriceFeedTester} from "../contracts/TestContracts/PriceFeedTester.sol";
+import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
+import {PriceFeedOracleTester} from "../contracts/TestContracts/PriceFeedOracleTester.sol";
 import {MockTellor} from "../contracts/TestContracts/MockTellor.sol";
 import {MockAggregator} from "../contracts/TestContracts/MockAggregator.sol";
 import {eBTCBaseFixture} from "./BaseFixture.sol";
@@ -16,6 +18,8 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
     address constant STETH_ETH_CL_FEED = 0x86392dC19c0b719886221c78AB11eb8Cf5c52812;
 
     PriceFeedTester internal priceFeedTester;
+    PriceFeedTestnet internal priceFeedSecondary;
+    PriceFeedOracleTester internal secondaryOracle;
     TellorCaller internal _tellorCaller;
     MockTellor internal _mockTellor;
     MockAggregator internal _mockChainLinkEthBTC;
@@ -65,6 +69,9 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         authority.setUserRole(authUser, 4, true);
         authority.setRoleCapability(4, address(priceFeedTester), SET_FALLBACK_CALLER_SIG, true);
         vm.stopPrank();
+
+        priceFeedSecondary = new PriceFeedTestnet(address(authority));
+        secondaryOracle = new PriceFeedOracleTester(address(priceFeedSecondary));
     }
 
     function _initMockChainLinkFeed(
@@ -93,5 +100,52 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
 
         vm.expectRevert();
         priceFeedTester.fetchPrice();
+    }
+
+    function testPrimaryFeedSuccess() public {
+        priceFeedMock.setPrice(1e18);
+        assertEq(ebtcFeed.fetchPrice(), 1e18);
+    }
+
+    function testPrimaryFeedFail() public {
+        priceFeedMock.setPrice(1e18);
+
+        // Store last good price (1e18)
+        ebtcFeed.fetchPrice();
+
+        // Updating primary price should have no effect
+        priceFeedMock.setPrice(1.15e18);
+
+        // Check all error states (no fallback, returns last known state)
+        for (uint256 i = 1; i < uint256(PriceFeedOracleTester.ErrorState.COUNT); i++) {
+            primaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(i));
+            assertEq(ebtcFeed.fetchPrice(), 1e18);
+        }
+
+        vm.prank(defaultGovernance);
+        ebtcFeed.setSecondaryOracle(address(secondaryOracle));
+
+        // Updating prices should have no effect
+        priceFeedMock.setPrice(1.2e18);
+        priceFeedSecondary.setPrice(1.1e18);
+
+        // Check all error states (with secondary, returns secondary price = 1.1e18)
+        for (uint256 i = 1; i < uint256(PriceFeedOracleTester.ErrorState.COUNT); i++) {
+            primaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(i));
+            assertEq(ebtcFeed.fetchPrice(), 1.1e18);
+        }
+
+        // Updating prices should have no effect
+        priceFeedMock.setPrice(1.25e18);
+        priceFeedSecondary.setPrice(1.15e18);
+
+        // Both primary and secondary failing, return last known price 1.1e18
+        for (uint256 i = 1; i < uint256(PriceFeedOracleTester.ErrorState.COUNT); i++) {
+            primaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(i));
+            for (uint256 j = 1; j < uint256(PriceFeedOracleTester.ErrorState.COUNT); j++) {
+                secondaryOracle.setErrorState(PriceFeedOracleTester.ErrorState(j));
+                assertEq(ebtcFeed.fetchPrice(), 1.1e18);
+            }
+        }
     }
 }

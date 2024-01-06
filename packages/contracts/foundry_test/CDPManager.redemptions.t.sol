@@ -48,9 +48,11 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         // Set the initial baseRate to a non-zero value via rdemption
         console.log("balance: %s", eBTCToken.balanceOf(user));
         eBTCToken.approve(address(cdpManager), type(uint256).max);
-        uint256 _redeemDebt = 1;
+        uint256 _redeemDebt = borrowerOperations.MIN_CHANGE();
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemDebt, (priceFeedMock.fetchPrice()), 0);
+
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedemptionHint,
@@ -134,7 +136,9 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         );
         require(firstRedempHint == _cdpIds[0], "!firstRedempHint");
         uint256 _debtBalBefore = eBTCToken.balanceOf(_redeemer);
+        _syncSystemDebtTwapToSpotValue();
         vm.prank(_redeemer);
+
         cdpManager.redeemCollateral(
             _redeemDebt,
             firstRedempHint,
@@ -229,7 +233,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
     function test_ValidRedemptionNoLongerRevertsWhenUnpausedAfterBeingPaused() public {
         (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
-        uint256 debt = 1;
+        uint256 debt = minChange;
 
         vm.startPrank(defaultGovernance);
         cdpManager.setRedemptionsPaused(true);
@@ -241,6 +245,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(debt, (priceFeedMock.fetchPrice()), 0);
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             debt,
             firstRedemptionHint,
@@ -380,6 +385,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     ) internal {
         (bytes32 firstRedemptionHint, uint256 partialRedemptionHintNICR, , ) = hintHelpers
             .getRedemptionHints(_redeemedDebt, priceFeedMock.fetchPrice(), 0);
+        _syncSystemDebtTwapToSpotValue();
         vm.prank(_redeemer);
         cdpManager.redeemCollateral(
             _redeemedDebt,
@@ -445,7 +451,12 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
-        bytes32 _cdpId1 = borrowerOperations.openCdp(4, bytes32(0), bytes32(0), 2200000000000000067);
+        bytes32 _cdpId1 = borrowerOperations.openCdp(
+            4 * minChange,
+            bytes32(0),
+            bytes32(0),
+            2200000000000000067
+        );
 
         bytes32 _cdpId2 = borrowerOperations.openCdp(
             136273187309674429,
@@ -459,7 +470,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
         _before(_cdpId);
-
+        _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             77233452000714940,
             bytes32(0),
@@ -492,5 +503,101 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         console2.log("value", beforeValue, afterValue);
 
         assertTrue(invariant_CDPM_04(vars), CDPM_04);
+    }
+
+    function testSortingForPartialRedemption() public {
+        uint256 grossColl = 11e18 + cdpManager.LIQUIDATOR_REWARD();
+
+        uint256 price = priceFeedMock.fetchPrice();
+
+        uint256 debtMCR = _utils.calculateBorrowAmount(11e18, price, MINIMAL_COLLATERAL_RATIO);
+
+        uint256 debtColl = _utils.calculateBorrowAmount(11e18, price, COLLATERAL_RATIO);
+
+        address wallet = _utils.getNextUserAddress();
+
+        // 5 Cdps with the biggest NICR and the head of the sorted list
+        bytes32 zero = _openTestCDP(wallet, grossColl, debtColl - 20000);
+        bytes32 first = _openTestCDP(wallet, grossColl, debtColl - 10000);
+        bytes32 second = _openTestCDP(wallet, grossColl, debtColl - 7500);
+        bytes32 third = _openTestCDP(wallet, grossColl, debtColl - 5000);
+        bytes32 fourth = _openTestCDP(wallet, grossColl, debtMCR);
+
+        vm.startPrank(wallet);
+
+        // Check the TCR is above CCR
+        assert(cdpManager.getCachedTCR(price) > CCR);
+
+        // Lower the price so last node can go underwater
+        // and the third node is the first hint for redeeming
+        priceFeedMock.setPrice(price - 1e1);
+
+        // Extra check to ensure:
+        // Fourth node is underwater ICR < MCR
+        // Third node has ICR > MCR
+        assert(_getCachedICR(fourth) < MINIMAL_COLLATERAL_RATIO);
+        assert(_getCachedICR(third) > MINIMAL_COLLATERAL_RATIO);
+
+        uint256 _redeemAmt = debtColl + 10000;
+        (bytes32 hint, uint256 partialNICR, , ) = hintHelpers.getRedemptionHints(
+            (_redeemAmt),
+            priceFeedMock.fetchPrice(),
+            0
+        );
+
+        // Check the hint is the third node in the sorted list
+        // Which is the node above the underwater Cdp
+        assert(hint == third);
+
+        // Approve cdp manager to use ebtc tokens
+        eBTCToken.approve(address(cdpManager), eBTCToken.balanceOf(wallet));
+
+        // Fully redeem a CDP and partially redeem another with a wrong hint pair
+        // correct pair should be (zero, first)
+        bytes32 _upperHintForPartialReinsert = first;
+        bytes32 _lowerHintForPartailReinsert = fourth;
+
+        console.log("Before redemption");
+        console.log("first NICR:  %s", cdpManager.getCachedNominalICR(first));
+        console.log("second NICR: %s", cdpManager.getCachedNominalICR(second));
+
+        _syncSystemDebtTwapToSpotValue();
+        cdpManager.redeemCollateral(
+            _redeemAmt,
+            hint,
+            _upperHintForPartialReinsert,
+            _lowerHintForPartailReinsert,
+            partialNICR,
+            0,
+            1e18
+        );
+
+        // Check the third node is fully redeemed and no longer exists in the list
+        assert(!sortedCdps.contains(third));
+        // Check the lowest NICR node is still the fourth node
+        assert(fourth == sortedCdps.getLast());
+        // Check the biggest NICR node is still the first node
+        assert(zero == sortedCdps.getFirst());
+
+        // Check the second node is correctly placed, should be a bit upper after redemption
+        assert(second == sortedCdps.getPrev(first));
+        assert(second == sortedCdps.getNext(zero));
+
+        uint256 _zeroNICR = cdpManager.getCachedNominalICR(zero);
+        uint256 _firstNICR = cdpManager.getCachedNominalICR(first);
+        uint256 _secondNICR = cdpManager.getCachedNominalICR(second);
+        uint256 _fourthNICR = cdpManager.getCachedNominalICR(fourth);
+
+        console.log("After redemption");
+        console.log("zero NICR:   %s", _zeroNICR);
+        console.log("second NICR: %s", _secondNICR);
+        console.log("first NICR:  %s", _firstNICR);
+        console.log("fourth NICR: %s", _fourthNICR);
+
+        assert(_secondNICR > _firstNICR);
+        assert(_zeroNICR > _secondNICR);
+        assert(_firstNICR > _fourthNICR);
+
+        vm.stopPrank();
     }
 }

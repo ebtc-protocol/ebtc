@@ -90,6 +90,10 @@ abstract contract PropertiesDescriptions {
         "GENERAL-13: The SynchedICR of every CDP in the Linked List Matches the ICR the CDPs will have the call (as returned by CrLens)";
     string constant GENERAL_14 =
         "GENERAL-14: The NominalICR from `getNominalICR` matches `quoteRealNICR` (as returned by CrLens)";
+    string constant GENERAL_15 =
+        "GENERAL-15: CDP debt should always be greater than MIN_CHANGE (1000 Wei)";
+    string constant GENERAL_16 =
+        "GENERAL-16: Collateral and debt change amounts should always be greater than MIN_CHANGE (1000 Wei)";
 
     ///////////////////////////////////////////////////////
     // Redemptions
@@ -143,4 +147,12 @@ abstract contract PropertiesDescriptions {
     string constant PF_05 =
         "PF-05: The price feed should never use the fallback if chainlink is Working";
     string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
+    string constant PF_07 =
+        "PF-07: The price feed should return the primary oracle price if it is working";
+    string constant PF_08 =
+        "PF-08: The price feed should return the secondary oracle price if the primary oracle is not working";
+    string constant PF_09 =
+        "PF-09: The price feed should return the last good price if both oracles are not working";
+    string constant PF_10 =
+        "PF-10: The price feed should never return different prices when called multiple times in a single tx";
 }

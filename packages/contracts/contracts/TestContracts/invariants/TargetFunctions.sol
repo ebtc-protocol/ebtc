@@ -358,6 +358,9 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -442,11 +445,49 @@ abstract contract TargetFunctions is Properties {
         uint256 _maxFeePercentage,
         uint256 _maxIterations
     ) public setup {
-        bool success;
-        bytes memory returnData;
+        _redeemCollateral(
+            _EBTCAmount,
+            bytes32(0),
+            _partialRedemptionHintNICR,
+            false,
+            false,
+            _maxFeePercentage,
+            _maxIterations
+        );
+    }
 
+    function redeemCollateral(
+        uint _EBTCAmount,
+        bytes32 _firstRedemptionHintFromMedusa,
+        uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
+        bool useProperPartialHint,
+        uint _maxFeePercentage,
+        uint _maxIterations
+    ) public setup {
+        _redeemCollateral(
+            _EBTCAmount,
+            _firstRedemptionHintFromMedusa,
+            _partialRedemptionHintNICRFromMedusa,
+            useProperFirstHint,
+            useProperPartialHint,
+            _maxFeePercentage,
+            _maxIterations
+        );
+    }
+
+    function _redeemCollateral(
+        uint _EBTCAmount,
+        bytes32 _firstRedemptionHintFromMedusa,
+        uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
+        bool useProperPartialHint,
+        uint _maxFeePercentage,
+        uint _maxIterations
+    ) internal {
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
-        _maxIterations = between(_maxIterations, 0, 1);
+
+        _maxIterations = between(_maxIterations, 0, 10);
 
         _maxFeePercentage = between(
             _maxFeePercentage,
@@ -458,21 +499,40 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
-        (success, returnData) = actor.proxy(
-            address(cdpManager),
-            abi.encodeWithSelector(
-                CdpManager.redeemCollateral.selector,
-                _EBTCAmount,
-                bytes32(0),
-                bytes32(0),
-                bytes32(0),
-                _partialRedemptionHintNICR,
-                _maxIterations,
-                _maxFeePercentage
-            )
-        );
+        {
+            uint price = priceFeedMock.getPrice();
 
-        require(success);
+            (bytes32 firstRedemptionHintVal, uint256 partialRedemptionHintNICR, , ) = hintHelpers
+                .getRedemptionHints(_EBTCAmount, price, _maxIterations);
+
+            _firstRedemptionHintFromMedusa = useProperFirstHint
+                ? firstRedemptionHintVal
+                : _firstRedemptionHintFromMedusa;
+
+            _partialRedemptionHintNICRFromMedusa = useProperPartialHint
+                ? partialRedemptionHintNICR
+                : _partialRedemptionHintNICRFromMedusa;
+        }
+
+        {
+            bool success;
+
+            (success, ) = actor.proxy(
+                address(cdpManager),
+                abi.encodeWithSelector(
+                    CdpManager.redeemCollateral.selector,
+                    _EBTCAmount,
+                    _firstRedemptionHintFromMedusa,
+                    bytes32(0),
+                    bytes32(0),
+                    _partialRedemptionHintNICRFromMedusa,
+                    _maxIterations,
+                    _maxFeePercentage
+                )
+            );
+
+            require(success);
+        }
 
         _after(_cdpId);
 
@@ -523,7 +583,7 @@ abstract contract TargetFunctions is Properties {
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint256 _amount) internal setup {
+    function flashLoanColl(uint _amount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -581,7 +641,7 @@ abstract contract TargetFunctions is Properties {
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint256 _amount) internal setup {
+    function flashLoanEBTC(uint _amount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -720,6 +780,9 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -824,6 +887,8 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_coll, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -898,6 +963,8 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -972,6 +1039,9 @@ abstract contract TargetFunctions is Properties {
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     function repayDebt(uint256 _amount, uint256 _i) public setup {
@@ -986,6 +1056,7 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+
         _amount = between(_amount, 0, entireDebt);
 
         _before(_cdpId);
@@ -1044,6 +1115,9 @@ abstract contract TargetFunctions is Properties {
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     function closeCdp(uint256 _i) public setup {
@@ -1202,6 +1276,20 @@ abstract contract TargetFunctions is Properties {
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        if (_collWithdrawal > 0) {
+            gte(_collWithdrawal, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        }
+
+        if (_isDebtIncrease) {
+            gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        } else {
+            // it's ok for _EBTCChange to be 0 if we are not increasing debt (coll only operation)
+            if (_EBTCChange > 0) {
+                gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            }
+        }
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     ///////////////////////////////////////////////////////

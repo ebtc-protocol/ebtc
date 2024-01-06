@@ -55,15 +55,16 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         ethBtcCLFeed.setPrice(3 ether - 2);
         ethBtcCLFeed.setPrevPrice(3 ether - 42);
 
-        // do we have a fallback caller?
-        fallbackCaller = new MockFallbackCaller();
-
         priceFeed = new PriceFeed(
-            address(fallbackCaller),
+            address(0),
             address(authority),
             address(collEthCLFeed),
             address(ethBtcCLFeed)
         );
+
+        fallbackCaller = new MockFallbackCaller(priceFeed.fetchPrice());
+
+        priceFeed.setFallbackCaller(address(fallbackCaller));
 
         statusHistory[(statusHistoryOperations++) % MAX_STATUS_HISTORY_OPERATIONS] = priceFeed
             .status();
@@ -74,19 +75,21 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
     }
 
     function setFallbackResponse(uint256 answer, uint256 timestampRetrieved, bool success) public {
+        uint256 fallbackAnswer = fallbackCaller._answer() == 0
+            ? fallbackCaller._initAnswer()
+            : fallbackCaller._answer();
+        uint256 fallbackTs = fallbackCaller._timestampRetrieved() == 0
+            ? block.timestamp
+            : fallbackCaller._timestampRetrieved();
         answer = (
             clampBetween(
                 answer,
-                123456, // THIS WAS ALWAYS ZERO
-                (fallbackCaller._answer() * MAX_PRICE_CHANGE) / 1e18
+                (fallbackAnswer * 1e18) / MAX_PRICE_CHANGE,
+                (fallbackAnswer * MAX_PRICE_CHANGE) / 1e18
             )
         );
         timestampRetrieved = (
-            clampBetween(
-                timestampRetrieved,
-                fallbackCaller._timestampRetrieved(),
-                fallbackCaller._timestampRetrieved() + MAX_UPDATE_TIME_CHANGE
-            )
+            clampBetween(timestampRetrieved, fallbackTs, fallbackTs + MAX_UPDATE_TIME_CHANGE)
         );
         fallbackCaller.setFallbackResponse(answer, timestampRetrieved, success);
     }
@@ -195,7 +198,7 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         uint256 price = _fetchPrice();
         for (uint256 i; i < 2; i++) {
             uint256 newPrice = _fetchPrice();
-            assertWithMsg(price == newPrice, "PRICE BAD");
+            assertWithMsg(price == newPrice, PF_10);
         }
     }
 

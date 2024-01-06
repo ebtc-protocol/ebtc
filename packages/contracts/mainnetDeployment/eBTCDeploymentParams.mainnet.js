@@ -16,6 +16,13 @@ const TX_CONFIRMATIONS = 1
 const VERIFY_ETHERSCAN = true
 const ETHERSCAN_BASE_URL = 'https://etherscan.io/address'
 
+// Timelock configuration parameters
+const HIGHSEC_MIN_DELAY = 604800 // 7 days
+const LOWSEC_MIN_DELAY = 172800 // 2 days
+
+const ADDITIONAL_HIGHSEC_ADMIN = ""
+const ADDITIONAL_LOWSEC_ADMIN = ""
+
 module.exports = {
   OUTPUT_FILE,
   DEPLOY_WAIT,
@@ -24,5 +31,9 @@ module.exports = {
   TX_CONFIRMATIONS,
   ETHERSCAN_BASE_URL,
   VERIFY_ETHERSCAN,
-  externalAddress
+  externalAddress,
+  HIGHSEC_MIN_DELAY,
+  LOWSEC_MIN_DELAY,
+  ADDITIONAL_HIGHSEC_ADMIN,
+  ADDITIONAL_LOWSEC_ADMIN
 };

@@ -196,7 +196,7 @@ contract PositionManagersTest is eBTCBaseInvariants {
 
         collToWithdraw = bound(
             collToWithdraw,
-            1,
+            borrowerOperations.MIN_CHANGE(),
             _getCdpStEthBalance(userCdpId) - cdpManager.MIN_NET_STETH_BALANCE() - 1
         );
 

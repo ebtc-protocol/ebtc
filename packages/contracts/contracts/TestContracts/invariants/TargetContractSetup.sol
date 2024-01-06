@@ -1,6 +1,7 @@
 pragma solidity 0.8.17;
 
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
+import "@crytic/properties/contracts/util/Hevm.sol";
 
 import "../../Interfaces/ICdpManagerData.sol";
 import "../../Dependencies/SafeMath.sol";
@@ -13,6 +14,7 @@ import "../../CollSurplusPool.sol";
 import "../../SortedCdps.sol";
 import "../../HintHelpers.sol";
 import "../../FeeRecipient.sol";
+import "../../EbtcFeed.sol";
 import "../testnet/PriceFeedTestnet.sol";
 import "../CollateralTokenTester.sol";
 import "../EBTCTokenTester.sol";
@@ -119,11 +121,13 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 )
             );
 
-            // Price Feed Mock
-            creationCode = type(PriceFeedTestnet).creationCode;
-            args = abi.encode(addr.authorityAddress);
+            priceFeedMock = new PriceFeedTestnet(addr.authorityAddress);
 
-            priceFeedMock = PriceFeedTestnet(
+            // Price Feed Mock
+            creationCode = type(EbtcFeed).creationCode;
+            args = abi.encode(addr.authorityAddress, address(priceFeedMock), address(0));
+
+            ebtcFeed = EbtcFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -265,6 +269,18 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 priceFeedMock.setFallbackCaller.selector,
                 true
             );
+            authority.setRoleCapability(
+                4,
+                address(ebtcFeed),
+                ebtcFeed.setPrimaryOracle.selector,
+                true
+            );
+            authority.setRoleCapability(
+                4,
+                address(ebtcFeed),
+                ebtcFeed.setSecondaryOracle.selector,
+                true
+            );
 
             authority.setRoleCapability(
                 5,
@@ -376,6 +392,11 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    function _syncSystemDebtTwapToSpotValue() internal {
+        hevm.warp(block.timestamp + activePool.PERIOD());
+        activePool.update();
     }
 
     function _openWhaleCdpAndTransferEBTC() internal {

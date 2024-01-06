@@ -2398,6 +2398,7 @@ contract('CdpManager', async accounts => {
     const price = await priceFeed.getPrice()
 
     // --- TEST ---
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Find hints for redeeming 20 EBTC
     const {
@@ -2489,6 +2490,7 @@ contract('CdpManager', async accounts => {
     const price = await priceFeed.getPrice()
 
     // --- TEST ---
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Find hints for redeeming 20 EBTC
     const {
@@ -2570,6 +2572,7 @@ contract('CdpManager', async accounts => {
     const price = await priceFeed.getPrice()
 
     // --- TEST ---
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Find hints for redeeming 20 EBTC
     const {
@@ -2660,6 +2663,7 @@ contract('CdpManager', async accounts => {
 
 
     // --- TEST ---
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Find hints for redeeming 20 EBTC
     const {
@@ -2739,6 +2743,7 @@ contract('CdpManager', async accounts => {
     let _erinCdpId = await sortedCdps.cdpOfOwnerByIndex(erin, 0);
 
     // --- TEST --- 
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // open cdp from redeemer.  Redeemer has highest ICR (100ETH, 100 EBTC), 20000%
     await _signer.sendTransaction({ to: flyn, value: ethers.utils.parseEther("340000")});
@@ -2797,6 +2802,7 @@ contract('CdpManager', async accounts => {
     const attemptedRedemptionAmount = redemptionAmount.add(C_debt)
 
     // --- TEST --- 
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // open cdp from redeemer.  Redeemer has highest ICR (100ETH, 100 EBTC), 20000%
     await _signer.sendTransaction({ to: flyn, value: ethers.utils.parseEther("240000")});
@@ -2852,6 +2858,7 @@ contract('CdpManager', async accounts => {
     await ebtcToken.transfer(B, await ebtcToken.balanceOf(C), {from: C})
     
     await cdpManager.setBaseRate(0) 
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
 
 
@@ -2886,6 +2893,7 @@ contract('CdpManager', async accounts => {
     await ebtcToken.transfer(B, await ebtcToken.balanceOf(C), {from: C})
 
     await cdpManager.setBaseRate(0) 
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
 
 
@@ -2922,6 +2930,7 @@ contract('CdpManager', async accounts => {
     const price = await priceFeed.getPrice()
 
     // --- TEST --- 
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const {
       firstRedemptionHint,
@@ -3064,6 +3073,7 @@ contract('CdpManager', async accounts => {
     await priceFeed.setPrice(price)
 
     // --- TEST --- 
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
 
 
@@ -3339,6 +3349,7 @@ contract('CdpManager', async accounts => {
     await priceFeed.setPrice(dec(3714, 13))
 
     assert.isTrue(await sortedCdps.contains(_flynCdpId))
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Liquidate Flyn
     await debtToken.transfer(owner, (await debtToken.balanceOf(flyn)), {from: flyn});	 
@@ -3394,6 +3405,7 @@ contract('CdpManager', async accounts => {
     assert.equal(activePool_coll_before.toString(), totalColl)
 
     const price = await priceFeed.getPrice()
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
 
 
@@ -3594,6 +3606,7 @@ contract('CdpManager', async accounts => {
     const totalColl = W_coll.add(A_coll).add(B_coll).add(C_coll).add(D_coll)
 
     const price = await priceFeed.getPrice()
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const _120_EBTC = '120000000000000000000'
     const _373_EBTC = '373000000000000000000'
@@ -3791,6 +3804,7 @@ contract('CdpManager', async accounts => {
 
     // Check baseRate == 0
     assert.equal(await cdpManager.baseRate(), '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
 
 
@@ -3821,6 +3835,7 @@ contract('CdpManager', async accounts => {
 
     // Check baseRate == 0
     assert.equal(await cdpManager.baseRate(), '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
     const B_balanceBefore = await ebtcToken.balanceOf(B)
@@ -3928,6 +3943,7 @@ contract('CdpManager', async accounts => {
     // Check LQTY Staking contract balance before is zero
     const lqtyStakingBalance_Before = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
     assert.equal(lqtyStakingBalance_Before, '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
 
@@ -3965,6 +3981,7 @@ contract('CdpManager', async accounts => {
     // Check feeRecipient balance beforehand
     const feeRecipientBalanceBefore = toBN(await contracts.collateral.balanceOf(feeRecipient.address))
     assert.equal(feeRecipientBalanceBefore, '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
 
@@ -3998,6 +4015,7 @@ contract('CdpManager', async accounts => {
 
     // Check baseRate == 0
     assert.equal(await cdpManager.baseRate(), '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
     const B_balanceBefore = await ebtcToken.balanceOf(B)
@@ -4042,6 +4060,7 @@ contract('CdpManager', async accounts => {
 
     // Check baseRate == 0
     assert.equal(await cdpManager.baseRate(), '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
     const B_balanceBefore = await ebtcToken.balanceOf(B)
@@ -4089,6 +4108,7 @@ contract('CdpManager', async accounts => {
     // Confirm baseRate before redemption is 0
     const baseRate = await cdpManager.baseRate()
     assert.equal(baseRate, '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Check total EBTC supply
     const activeEBTC = await activePool.getSystemDebt()
@@ -4100,8 +4120,12 @@ contract('CdpManager', async accounts => {
     const redemptionAmount = toBN(dec(9, 18))
     const price = await priceFeed.getPrice()
     const ETHDrawn = redemptionAmount.mul(mv._1e18BN).div(price)
-    let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemption(ETHDrawn, price);
+	
+    let _weightedMean = await th.simulateObserveForTWAP(contracts, ethers.provider, 1);
+	
+    let _updatedBaseRate = await cdpManager.getUpdatedBaseRateFromRedemptionWithSystemDebt(ETHDrawn, price, _weightedMean);
     let _updatedRate = _updatedBaseRate.add(await cdpManager.redemptionFeeFloor());
+
     const gasUsed = await th.redeemCollateral(A, contracts, redemptionAmount, GAS_PRICE)
 
     /*
@@ -4119,7 +4143,7 @@ contract('CdpManager', async accounts => {
       ETHDrawn.sub(
         _updatedRate.mul(ETHDrawn).div(mv._1e18BN)
       ),
-      100000
+      100000000
     )
   })
 
@@ -4147,6 +4171,7 @@ contract('CdpManager', async accounts => {
     const A_balanceBefore = toBN(await web3.eth.getBalance(A))
     const B_balanceBefore = toBN(await web3.eth.getBalance(B))
     const C_balanceBefore = toBN(await web3.eth.getBalance(C))
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // whale redeems 360 EBTC.  Expect this to fully redeem A, B, C, and partially redeem D.
     await th.redeemCollateral(whale, contracts, redemptionAmount, GAS_PRICE)
@@ -4194,6 +4219,7 @@ contract('CdpManager', async accounts => {
     // Confirm baseRate before redemption is 0
     const baseRate = await cdpManager.baseRate()
     assert.equal(baseRate, '0')
+    await th.syncTwapSystemDebt(contracts, ethers.provider);    
 
     // whale redeems EBTC.  Expect this to fully redeem A, B, C, and partially redeem D.
     await th.redeemCollateral(whale, contracts, redemptionAmount, GAS_PRICE)
@@ -4265,6 +4291,7 @@ contract('CdpManager', async accounts => {
     let _dCdpId = await sortedCdps.cdpOfOwnerByIndex(D, 0);
     const partialAmount = toBN(dec(15, 18))
     const redemptionAmount = A_netDebt.add(B_netDebt).add(C_netDebt).add(partialAmount)
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
 
 
@@ -4394,8 +4421,7 @@ contract('CdpManager', async accounts => {
     let _adjustColl = ebtcAmount.mul(mv._1e18BN).div(price);
 
     // --- TEST ---
-
-
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // keep redeeming until we get the base rate to the ceiling of 100%
     // With zero borrowing fee, [total supply of EBTC] is reduced since no more minting of fee to staking
@@ -4858,6 +4884,8 @@ contract('CdpManager', async accounts => {
     await ethers.provider.send("evm_increaseTime", [86400]);
     await ethers.provider.send("evm_mine");
     await collToken.setEthPerShare(_newIndex);
+    _newIndex = await collToken.getEthPerShare();
+    console.log('_newIndex=' + _newIndex);
 
     const _leftColl = MIN_CDP_SIZE.mul(toBN("10001")).div(toBN("10000"))
     assert.isTrue((await collToken.getSharesByPooledEth(_leftColl)).lt(MIN_CDP_SIZE));

@@ -956,7 +956,7 @@ contract('BorrowerOperations', async accounts => {
       const carolIndex = th.RANDOM_INDEX
 
       // Bob successfully withdraws 1e-18 EBTC
-      const txBob = await borrowerOperations.withdrawDebt(bobIndex,  1, bobIndex, bobIndex, { from: bob })
+      const txBob = await borrowerOperations.withdrawDebt(bobIndex, await borrowerOperations.MIN_CHANGE(), bobIndex, bobIndex, { from: bob })
       assert.isTrue(txBob.receipt.status)
 
       // Alice attempts to withdraw 0 EBTC
@@ -1060,7 +1060,11 @@ contract('BorrowerOperations', async accounts => {
       const aliceDebtBefore = await getCdpEntireDebt(aliceIndex)
       assert.isTrue(aliceDebtBefore.gt(toBN(0)))
 
-      await borrowerOperations.withdrawDebt(aliceIndex, await getNetBorrowingAmount(100), aliceIndex, aliceIndex, { from: alice })
+      await borrowerOperations.withdrawDebt(
+        aliceIndex, 
+        await getNetBorrowingAmount(await borrowerOperations.MIN_CHANGE()), aliceIndex, aliceIndex, 
+        { from: alice }
+      )
 
       // check after
       const aliceDebtAfter = await getCdpEntireDebt(aliceIndex)
@@ -1133,7 +1137,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.openCdp(await getNetBorrowingAmount(MIN_NET_DEBT.add(toBN('2'))), A, A, _colAmt, { from: A })
       const AIndex = await sortedCdps.cdpOfOwnerByIndex(A,0)
 
-      const repayTxA = await borrowerOperations.repayDebt(AIndex, 1, AIndex, AIndex, { from: A })
+      const repayTxA = await borrowerOperations.repayDebt(AIndex, await borrowerOperations.MIN_CHANGE(), AIndex, AIndex, { from: A })
       assert.isTrue(repayTxA.receipt.status)
 
       let _debtAmt = dec(20, 17);

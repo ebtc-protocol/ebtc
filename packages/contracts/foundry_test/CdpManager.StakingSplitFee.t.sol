@@ -105,7 +105,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed / 1e18;
 
         vm.startPrank(_user);
-        borrowerOperations.withdrawDebt(_cdpId, 1, _cdpId, _cdpId);
+        borrowerOperations.withdrawDebt(_cdpId, minChange, _cdpId, _cdpId);
         vm.stopPrank();
     }
 
