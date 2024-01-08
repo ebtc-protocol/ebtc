@@ -252,6 +252,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
 
     function getSyncedTCR(uint256 _price) external view returns (uint256);
 
+    function getSyncedSystemCollShares() external view returns (uint256);
+
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256);
 
     function getPendingRedistributedDebt(bytes32 _cdpId) external view returns (uint256);

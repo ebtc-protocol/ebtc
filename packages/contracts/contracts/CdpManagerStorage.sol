@@ -867,11 +867,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return _calculateCR(_collShare, _debt, _price);
     }
 
-    /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken
-    /// @param _price The ETH:eBTC price to be used in TCR calculation
-    /// @return The TCR of the eBTC system including debt distribution and fee split considered
-    /// @dev Should always use this as the first(default) choice for TCR query
-    function getSyncedTCR(uint256 _price) public view returns (uint256) {
+    /// @notice return system collateral share, including pending fee split to be taken
+    function getSyncedSystemCollShares() public view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (uint256 _feeTaken, , ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
 
@@ -879,6 +876,15 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         if (_feeTaken > 0) {
             _systemCollShare = _systemCollShare - _feeTaken;
         }
+        return _systemCollShare;
+    }
+
+    /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken
+    /// @param _price The ETH:eBTC price to be used in TCR calculation
+    /// @return The TCR of the eBTC system including debt distribution and fee split considered
+    /// @dev Should always use this as the first(default) choice for TCR query
+    function getSyncedTCR(uint256 _price) public view returns (uint256) {
+        uint256 _systemCollShare = getSyncedSystemCollShares();
         uint256 _systemDebt = activePool.getSystemDebt();
         return _calculateCR(_systemCollShare, _systemDebt, _price);
     }

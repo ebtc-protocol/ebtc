@@ -4,6 +4,7 @@ import {Pretty, Strings} from "../Pretty.sol";
 import {BaseStorageVariables} from "../BaseStorageVariables.sol";
 import {console2 as console} from "forge-std/console2.sol";
 import {LogUtils} from "../../../foundry_test/utils/LogUtils.sol";
+import {Strings as StringsUtils} from "../../../foundry_test/utils/Strings.sol";
 
 abstract contract BeforeAfter is BaseStorageVariables, LogUtils {
     using Strings for string;
@@ -190,24 +191,29 @@ abstract contract BeforeAfter is BaseStorageVariables, LogUtils {
             1e18 -
             vars.activePoolDebtAfter;
     }
-    
+
     function _printAllCdps() internal {
         uint256 price = priceFeedMock.fetchPrice();
         uint256 numCdps = sortedCdps.getSize();
+        console.log("numCdps  :", numCdps);
         bytes32 node = sortedCdps.getLast();
-        address borrower = sortedCdps.getOwnerAddress(node);
+        bytes32 firstNode = sortedCdps.getFirst();
+        console.log("Last CDP  :", StringsUtils.bytes32ToString(node));
+        console.log("First CDP  :", StringsUtils.bytes32ToString(firstNode));
 
-        (uint256 debtSynced, uint256 collSharesSynced) = cdpManager.getSyncedDebtAndCollShares(node);
-
-        while (borrower != address(0)) {
-            console.log("=== ", uint256(node));
+        while (node != bytes32(0)) {
+            console.log("=== ", StringsUtils.bytes32ToString(node));
+            console.log("owner :", sortedCdps.getOwnerAddress(node));
             console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
             console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
+            (uint256 debtSynced, uint256 collSharesSynced) = cdpManager.getSyncedDebtAndCollShares(
+                node
+            );
             console.log("debt       (virtual)  :", debtSynced);
             console.log("collShares (virtual)  :", collSharesSynced);
-            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
+            console.log("ICR        (realized) :", cdpManager.getCachedICR(node, price));
+            console.log("ICR        (virtual) :", cdpManager.getSyncedICR(node, price));
             node = sortedCdps.getPrev(node);
-            borrower = sortedCdps.getOwnerAddress(node);
         }
     }
 

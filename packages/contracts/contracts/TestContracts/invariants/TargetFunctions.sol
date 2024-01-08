@@ -26,6 +26,8 @@ import "./BeforeAfter.sol";
 import "./TargetContractSetup.sol";
 import "./Asserts.sol";
 import "../BaseStorageVariables.sol";
+import {console2 as console} from "forge-std/console2.sol";
+import {Strings as StringsUtils} from "../../../foundry_test/utils/Strings.sol";
 
 abstract contract TargetFunctions is Properties {
     modifier setup() virtual {
@@ -62,6 +64,9 @@ abstract contract TargetFunctions is Properties {
         uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
+            console.log("currentCdp : ", StringsUtils.bytes32ToString(currentCdp));
+            uint256 _currentCdpDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            console.log("currentCdpDebt (virtual): ", _currentCdpDebt);
             ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getSyncedICR(currentCdp, _price)}); /// @audit NOTE: Synced to ensure it's realistic
 
             currentCdp = sortedCdps.getNext(currentCdp);
@@ -108,6 +113,7 @@ abstract contract TargetFunctions is Properties {
 
         address[] memory _targets = new address[](_actions);
         bytes[] memory _calldatas = new bytes[](_actions);
+        console.log("FL action size :", _actions);
 
         address[] memory _allTargets = new address[](6);
         bytes[] memory _allCalldatas = new bytes[](6);
@@ -381,6 +387,18 @@ abstract contract TargetFunctions is Properties {
             _n,
             vars.priceBefore
         );
+        console.log("liquidatedCdpsN: ", _n);
+        console.log("liquidatedCdpsBatch: ", batch.length);
+        console.log("systemCollBeforeLiq: ", activePool.getSystemCollShares());
+        console.log("systemDebtBeforeLiq: ", activePool.getSystemDebt());
+
+        for (uint i; i < batch.length; i++) {
+            bytes32 _idToLiq = batch[i];
+            console.log("idToLiq : ", StringsUtils.bytes32ToString(_idToLiq));
+            console.log("toLiqICR (virtual): ", cdpManager.getSyncedICR(_idToLiq, vars.priceBefore));
+        }
+        console.log("liquidation price: ", vars.priceBefore);
+        console.log("stETHIndex during liquidation: ", collateral.getPooledEthByShares(1e18));
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
@@ -399,6 +417,9 @@ abstract contract TargetFunctions is Properties {
                 "liquidateCdps must liquidate at least 1 CDP when successful"
             );
             lte(cdpsLiquidated.length, _n, "liquidateCdps must not liquidate more than n CDPs");
+            console.log("systemCollAfterLiq: ", activePool.getSystemCollShares());
+            console.log("systemDebtAfterLiq: ", activePool.getSystemDebt());
+            console.log("liquidatedCdps: ", cdpsLiquidated.length);
             for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
                 t(

@@ -332,8 +332,15 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
+        uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
+        uint256 _systemDebt = activePool.getSystemDebt();
+        console.log("systemColl: ", _systemCollShares);
+        console.log("systemDebt: ", _systemDebt);
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
 
+        console.log("sumOfCollShares: ", sumOfColl);
+        console.log("stETHIndex: ", collateral.getPooledEthByShares(1e18));
+        console.log("sumOfDebt: ", sumOfDebt);
         uint256 tcrFromSums = EbtcMath._computeCR(
             collateral.getPooledEthByShares(sumOfColl),
             sumOfDebt,
@@ -342,7 +349,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         console.log("tcrFromSystem: ", tcrFromSystem);
         console.log("tcrFromSums  : ", tcrFromSums);
-        
+
         if (tcrFromSystem > tcrFromSums) {
             console.log("diff           : +", tcrFromSystem - tcrFromSums);
         } else {
@@ -351,8 +358,13 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         // add generic diff function (original, second, diff) - all at once
 
-        /// @audit 1e8 precision
-        return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+        /// @audit 1e8 precision in absoulte value (not the percent)
+        //return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+        bool _acceptedCollDiff = _assertApproximateEq(_systemCollShares, sumOfColl, 1e8);
+        console.log("_acceptedCollDiff: ", _acceptedCollDiff);
+        bool _acceptedDebtDiff = _assertApproximateEq(_systemDebt, sumOfDebt, 1e8);
+        console.log("_acceptedDebtDiff: ", _acceptedDebtDiff);
+        return (_acceptedCollDiff && _acceptedDebtDiff);
     }
 
     function invariant_GENERAL_09(
