@@ -23,7 +23,6 @@ import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenT
 import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
-import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
@@ -41,7 +40,6 @@ contract eBTCBaseFixture is
     BeforeAfter,
     FoundryAsserts,
     BytecodeReader,
-    LogUtils,
     IBaseTwapWeightedObserver
 {
     using Strings for string;
@@ -546,29 +544,6 @@ contract eBTCBaseFixture is
     function _getCachedICR(bytes32 cdpId) internal returns (uint256) {
         uint256 price = priceFeedMock.fetchPrice();
         return cdpManager.getCachedICR(cdpId, price);
-    }
-
-    function _printAllCdps() internal {
-        uint256 price = priceFeedMock.fetchPrice();
-        uint256 numCdps = sortedCdps.getSize();
-        bytes32 node = sortedCdps.getLast();
-        address borrower = sortedCdps.getOwnerAddress(node);
-
-        while (borrower != address(0)) {
-            console.log("=== ", bytes32ToString(node));
-            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
-            console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
-            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
-            console.log(
-                "Percent of System     :",
-                (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
-                    activePool.getSystemCollShares()
-            );
-            console.log("");
-
-            node = sortedCdps.getPrev(node);
-            borrower = sortedCdps.getOwnerAddress(node);
-        }
     }
 
     function _printSortedCdpsList() internal {

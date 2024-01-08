@@ -2,8 +2,10 @@ pragma solidity 0.8.17;
 
 import {Pretty, Strings} from "../Pretty.sol";
 import {BaseStorageVariables} from "../BaseStorageVariables.sol";
+import {console2 as console} from "forge-std/console2.sol";
+import {LogUtils} from "../../../foundry_test/utils/LogUtils.sol";
 
-abstract contract BeforeAfter is BaseStorageVariables {
+abstract contract BeforeAfter is BaseStorageVariables, LogUtils {
     using Strings for string;
     using Pretty for uint256;
     using Pretty for int256;
@@ -187,6 +189,26 @@ abstract contract BeforeAfter is BaseStorageVariables {
             ) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
+    }
+    
+    function _printAllCdps() internal {
+        uint256 price = priceFeedMock.fetchPrice();
+        uint256 numCdps = sortedCdps.getSize();
+        bytes32 node = sortedCdps.getLast();
+        address borrower = sortedCdps.getOwnerAddress(node);
+
+        (uint256 debtSynced, uint256 collSharesSynced) = cdpManager.getSyncedDebtAndCollShares(node);
+
+        while (borrower != address(0)) {
+            console.log("=== ", uint256(node));
+            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
+            console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
+            console.log("debt       (virtual)  :", debtSynced);
+            console.log("collShares (virtual)  :", collSharesSynced);
+            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
+            node = sortedCdps.getPrev(node);
+            borrower = sortedCdps.getOwnerAddress(node);
+        }
     }
 
     function _diff() internal view returns (string memory log) {

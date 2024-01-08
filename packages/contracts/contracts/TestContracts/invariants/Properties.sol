@@ -18,6 +18,7 @@ import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
 import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
 import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
+import {console2 as console} from "forge-std/console2.sol";
 
 abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, PropertiesConstants {
     function invariant_AP_01(
@@ -338,6 +339,18 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             sumOfDebt,
             curentPrice
         );
+
+        console.log("tcrFromSystem: ", tcrFromSystem);
+        console.log("tcrFromSums  : ", tcrFromSums);
+        
+        if (tcrFromSystem > tcrFromSums) {
+            console.log("diff           : +", tcrFromSystem - tcrFromSums);
+        } else {
+            console.log("diff           : -", tcrFromSums - tcrFromSystem);
+        }
+
+        // add generic diff function (original, second, diff) - all at once
+
         /// @audit 1e8 precision
         return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
     }
