@@ -552,8 +552,6 @@ contract eBTCBaseFixture is
 
         while (_currentCdpId != sortedCdps.dummyId()) {
             uint NICR = cdpManager.getCachedNominalICR(_currentCdpId);
-            console.log(counter, bytes32ToString(_currentCdpId));
-            console.log(NICR);
             _currentCdpId = sortedCdps.getPrev(_currentCdpId);
             counter += 1;
         }
@@ -609,7 +607,7 @@ contract eBTCBaseFixture is
         }
 
         for (uint256 i = 0; i < _cdpArray.length; i++) {
-            console.log(bytes32ToString(_cdpArray[i]));
+            // console.log(bytes32ToString(_cdpArray[i]));
         }
     }
 

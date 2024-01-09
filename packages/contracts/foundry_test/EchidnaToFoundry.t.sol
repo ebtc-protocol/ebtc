@@ -1093,7 +1093,7 @@ contract EToFoundry is
     function test_release06_failure_1() public {
         openCdp(493663603737683946803839410082239555123754348998280264914781860691387,1012);
         openCdp(44487697015594338140399437727234821981243804725297826263219623456956307,131127430648950004);
-        _printAllCdps();
+        // _printAllCdps();
 
         setEthPerShare(0);
         setEthPerShare(0);
@@ -1101,7 +1101,8 @@ contract EToFoundry is
         openCdp(6298232991762970630300582704345151408517323261235060745048244762519,1000);
         closeCdp(16694514530860009786820);
 
-        _printAllCdps();
+        _printCdpSystemState();
+        // _printAllCdps();
 
         assertTrue(invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral), "G-08");
     }
@@ -1109,14 +1110,18 @@ contract EToFoundry is
     function test_release06_failure_2() public {
         openCdp(1393936493472325150543765434625441930121096334433922889028254712299913,1006);
         openCdp(12534497572113328395957715859831237503361382070819532217173810532972256938,130928075548860521);
-        _printAllCdps();
         
         setEthPerShare(104222489421918919816713336859848650812501115513200755867717128740842084);
         setEthPerShare(2061199202431510798893482198751375420156451760810032481046846);
         liquidateCdps(333932894891893963071840277124564685);
+        console.log("after liquidations");
+        _printAllCdps();
+
         openCdp(4239833731894780710544937971216589037303958941880717979219156597430118,1014);
         flashLoanEBTC(120);
 
+        console.log("at end");
+        _printCdpSystemState();
         _printAllCdps();
 
         assertTrue(invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral), "G-08");

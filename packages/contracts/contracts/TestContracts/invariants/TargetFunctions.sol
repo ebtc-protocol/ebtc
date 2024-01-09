@@ -64,7 +64,7 @@ abstract contract TargetFunctions is Properties {
         uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
-            console.log("currentCdp : ", StringsUtils.bytes32ToString(currentCdp));
+            console.log("currentCdp : ", uint256(currentCdp));
             uint256 _currentCdpDebt = cdpManager.getSyncedCdpDebt(currentCdp);
             console.log("currentCdpDebt (virtual): ", _currentCdpDebt);
             ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getSyncedICR(currentCdp, _price)}); /// @audit NOTE: Synced to ensure it's realistic
@@ -394,7 +394,7 @@ abstract contract TargetFunctions is Properties {
 
         for (uint i; i < batch.length; i++) {
             bytes32 _idToLiq = batch[i];
-            console.log("idToLiq : ", StringsUtils.bytes32ToString(_idToLiq));
+            console.log("idToLiq : ", uint256(_idToLiq)); /// TODO: This function wasn't working
             console.log("toLiqICR (virtual): ", cdpManager.getSyncedICR(_idToLiq, vars.priceBefore));
         }
         console.log("liquidation price: ", vars.priceBefore);

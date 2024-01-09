@@ -356,6 +356,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             console.log("diff           : -", tcrFromSums - tcrFromSystem);
         }
 
+        bool _acceptedTcrDiff = _assertApproximateEq(tcrFromSystem, tcrFromSums, 1e8);
+        console.log("_acceptedTcrDiff: ", _acceptedTcrDiff);
+
         // add generic diff function (original, second, diff) - all at once
 
         /// @audit 1e8 precision in absoulte value (not the percent)
