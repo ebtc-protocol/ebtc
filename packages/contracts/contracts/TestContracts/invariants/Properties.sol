@@ -312,20 +312,17 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return totalSupply >= cdpsBalance;
     }
 
-    function invariant_GENERAL_08_B(
+    function invariant_GENERAL_17(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
         PriceFeedTestnet priceFeedTestnet,
         ICollateralToken collateral
     ) internal view returns (bool) {
-        uint256 curentPrice = priceFeedTestnet.getPrice();
-
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 sumOfDebt;
         while (currentCdp != bytes32(0)) {
             uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
-            sumOfColl += entireColl;
             sumOfDebt += entireDebt;
             currentCdp = sortedCdps.getNext(currentCdp);
         }
