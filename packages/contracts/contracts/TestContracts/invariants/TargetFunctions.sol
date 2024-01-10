@@ -613,7 +613,7 @@ abstract contract TargetFunctions is Properties {
         _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+        uint _balBefore = collateral.sharesOf(activePool.feeRecipientAddress());
         (success, returnData) = actor.proxy(
             address(activePool),
             abi.encodeWithSelector(
@@ -629,8 +629,8 @@ abstract contract TargetFunctions is Properties {
 
         _after(bytes32(0));
 
-        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-        eq(_balAfter - _balBefore, _fee, F_03);
+        uint _balAfter = collateral.sharesOf(activePool.feeRecipientAddress());
+        eq(_balAfter - _balBefore, collateral.getSharesByPooledEth(_fee), F_03);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
