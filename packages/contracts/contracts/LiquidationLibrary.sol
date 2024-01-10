@@ -7,6 +7,7 @@ import "./Interfaces/IEBTCToken.sol";
 import "./Interfaces/ISortedCdps.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
+import "forge-std/console2.sol";
 
 /// @title LiquidationLibrary mainly provide necessary logic to fulfill liquidation for eBTC Cdps.
 /// @dev This contract shares same base and storage layout with CdpManager and is the delegatecall destination from CdpManager
@@ -530,6 +531,8 @@ contract LiquidationLibrary is CdpManagerStorage {
             price
         );
 
+        console2.log("totalDebtToRedistribute", totalDebtToRedistribute);
+
         // redistribute debt if any
         if (totalDebtToRedistribute > 0) {
             _redistributeDebt(totalDebtToRedistribute);
@@ -890,6 +893,13 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _totalStakes = totalStakes;
         uint256 EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
 
+/*        console2.log("_debt * DECIMAL_PRECISION", _debt * DECIMAL_PRECISION);
+        console2.log("lastEBTCDebtErrorRedistribution", lastEBTCDebtErrorRedistribution);
+        console2.log("_totalStakes", _totalStakes);
+        console2.log("EBTCDebtNumerator", EBTCDebtNumerator);
+        console2.log("EBTCDebtRewardPerUnitStaked", EBTCDebtRewardPerUnitStaked);
+        console2.log("EBTCDebtRewardPerUnitStaked * _totalStakes", EBTCDebtRewardPerUnitStaked * _totalStakes); */
+        
         lastEBTCDebtErrorRedistribution =
             EBTCDebtNumerator -
             (EBTCDebtRewardPerUnitStaked * _totalStakes);

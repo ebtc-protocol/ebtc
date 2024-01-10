@@ -93,6 +93,10 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
         return invariant_GENERAL_08(cdpManager, sortedCdps, priceFeedMock, collateral);
     }
 
+    function echidna_GENERAL_08_B() public returns (bool) {
+        return invariant_GENERAL_08_B(cdpManager, sortedCdps, priceFeedMock, collateral);
+    }
+
     // invariant_GENERAL_09 is a vars
 
     function echidna_GENERAL_12() public returns (bool) {

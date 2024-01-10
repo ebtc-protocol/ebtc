@@ -312,6 +312,29 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return totalSupply >= cdpsBalance;
     }
 
+    function invariant_GENERAL_08_B(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        uint256 curentPrice = priceFeedTestnet.getPrice();
+
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            sumOfColl += entireColl;
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18;
+        uint256 _systemDebt = activePool.getSystemDebt();
+
+        return sumOfDebt < (_systemDebt + 1);
+    }
+
     function invariant_GENERAL_08(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
@@ -362,7 +385,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // add generic diff function (original, second, diff) - all at once
 
         /// @audit 1e8 precision in absoulte value (not the percent)
-        //return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+        //return  isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
         bool _acceptedCollDiff = _assertApproximateEq(_systemCollShares, sumOfColl, 1e8);
         console.log("_acceptedCollDiff: ", _acceptedCollDiff);
         bool _acceptedDebtDiff = _assertApproximateEq(_systemDebt, sumOfDebt, 1e8);

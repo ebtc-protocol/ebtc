@@ -10,6 +10,7 @@ import "./Dependencies/EbtcBase.sol";
 import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/ICollateralTokenOracle.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "forge-std/console2.sol";
 
 /// @title CDP Manager storage and shared functions with LiquidationLibrary
 /// @dev All features around Cdp management are split into separate parts to get around contract size limitations.
@@ -314,6 +315,13 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         if (_debtIndexDiff > 0) {
             pendingEBTCDebtReward = (cdp.stake * _debtIndexDiff) / DECIMAL_PRECISION;
+
+/*            console2.logBytes32(_cdpId);
+            console2.log("systemDebtRedistributionIndex", systemDebtRedistributionIndex);
+            console2.log("cdpDebtRedistributionIndex", cdpDebtRedistributionIndex[_cdpId]);
+            console2.log("cdp.stake * _debtIndexDiff", cdp.stake * _debtIndexDiff);
+            console2.log("pendingEBTCDebtReward", pendingEBTCDebtReward);
+            console2.log("cdp.stake", cdp.stake);*/
         } else {
             return (0, 0);
         }
