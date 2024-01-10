@@ -275,6 +275,8 @@ abstract contract TargetFunctions is Properties {
                     collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
                 L_09
             );
+
+            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -366,6 +368,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -452,6 +455,7 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else if (vars.sortedCdpsSizeBefore > _n) {
             if (_atLeastOneCdpIsLiquidatable(cdpsBefore, vars.isRecoveryModeBefore)) {
                 assertRevertReasonNotEqual(returnData, "Panic(17)");
