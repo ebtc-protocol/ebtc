@@ -9,6 +9,7 @@ import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrow
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
 import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
+import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 
 /*
  * Test suite that converts from echidna "fuzz tests" to foundry "unit tests"
@@ -19,6 +20,7 @@ contract EToFoundry is
     TargetContractSetup,
     FoundryAsserts,
     TargetFunctions,
+    BeforeAfterWithLogging,
     IERC3156FlashBorrower
 {
     modifier setup() override {

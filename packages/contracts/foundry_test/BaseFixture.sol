@@ -28,7 +28,7 @@ import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.s
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
-import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
+import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
 import {IBaseTwapWeightedObserver} from "../contracts/Interfaces/IBaseTwapWeightedObserver.sol";
@@ -37,7 +37,7 @@ import {EbtcMath} from "../contracts/Dependencies/EbtcMath.sol";
 contract eBTCBaseFixture is
     Test,
     BaseStorageVariables,
-    BeforeAfter,
+    BeforeAfterWithLogging,
     FoundryAsserts,
     BytecodeReader,
     IBaseTwapWeightedObserver
