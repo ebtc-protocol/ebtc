@@ -93,6 +93,8 @@ abstract contract PropertiesDescriptions {
         "GENERAL-15: CDP debt should always be greater than MIN_CHANGE (1000 Wei)";
     string constant GENERAL_16 =
         "GENERAL-16: Collateral and debt change amounts should always be greater than MIN_CHANGE (1000 Wei)";
+    string constant GENERAL_17 =
+        "GENERAL-17: Sum of synced debt values of all Cdps + the stored debt redistribution error accumulator should never be more than the total system debt + 1";
 
     ///////////////////////////////////////////////////////
     // Redemptions

@@ -316,7 +316,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         if (_debtIndexDiff > 0) {
             pendingEBTCDebtReward = (cdp.stake * _debtIndexDiff) / DECIMAL_PRECISION;
 
-/*            console2.logBytes32(_cdpId);
+            /*            console2.logBytes32(_cdpId);
             console2.log("systemDebtRedistributionIndex", systemDebtRedistributionIndex);
             console2.log("cdpDebtRedistributionIndex", cdpDebtRedistributionIndex[_cdpId]);
             console2.log("cdp.stake * _debtIndexDiff", cdp.stake * _debtIndexDiff);

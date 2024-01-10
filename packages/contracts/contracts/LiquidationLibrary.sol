@@ -893,13 +893,13 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _totalStakes = totalStakes;
         uint256 EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
 
-/*        console2.log("_debt * DECIMAL_PRECISION", _debt * DECIMAL_PRECISION);
+        /*        console2.log("_debt * DECIMAL_PRECISION", _debt * DECIMAL_PRECISION);
         console2.log("lastEBTCDebtErrorRedistribution", lastEBTCDebtErrorRedistribution);
         console2.log("_totalStakes", _totalStakes);
         console2.log("EBTCDebtNumerator", EBTCDebtNumerator);
         console2.log("EBTCDebtRewardPerUnitStaked", EBTCDebtRewardPerUnitStaked);
         console2.log("EBTCDebtRewardPerUnitStaked * _totalStakes", EBTCDebtRewardPerUnitStaked * _totalStakes); */
-        
+
         lastEBTCDebtErrorRedistribution =
             EBTCDebtNumerator -
             (EBTCDebtRewardPerUnitStaked * _totalStakes);
