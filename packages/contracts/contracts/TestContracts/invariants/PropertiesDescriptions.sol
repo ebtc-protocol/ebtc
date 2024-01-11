@@ -118,6 +118,8 @@ abstract contract PropertiesDescriptions {
         "L-15: The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR";
     string constant L_16 =
         "L-16: The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR";
+    string constant L_17 =
+        "L-17: Debt Redistribution Error Accumulator should be less than Total Stakes immediately after a debt redistribution";
 
     ///////////////////////////////////////////////////////
     // eBTC
