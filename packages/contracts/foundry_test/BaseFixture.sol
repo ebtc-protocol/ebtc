@@ -23,13 +23,12 @@ import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenT
 import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
-import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
-import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
+import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
 import {IBaseTwapWeightedObserver} from "../contracts/Interfaces/IBaseTwapWeightedObserver.sol";
@@ -38,10 +37,9 @@ import {EbtcMath} from "../contracts/Dependencies/EbtcMath.sol";
 contract eBTCBaseFixture is
     Test,
     BaseStorageVariables,
-    BeforeAfter,
+    BeforeAfterWithLogging,
     FoundryAsserts,
     BytecodeReader,
-    LogUtils,
     IBaseTwapWeightedObserver
 {
     using Strings for string;
@@ -548,37 +546,12 @@ contract eBTCBaseFixture is
         return cdpManager.getCachedICR(cdpId, price);
     }
 
-    function _printAllCdps() internal {
-        uint256 price = priceFeedMock.fetchPrice();
-        uint256 numCdps = sortedCdps.getSize();
-        bytes32 node = sortedCdps.getLast();
-        address borrower = sortedCdps.getOwnerAddress(node);
-
-        while (borrower != address(0)) {
-            console.log("=== ", bytes32ToString(node));
-            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
-            console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
-            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
-            console.log(
-                "Percent of System     :",
-                (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
-                    activePool.getSystemCollShares()
-            );
-            console.log("");
-
-            node = sortedCdps.getPrev(node);
-            borrower = sortedCdps.getOwnerAddress(node);
-        }
-    }
-
     function _printSortedCdpsList() internal {
         bytes32 _currentCdpId = sortedCdps.getLast();
         uint counter = 0;
 
         while (_currentCdpId != sortedCdps.dummyId()) {
             uint NICR = cdpManager.getCachedNominalICR(_currentCdpId);
-            console.log(counter, bytes32ToString(_currentCdpId));
-            console.log(NICR);
             _currentCdpId = sortedCdps.getPrev(_currentCdpId);
             counter += 1;
         }
@@ -634,7 +607,7 @@ contract eBTCBaseFixture is
         }
 
         for (uint256 i = 0; i < _cdpArray.length; i++) {
-            console.log(bytes32ToString(_cdpArray[i]));
+            // console.log(bytes32ToString(_cdpArray[i]));
         }
     }
 

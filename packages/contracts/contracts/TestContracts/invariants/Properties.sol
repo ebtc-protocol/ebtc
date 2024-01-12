@@ -311,6 +311,26 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return totalSupply >= cdpsBalance;
     }
 
+    function invariant_GENERAL_17(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18;
+        uint256 _systemDebt = activePool.getSystemDebt();
+
+        return sumOfDebt < (_systemDebt + 1);
+    }
+
     function invariant_GENERAL_08(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
@@ -331,6 +351,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
+        uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
+        uint256 _systemDebt = activePool.getSystemDebt();
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
 
         uint256 tcrFromSums = EbtcMath._computeCR(
@@ -338,8 +360,16 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             sumOfDebt,
             curentPrice
         );
-        /// @audit 1e8 precision
-        return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+
+        bool _acceptedTcrDiff = _assertApproximateEq(tcrFromSystem, tcrFromSums, 1e8);
+
+        // add generic diff function (original, second, diff) - all at once
+
+        /// @audit 1e8 precision in absoulte value (not the percent)
+        //return  isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+        bool _acceptedCollDiff = _assertApproximateEq(_systemCollShares, sumOfColl, 1e8);
+        bool _acceptedDebtDiff = _assertApproximateEq(_systemDebt, sumOfDebt, 1e8);
+        return (_acceptedCollDiff && _acceptedDebtDiff);
     }
 
     function invariant_GENERAL_09(
