@@ -42,6 +42,7 @@ yarn-error.log
 
 # Medusa
 /medusa
+/medusa-doomsday
 
 # brownie
 __pycache__
