@@ -272,18 +272,18 @@ contract('CdpManager', async accounts => {
     assert.equal(cdp_4, _dennisCdpId)
 
     // Check correct indices recorded on the active cdp structs
-    const whale_arrayIndex = (await cdpManager.Cdps(_whaleCdpId))[5]
-    const alice_arrayIndex = (await cdpManager.Cdps(_aliceCdpId))[5]
-    const bob_arrayIndex = (await cdpManager.Cdps(_bobCdpId))[5]
-    const dennis_arrayIndex = (await cdpManager.Cdps(_dennisCdpId))[5]
-    const erin_arrayIndex = (await cdpManager.Cdps(_erinCdpId))[5]
+    const whale_arrayIndex = await sortedCdps.getCdpArrayIdx(_whaleCdpId)
+    const alice_arrayIndex = await sortedCdps.getCdpArrayIdx(_aliceCdpId)
+    const bob_arrayIndex = await sortedCdps.getCdpArrayIdx(_bobCdpId)
+    const dennis_arrayIndex = await sortedCdps.getCdpArrayIdx(_dennisCdpId)
+    const erin_arrayIndex = await sortedCdps.getCdpArrayIdx(_erinCdpId)
 
     // [W, A, B, E, D] 
-    assert.equal(whale_arrayIndex, 0)
-    assert.equal(alice_arrayIndex, 1)
-    assert.equal(bob_arrayIndex, 2)
-    assert.equal(erin_arrayIndex, 3)
-    assert.equal(dennis_arrayIndex, 4)
+    assert.equal(whale_arrayIndex.toString(), '0')
+    assert.equal(alice_arrayIndex.toString(), '1')
+    assert.equal(bob_arrayIndex.toString(), '2')
+    assert.equal(erin_arrayIndex.toString(), '3')
+    assert.equal(dennis_arrayIndex.toString(), '4')
   })
 
   it("liquidate(): updates the snapshots of total stakes and total collateral", async () => {
@@ -3881,6 +3881,7 @@ contract('CdpManager', async accounts => {
 
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // A redeems 10 EBTC
     await th.redeemCollateral(A, contracts, dec(10, 18), GAS_PRICE)

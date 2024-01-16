@@ -257,8 +257,8 @@ class DeploymentHelper {
   }
 
   static async deploySortedCdps(ebtcDeployer, _expectedAddr) {
-    const _argTypes = ['uint256', 'address', 'address'];
-    const _argValues = [0, _expectedAddr[2], _expectedAddr[3]];
+    const _argTypes = ['uint256', 'address', 'address', 'address'];
+    const _argValues = [0, _expectedAddr[2], _expectedAddr[3], _expectedAddr[1]];
 
     const _salt = await ebtcDeployer.SORTED_CDPS();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, SortedCdps, _salt);

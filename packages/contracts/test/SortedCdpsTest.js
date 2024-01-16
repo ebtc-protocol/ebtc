@@ -694,7 +694,7 @@ contract('SortedCdps', async accounts => {
 
     beforeEach(async () => {
       sortedCdpsTester = await SortedCdpsTester.new()
-      sortedCdps = await SortedCdps.new(2, sortedCdpsTester.address, sortedCdpsTester.address)
+      sortedCdps = await SortedCdps.new(2, sortedCdpsTester.address, sortedCdpsTester.address, sortedCdpsTester.address)
 
       await sortedCdpsTester.setSortedCdps(sortedCdps.address)
     })

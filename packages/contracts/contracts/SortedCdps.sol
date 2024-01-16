@@ -66,7 +66,6 @@ contract SortedCdps is ISortedCdps {
     struct Node {
         bytes32 nextId; // Id of next node (smaller NICR) in the list
         bytes32 prevId; // Id of previous node (larger NICR) in the list
-        uint128 cdpArrayIdx; // Index into the CdpIds array in CDPManagerStorage which is used in HintHelper
     }
 
     // Information for the list
@@ -75,6 +74,7 @@ contract SortedCdps is ISortedCdps {
         bytes32 tail; // Tail of the list. Also the node in the list with the smallest NICR
         uint256 size; // Current size of the list
         mapping(bytes32 => Node) nodes; // Track the corresponding ids for each node in the list
+        mapping(bytes32 => uint128) cdpIdsIndex; // Track the corresponding index for each node into the CdpIds array in CDPManagerStorage which is used in HintHelper
     }
 
     Data public data;
@@ -724,15 +724,15 @@ contract SortedCdps is ISortedCdps {
     function updateCdpArrayIdx(bytes32 _cdpID, uint128 _newIdx) external {
         _requireCallerIsCdpManagerStorage();
         require(contains(_cdpID), "SortedCdps: List doesn't contains the node");
-        data.nodes[_cdpID].cdpArrayIdx = _newIdx;
+        data.cdpIdsIndex[_cdpID] = _newIdx;
     }
 
     /// @dev Retrieve a Node(CDP)'s index into CdpIds array in CDPManagerStorage which is used in HintHelper
     /// @param _cdpID The CDP whose index to be retrieved
     /// @return The given CDP's index
-    function getCdpArrayIdx(bytes32 _cdpID) external returns (uint128) {
+    function getCdpArrayIdx(bytes32 _cdpID) external view returns (uint128) {
         require(contains(_cdpID), "SortedCdps: List doesn't contains the node");
-        return data.nodes[_cdpID].cdpArrayIdx;
+        return data.cdpIdsIndex[_cdpID];
     }
 
     // === Modifiers ===

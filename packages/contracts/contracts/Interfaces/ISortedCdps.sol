@@ -93,5 +93,5 @@ interface ISortedCdps {
 
     function updateCdpArrayIdx(bytes32 _cdpID, uint128 _newIdx) external;
 
-    function getCdpArrayIdx(bytes32 _cdpID) external returns (uint128);
+    function getCdpArrayIdx(bytes32 _cdpID) external view returns (uint128);
 }

@@ -226,6 +226,19 @@ contract('Access Control: Liquity functions with the caller restricted to Liquit
         assert.include(err.message, "Caller is neither BO nor CdpM")
       }
     })
+
+    // --- onlyCdpMStorage ---
+    // updateCdpArrayIdx
+    it("updateCdpArrayIdx(): reverts when called by an account that is not CdpManagerStorage", async () => {
+      // Attempt call from alice
+      try {
+        const txAlice = await sortedCdps.updateCdpArrayIdx(bob, 1, { from: alice })
+        
+      } catch (err) {
+        assert.include(err.message, "revert")
+        assert.include(err.message, "Caller is not the CdpManagerStorage")
+      }
+    })
   })
 })
 
