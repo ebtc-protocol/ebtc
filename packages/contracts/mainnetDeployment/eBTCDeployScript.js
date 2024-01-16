@@ -12,6 +12,7 @@ const LIQUIDATION_LIBRARY_STATE_NAME = 'liquidationLibrary';
 const CDP_MANAGER_STATE_NAME = 'cdpManager';
 const BORROWER_OPERATIONS_STATE_NAME = 'borrowerOperations';
 const EBTC_TOKEN_STATE_NAME = 'eBTCToken';
+const EBTC_FEED_STATE_NAME = 'ebtcFeed';
 const PRICE_FEED_STATE_NAME = 'priceFeed';
 const ACTIVE_POOL_STATE_NAME = 'activePool';
 const COLL_SURPLUS_POOL_STATE_NAME = 'collSurplusPool';
@@ -43,7 +44,6 @@ class EBTCDeployerScript {
         this.authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner']) ? configParams.externalAddress['authorityOwner'] : deployerWallet.address;
         this.feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : deployerWallet.address;
         this.ecosystemMultisig = checkValidItem(configParams.externalAddress['ecosystemMultisig']) ? configParams.externalAddress['ecosystemMultisig'] : deployerWallet.address;
-        this.cdpCouncilMultisig = checkValidItem(configParams.externalAddress['cdpCouncilMultisig']) ? configParams.externalAddress['cdpCouncilMultisig'] : deployerWallet.address;
         this.cdpTechOpsMultisig = checkValidItem(configParams.externalAddress['cdpTechOpsMultisig']) ? configParams.externalAddress['cdpTechOpsMultisig'] : deployerWallet.address;
         this.highSecAdmin = checkValidItem(configParams.ADDITIONAL_HIGHSEC_ADMIN) ? configParams.ADDITIONAL_HIGHSEC_ADMIN : deployerWallet.address;
         this.lowSecAdmin = checkValidItem(configParams.ADDITIONAL_LOWSEC_ADMIN) ? configParams.ADDITIONAL_LOWSEC_ADMIN : deployerWallet.address;
@@ -88,7 +88,9 @@ class EBTCDeployerScript {
             _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
             _deployedState = useMockPriceFeed ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
-                await DeploymentHelper.deployPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
+                await DeploymentHelper.deployDualChainlinkPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
+        } else if (_stateName == EBTC_FEED_STATE_NAME) {
+            _deployedState = await DeploymentHelper.deployEbtcFeed(ebtcDeployer, _expectedAddr);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr, this.feeRecipientOwner);
         } else if (_stateName == COLL_SURPLUS_POOL_STATE_NAME) {
@@ -110,8 +112,8 @@ class EBTCDeployerScript {
             let executors = [this.ecosystemMultisig]
             _deployedState = await DeploymentHelper.deployTimelock(this.highSecDelay, proposers, executors, this.highSecAdmin);
         } else if (_stateName == LOWSEC_TIMELOCK_STATE_NAME) {
-            let proposers = [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig]
-            let executors = [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig]
+            let proposers = [this.ecosystemMultisig, this.cdpTechOpsMultisig]
+            let executors = [this.ecosystemMultisig, this.cdpTechOpsMultisig]
             _deployedState = await DeploymentHelper.deployTimelock(this.lowSecDelay, proposers, executors, this.lowSecAdmin);
         }
         await this.saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, _deployedState);
@@ -141,6 +143,9 @@ class EBTCDeployerScript {
             let contractName = useMockPriceFeed ? "PriceFeedTestnet" : "PriceFeed";
             _deployedState = await (await ethers.getContractFactory(contractName)).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: priceFeed.authority()=' + (await _deployedState.authority()));
+        } else if (_stateName == EBTC_FEED_STATE_NAME) {
+            _deployedState = await (await ethers.getContractFactory("EbtcFeed")).attach(deploymentState[_stateName]["address"])
+            console.log('Sanity checking: ebtcFeed.authority()=' + (await _deployedState.authority()));
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
             _deployedState = await (await ethers.getContractFactory("ActivePool")).attach(deploymentState[_stateName]["address"])
             console.log('Sanity checking: activePool.authority()=' + (await _deployedState.authority()));
@@ -185,7 +190,7 @@ class EBTCDeployerScript {
         this.ebtcDeployer = await this.deployOrLoadState(EBTC_DEPLOYER_STATE_NAME, [])
     }
 
-    async loadOrDeployCollateral() {
+    async loadOrDeployCollateral(configParams) {
         // contract dependencies
         let _collateral;
 
@@ -198,6 +203,7 @@ class EBTCDeployerScript {
         } else if (this.useMockCollateral) { // mock collateral already deployed
             _collateral = await (await ethers.getContractFactory("CollateralTokenTester")).attach(this.deploymentState[COLLATERAL_STATE_NAME]["address"])
         } else { // mainnet
+            console.log(configParams.externalAddress[COLLATERAL_STATE_NAME])
             _collateral = await ethers.getContractAt("ICollateralToken", configParams.externalAddress[COLLATERAL_STATE_NAME])
             console.log('collateral.getOracle()=' + (await _collateral.getOracle()));
         }
@@ -215,7 +221,7 @@ class EBTCDeployerScript {
         this.highSecTimelock = await this.deployOrLoadState(HIGHSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
 
         console.log(chalk.cyan("[LowhSecTimelock]"))
-        _constructorArgs = [this.lowSecDelay, [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig], [this.ecosystemMultisig, this.cdpCouncilMultisig, this.cdpTechOpsMultisig], this.lowSecAdmin]
+        _constructorArgs = [this.lowSecDelay, [this.ecosystemMultisig, this.cdpTechOpsMultisig], [this.ecosystemMultisig, this.cdpTechOpsMultisig], this.lowSecAdmin]
         this.lowSecTimelock = await this.deployOrLoadState(LOWSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
     }
 
@@ -230,17 +236,17 @@ class EBTCDeployerScript {
 
         // deploy liquidationLibrary
         console.log(chalk.cyan("[LiquidationLibrary]"))
-        _constructorArgs = [_expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], this.collateralAddr];
+        _constructorArgs = [_expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[12], this.collateralAddr];
         let liquidationLibrary = await this.deployOrLoadState(LIQUIDATION_LIBRARY_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy cdpManager
         console.log(chalk.cyan("[CDPManager]"))
-        _constructorArgs = [_expectedAddr[1], _expectedAddr[0], _expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[4], this.collateralAddr];
+        _constructorArgs = [_expectedAddr[1], _expectedAddr[0], _expectedAddr[3], _expectedAddr[7], _expectedAddr[9], _expectedAddr[5], _expectedAddr[6], _expectedAddr[12], this.collateralAddr];
         let cdpManager = await this.deployOrLoadState(CDP_MANAGER_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy borrowerOperations
         console.log(chalk.cyan("[BorrowerOperations]"))
-        _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[4], _expectedAddr[5], _expectedAddr[9], this.feeRecipientOwner, this.collateralAddr];
+        _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[12], _expectedAddr[5], _expectedAddr[9], this.feeRecipientOwner, this.collateralAddr];
         let borrowerOperations = await this.deployOrLoadState(BORROWER_OPERATIONS_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy eBTCToken
@@ -252,6 +258,11 @@ class EBTCDeployerScript {
         console.log(chalk.cyan("[PriceFeed]"))
         _constructorArgs = this.useMockPriceFeed ? [_expectedAddr[0]] : [ethers.constants.AddressZero, _expectedAddr[0], this.collEthCLFeed, this.ethBtcCLFeed];
         let priceFeed = await this.deployOrLoadState(PRICE_FEED_STATE_NAME, _expectedAddr, _constructorArgs);
+
+        // deploy ebtcFeed
+        console.log(chalk.cyan("[EbtcFeed]"))
+        _constructorArgs = [_expectedAddr[0], _expectedAddr[4], ethers.constants.AddressZero];
+        let ebtcFeed = await this.deployOrLoadState(EBTC_FEED_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy activePool
         console.log(chalk.cyan("[ActivePool]"))
@@ -270,7 +281,7 @@ class EBTCDeployerScript {
 
         // deploy hintHelpers
         console.log(chalk.cyan("[HintHelpers]"))
-        _constructorArgs = [_expectedAddr[5], _expectedAddr[2], this.collateralAddr, _expectedAddr[6], _expectedAddr[4]];
+        _constructorArgs = [_expectedAddr[5], _expectedAddr[2], this.collateralAddr, _expectedAddr[6], _expectedAddr[12]];
         let hintHelpers = await this.deployOrLoadState(HINT_HELPERS_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy feeRecipient
@@ -295,9 +306,48 @@ class EBTCDeployerScript {
             hintHelpers,
             ebtcToken,
             feeRecipient,
-            multiCdpGetter
+            multiCdpGetter,
+            ebtcFeed
         }
         return coreContracts;
+    }
+
+    // Use "multisig confirmation" - multiple computers verify bytecode. Then we verify behavior via fuzz suite.
+    async verifyDeploymentConfig(coreContracts, configParams, _deployer) {
+        console.log(chalk.cyan("Verifying Deployment"));
+
+        // Expect all core system price feed addresses to be EbtcFeed
+        const contractsToCheck = [
+            { contract: coreContracts.cdpManager, expectedAddress: coreContracts.ebtcFeed.address, name: "CDPManager" },
+            { contract: coreContracts.borrowerOperations, expectedAddress: coreContracts.ebtcFeed.address, name: "BorrowerOperations" },
+            { contract: coreContracts.liquidationLibrary, expectedAddress: coreContracts.ebtcFeed.address, name: "LiquidationLibrary" },
+            { contract: coreContracts.hintHelpers, expectedAddress: coreContracts.ebtcFeed.address, name: "HintHelpers" }
+        ];
+        
+        for (const { contract, expectedAddress, name } of contractsToCheck) {
+            const priceFeedAddress = await contract.priceFeed();
+            console.log(`${name} price feed address: ${priceFeedAddress}`);
+            assert.strictEqual(
+                ethers.utils.getAddress(priceFeedAddress),
+                ethers.utils.getAddress(expectedAddress),
+                `${name} price feed address is not EbtcFeed`
+            );
+        }
+
+        // Ensure primary oracle is ChainlinkFeed
+        const ebtcFeedPrimaryOracle = await coreContracts.ebtcFeed.primaryOracle();
+        console.log(`EbtcFeed primary oracle address: ${ebtcFeedPrimaryOracle}`);
+        assert.strictEqual(ethers.utils.getAddress(ebtcFeedPrimaryOracle), ethers.utils.getAddress(coreContracts.priceFeed.address), `EbtcFeed primary oracle address is not PriceFeed`);
+
+        // Expect all BO addresses to be correct
+        // Expect all CdpM addresses to be correct
+
+        // Confirm LL doesn't have storage values set
+        const cdpManagerStEthIndex = await coreContracts.cdpManager.stEthIndex();
+        const liquidationLibraryStEthIndex = await coreContracts.liquidationLibrary.stEthIndex();
+
+        console.log("CDP Manager stEthIndex:", cdpManagerStEthIndex);
+        console.log("Liquidation Library stEthIndex:", liquidationLibraryStEthIndex);
     }
 
     async governanceWireUp(coreContracts, configParams, _deployer) {
@@ -356,24 +406,19 @@ class EBTCDeployerScript {
 
         assert.isTrue(await this.lowSecTimelock.getMinDelay() == configParams.LOWSEC_MIN_DELAY);
 
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 3);
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 3);
+        console.log(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE))
+        console.log(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE))
+
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 2);
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 2);
 
         assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpCouncilMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpTechOpsMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.ecosystemMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpCouncilMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpTechOpsMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.ecosystemMultisig));
 
-        // We remove the canceller from the Council and TechOps
-        if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpCouncilMultisig)) {
-            tx = await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpCouncilMultisig);
-            await tx.wait();
-            console.log("Revoked CANCELLER_ROLE of cdpCouncilMultisig on lowSecTimelock");
-        }
-        assert.isFalse(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpCouncilMultisig));
+        // We remove the canceller from TechOps
         if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig)) {
             tx = await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
             await tx.wait();
@@ -411,6 +456,7 @@ class EBTCDeployerScript {
             4: "PriceFeed: setFallbackCaller",
             5: "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress",
             6: "ActivePool: sweep tokens & claim fee recipient coll",
+            7: "EbtcFeed: set primary & secondary oracles"
         };
 
         // Get the list of role numbers
@@ -476,6 +522,10 @@ class EBTCDeployerScript {
                 { target: coreContracts.activePool, signature: govSig.CLAIM_FEE_RECIPIENT_COLL_SIG },
                 { target: coreContracts.collSurplusPool, signature: govSig.SWEEP_TOKEN_SIG },
             ],
+            7: [
+                { target: coreContracts.ebtcFeed, signature: govSig.SET_PRIMARY_ORACLE_SIG },
+                { target: coreContracts.ebtcFeed, signature: govSig.SET_SECONDARY_ORACLE_SIG },
+            ]
         };
 
         // Iterate over the role numbers and set the role capabilities
@@ -500,7 +550,7 @@ class EBTCDeployerScript {
         // LowSec timelock should have access to all functions except for minting/burning and authority admin
         // Fee recipient should be able to claim collateral and sweep
         const userAddressToRoleNumberMap = {
-            [this.highSecTimelock.address]: [0, 3, 4, 5, 6],
+            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7],
             [this.lowSecTimelock.address]: [3, 4, 5, 6],
             [this.feeRecipientOwner]: [6],
         };
@@ -557,7 +607,7 @@ class EBTCDeployerScript {
 async function main() {
     // Flag if useMockCollateral and useMockPriceFeed 
     // also specify which parameter config file to use
-    let useMockCollateral = true;
+    let useMockCollateral = false;
     let useMockPriceFeed = true;
 
     // let configParams = configParamsLocal;
@@ -572,7 +622,7 @@ async function main() {
 
     // flag override: always use mock collateral if not on mainnet as collateral will not exist
     if (configParams != configParamsMainnet) {
-        useMockCollateral = true;
+        useMockCollateral = false;
     }
 
     const date = new Date()
@@ -609,20 +659,19 @@ async function main() {
     let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer);
     if (configParams == configParamsLocal) {
         eds.ecosystemMultisig = (await ethers.getSigners())[1].address;
-        eds.cdpCouncilMultisig = (await ethers.getSigners())[2].address;
-        eds.cdpTechOpsMultisig = (await ethers.getSigners())[3].address;
-        eds.feeRecipientOwner = (await ethers.getSigners())[4].address;
+        eds.cdpTechOpsMultisig = (await ethers.getSigners())[2].address;
+        eds.feeRecipientOwner = (await ethers.getSigners())[3].address;
     }
 
     console.log(`\nEcosystem Multisig: ${eds.ecosystemMultisig}`)
-    console.log(`CDP Council Multisig: ${eds.cdpCouncilMultisig}`)
     console.log(`CDP TechOps Multisig: ${eds.cdpTechOpsMultisig}`)
     console.log(`Fee Recipient Multisig: ${eds.feeRecipientOwner}`)
 
     await eds.loadOrDeployEBTCDeployer();
-    await eds.loadOrDeployCollateral();
+    await eds.loadOrDeployCollateral(configParams);
     await eds.loadOrDeployTimelocks();
     let coreContracts = await eds.eBTCDeployCore();
+    await eds.verifyDeploymentConfig(coreContracts, configParams, _deployer);
     await eds.governanceWireUp(coreContracts, configParams, _deployer);
 }
 

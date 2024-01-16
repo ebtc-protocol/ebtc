@@ -16,7 +16,7 @@ import "./Dependencies/AuthNoOwner.sol";
  * Chainlink oracle. In addition, it contains the mechanism to add or remove the fallback oracle through governance.
  */
 contract EbtcFeed is IPriceFeed, AuthNoOwner {
-    string public constant NAME = "PriceFeed";
+    string public constant NAME = "EbtcFeed";
 
     // The last good price seen from an oracle by Liquity
     uint256 public lastGoodPrice;

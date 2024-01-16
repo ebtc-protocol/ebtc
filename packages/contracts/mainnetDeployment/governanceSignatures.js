@@ -44,6 +44,10 @@ const BURN_CAPABILITY_SIG = ethers.utils.id('burnCapability(address,bytes4)').su
 const TRANSFER_OWNERSHIP_SIG = ethers.utils.id('transferOwnership(address)').substring(0, 10);
 // Auth
 const SET_AUTHORITY_SIG = ethers.utils.id('setAuthority(address)').substring(0, 10);
+// EbtcFeed
+const SET_PRIMARY_ORACLE_SIG = ethers.utils.id('setPrimaryOracle(address)').substring(0, 10);
+// EbtcFeed
+const SET_SECONDARY_ORACLE_SIG = ethers.utils.id('setSecondaryOracle(address)').substring(0, 10);
 
 module.exports = {
   SET_STAKING_REWARD_SPLIT_SIG,
@@ -67,5 +71,7 @@ module.exports = {
   SET_PUBLIC_CAPABILITY_SIG,
   BURN_CAPABILITY_SIG,
   TRANSFER_OWNERSHIP_SIG,
-  SET_AUTHORITY_SIG
+  SET_AUTHORITY_SIG,
+  SET_PRIMARY_ORACLE_SIG,
+  SET_SECONDARY_ORACLE_SIG
 };
