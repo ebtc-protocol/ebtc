@@ -468,7 +468,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             "CdpManagerStorage: remove non-exist or non-active CDP!"
         );
 
-        uint128 index = Cdps[_cdpId].arrayIndex;
+        uint128 index = sortedCdps.getCdpArrayIdx(_cdpId);
         uint256 length = cdpIdsArrayLength;
         uint256 idxLast = length - 1;
 
@@ -477,7 +477,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         bytes32 idToMove = CdpIds[idxLast];
 
         CdpIds[index] = idToMove;
-        Cdps[idToMove].arrayIndex = index;
+        sortedCdps.updateCdpArrayIdx(idToMove, index);
         emit CdpArrayIndexUpdated(idToMove, index);
 
         CdpIds.pop();

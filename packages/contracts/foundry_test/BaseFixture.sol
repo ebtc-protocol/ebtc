@@ -268,7 +268,12 @@ contract eBTCBaseFixture is
 
             // Sorted CDPS
             creationCode = type(SortedCdps).creationCode;
-            args = abi.encode(maxBytes32, addr.cdpManagerAddress, addr.borrowerOperationsAddress);
+            args = abi.encode(
+                maxBytes32,
+                addr.cdpManagerAddress,
+                addr.borrowerOperationsAddress,
+                addr.liquidationLibraryAddress
+            );
 
             sortedCdps = SortedCdps(
                 ebtcDeployer.deploy(ebtcDeployer.SORTED_CDPS(), abi.encodePacked(creationCode, args))
@@ -510,7 +515,6 @@ contract eBTCBaseFixture is
             uint256 _coll,
             uint256 _stake,
             uint256 _liquidatorRewardShares,
-            ,
 
         ) = cdpManager.Cdps(cdpId);
         uint256 _status = cdpManager.getCdpStatus(cdpId);

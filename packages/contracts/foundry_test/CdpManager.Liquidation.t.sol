@@ -29,7 +29,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _sumColl;
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
-            (, uint256 _coll, , , , ) = cdpManager.Cdps(_cdpId);
+            (, uint256 _coll, , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
         assertEq(

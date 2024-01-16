@@ -55,6 +55,8 @@ contract SortedCdps is ISortedCdps {
 
     ICdpManager public immutable cdpManager;
 
+    address public immutable liquidationLibraryAddress;
+
     uint256 public immutable maxSize;
 
     uint256 constant ADDRESS_SHIFT = 96; // 8 * 12; Puts the address at leftmost bytes32 position
@@ -64,6 +66,7 @@ contract SortedCdps is ISortedCdps {
     struct Node {
         bytes32 nextId; // Id of next node (smaller NICR) in the list
         bytes32 prevId; // Id of previous node (larger NICR) in the list
+        uint128 cdpArrayIdx; // Index into the CdpIds array in CDPManagerStorage which is used in HintHelper
     }
 
     // Information for the list
@@ -85,7 +88,13 @@ contract SortedCdps is ISortedCdps {
     /// @param _size Max number of nodes allowed in the list
     /// @param _cdpManagerAddress Address of CdpManager contract
     /// @param _borrowerOperationsAddress Address of BorrowerOperations contract
-    constructor(uint256 _size, address _cdpManagerAddress, address _borrowerOperationsAddress) {
+    /// @param _liquidationLibraryAddress Address of LiquidationLibrary contract
+    constructor(
+        uint256 _size,
+        address _cdpManagerAddress,
+        address _borrowerOperationsAddress,
+        address _liquidationLibraryAddress
+    ) {
         if (_size == 0) {
             _size = type(uint256).max;
         }
@@ -94,6 +103,7 @@ contract SortedCdps is ISortedCdps {
 
         cdpManager = ICdpManager(_cdpManagerAddress);
         borrowerOperationsAddress = _borrowerOperationsAddress;
+        liquidationLibraryAddress = _liquidationLibraryAddress;
     }
 
     /// @notice Encodes a unique CDP Id from owner, block and nonce
@@ -708,11 +718,36 @@ contract SortedCdps is ISortedCdps {
         }
     }
 
+    /// @dev Update a Node(CDP)'s index into CdpIds array in CDPManagerStorage which is used in HintHelper
+    /// @param _cdpID The CDP whose index to be updated
+    /// @param _newIdx The new index for given CDP
+    function updateCdpArrayIdx(bytes32 _cdpID, uint128 _newIdx) external {
+        _requireCallerIsCdpManagerStorage();
+        require(contains(_cdpID), "SortedCdps: List doesn't contains the node");
+        data.nodes[_cdpID].cdpArrayIdx = _newIdx;
+    }
+
+    /// @dev Retrieve a Node(CDP)'s index into CdpIds array in CDPManagerStorage which is used in HintHelper
+    /// @param _cdpID The CDP whose index to be retrieved
+    /// @return The given CDP's index
+    function getCdpArrayIdx(bytes32 _cdpID) external returns (uint128) {
+        require(contains(_cdpID), "SortedCdps: List doesn't contains the node");
+        return data.nodes[_cdpID].cdpArrayIdx;
+    }
+
     // === Modifiers ===
 
     /// @dev Asserts that the caller of the function is the CdpManager
     function _requireCallerIsCdpManager() internal view {
         require(msg.sender == address(cdpManager), "SortedCdps: Caller is not the CdpManager");
+    }
+
+    /// @dev Asserts that the caller of the function is the CdpManagerStorage
+    function _requireCallerIsCdpManagerStorage() internal view {
+        require(
+            msg.sender == address(cdpManager) || msg.sender == address(liquidationLibraryAddress),
+            "SortedCdps: Caller is not the CdpManagerStorage"
+        );
     }
 
     /// @dev Asserts that the caller of the function is either the BorrowerOperations contract or the CdpManager

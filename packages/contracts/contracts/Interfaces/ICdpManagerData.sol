@@ -100,7 +100,6 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 stake;
         uint256 liquidatorRewardShares;
         Status status;
-        uint128 arrayIndex;
     }
 
     /// 5 slots -> 3 -> could be 2 (stake + lrs + status, with arrayIndex removed?)

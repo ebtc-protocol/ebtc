@@ -136,7 +136,8 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             args = abi.encode(
                 type(uint256).max,
                 addr.cdpManagerAddress,
-                addr.borrowerOperationsAddress
+                addr.borrowerOperationsAddress,
+                addr.liquidationLibraryAddress
             );
 
             sortedCdps = SortedCdps(

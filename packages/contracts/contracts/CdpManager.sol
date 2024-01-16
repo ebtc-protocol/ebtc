@@ -577,7 +577,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // Record the index of the new Cdpowner on their Cdp struct
         index = uint128(CdpIds.length - 1);
-        Cdps[_cdpId].arrayIndex = index;
+        sortedCdps.updateCdpArrayIdx(_cdpId, index);
 
         return index;
     }
