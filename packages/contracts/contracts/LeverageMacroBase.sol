@@ -12,7 +12,7 @@ import {ICdpManagerData} from "./Interfaces/ICdpManagerData.sol";
 import "./Dependencies/SafeERC20.sol";
 
 interface ICdpCdps {
-    function Cdps(bytes32) external view returns (ICdpManagerData.Cdp memory);
+    function Cdps(bytes32) external view returns (ICdpManagerData.CdpStorage memory);
 }
 
 /// @title Base implementation of the LeverageMacro
@@ -206,7 +206,7 @@ abstract contract LeverageMacroBase {
          */
         if (postCheckType == PostOperationCheck.openCdp) {
             // Check for param details
-            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(expectedCdpId);
+            ICdpManagerData.CdpStorage memory cdpInfo = cdpManager.Cdps(expectedCdpId);
             _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
             _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
             require(
@@ -217,7 +217,7 @@ abstract contract LeverageMacroBase {
 
         // Update CDP, Ensure the stats are as intended
         if (postCheckType == PostOperationCheck.cdpStats) {
-            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
+            ICdpManagerData.CdpStorage memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
             _doCheckValueType(checkParams.expectedDebt, cdpInfo.debt);
             _doCheckValueType(checkParams.expectedCollateral, cdpInfo.coll);
@@ -229,7 +229,7 @@ abstract contract LeverageMacroBase {
 
         // Post check type: Close, ensure it has the status we want
         if (postCheckType == PostOperationCheck.isClosed) {
-            ICdpManagerData.Cdp memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
+            ICdpManagerData.CdpStorage memory cdpInfo = cdpManager.Cdps(checkParams.cdpId);
 
             require(
                 cdpInfo.status == checkParams.expectedStatus,

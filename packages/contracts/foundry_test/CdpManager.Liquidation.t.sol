@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 import {console2 as console} from "forge-std/console2.sol";
 
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
+import {ICdpManagerData} from "../contracts/Interfaces/ICdpManagerData.sol";
 
 contract CdpManagerLiquidationTest is eBTCBaseInvariants {
     address payable[] users;
@@ -29,7 +30,8 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         uint256 _sumColl;
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
             bytes32 _cdpId = cdpManager.CdpIds(i);
-            (, uint256 _coll, , , , ) = cdpManager.Cdps(_cdpId);
+            ICdpManagerData.CdpStorage memory _cdpStorage = cdpManager.Cdps(_cdpId);
+            uint256 _coll = _cdpStorage.coll;
             _sumColl = _sumColl + _coll;
         }
         assertEq(

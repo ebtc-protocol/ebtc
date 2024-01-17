@@ -583,8 +583,8 @@ class TestHelper {
 
   static async getEntireCollAndDebt(contracts, account) {
     // console.log(`account: ${account}`)
-    const rawColl = (await contracts.cdpManager.Cdps(account))[1]
-    const rawDebt = (await contracts.cdpManager.Cdps(account))[0]
+    const rawColl = web3.utils.toBN((await contracts.cdpManager.Cdps(account))[1])
+    const rawDebt = web3.utils.toBN((await contracts.cdpManager.Cdps(account))[0])
     const pendingRedistributedDebt = (await contracts.cdpManager.getPendingRedistributedDebt(account))
     const entireDebt = rawDebt.add(pendingRedistributedDebt)
     let entireColl = rawColl;

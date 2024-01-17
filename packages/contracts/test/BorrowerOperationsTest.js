@@ -296,8 +296,8 @@ contract('BorrowerOperations', async accounts => {
       await openCdp({ ICR: toBN(dec(2, 18)), extraParams: { from: alice } })
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
-      const coll_before = alice_Cdp_Before[1]
-      const status_Before = alice_Cdp_Before[4]
+      const coll_before = web3.utils.toBN(alice_Cdp_Before[1])
+      const status_Before = web3.utils.toBN(alice_Cdp_Before[4])
 
       // check status before
       assert.equal(status_Before, 1)
@@ -306,8 +306,8 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, dec(1, 'ether'), { from: alice })
 
       const alice_Cdp_After = await cdpManager.Cdps(aliceIndex)
-      const coll_After = alice_Cdp_After[1]
-      const status_After = alice_Cdp_After[4]
+      const coll_After = web3.utils.toBN(alice_Cdp_After[1])
+      const status_After = web3.utils.toBN(alice_Cdp_After[4])
 
       // check coll increases by correct amount,and status remains active
       assert.isTrue(coll_After.eq(coll_before.add(toBN(dec(1, 'ether')))))
@@ -340,7 +340,7 @@ contract('BorrowerOperations', async accounts => {
       const aliceIndex = await sortedCdps.cdpOfOwnerByIndex(alice,0)
 
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
-      const alice_Stake_Before = alice_Cdp_Before[2]
+      const alice_Stake_Before = web3.utils.toBN(alice_Cdp_Before[2])
       const totalStakes_Before = (await cdpManager.totalStakes())
 
       assert.isTrue(totalStakes_Before.eq(alice_Stake_Before))
@@ -350,7 +350,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check stake and total stakes get updated
       const alice_Cdp_After = await cdpManager.Cdps(aliceIndex)
-      const alice_Stake_After = alice_Cdp_After[2]
+      const alice_Stake_After = web3.utils.toBN(alice_Cdp_After[2])
       const totalStakes_After = (await cdpManager.totalStakes())
 
       assert.isTrue(alice_Stake_After.eq(alice_Stake_Before.add(toBN(dec(2, 'ether')))))
@@ -527,7 +527,7 @@ contract('BorrowerOperations', async accounts => {
       await borrowerOperations.addColl(aliceIndex, th.DUMMY_BYTES32, th.DUMMY_BYTES32, collTopUp, { from: alice })
 
       // Check Alice's collateral
-      const aliceCollAfter = (await cdpManager.Cdps(aliceIndex))[1]
+      const aliceCollAfter = web3.utils.toBN((await cdpManager.Cdps(aliceIndex))[1])
       assert.isTrue(aliceCollAfter.eq(aliceCollBefore.add(collTopUp)))
     })
 
@@ -752,7 +752,7 @@ contract('BorrowerOperations', async accounts => {
       assert.isTrue(aliceColl.gt(toBN('0')))
 
       const alice_Cdp_Before = await cdpManager.Cdps(aliceIndex)
-      const alice_Stake_Before = alice_Cdp_Before[2]
+      const alice_Stake_Before = web3.utils.toBN(alice_Cdp_Before[2])
       const totalStakes_Before = (await cdpManager.totalStakes())
 
       assert.isTrue(alice_Stake_Before.eq(aliceColl))
@@ -763,7 +763,7 @@ contract('BorrowerOperations', async accounts => {
 
       // Check stake and total stakes get updated
       const alice_Cdp_After = await cdpManager.Cdps(aliceIndex)
-      const alice_Stake_After = alice_Cdp_After[2]
+      const alice_Stake_After = web3.utils.toBN(alice_Cdp_After[2])
       const totalStakes_After = (await cdpManager.totalStakes())
 
       assert.isTrue(alice_Stake_After.eq(alice_Stake_Before.sub(toBN(dec(1, 17)))))

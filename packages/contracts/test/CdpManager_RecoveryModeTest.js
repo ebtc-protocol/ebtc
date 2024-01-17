@@ -1004,7 +1004,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode)
 
     // Check Bob's Cdp is active
-    const bob_CdpStatus_Before = (await cdpManager.Cdps(_bobCdpId))[4]
+    const bob_CdpStatus_Before = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[4])
     const bob_Cdp_isInSortedList_Before = await sortedCdps.contains(_bobCdpId)
 
     assert.equal(bob_CdpStatus_Before, 1) // status enum element 1 corresponds to "Active"
@@ -1018,7 +1018,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     /* Since the pool only contains 100 EBTC, and Bob's pre-liquidation debt was 250 EBTC,
     expect Bob's cdp to remain untouched, and remain active after liquidation */
 
-    const bob_CdpStatus_After = (await cdpManager.Cdps(_bobCdpId))[4]
+    const bob_CdpStatus_After = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[4])
     const bob_Cdp_isInSortedList_After = await sortedCdps.contains(_bobCdpId)
 
     assert.equal(bob_CdpStatus_After, 3) // status enum element 3 corresponds to "closed"
@@ -1232,8 +1232,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
-    const bob_Coll_Before = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bob_Debt_Before = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bob_Coll_Before = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bob_Debt_Before = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
 
     // confirm Bob is last cdp in list, and has >110% ICR
     assert.equal((await sortedCdps.getLast()).toString(), _bobCdpId)
@@ -1247,8 +1247,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(await sortedCdps.contains(_bobCdpId))
 
     // Check Bob's collateral and debt remains the same
-    const bob_Coll_After = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bob_Debt_After = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bob_Coll_After = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bob_Debt_After = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
     assert.isTrue(bob_Coll_After.lt(bob_Coll_Before))
     assert.isTrue(bob_Debt_After.lt(bob_Debt_Before))
 
@@ -1600,8 +1600,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     /* Though Bob's true ICR (including pending rewards) is below the MCR, 
     check that Bob's raw coll and debt has not changed, and that his "raw" ICR is above the MCR */
-    const bob_Coll = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bob_Debt = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bob_Coll = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bob_Debt = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
 
     const bob_rawICR = bob_Coll.mul(th.toBN(dec(100, 18))).div(bob_Debt)
     assert.isTrue(bob_rawICR.gte(mv._MCR))
@@ -2396,8 +2396,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
 
     /* Though Bob's true ICR (including pending rewards) is below the MCR, 
    check that Bob's raw coll and debt has not changed, and that his "raw" ICR is above the MCR */
-    const bob_Coll = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bob_Debt = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bob_Coll = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bob_Debt = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
 
     const bob_rawICR = bob_Coll.mul(th.toBN(dec(100, 18))).div(bob_Debt)
     assert.isTrue(bob_rawICR.gte(mv._MCR))
@@ -2601,8 +2601,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_whaleCdpId))
 
     // Check A's collateral and debt remain the same
-    const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingRedistributedDebt(_aliceCdpId)))
+    const entireColl_A = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
+    const entireDebt_A = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[0]).add((await cdpManager.getPendingRedistributedDebt(_aliceCdpId)))
 
     assert.equal(entireColl_A.toString(), '0')
     assert.equal(entireDebt_A.toString(), '0')
@@ -4002,9 +4002,9 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let _carolCdpId = await sortedCdps.cdpOfOwnerByIndex(carol, 0);
     let _dennisCdpId = await sortedCdps.cdpOfOwnerByIndex(dennis, 0);
 
-    const bobColl_Before = (await cdpManager.Cdps(_bobCdpId))[1]
-    const carolColl_Before = (await cdpManager.Cdps(_carolCdpId))[1]
-    const dennisColl_Before = (await cdpManager.Cdps(_dennisCdpId))[1]
+    const bobColl_Before = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const carolColl_Before = web3.utils.toBN((await cdpManager.Cdps(_carolCdpId))[1])
+    const dennisColl_Before = web3.utils.toBN((await cdpManager.Cdps(_dennisCdpId))[1])
 
     await openCdp({ ICR: toBN(dec(228, 16)), extraParams: { from: erin } })
     await openCdp({ ICR: toBN(dec(230, 16)), extraParams: { from: freddy } })
@@ -4048,13 +4048,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.equal((await cdpManager.Cdps(_carolCdpId))[4], '3')
 
     // Confirm D, B, C coll & debt have not changed
-    const dennisDebt_After = (await cdpManager.Cdps(_dennisCdpId))[0].add((await cdpManager.getPendingRedistributedDebt(dennis)))
-    const bobDebt_After = (await cdpManager.Cdps(_bobCdpId))[0].add((await cdpManager.getPendingRedistributedDebt(bob)))
-    const carolDebt_After = (await cdpManager.Cdps(_carolCdpId))[0].add((await cdpManager.getPendingRedistributedDebt(carol)))
+    const dennisDebt_After = web3.utils.toBN((await cdpManager.Cdps(_dennisCdpId))[0]).add((await cdpManager.getPendingRedistributedDebt(dennis)))
+    const bobDebt_After = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0]).add((await cdpManager.getPendingRedistributedDebt(bob)))
+    const carolDebt_After = web3.utils.toBN((await cdpManager.Cdps(_carolCdpId))[0]).add((await cdpManager.getPendingRedistributedDebt(carol)))
 
-    const dennisColl_After = (await cdpManager.Cdps(_dennisCdpId))[1]  
-    const bobColl_After = (await cdpManager.Cdps(_bobCdpId))[1]
-    const carolColl_After = (await cdpManager.Cdps(_carolCdpId))[1]
+    const dennisColl_After = web3.utils.toBN((await cdpManager.Cdps(_dennisCdpId))[1])  
+    const bobColl_After = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const carolColl_After = web3.utils.toBN((await cdpManager.Cdps(_carolCdpId))[1])
 
     assert.isTrue(dennisColl_After.lt(dennisColl_Before))
     assert.isTrue(bobColl_After.lt(bobColl_Before))
@@ -4106,12 +4106,12 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Confirm Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
 
-    const G_collBefore = (await cdpManager.Cdps(_gCdpId))[1]
-    const G_debtBefore = (await cdpManager.Cdps(_gCdpId))[0]
-    const H_collBefore = (await cdpManager.Cdps(_hCdpId))[1]
-    const H_debtBefore = (await cdpManager.Cdps(_hCdpId))[0]
-    const I_collBefore = (await cdpManager.Cdps(_iCdpId))[1]
-    const I_debtBefore = (await cdpManager.Cdps(_iCdpId))[0]
+    const G_collBefore = web3.utils.toBN((await cdpManager.Cdps(_gCdpId))[1])
+    const G_debtBefore = web3.utils.toBN((await cdpManager.Cdps(_gCdpId))[0])
+    const H_collBefore = web3.utils.toBN((await cdpManager.Cdps(_hCdpId))[1])
+    const H_debtBefore = web3.utils.toBN((await cdpManager.Cdps(_hCdpId))[0])
+    const I_collBefore = web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[1])
+    const I_debtBefore = web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[0])
 
     const ICR_A = await cdpManager.getCachedICR(_aCdpId, price) 
     const ICR_B = await cdpManager.getCachedICR(_bCdpId, price) 
@@ -4144,13 +4144,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_hCdpId))
     assert.isTrue(await sortedCdps.contains(_iCdpId))
 
-    // Check G, H, I coll and debt have not changed
-    assert.equal(G_collBefore.eq(await cdpManager.Cdps(_gCdpId))[1])
-    assert.equal(G_debtBefore.eq(await cdpManager.Cdps(_gCdpId))[0])
-    assert.equal(H_collBefore.eq(await cdpManager.Cdps(_hCdpId))[1])
-    assert.equal(H_debtBefore.eq(await cdpManager.Cdps(_hCdpId))[0])
-    assert.equal(I_collBefore.eq(await cdpManager.Cdps(_iCdpId))[1])
-    assert.equal(I_debtBefore.eq(await cdpManager.Cdps(_iCdpId))[0])
+    // Check G, H, I coll and debt have not changeds
+    assert.isTrue(G_collBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_gCdpId))[1])))
+    assert.isTrue(G_debtBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_gCdpId))[0])))
+    assert.isTrue(H_collBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_hCdpId))[1])))
+    assert.isTrue(H_debtBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_hCdpId))[0])))
+    assert.isTrue(I_collBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[1])))
+    assert.isTrue(I_debtBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[0])))
 
     // Confirm Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -4177,8 +4177,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_iCdpId))
 
     // Check coll and debt have not changed
-    assert.equal(I_collBefore.eq(await cdpManager.Cdps(_iCdpId))[1])
-    assert.equal(I_debtBefore.eq(await cdpManager.Cdps(_iCdpId))[0])
+    assert.isTrue(I_collBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[1])))
+    assert.isTrue(I_debtBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[0])))
 
     // Confirm Recovery Mode
     assert.isTrue(await th.checkRecoveryMode(contracts))
@@ -4197,13 +4197,13 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await ethers.provider.send("evm_increaseTime", [901]);
     await ethers.provider.send("evm_mine");
     
-    const dEbtBefore = (await cdpManager.Cdps(_eCdpId))[0]
+    const dEbtBefore = web3.utils.toBN((await cdpManager.Cdps(_eCdpId))[0])
 
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(F)).toString()), {from: F});	
     await debtToken.transfer(owner, toBN((await debtToken.balanceOf(E)).toString()), {from: E});
     await cdpManager.batchLiquidateCdps([_bCdpId, _iCdpId, _eCdpId])
     
-    const dEbtAfter = (await cdpManager.Cdps(_eCdpId))[0]
+    const dEbtAfter = web3.utils.toBN((await cdpManager.Cdps(_eCdpId))[0])
     
     const dEbtDelta = dEbtBefore.sub(dEbtAfter)
 
@@ -4217,8 +4217,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_iCdpId))
 
     // Check coll and debt have not changed
-    assert.equal(I_collBefore.eq(await cdpManager.Cdps(_iCdpId))[1])
-    assert.equal(I_debtBefore.eq(await cdpManager.Cdps(_iCdpId))[0])
+    assert.isTrue(I_collBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[1])))
+    assert.isTrue(I_debtBefore.eq(web3.utils.toBN((await cdpManager.Cdps(_iCdpId))[0])))
   })
 
   it('batchLiquidateCdps(): emits liquidation event with correct values when all cdps have ICR > 110% and liquidator covers a subset of cdps', async () => {
@@ -4358,8 +4358,8 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(await sortedCdps.contains(_whaleCdpId))
 
     // Check A's collateral and debt are the same
-    const entireColl_A = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const entireDebt_A = (await cdpManager.Cdps(_aliceCdpId))[0].add((await cdpManager.getPendingRedistributedDebt(_aliceCdpId)))
+    const entireColl_A = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
+    const entireDebt_A = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[0]).add((await cdpManager.getPendingRedistributedDebt(_aliceCdpId)))
 
     assert.equal(entireColl_A.toString(), '0')
     th.assertIsApproximatelyEqual(entireDebt_A.toString(), '0')

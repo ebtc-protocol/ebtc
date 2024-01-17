@@ -141,7 +141,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         // capped by the entire debt of the Cdp minus the liquidation reserve
         singleRedemption.debtToRedeem = EbtcMath._min(
             _redeemColFromCdp.maxEBTCamount,
-            Cdps[_redeemColFromCdp.cdpId].debt /// @audit Redeem everything
+            cdpStorages[_redeemColFromCdp.cdpId].debt /// @audit Redeem everything
         );
 
         singleRedemption.collSharesDrawn = collateral.getSharesByPooledEth(
@@ -150,8 +150,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // Repurposing this struct here to avoid stack too deep.
         CdpDebtAndCollShares memory _oldDebtAndColl = CdpDebtAndCollShares(
-            Cdps[_redeemColFromCdp.cdpId].debt,
-            Cdps[_redeemColFromCdp.cdpId].coll
+            cdpStorages[_redeemColFromCdp.cdpId].debt,
+            cdpStorages[_redeemColFromCdp.cdpId].coll
         );
 
         // Decrease the debt and collateral of the current Cdp according to the EBTC lot and corresponding ETH to send
@@ -163,7 +163,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // No debt left in the Cdp, therefore the cdp gets closed
             {
                 address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp.cdpId);
-                uint256 _liquidatorRewardShares = Cdps[_redeemColFromCdp.cdpId]
+                uint256 _liquidatorRewardShares = cdpStorages[_redeemColFromCdp.cdpId]
                     .liquidatorRewardShares;
 
                 singleRedemption.collSurplus = newColl; // Collateral surplus processed on full redemption
@@ -211,8 +211,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
             singleRedemption.newPartialNICR = newNICR;
 
-            Cdps[_redeemColFromCdp.cdpId].debt = newDebt;
-            Cdps[_redeemColFromCdp.cdpId].coll = newColl;
+            cdpStorages[_redeemColFromCdp.cdpId].debt = uint128(newDebt);
+            cdpStorages[_redeemColFromCdp.cdpId].coll = uint128(newColl);
             _updateStakeAndTotalStakes(_redeemColFromCdp.cdpId);
 
             emit CdpUpdated(
@@ -223,7 +223,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 _oldDebtAndColl.collShares,
                 newDebt,
                 newColl,
-                Cdps[_redeemColFromCdp.cdpId].stake,
+                cdpStorages[_redeemColFromCdp.cdpId].stake,
                 CdpOperation.redeemCollateral
             );
         }
@@ -577,7 +577,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // Record the index of the new Cdpowner on their Cdp struct
         index = uint128(CdpIds.length - 1);
-        Cdps[_cdpId].arrayIndex = index;
+        cdpStorages[_cdpId].arrayIndex = index;
 
         return index;
     }
@@ -874,14 +874,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpId ID of the Cdp to get status for
     /// @return Status code of the Cdp
     function getCdpStatus(bytes32 _cdpId) external view override returns (uint256) {
-        return uint256(Cdps[_cdpId].status);
+        return uint256(cdpStorages[_cdpId].status);
     }
 
     /// @notice Get stake value of a Cdp
     /// @param _cdpId ID of the Cdp to get stake for
     /// @return Stake value of the Cdp
     function getCdpStake(bytes32 _cdpId) external view override returns (uint256) {
-        return Cdps[_cdpId].stake;
+        return cdpStorages[_cdpId].stake;
     }
 
     /// @notice Get stored debt value of a Cdp, in eBTC units
@@ -889,7 +889,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpId ID of the Cdp to get debt for
     /// @return Debt value of the Cdp in eBTC
     function getCdpDebt(bytes32 _cdpId) external view override returns (uint256) {
-        return Cdps[_cdpId].debt;
+        return cdpStorages[_cdpId].debt;
     }
 
     /// @notice Get stored collateral value of a Cdp, in stETH shares
@@ -897,7 +897,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpId ID of the Cdp to get collateral for
     /// @return Collateral value of the Cdp in stETH shares
     function getCdpCollShares(bytes32 _cdpId) external view override returns (uint256) {
-        return Cdps[_cdpId].coll;
+        return cdpStorages[_cdpId].coll;
     }
 
     /// @notice Get shares value of the liquidator gas incentive reward stored for a Cdp.
@@ -909,7 +909,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpId ID of the Cdp to get liquidator reward shares for
     /// @return Liquidator reward shares value of the Cdp
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view override returns (uint256) {
-        return Cdps[_cdpId].liquidatorRewardShares;
+        return cdpStorages[_cdpId].liquidatorRewardShares;
     }
 
     // --- Cdp property setters, called by BorrowerOperations ---
@@ -931,10 +931,10 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     ) external {
         _requireCallerIsBorrowerOperations();
 
-        Cdps[_cdpId].debt = _debt;
-        Cdps[_cdpId].coll = _coll;
-        Cdps[_cdpId].status = Status.active;
-        Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
+        cdpStorages[_cdpId].debt = uint128(_debt);
+        cdpStorages[_cdpId].coll = uint128(_coll);
+        cdpStorages[_cdpId].status = Status.active;
+        cdpStorages[_cdpId].liquidatorRewardShares = uint128(_liquidatorRewardShares);
 
         cdpStEthFeePerUnitIndex[_cdpId] = systemStEthFeePerUnitIndex; /// @audit We critically assume global accounting is synced here
         _updateRedistributedDebtIndex(_cdpId);
@@ -995,13 +995,13 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpId The ID of the Cdp
     /// @param _newColl New collateral value, in stETH shares
     function _setCdpCollShares(bytes32 _cdpId, uint256 _newColl) internal {
-        Cdps[_cdpId].coll = _newColl;
+        cdpStorages[_cdpId].coll = uint128(_newColl);
     }
 
     /// @notice Set the debt of a Cdp
     /// @param _cdpId The ID of the Cdp
     /// @param _newDebt New debt units value
     function _setCdpDebt(bytes32 _cdpId, uint256 _newDebt) internal {
-        Cdps[_cdpId].debt = _newDebt;
+        cdpStorages[_cdpId].debt = uint128(_newDebt);
     }
 }

@@ -165,7 +165,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
     uint256 public lastRedemptionTimestamp;
 
-    mapping(bytes32 => Cdp) public Cdps;
+    mapping(bytes32 => CdpStorage) public cdpStorages;
 
     uint256 public override totalStakes;
 
@@ -268,10 +268,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         _removeStake(_cdpId);
 
-        Cdps[_cdpId].status = closedStatus;
-        Cdps[_cdpId].coll = 0;
-        Cdps[_cdpId].debt = 0;
-        Cdps[_cdpId].liquidatorRewardShares = 0;
+        cdpStorages[_cdpId].status = closedStatus;
+        cdpStorages[_cdpId].coll = 0;
+        cdpStorages[_cdpId].debt = 0;
+        cdpStorages[_cdpId].liquidatorRewardShares = 0;
 
         cdpDebtRedistributionIndex[_cdpId] = 0;
         cdpStEthFeePerUnitIndex[_cdpId] = 0;
@@ -304,7 +304,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function _getPendingRedistributedDebt(
         bytes32 _cdpId
     ) internal view returns (uint256 pendingEBTCDebtReward, uint256 _debtIndexDiff) {
-        Cdp storage cdp = Cdps[_cdpId];
+        CdpStorage storage cdp = cdpStorages[_cdpId];
 
         if (cdp.status != Status.active) {
             return (0, 0);
@@ -325,7 +325,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      * pending debt
      */
     function _hasRedistributedDebt(bytes32 _cdpId) internal view returns (bool) {
-        if (Cdps[_cdpId].status != Status.active) {
+        if (cdpStorages[_cdpId].status != Status.active) {
             return false;
         }
 
@@ -360,7 +360,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         // If any collShares or debt changes occured
         if (_feeSplitDistributed > 0 || _debtIndexDelta > 0) {
-            Cdp storage _cdp = Cdps[_cdpId];
+            CdpStorage storage _cdp = cdpStorages[_cdpId];
 
             uint prevCollShares = _cdp.coll;
             uint256 prevDebt = _cdp.debt;
@@ -383,7 +383,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
                 if (prevDebt != _newDebt) {
                     {
                         // Apply pending debt redistribution to this CDP
-                        _cdp.debt = _newDebt;
+                        _cdp.debt = uint128(_newDebt);
                     }
                 }
             }
@@ -408,9 +408,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
     function _removeStake(bytes32 _cdpId) internal {
-        uint256 _newTotalStakes = totalStakes - Cdps[_cdpId].stake;
+        uint256 _newTotalStakes = totalStakes - cdpStorages[_cdpId].stake;
         totalStakes = _newTotalStakes;
-        Cdps[_cdpId].stake = 0;
+        cdpStorages[_cdpId].stake = 0;
         emit TotalStakesUpdated(_newTotalStakes);
     }
 
@@ -429,10 +429,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // Update borrower's stake based on their latest collateral value
     function _updateStakeForCdp(bytes32 _cdpId) internal returns (uint256, uint256) {
-        Cdp storage _cdp = Cdps[_cdpId];
+        CdpStorage storage _cdp = cdpStorages[_cdpId];
         uint256 newStake = _computeNewStake(_cdp.coll);
         uint256 oldStake = _cdp.stake;
-        _cdp.stake = newStake;
+        _cdp.stake = uint128(newStake);
 
         return (newStake, oldStake);
     }
@@ -461,14 +461,14 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
      */
     function _removeCdp(bytes32 _cdpId, uint256 cdpIdsArrayLength) internal {
-        Status cdpStatus = Cdps[_cdpId].status;
+        Status cdpStatus = cdpStorages[_cdpId].status;
         // It’s set in caller function `_closeCdp`
         require(
             cdpStatus != Status.nonExistent && cdpStatus != Status.active,
             "CdpManagerStorage: remove non-exist or non-active CDP!"
         );
 
-        uint128 index = Cdps[_cdpId].arrayIndex;
+        uint128 index = cdpStorages[_cdpId].arrayIndex;
         uint256 length = cdpIdsArrayLength;
         uint256 idxLast = length - 1;
 
@@ -477,7 +477,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         bytes32 idToMove = CdpIds[idxLast];
 
         CdpIds[index] = idToMove;
-        Cdps[idToMove].arrayIndex = index;
+        cdpStorages[idToMove].arrayIndex = index;
         emit CdpArrayIndexUpdated(idToMove, index);
 
         CdpIds.pop();
@@ -597,7 +597,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _systemStEthFeePerUnitIndex
     ) internal {
         // apply split fee to given CDP
-        Cdps[_cdpId].coll = _newColl;
+        cdpStorages[_cdpId].coll = uint128(_newColl);
 
         emit CdpFeeSplitApplied(
             _cdpId,
@@ -618,7 +618,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _systemStEthFeePerUnitIndex
     ) public view returns (uint256, uint256) {
         uint256 _cdpStEthFeePerUnitIndex = cdpStEthFeePerUnitIndex[_cdpId];
-        uint256 _cdpCol = Cdps[_cdpId].coll;
+        uint256 _cdpCol = cdpStorages[_cdpId].coll;
 
         if (
             _cdpStEthFeePerUnitIndex == 0 ||
@@ -628,7 +628,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             return (0, _cdpCol);
         }
 
-        uint256 _feeSplitDistributed = Cdps[_cdpId].stake *
+        uint256 _feeSplitDistributed = cdpStorages[_cdpId].stake *
             (_systemStEthFeePerUnitIndex - _cdpStEthFeePerUnitIndex);
 
         uint256 _scaledCdpColl = _cdpCol * DECIMAL_PRECISION;
@@ -646,7 +646,10 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // -- Modifier functions --
     function _requireCdpIsActive(bytes32 _cdpId) internal view {
-        require(Cdps[_cdpId].status == Status.active, "CdpManager: Cdp does not exist or is closed");
+        require(
+            cdpStorages[_cdpId].status == Status.active,
+            "CdpManager: Cdp does not exist or is closed"
+        );
     }
 
     function _requireMoreThanOneCdpInSystem(uint256 CdpOwnersArrayLength) internal view {
@@ -790,7 +793,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _systemStEthFeePerUnitIndex
     ) internal view returns (uint256, uint256, uint256, uint256, uint256) {
         uint256 _feeSplitApplied;
-        uint256 _newCollShare = Cdps[_cdpId].coll;
+        uint256 _newCollShare = cdpStorages[_cdpId].coll;
 
         // processing split fee to be applied
         if (_cdpPerUnitIdx != _systemStEthFeePerUnitIndex && _cdpPerUnitIdx > 0) {
@@ -825,7 +828,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         (uint256 pendingDebtRedistributed, uint256 _debtIndexDelta) = _getPendingRedistributedDebt(
             _cdpId
         );
-        uint256 _newDebt = Cdps[_cdpId].debt;
+        uint256 _newDebt = cdpStorages[_cdpId].debt;
         if (pendingDebtRedistributed > 0) {
             _newDebt = _newDebt + pendingDebtRedistributed;
         }
@@ -877,6 +880,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             _systemCollShare = _systemCollShare - _feeTaken;
         }
         return _systemCollShare;
+    }
+
+    /// @notice Retrieve CDP's debt, collateral, stake, liquidator reward share, status
+    function Cdps(bytes32 _cdpId) external view override returns (CdpStorage memory) {
+        return cdpStorages[_cdpId];
     }
 
     /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken

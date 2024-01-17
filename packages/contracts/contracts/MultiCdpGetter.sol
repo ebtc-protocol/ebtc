@@ -4,6 +4,7 @@ pragma solidity 0.8.17;
 
 import "./CdpManager.sol";
 import "./SortedCdps.sol";
+import {ICdpManagerData} from "./Interfaces/ICdpManagerData.sol";
 
 /*  Helper contract for grabbing Cdp data for the front end. Not part of the core Ebtc system. */
 contract MultiCdpGetter {
@@ -83,16 +84,8 @@ contract MultiCdpGetter {
 
         for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
-            (
-                ,
-                ,
-                _cdps[idx].stake,
-                /* status */
-                /* arrayIndex */
-                ,
-                ,
-
-            ) = cdpManager.Cdps(currentCdpId);
+            ICdpManagerData.CdpStorage memory _cdpStorage = cdpManager.Cdps(currentCdpId);
+            _cdps[idx].stake = _cdpStorage.stake;
 
             (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
             (_cdps[idx].snapshotEBTCDebt) = cdpManager.cdpDebtRedistributionIndex(currentCdpId);
@@ -119,16 +112,8 @@ contract MultiCdpGetter {
 
         for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
-            (
-                ,
-                ,
-                _cdps[idx].stake,
-                /* status */
-                /* arrayIndex */
-                ,
-                ,
-
-            ) = cdpManager.Cdps(currentCdpId);
+            ICdpManagerData.CdpStorage memory _cdpStorage = cdpManager.Cdps(currentCdpId);
+            _cdps[idx].stake = _cdpStorage.stake;
 
             (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
             (_cdps[idx].snapshotEBTCDebt) = cdpManager.cdpDebtRedistributionIndex(currentCdpId);

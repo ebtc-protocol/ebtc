@@ -356,7 +356,7 @@ contract('Gas compensation tests', async accounts => {
     and (1 - 0.05000025000125001) = 0.94999974999875 ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const aliceColl = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -388,7 +388,7 @@ contract('Gas compensation tests', async accounts => {
     and (15 - 0.666666666666666666) ETH remainder liquidated */
 
     // Check collateral value in USD is > $10
-    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const bobColl = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -433,7 +433,7 @@ contract('Gas compensation tests', async accounts => {
     and (10.001 - 0.050005) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
+    const aliceColl = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
     const _0pt5percent_aliceColl = toBN(liqReward.toString());//aliceColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -462,7 +462,7 @@ contract('Gas compensation tests', async accounts => {
    and (37.5 - 0.1875 ETH) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
+    const bobColl = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
     const _0pt5percent_bobColl = toBN(liqReward.toString());//bobColl.div(web3.utils.toBN('200'))
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
@@ -659,8 +659,8 @@ contract('Gas compensation tests', async accounts => {
     const price_1 = await priceFeed.getPrice()
 
     // Check value of 0.5% of collateral in USD is > $10
-    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const aliceDebt = (await cdpManager.Cdps(_aliceCdpId))[0]
+    const aliceColl = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
+    const aliceDebt = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[0])
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -690,8 +690,8 @@ contract('Gas compensation tests', async accounts => {
    and (37.5 - 0.1875 ETH) ETH remainder liquidated */
 
     // Check value of 0.5% of collateral in USD is > $10
-    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bobDebt = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bobColl = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bobDebt = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
 
     assert.isFalse(await th.checkRecoveryMode(contracts))
 
@@ -751,10 +751,10 @@ contract('Gas compensation tests', async accounts => {
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
-    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
-    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
+    const aliceColl = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
+    const bobColl = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const carolColl = web3.utils.toBN((await cdpManager.Cdps(_carolCdpId))[1])
+    const dennisColl = web3.utils.toBN((await cdpManager.Cdps(_dennisCdpId))[1])
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -911,10 +911,10 @@ contract('Gas compensation tests', async accounts => {
 
 
     // --- Check value of of A's collateral is < $10, and value of B,C,D collateral are > $10  ---
-    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
-    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
-    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
+    const aliceColl = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
+    const bobColl = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const carolColl = web3.utils.toBN((await cdpManager.Cdps(_carolCdpId))[1])
+    const dennisColl = web3.utils.toBN((await cdpManager.Cdps(_dennisCdpId))[1])
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -986,10 +986,10 @@ contract('Gas compensation tests', async accounts => {
     assert.isTrue((await cdpManager.getCachedICR(_carolCdpId, price)).lt(mv._MCR))
     assert.isTrue((await cdpManager.getCachedICR(_dennisCdpId, price)).lt(mv._MCR))
 
-    const aliceColl = (await cdpManager.Cdps(_aliceCdpId))[1]
-    const bobColl = (await cdpManager.Cdps(_bobCdpId))[1]
-    const carolColl = (await cdpManager.Cdps(_carolCdpId))[1]
-    const dennisColl = (await cdpManager.Cdps(_dennisCdpId))[1]
+    const aliceColl = web3.utils.toBN((await cdpManager.Cdps(_aliceCdpId))[1])
+    const bobColl = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const carolColl = web3.utils.toBN((await cdpManager.Cdps(_carolCdpId))[1])
+    const dennisColl = web3.utils.toBN((await cdpManager.Cdps(_dennisCdpId))[1])
 
     // --- Check value of 0.5% of A, B, and C's collateral is <$10, and value of 0.5% of D's collateral is > $10 ---
     const _0pt5percent_aliceColl = aliceColl.div(web3.utils.toBN('200'))
@@ -1195,4 +1195,3 @@ contract('Gas compensation tests', async accounts => {
     }
   })
 })
-

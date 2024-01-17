@@ -956,8 +956,8 @@ contract('CdpManager', async accounts => {
 
     /* Though Bob's true ICR (including pending rewards) is below the MCR, 
     check that Bob's raw coll and debt has not changed, and that his "raw" ICR is above the MCR */
-    const bob_Coll = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bob_Debt = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bob_Coll = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bob_Debt = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
 
     const bob_rawICR = bob_Coll.mul(toBN(dec(100, 18))).div(bob_Debt)
     assert.isTrue(bob_rawICR.gte(mv._MCR))
@@ -1369,8 +1369,8 @@ contract('CdpManager', async accounts => {
     assert.isTrue(carol_ICR_After.lte(mv._MCR))
 
     /* Though Bob's true ICR (including pending rewards) is below the MCR, check that Bob's raw coll and debt has not changed */
-    const bob_Coll = (await cdpManager.Cdps(_bobCdpId))[1]
-    const bob_Debt = (await cdpManager.Cdps(_bobCdpId))[0]
+    const bob_Coll = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[1])
+    const bob_Debt = web3.utils.toBN((await cdpManager.Cdps(_bobCdpId))[0])
 
     const bob_rawICR = bob_Coll.mul(toBN(dec(100, 18))).div(bob_Debt)
     assert.isTrue(bob_rawICR.gte(mv._MCR))
@@ -3881,6 +3881,7 @@ contract('CdpManager', async accounts => {
 
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // A redeems 10 EBTC
     await th.redeemCollateral(A, contracts, dec(10, 18), GAS_PRICE)

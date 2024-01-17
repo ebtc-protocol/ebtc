@@ -391,7 +391,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         (uint256 entireDebt, uint256 entireColl) = getSyncedDebtAndCollShares(_cdpId);
 
         // housekeeping after liquidation by closing the CDP
-        uint256 _liquidatorReward = Cdps[_cdpId].liquidatorRewardShares;
+        uint256 _liquidatorReward = cdpStorages[_cdpId].liquidatorRewardShares;
         _closeCdp(_cdpId, Status.closedByLiquidation);
 
         return (entireDebt, entireColl, _liquidatorReward);
@@ -457,7 +457,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 _partialDebt,
         uint256 _partialColl
     ) internal {
-        Cdp storage _cdp = Cdps[_cdpId];
+        CdpStorage storage _cdp = cdpStorages[_cdpId];
 
         uint256 _coll = _cdp.coll;
         uint256 _debt = _cdp.debt;
@@ -466,8 +466,8 @@ contract LiquidationLibrary is CdpManagerStorage {
 
         _requireMinDebt(newDebt);
 
-        _cdp.coll = _coll - _partialColl;
-        _cdp.debt = newDebt;
+        _cdp.coll = uint128(_coll - _partialColl);
+        _cdp.debt = uint128(newDebt);
         _updateStakeAndTotalStakes(_cdpId);
     }
 
@@ -502,9 +502,9 @@ contract LiquidationLibrary is CdpManagerStorage {
             msg.sender,
             _oldDebt,
             _oldColl,
-            Cdps[_cdpId].debt,
-            Cdps[_cdpId].coll,
-            Cdps[_cdpId].stake,
+            cdpStorages[_cdpId].debt,
+            cdpStorages[_cdpId].coll,
+            cdpStorages[_cdpId].stake,
             CdpOperation.partiallyLiquidate
         );
     }
@@ -762,7 +762,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
-            if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
+            if (vars.cdpId != bytes32(0) && cdpStorages[vars.cdpId].status == Status.active) {
                 vars.ICR = getSyncedICR(vars.cdpId, _price);
 
                 if (
@@ -825,7 +825,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         for (vars.i = _start; ; ) {
             vars.cdpId = _cdpArray[vars.i];
             // only for active cdps
-            if (vars.cdpId != bytes32(0) && Cdps[vars.cdpId].status == Status.active) {
+            if (vars.cdpId != bytes32(0) && cdpStorages[vars.cdpId].status == Status.active) {
                 vars.ICR = getSyncedICR(vars.cdpId, _price);
 
                 if (_checkICRAgainstMCR(vars.ICR)) {

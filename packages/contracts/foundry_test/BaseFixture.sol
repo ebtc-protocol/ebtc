@@ -32,6 +32,7 @@ import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
 import {IBaseTwapWeightedObserver} from "../contracts/Interfaces/IBaseTwapWeightedObserver.sol";
+import {ICdpManagerData} from "../contracts/Interfaces/ICdpManagerData.sol";
 import {EbtcMath} from "../contracts/Dependencies/EbtcMath.sol";
 
 contract eBTCBaseFixture is
@@ -505,14 +506,11 @@ contract eBTCBaseFixture is
 
     /// @dev Ensure data fields for Cdp are in expected post-close state
     function _assertCdpClosed(bytes32 cdpId, uint256 expectedStatus) internal {
-        (
-            uint256 _debt,
-            uint256 _coll,
-            uint256 _stake,
-            uint256 _liquidatorRewardShares,
-            ,
-
-        ) = cdpManager.Cdps(cdpId);
+        ICdpManagerData.CdpStorage memory _cdpStorage = cdpManager.Cdps(cdpId);
+        uint256 _debt = _cdpStorage.debt;
+        uint256 _coll = _cdpStorage.coll;
+        uint256 _stake = _cdpStorage.stake;
+        uint256 _liquidatorRewardShares = _cdpStorage.liquidatorRewardShares;
         uint256 _status = cdpManager.getCdpStatus(cdpId);
 
         assertTrue(_debt == 0);

@@ -93,22 +93,15 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         closedByRedemption
     }
 
-    // Store the necessary data for a cdp
-    struct Cdp {
-        uint256 debt;
-        uint256 coll;
-        uint256 stake;
-        uint256 liquidatorRewardShares;
-        Status status;
-        uint128 arrayIndex;
-    }
-
     /// 5 slots -> 3 -> could be 2 (stake + lrs + status, with arrayIndex removed?)
     struct CdpStorage {
+        // slot 1
         uint128 debt;
         uint128 coll;
+        // slot 2
         uint128 stake;
         uint128 liquidatorRewardShares;
+        // slot 3
         Status status;
         uint128 arrayIndex;
     }
@@ -275,4 +268,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     ) external view returns (uint256 debt, uint256 collShares);
 
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
+
+    /// @dev return struct holding all accounting info about a CDP
+    function Cdps(bytes32 _cdpId) external view returns (CdpStorage memory);
 }
