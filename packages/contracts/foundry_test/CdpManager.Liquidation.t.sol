@@ -27,8 +27,9 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_liq2() internal {
         uint256 _sumColl;
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            bytes32 _cdpId = cdpManager.CdpIds(i);
+            bytes32 _cdpId = cdpIds[i];
             (, uint256 _coll, , , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
@@ -280,10 +281,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // calc debt in system by summing up all CDPs debt
         uint256 _leftTotalDebt;
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            (uint256 _cdpDebt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _cdpDebt, ) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
-            _cdpLeftActive[cdpManager.CdpIds(i)] = true;
+            _cdpLeftActive[cdpIds[i]] = true;
         }
 
         console.log("_leftTotalDebt from system", _leftTotalDebt);

@@ -8,10 +8,6 @@ import "./ICdpManagerData.sol";
 // Common interface for the Cdp Manager.
 interface ICdpManager is IEbtcBase, ICdpManagerData {
     // --- Functions ---
-    function getActiveCdpsCount() external view returns (uint256);
-
-    function getIdFromCdpIdsArray(uint256 _index) external view returns (bytes32);
-
     function liquidate(bytes32 _cdpId) external;
 
     function partiallyLiquidate(

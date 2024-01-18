@@ -216,6 +216,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 newPartialNICR;
     }
 
+    function getActiveCdpsCount() external view returns (uint256);
+
     function totalStakes() external view returns (uint256);
 
     function ebtcToken() external view returns (IEBTCToken);
