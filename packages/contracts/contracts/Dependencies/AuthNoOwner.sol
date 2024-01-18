@@ -35,21 +35,6 @@ contract AuthNoOwner {
         return (address(auth) != address(0) && auth.canCall(user, address(this), functionSig));
     }
 
-    function setAuthority(address newAuthority) public virtual {
-        // We check if the caller is the owner first because we want to ensure they can
-        // always swap out the authority even if it's reverting or using up a lot of gas.
-        require(_authority.canCall(msg.sender, address(this), msg.sig));
-
-        _authority = Authority(newAuthority);
-
-        // Once authority is set once via any means, ensure it is initialized
-        if (!_authorityInitialized) {
-            _authorityInitialized = true;
-        }
-
-        emit AuthorityUpdated(msg.sender, Authority(newAuthority));
-    }
-
     /// @notice Changed constructor to initialize to allow flexiblity of constructor vs initializer use
     /// @notice sets authorityInitiailzed flag to ensure only one use of
     function _initializeAuthority(address newAuthority) internal {
