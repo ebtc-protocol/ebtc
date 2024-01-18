@@ -100,7 +100,6 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 stake;
         uint256 liquidatorRewardShares;
         Status status;
-        uint128 arrayIndex;
     }
 
     /*

@@ -30,7 +30,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
             bytes32 _cdpId = cdpIds[i];
-            (, uint256 _coll, , , , ) = cdpManager.Cdps(_cdpId);
+            (, uint256 _coll, , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
         assertEq(

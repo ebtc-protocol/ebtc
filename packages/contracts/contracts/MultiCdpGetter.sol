@@ -87,11 +87,7 @@ contract MultiCdpGetter {
                 ,
                 ,
                 _cdps[idx].stake,
-                /* status */
-                /* arrayIndex */
                 ,
-                ,
-
             ) = cdpManager.Cdps(currentCdpId);
 
             (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
@@ -123,11 +119,7 @@ contract MultiCdpGetter {
                 ,
                 ,
                 _cdps[idx].stake,
-                /* status */
-                /* arrayIndex */
                 ,
-                ,
-
             ) = cdpManager.Cdps(currentCdpId);
 
             (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
