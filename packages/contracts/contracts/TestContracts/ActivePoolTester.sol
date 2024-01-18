@@ -26,11 +26,11 @@ contract ActivePoolTester is ActivePool {
     bytes4 public constant FUNC_SIG_MAX_FL_FEE = 0x246d4569; //setMaxFeeBps(uint256)
 
     function unprotectedIncreaseSystemDebt(uint256 _amount) public {
-        systemDebt = systemDebt + _amount;
+        systemDebt = uint128(uint256(systemDebt) + _amount);
     }
 
     function unprotectedReceiveColl(uint256 _amount) public {
-        systemCollShares = systemCollShares + _amount;
+        systemCollShares = uint128(uint256(systemCollShares) + _amount);
     }
 
     function unprotectedIncreaseSystemDebtAndUpdate(uint256 _amount) external {
@@ -46,11 +46,11 @@ contract ActivePoolTester is ActivePool {
     }
 
     function unprotectedallocateSystemCollSharesToFeeRecipient(uint256 _shares) external {
-        systemCollShares = systemCollShares - _shares;
-        feeRecipientCollShares = feeRecipientCollShares + _shares;
+        systemCollShares = uint128(uint256(systemCollShares) - _shares);
+        feeRecipientCollShares = uint128(uint256(feeRecipientCollShares) + _shares);
 
-        emit SystemCollSharesUpdated(systemCollShares);
-        emit FeeRecipientClaimableCollSharesIncreased(feeRecipientCollShares, _shares);
+        emit SystemCollSharesUpdated(uint256(systemCollShares));
+        emit FeeRecipientClaimableCollSharesIncreased(uint256(feeRecipientCollShares), _shares);
     }
 
     function unprotectedSetTwapTrackVal(uint256 _val) public {

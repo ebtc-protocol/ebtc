@@ -36,9 +36,9 @@ contract ActivePool is
     address public immutable collSurplusPoolAddress;
     address public feeRecipientAddress;
 
-    uint256 internal systemCollShares; // deposited collateral tracker
-    uint256 internal systemDebt;
-    uint256 internal feeRecipientCollShares; // coll shares claimable by fee recipient
+    uint128 internal systemCollShares; // deposited collateral tracker
+    uint128 internal systemDebt;
+    uint128 internal feeRecipientCollShares; // coll shares claimable by fee recipient
     ICollateralToken public immutable collateral;
 
     // --- Contract setters ---
@@ -110,14 +110,14 @@ contract ActivePool is
     function transferSystemCollShares(address _account, uint256 _shares) public override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedSystemCollShares = systemCollShares;
+        uint256 cachedSystemCollShares = uint256(systemCollShares);
         require(cachedSystemCollShares >= _shares, "!ActivePoolBal");
         unchecked {
             // Can use unchecked due to above
             cachedSystemCollShares -= _shares; // Updating here avoids an SLOAD
         }
 
-        systemCollShares = cachedSystemCollShares;
+        systemCollShares = uint128(cachedSystemCollShares);
 
         emit SystemCollSharesUpdated(cachedSystemCollShares);
         emit CollSharesTransferred(_account, _shares);
@@ -143,14 +143,14 @@ contract ActivePool is
     ) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedSystemCollShares = systemCollShares;
+        uint256 cachedSystemCollShares = uint256(systemCollShares);
         require(cachedSystemCollShares >= _shares, "ActivePool: Insufficient collateral shares");
         uint256 totalShares = _shares + _liquidatorRewardShares;
         unchecked {
             // Safe per the check above
             cachedSystemCollShares -= _shares;
         }
-        systemCollShares = cachedSystemCollShares;
+        systemCollShares = uint128(cachedSystemCollShares);
 
         emit SystemCollSharesUpdated(cachedSystemCollShares);
         emit CollSharesTransferred(_account, totalShares);
@@ -167,7 +167,7 @@ contract ActivePool is
     function allocateSystemCollSharesToFeeRecipient(uint256 _shares) external override {
         _requireCallerIsCdpManager();
 
-        uint256 cachedSystemCollShares = systemCollShares;
+        uint256 cachedSystemCollShares = uint256(systemCollShares);
 
         require(cachedSystemCollShares >= _shares, "ActivePool: Insufficient collateral shares");
         unchecked {
@@ -175,10 +175,10 @@ contract ActivePool is
             cachedSystemCollShares -= _shares;
         }
 
-        systemCollShares = cachedSystemCollShares;
+        systemCollShares = uint128(cachedSystemCollShares);
 
-        uint256 cachedFeeRecipientCollShares = feeRecipientCollShares + _shares;
-        feeRecipientCollShares = cachedFeeRecipientCollShares;
+        uint256 cachedFeeRecipientCollShares = uint256(feeRecipientCollShares) + _shares;
+        feeRecipientCollShares = uint128(cachedFeeRecipientCollShares);
 
         emit SystemCollSharesUpdated(cachedSystemCollShares);
         emit FeeRecipientClaimableCollSharesIncreased(cachedFeeRecipientCollShares, _shares);
@@ -204,12 +204,12 @@ contract ActivePool is
     function increaseSystemDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedSystemDebt = systemDebt + _amount;
+        uint256 cachedSystemDebt = uint256(systemDebt) + _amount;
 
         _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
         update(); // @audit update TWAP Observer accumulator and weighted average
 
-        systemDebt = cachedSystemDebt;
+        systemDebt = uint128(cachedSystemDebt);
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
 
@@ -220,12 +220,12 @@ contract ActivePool is
     function decreaseSystemDebt(uint256 _amount) external override {
         _requireCallerIsBOorCdpM();
 
-        uint256 cachedSystemDebt = systemDebt - _amount;
+        uint256 cachedSystemDebt = uint256(systemDebt) - _amount;
 
         _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
         update(); // @audit update TWAP Observer accumulator and weighted average
 
-        systemDebt = cachedSystemDebt;
+        systemDebt = uint128(cachedSystemDebt);
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
 
@@ -258,8 +258,8 @@ contract ActivePool is
     function increaseSystemCollShares(uint256 _value) external override {
         _requireCallerIsBorrowerOperations();
 
-        uint256 cachedSystemCollShares = systemCollShares + _value;
-        systemCollShares = cachedSystemCollShares;
+        uint256 cachedSystemCollShares = uint256(systemCollShares) + _value;
+        systemCollShares = uint128(cachedSystemCollShares);
         emit SystemCollSharesUpdated(cachedSystemCollShares);
     }
 
@@ -362,7 +362,7 @@ contract ActivePool is
     function claimFeeRecipientCollShares(uint256 _shares) external override requiresAuth {
         ICdpManagerData(cdpManagerAddress).syncGlobalAccountingAndGracePeriod(); // Calling this increases shares so do it first
 
-        uint256 cachedFeeRecipientCollShares = feeRecipientCollShares;
+        uint256 cachedFeeRecipientCollShares = uint256(feeRecipientCollShares);
         require(
             cachedFeeRecipientCollShares >= _shares,
             "ActivePool: Insufficient fee recipient coll"
@@ -372,7 +372,7 @@ contract ActivePool is
             cachedFeeRecipientCollShares -= _shares;
         }
 
-        feeRecipientCollShares = cachedFeeRecipientCollShares;
+        feeRecipientCollShares = uint128(cachedFeeRecipientCollShares);
         emit FeeRecipientClaimableCollSharesDecreased(cachedFeeRecipientCollShares, _shares);
 
         collateral.transferShares(feeRecipientAddress, _shares);
