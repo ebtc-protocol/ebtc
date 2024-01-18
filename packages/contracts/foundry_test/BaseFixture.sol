@@ -468,13 +468,17 @@ contract eBTCBaseFixture is
         collateral.deposit{value: 10000 ether}();
     }
 
-    function _openTestCDP(address _user, uint256 _coll, uint256 _debt) internal returns (bytes32) {
+    function _openTestCDPWithHints(address _user, uint256 _coll, uint256 _debt, bytes32 _upperHint, bytes32 _lowerHint) {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, _upperHint, _lowerHint, _coll);
         vm.stopPrank();
         return _cdpId;
+    }
+
+    function _openTestCDP(address _user, uint256 _coll, uint256 _debt) internal returns (bytes32) {
+        return _openTestCDPWithHints(_user, _coll, _debt, bytes32(0), bytes32(0));
     }
 
     /// @dev Automatically adds liquidator gas stipend to the Cdp in addition to specified coll
