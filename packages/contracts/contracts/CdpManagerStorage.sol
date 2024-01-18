@@ -163,7 +163,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     uint256 public stakingRewardSplit;
 
     // The timestamp of the latest fee operation (redemption or new EBTC issuance)
-    uint256 public lastRedemptionTimestamp;
+    uint128 public lastRedemptionTimestamp;
 
     mapping(bytes32 => CdpStorage) public cdpStorages;
 

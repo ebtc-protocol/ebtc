@@ -80,7 +80,7 @@ contract CdpManagerTester is CdpManager {
     }
 
     function setLastFeeOpTimeToNow() external {
-        lastRedemptionTimestamp = block.timestamp;
+        lastRedemptionTimestamp = uint128(block.timestamp);
     }
 
     function getDecayedBaseRate() external view returns (uint256) {

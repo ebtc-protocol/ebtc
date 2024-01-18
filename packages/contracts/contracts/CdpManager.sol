@@ -707,14 +707,16 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     // Update the last fee operation time only if time passed >= decay interval. This prevents base rate griefing.
     function _updateLastRedemptionTimestamp() internal {
-        uint256 timePassed = block.timestamp > lastRedemptionTimestamp
-            ? block.timestamp - lastRedemptionTimestamp
+        uint256 timePassed = block.timestamp > uint256(lastRedemptionTimestamp)
+            ? block.timestamp - uint256(lastRedemptionTimestamp)
             : 0;
 
         if (timePassed >= SECONDS_IN_ONE_MINUTE) {
             // Using the effective elapsed time that is consumed so far to update lastRedemptionTimestamp
             // instead block.timestamp for consistency with _calcDecayedBaseRate()
-            lastRedemptionTimestamp += _minutesPassedSinceLastRedemption() * SECONDS_IN_ONE_MINUTE;
+            lastRedemptionTimestamp += uint128(
+                _minutesPassedSinceLastRedemption() * SECONDS_IN_ONE_MINUTE
+            );
             emit LastRedemptionTimestampUpdated(block.timestamp);
         }
     }
@@ -728,8 +730,8 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
     function _minutesPassedSinceLastRedemption() internal view returns (uint256) {
         return
-            block.timestamp > lastRedemptionTimestamp
-                ? ((block.timestamp - lastRedemptionTimestamp) / SECONDS_IN_ONE_MINUTE)
+            block.timestamp > uint256(lastRedemptionTimestamp)
+                ? ((block.timestamp - uint256(lastRedemptionTimestamp)) / SECONDS_IN_ONE_MINUTE)
                 : 0;
     }
 
