@@ -887,7 +887,7 @@ contract LiquidationLibrary is CdpManagerStorage {
         uint256 EBTCDebtNumerator = (_debt * DECIMAL_PRECISION) + lastEBTCDebtErrorRedistribution;
 
         // Get the per-unit-staked terms
-        uint256 _totalStakes = totalStakes;
+        uint256 _totalStakes = totalStakesStorage;
         uint256 EBTCDebtRewardPerUnitStaked = EBTCDebtNumerator / _totalStakes;
 
         lastEBTCDebtErrorRedistribution =

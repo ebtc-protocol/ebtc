@@ -167,13 +167,13 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     mapping(bytes32 => CdpStorage) public cdpStorages;
 
-    uint256 public override totalStakes;
+    uint128 public totalStakesStorage;
 
     // Snapshot of the value of totalStakes, taken immediately after the latest liquidation and split fee claim
-    uint256 public totalStakesSnapshot;
+    uint128 public totalStakesSnapshot;
 
     // Snapshot of the total collateral across the ActivePool, immediately after the latest liquidation and split fee claim
-    uint256 public totalCollateralSnapshot;
+    uint128 public totalCollateralSnapshot;
 
     /*
      * systemDebtRedistributionIndex track the sums of accumulated socialized liquidations per unit staked.
@@ -291,11 +291,11 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
      * The stETH as compensation must be excluded as it is always sent out at the very end of the liquidation sequence.
      */
     function _updateSystemSnapshotsExcludeCollRemainder(uint256 _collRemainder) internal {
-        uint256 _totalStakesSnapshot = totalStakes;
-        totalStakesSnapshot = _totalStakesSnapshot;
+        uint256 _totalStakesSnapshot = totalStakesStorage;
+        totalStakesSnapshot = uint128(_totalStakesSnapshot);
 
         uint256 _totalCollateralSnapshot = activePool.getSystemCollShares() - _collRemainder;
-        totalCollateralSnapshot = _totalCollateralSnapshot;
+        totalCollateralSnapshot = uint128(_totalCollateralSnapshot);
 
         emit SystemSnapshotsUpdated(_totalStakesSnapshot, _totalCollateralSnapshot);
     }
@@ -408,8 +408,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
     // Remove borrower's stake from the totalStakes sum, and set their stake to 0
     function _removeStake(bytes32 _cdpId) internal {
-        uint256 _newTotalStakes = totalStakes - cdpStorages[_cdpId].stake;
-        totalStakes = _newTotalStakes;
+        uint256 _newTotalStakes = uint256(totalStakesStorage) - cdpStorages[_cdpId].stake;
+        totalStakesStorage = uint128(_newTotalStakes);
         cdpStorages[_cdpId].stake = 0;
         emit TotalStakesUpdated(_newTotalStakes);
     }
@@ -419,8 +419,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function _updateStakeAndTotalStakes(bytes32 _cdpId) internal returns (uint256) {
         (uint256 newStake, uint256 oldStake) = _updateStakeForCdp(_cdpId);
 
-        uint256 _newTotalStakes = totalStakes + newStake - oldStake;
-        totalStakes = _newTotalStakes;
+        uint256 _newTotalStakes = uint256(totalStakesStorage) + newStake - oldStake;
+        totalStakesStorage = uint128(_newTotalStakes);
 
         emit TotalStakesUpdated(_newTotalStakes);
 
@@ -509,7 +509,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     function _syncGlobalAccounting() internal {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         _syncStEthIndex(_oldIndex, _newIndex);
-        if (_newIndex > _oldIndex && totalStakes > 0) {
+        if (_newIndex > _oldIndex && totalStakesStorage > 0) {
             (
                 uint256 _feeTaken,
                 uint256 _newFeePerUnit,
@@ -559,7 +559,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         // we take the fee for all CDPs immediately which is scaled by index precision
         uint256 _deltaFeeSplit = deltaIndexFees * getSystemCollShares();
-        uint256 _cachedAllStakes = totalStakes;
+        uint256 _cachedAllStakes = totalStakesStorage;
         // return the values to update the global fee accumulator
         uint256 _feeTaken = collateral.getSharesByPooledEth(_deltaFeeSplit) / DECIMAL_PRECISION;
         uint256 _deltaFeeSplitShare = (_feeTaken * DECIMAL_PRECISION) +
@@ -765,7 +765,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         uint256 _newIndex,
         uint256 _oldIndex
     ) internal view returns (uint256, uint256, uint256) {
-        if (_newIndex > _oldIndex && totalStakes > 0) {
+        if (_newIndex > _oldIndex && totalStakesStorage > 0) {
             /// @audit-ok We don't take the fee if we had a negative rebase
             (
                 uint256 _feeTaken,
@@ -912,5 +912,9 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return
             cachedLastGracePeriodStartTimestamp != UNSET_TIMESTAMP &&
             block.timestamp > cachedLastGracePeriodStartTimestamp + recoveryModeGracePeriodDuration;
+    }
+
+    function totalStakes() external view override returns (uint256) {
+        return uint256(totalStakesStorage);
     }
 }
