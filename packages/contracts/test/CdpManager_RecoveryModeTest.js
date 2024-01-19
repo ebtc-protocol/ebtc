@@ -2863,14 +2863,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Check C is in Cdp owners array
     const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
-    let addressIdx = 0;
+    let _id = await sortedCdps.getFirst();
 
     for (let i = 0; i < arrayLength; i++) {
-      const address = (await cdpManager.CdpIds(i)).toString()
-      if (address == _carolCdpId) {
-        addressFound = true
-        addressIdx = i
-      }
+       if (_id == _carolCdpId) {
+           addressFound = true
+       } else {
+           _id = await sortedCdps.getNext(_id);
+       }
     }
 
     assert.isFalse(addressFound);
@@ -3605,14 +3605,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Check C is in Cdp owners array
     const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
-    let addressIdx = 0;
+    let _id = await sortedCdps.getFirst();
 
     for (let i = 0; i < arrayLength; i++) {
-      const address = (await cdpManager.CdpIds(i)).toString()
-      if (address == _carolCdpId) {
-        addressFound = true
-        addressIdx = i
-      }
+       if (_id == _carolCdpId) {
+           addressFound = true
+       } else {
+           _id = await sortedCdps.getNext(_id);
+       }
     }
 
     assert.isFalse(addressFound);
