@@ -70,9 +70,10 @@ contract SortedCdps is ISortedCdps {
     struct Data {
         bytes32 head; // Head of the list. Also the node in the list with the largest NICR
         bytes32 tail; // Tail of the list. Also the node in the list with the smallest NICR
-        uint256 size; // Current size of the list
         mapping(bytes32 => Node) nodes; // Track the corresponding ids for each node in the list
     }
+
+    uint256 public size; // Current size of the list
 
     Data public data;
 
@@ -401,7 +402,7 @@ contract SortedCdps is ISortedCdps {
             data.nodes[nextId].prevId = _id;
         }
 
-        data.size = data.size + 1;
+        size = size + 1;
         emit NodeAdded(_id, _NICR);
     }
 
@@ -450,14 +451,14 @@ contract SortedCdps is ISortedCdps {
             delete data.nodes[_ids[i]];
             emit NodeRemoved(_ids[i]);
         }
-        data.size = data.size - _len;
+        size = size - _len;
     }
 
     function _remove(bytes32 _id) internal {
         // List must contain the node
         require(contains(_id), "SortedCdps: List does not contain the id");
 
-        if (data.size > 1) {
+        if (size > 1) {
             // List contains more than a single node
             if (_id == data.head) {
                 // The removed node is the head
@@ -486,7 +487,7 @@ contract SortedCdps is ISortedCdps {
         }
 
         delete data.nodes[_id];
-        data.size = data.size - 1;
+        size = size - 1;
         emit NodeRemoved(_id);
     }
 
@@ -528,19 +529,19 @@ contract SortedCdps is ISortedCdps {
     /// @dev Checks if the list is full
     /// @return true if the list is full, false otherwise
     function isFull() public view override returns (bool) {
-        return data.size == maxSize;
+        return size == maxSize;
     }
 
     /// @dev Checks if the list is empty
     /// @return true if the list is empty, false otherwise
     function isEmpty() public view override returns (bool) {
-        return data.size == 0;
+        return size == 0;
     }
 
     /// @dev Returns the current size of the list
     /// @return The current size of the list
     function getSize() external view override returns (uint256) {
-        return data.size;
+        return size;
     }
 
     /// @dev Returns the maximum size of the list

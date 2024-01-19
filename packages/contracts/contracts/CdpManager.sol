@@ -60,21 +60,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         systemStEthFeePerUnitIndex = DECIMAL_PRECISION;
     }
 
-    // --- Getters ---
-
-    /// @notice Get the count of active Cdps in the system
-    /// @return The number of current active Cdps (not closed) in the system.
-    function getActiveCdpsCount() external view override returns (uint256) {
-        return CdpIds.length;
-    }
-
-    /// @notice Get the CdpId at a given _index in the global active CdpIds array.
-    /// @param _index Index of the CdpIds array.
-    /// @return Cdp ID at the specified _index within the global active CdpIds array.
-    function getIdFromCdpIdsArray(uint256 _index) external view override returns (bytes32) {
-        return CdpIds[_index];
-    }
-
     // --- Cdp Liquidation functions ---
     // -----------------------------------------------------------------
     //    Cdp ICR     |       Liquidation Behavior (TODO gas compensation?)
@@ -566,22 +551,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         return _closeCdp(_cdpId, Status.closedByOwner);
     }
 
-    // Push the owner's address to the Cdp owners list, and record the corresponding array index on the Cdp struct
-    function _addCdpIdToArray(bytes32 _cdpId) internal returns (uint128 index) {
-        /* Max array size is 2**128 - 1, i.e. ~3e30 cdps. No risk of overflow, since cdps have minimum EBTC
-        debt of liquidation reserve plus MIN_NET_DEBT.
-        3e30 EBTC dwarfs the value of all wealth in the world ( which is < 1e15 USD). */
-
-        // Push the Cdpowner to the array
-        CdpIds.push(_cdpId);
-
-        // Record the index of the new Cdpowner on their Cdp struct
-        index = uint128(CdpIds.length - 1);
-        Cdps[_cdpId].arrayIndex = index;
-
-        return index;
-    }
-
     // --- Recovery Mode and TCR functions ---
 
     /// @notice Get the sum of debt units assigned to all Cdps within eBTC system
@@ -939,7 +908,6 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         cdpStEthFeePerUnitIndex[_cdpId] = systemStEthFeePerUnitIndex; /// @audit We critically assume global accounting is synced here
         _updateRedistributedDebtIndex(_cdpId);
         uint256 stake = _updateStakeAndTotalStakes(_cdpId);
-        uint256 index = _addCdpIdToArray(_cdpId);
 
         // Previous debt and coll are known to be zero upon opening a new Cdp
         emit CdpUpdated(
