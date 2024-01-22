@@ -100,7 +100,6 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 stake;
         uint256 liquidatorRewardShares;
         Status status;
-        uint128 arrayIndex;
     }
 
     /*
@@ -215,6 +214,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         bool fullRedemption;
         uint256 newPartialNICR;
     }
+
+    function getActiveCdpsCount() external view returns (uint256);
 
     function totalStakes() external view returns (uint256);
 
