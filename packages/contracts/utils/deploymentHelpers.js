@@ -129,6 +129,7 @@ class DeploymentHelper {
     }
 	
     let _deployedAddr;
+    
     if (DeploymentHelper.deployWait > 0){
         console.log(_salt + '_deployedTx=' + DeploymentHelper.getTxHash(_deployTx) + ":wait deploy complete..." + (DeploymentHelper.deployWait / 1000) + " seconds");
         await waitFunction();
@@ -518,6 +519,7 @@ class DeploymentHelper {
       address ebtcTokenAddress; 9
       address feeRecipientAddress; 10
       address multiCdpGetterAddress; 11
+      address ebtcFeedAddress; 12
     }
      */
 
@@ -527,8 +529,8 @@ class DeploymentHelper {
     testerContracts.cdpManager = await DeploymentHelper.deployCdpManagerTester(ebtcDeployer, _expectedAddr, collateral.address);
     testerContracts.borrowerOperations = await DeploymentHelper.deployBorrowerOperationsTester(ebtcDeployer, _expectedAddr, collateral.address);
     testerContracts.ebtcToken = await DeploymentHelper.deployEBTCTokenTester(ebtcDeployer, _expectedAddr);
-
     testerContracts.priceFeedTestnet = await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr);
+    testerContracts.ebtcFeed = await DeploymentHelper.deployEbtcFeed(ebtcDeployer, _expectedAddr);
     
     testerContracts.activePool = await DeploymentHelper.deployActivePoolTester(ebtcDeployer, _expectedAddr, collateral.address);
     testerContracts.collSurplusPool = await DeploymentHelper.deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateral.address);

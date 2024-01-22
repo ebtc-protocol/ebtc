@@ -90,7 +90,8 @@ abstract contract TargetFunctions is Properties {
 
     function _getRandomCdp(uint _i) internal view returns (bytes32) {
         uint _cdpIdx = _i % cdpManager.getActiveCdpsCount();
-        return cdpManager.CdpIds(_cdpIdx);
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+        return cdpIds[_cdpIdx];
     }
 
     event FlashLoanAction(uint, uint);

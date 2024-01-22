@@ -91,7 +91,6 @@ contract BorrowerOperations is
         uint256 ICR;
         uint256 NICR;
         uint256 stake;
-        uint256 arrayIndex;
     }
 
     struct MoveTokensParams {
