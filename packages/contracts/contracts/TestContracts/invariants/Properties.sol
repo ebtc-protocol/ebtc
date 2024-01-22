@@ -47,9 +47,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 diff_tolerance
     ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _sum += _coll;
         }
         uint256 _activeColl = activePool.getSystemCollShares();
@@ -62,9 +64,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 diff_tolerance
     ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _sum += _debt;
         }
 
@@ -84,20 +88,22 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
     function invariant_CDPM_02(CdpManager cdpManager) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            _sum += cdpManager.getCdpStake(cdpManager.CdpIds(i));
+            _sum += cdpManager.getCdpStake(cdpIds[i]);
         }
         return (_sum == cdpManager.totalStakes());
     }
 
     function invariant_CDPM_03(CdpManager cdpManager) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (
-                systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpManager.CdpIds(i))
-            ) {
+            if (systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpIds[i])) {
                 return false;
             }
         }
