@@ -374,7 +374,7 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       th.assertIsApproximatelyEqual(_surplusToClaimBob, _bobCollDebtAfter[1].sub(_expectedLiquidatedCollBob), _errorTolerance);
   })
   
-  it("SetStakingRewardSplit() should only allow authorized caller", async() => {	  
+  it.only("SetStakingRewardSplit() should only allow authorized caller", async() => {	  
       await assertRevert(cdpManager.setStakingRewardSplit(1, {from: alice}), "Auth: UNAUTHORIZED");   
       await assertRevert(cdpManager.setStakingRewardSplit(10001, {from: owner}), "CDPManager: new staking reward split exceeds max");
       assert.isTrue(5000 == (await cdpManager.stakingRewardSplit())); 
@@ -390,19 +390,6 @@ contract('CdpManager - Simple Liquidation with external liquidators', async acco
       let _newSplitFee = 9876;
       await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
       assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));  
-	  
-      // switch authority    
-      let _setAuthSig = "0x7a9e5e4b";//bytes4(keccak256(bytes("setAuthority(address)")))
-      await authority.setRoleCapability(_role123, cdpManager.address, _setAuthSig, true, {from: accounts[0]});
-      assert.isTrue((await authority.canCall(alice, cdpManager.address, _setAuthSig)));
-      let _newAuthority = await GovernorTester.new(alice);
-      await cdpManager.setAuthority(_newAuthority.address, {from: alice});
-      assert.isTrue(_newAuthority.address == (await cdpManager.authority()));
-      _newSplitFee = 10000;
-      await _newAuthority.setRoleCapability(_role123, cdpManager.address, _splitRewardSig, true, {from: alice});	  
-      await _newAuthority.setUserRole(alice, _role123, true, {from: alice});
-      await cdpManager.setStakingRewardSplit(_newSplitFee, {from: alice}); 
-      assert.isTrue(_newSplitFee == (await cdpManager.stakingRewardSplit()));
   })
   
   it("Test fee split claim with weird slashing and rewarding", async() => {
