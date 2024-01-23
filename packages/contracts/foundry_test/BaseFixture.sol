@@ -514,7 +514,6 @@ contract eBTCBaseFixture is
             uint256 _coll,
             uint256 _stake,
             uint256 _liquidatorRewardShares,
-            ,
 
         ) = cdpManager.Cdps(cdpId);
         uint256 _status = cdpManager.getCdpStatus(cdpId);
