@@ -12,7 +12,7 @@ contract ChainlinkAdapter is AggregatorV3Interface {
      */
     uint8 public constant MAX_DECIMALS = 18;
     uint80 public constant CURRENT_ROUND = 2;
-    uint80 public constant PREVIOUS_ROUND = 2;
+    uint80 public constant PREVIOUS_ROUND = 1;
 
     /**
      * @notice Price feed for (BTC / USD) pair
