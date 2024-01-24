@@ -71,6 +71,10 @@ contract MockAggregator is AggregatorV3Interface {
 
     // --- Getters that adhere to the AggregatorV3 interface ---
 
+    function latestRound() external view returns (uint80) {
+        return 1;
+    }
+
     function decimals() external view override returns (uint8) {
         if (decimalsRevert) {
             require(1 == 0, "decimals reverted");

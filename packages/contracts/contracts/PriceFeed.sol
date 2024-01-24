@@ -91,6 +91,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     // --- Functions ---
 
+    function latestRound() external view returns (uint80) {
+        return ETH_BTC_CL_FEED.latestRound();
+    }
+
     /// @notice Returns the latest price obtained from the Oracle
     /// @dev Called by eBTC functions that require a current price. Also callable permissionlessly.
     /// @dev Non-view function - it updates and stores the last good price seen by eBTC.
