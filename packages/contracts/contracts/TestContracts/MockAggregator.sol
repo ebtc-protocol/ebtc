@@ -72,7 +72,7 @@ contract MockAggregator is AggregatorV3Interface {
     // --- Getters that adhere to the AggregatorV3 interface ---
 
     function latestRound() external view returns (uint80) {
-        return 1;
+        return latestRoundId;
     }
 
     function decimals() external view override returns (uint8) {

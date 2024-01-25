@@ -13,34 +13,30 @@ contract ChainlinkAdapter is AggregatorV3Interface {
     uint8 public constant MAX_DECIMALS = 18;
     uint80 public constant CURRENT_ROUND = 2;
     uint80 public constant PREVIOUS_ROUND = 1;
+    int256 internal constant ADAPTER_PRECISION = int256(10 ** decimals);
 
     /**
      * @notice Price feed for (BTC / USD) pair
      */
-    AggregatorV3Interface public immutable USD_BTC_CL_FEED;
+    AggregatorV3Interface public immutable BTC_USD_CL_FEED;
 
     /**
-     * @notice Price feed for (USD / ETH) pair
+     * @notice Price feed for (ETH / USD) pair
      */
     AggregatorV3Interface public immutable ETH_USD_CL_FEED;
 
-    /**
-     * @notice This is a parameter to bring the resulting answer with the proper precision.
-     * @notice will be equal to 10 to the power of the sum decimals of feeds
-     */
-    int256 public immutable DENOMINATOR;
+    int256 internal immutable BTC_USD_PRECISION;
+    int256 internal immutable ETH_USD_PRECISION;
 
-    constructor(AggregatorV3Interface _usdBtcClFeed, AggregatorV3Interface _ethUsdClFeed) {
-        USD_BTC_CL_FEED = AggregatorV3Interface(_usdBtcClFeed);
+    constructor(AggregatorV3Interface _btcUsdClFeed, AggregatorV3Interface _ethUsdClFeed) {
+        BTC_USD_CL_FEED = AggregatorV3Interface(_btcUsdClFeed);
         ETH_USD_CL_FEED = AggregatorV3Interface(_ethUsdClFeed);
 
-        require(USD_BTC_CL_FEED.decimals() <= MAX_DECIMALS);
+        require(BTC_USD_CL_FEED.decimals() <= MAX_DECIMALS);
         require(ETH_USD_CL_FEED.decimals() <= MAX_DECIMALS);
 
-        // equal to 10 to the power of the sum decimals of feeds
-        unchecked {
-            DENOMINATOR = int256(10 ** (USD_BTC_CL_FEED.decimals() + ETH_USD_CL_FEED.decimals()));
-        }
+        BTC_USD_PRECISION = int256(10 ** BTC_USD_CL_FEED.decimals());
+        ETH_USD_PRECISION = int256(10 ** ETH_USD_CL_FEED.decimals());
     }
 
     function description() external view returns (string memory) {
@@ -51,12 +47,10 @@ contract ChainlinkAdapter is AggregatorV3Interface {
         return _a < _b ? _a : _b;
     }
 
-    function _convertAnswer(
-        int256 assetToPegPrice,
-        int256 pegToBasePrice
-    ) private view returns (int256) {
-        // TODO: figure out if one of these prices needs to be inverted
-        return (assetToPegPrice * pegToBasePrice * int256(10 ** decimals)) / (DENOMINATOR);
+    function _convertAnswer(int256 ethUsdPrice, int256 btcUsdPrice) private view returns (int256) {
+        return
+            (ethUsdPrice * BTC_USD_PRECISION * ADAPTER_PRECISION) /
+            (ETH_USD_PRECISION * btcUsdPrice);
     }
 
     function latestRound() external view returns (uint80) {
@@ -81,25 +75,39 @@ contract ChainlinkAdapter is AggregatorV3Interface {
     {
         require(_roundId == CURRENT_ROUND || _roundId == PREVIOUS_ROUND);
 
-        int256 pegToBasePrice;
-        uint256 pegToBaseUpdatedAt;
-        uint80 latestRoundId = USD_BTC_CL_FEED.latestRound();
-        (roundId, pegToBasePrice, /* startedAt */, pegToBaseUpdatedAt, /* answeredInRound */) = USD_BTC_CL_FEED
-            .getRoundData(_roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1);
-        require(roundId > 0);
-        require(pegToBasePrice > 0);
+        int256 btcUsdPrice;
+        uint256 btcUsdUpdatedAt;
+        uint80 latestRoundId = BTC_USD_CL_FEED.latestRound();
+        (
+            roundId,
+            btcUsdPrice /* startedAt */,
+            ,
+            btcUsdUpdatedAt /* answeredInRound */,
 
-        int256 assetToPegPrice;
-        uint256 assetToPegUpdatedAt;
-        latestRoundId = ETH_USD_CL_FEED.latestRound();
-        (roundId, assetToPegPrice, /* startedAt */, assetToPegUpdatedAt, /* answeredInRound */) = ETH_USD_CL_FEED
-            .getRoundData(_roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1);
+        ) = BTC_USD_CL_FEED.getRoundData(
+            _roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1
+        );
         require(roundId > 0);
-        require(assetToPegPrice > 0);
+        require(btcUsdPrice > 0);
+
+        int256 ethUsdPrice;
+        uint256 ethUsdUpdatedAt;
+        latestRoundId = ETH_USD_CL_FEED.latestRound();
+        (
+            roundId,
+            ethUsdPrice /* startedAt */,
+            ,
+            ethUsdUpdatedAt /* answeredInRound */,
+
+        ) = ETH_USD_CL_FEED.getRoundData(
+            _roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1
+        );
+        require(roundId > 0);
+        require(ethUsdPrice > 0);
 
         roundId = _roundId;
-        updatedAt = _min(pegToBaseUpdatedAt, assetToPegUpdatedAt);
-        answer = _convertAnswer(assetToPegPrice, pegToBasePrice);
+        updatedAt = _min(btcUsdUpdatedAt, ethUsdUpdatedAt);
+        answer = _convertAnswer(ethUsdPrice, btcUsdPrice);
     }
 
     function latestRoundData()
@@ -113,21 +121,32 @@ contract ChainlinkAdapter is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
-        int256 pegToBasePrice;
-        uint256 pegToBaseUpdatedAt;
-        (roundId, pegToBasePrice, /* startedAt */, pegToBaseUpdatedAt, /* answeredInRound */) = USD_BTC_CL_FEED
-            .latestRoundData();
-        require(roundId > 0);
-        require(pegToBasePrice > 0);
+        int256 btcUsdPrice;
+        uint256 btcUsdUpdatedAt;
+        (
+            roundId,
+            btcUsdPrice /* startedAt */,
+            ,
+            btcUsdUpdatedAt /* answeredInRound */,
 
-        int256 assetToPegPrice;
-        uint256 assetToPegUpdatedAt;
-        (roundId, assetToPegPrice, /* startedAt */, assetToPegUpdatedAt, /* answeredInRound */) = ETH_USD_CL_FEED
-            .latestRoundData();
+        ) = BTC_USD_CL_FEED.latestRoundData();
         require(roundId > 0);
-        require(assetToPegPrice > 0);
+        require(btcUsdPrice > 0);
+
+        int256 ethUsdPrice;
+        uint256 ethUsdUpdatedAt;
+        (
+            roundId,
+            ethUsdPrice /* startedAt */,
+            ,
+            ethUsdUpdatedAt /* answeredInRound */,
+
+        ) = ETH_USD_CL_FEED.latestRoundData();
+        require(roundId > 0);
+        require(ethUsdPrice > 0);
 
         roundId = CURRENT_ROUND;
-        answer = _convertAnswer(assetToPegPrice, pegToBasePrice);
+        updatedAt = _min(btcUsdUpdatedAt, ethUsdUpdatedAt);
+        answer = _convertAnswer(ethUsdPrice, btcUsdPrice);
     }
 }
