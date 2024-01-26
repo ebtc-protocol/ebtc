@@ -111,7 +111,8 @@ abstract contract PropertiesDescriptions {
         "L-01: Liquidation only succeeds if ICR < 110% in Normal Mode, or if ICR < 125% in Recovery Mode";
     string constant L_09 =
         "L-09: Undercollateralized liquidations are also incentivized with the Gas Stipend";
-    string constant L_12 = "L-12: TCR must increase after liquidation with no redistributions";
+    string constant L_12 =
+        "L-12: TCR must increase after liquidation with no redistributions if the liquidated CDP's ICR is less than TCR before liquidation";
     string constant L_14 =
         "If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp";
     string constant L_15 =
@@ -119,7 +120,7 @@ abstract contract PropertiesDescriptions {
     string constant L_16 =
         "L-16: The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR";
     string constant L_17 =
-        "L-17: Debt Redistribution Error Accumulator should be less than Total Stakes immediately after a debt redistribution";
+        "L-17: Debt Redistribution Error Accumulator should be less than Total Stakes immediately after a bad debt redistribution";
 
     ///////////////////////////////////////////////////////
     // eBTC
