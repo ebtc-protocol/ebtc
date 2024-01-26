@@ -219,6 +219,7 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
+        uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.getPrice());
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
@@ -233,7 +234,9 @@ abstract contract TargetFunctions is Properties {
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                if (vars.newIcrBefore <= vars.newTcrBefore) {
+                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             t(
@@ -272,7 +275,10 @@ abstract contract TargetFunctions is Properties {
                 L_09
             );
 
-            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
+            if (_icrToLiq <= cdpManager.LICR()) {
+                //bad debt to redistribute
+                lt(cdpManager.lastEBTCDebtErrorRedistribution(), cdpManager.totalStakes(), L_17);
+            }
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -313,7 +319,9 @@ abstract contract TargetFunctions is Properties {
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                if (vars.newIcrBefore <= vars.newTcrBefore) {
+                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             t(
@@ -364,7 +372,6 @@ abstract contract TargetFunctions is Properties {
 
             gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
-            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -387,6 +394,7 @@ abstract contract TargetFunctions is Properties {
             vars.priceBefore
         );
 
+        bool _badDebtToRedistribute = false;
         for (uint i; i < batch.length; i++) {
             bytes32 _idToLiq = batch[i];
         }
@@ -415,6 +423,9 @@ abstract contract TargetFunctions is Properties {
                         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
                     L_01
                 );
+                if (cdpsLiquidated[i].icr <= cdpManager.LICR()) {
+                    _badDebtToRedistribute = true;
+                }
             }
 
             if (
@@ -440,7 +451,9 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
-            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
+            if (_badDebtToRedistribute) {
+                lt(cdpManager.lastEBTCDebtErrorRedistribution(), cdpManager.totalStakes(), L_17);
+            }
         } else if (vars.sortedCdpsSizeBefore > _n) {
             if (_atLeastOneCdpIsLiquidatable(cdpsBefore, vars.isRecoveryModeBefore)) {
                 assertRevertReasonNotEqual(returnData, "Panic(17)");
