@@ -206,6 +206,12 @@ abstract contract TargetFunctions is Properties {
     // CdpManager
     ///////////////////////////////////////////////////////
 
+    function _checkL_15IfRecoveryMode() internal {
+        if (vars.isRecoveryModeAfter) {
+            t(vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+        }
+    }
+
     function liquidate(uint _i) public setup {
         bool success;
         bytes memory returnData;
@@ -256,13 +262,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -358,13 +358,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -440,13 +434,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -536,6 +524,8 @@ abstract contract TargetFunctions is Properties {
                 : _partialRedemptionHintNICRFromMedusa;
         }
 
+        _syncAPDebtTwapToSpotValue();
+
         {
             bool success;
 
@@ -588,13 +578,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -604,6 +588,11 @@ abstract contract TargetFunctions is Properties {
     ///////////////////////////////////////////////////////
     // ActivePool
     ///////////////////////////////////////////////////////
+
+    function _syncAPDebtTwapToSpotValue() internal {
+        hevm.warp(block.timestamp + activePool.PERIOD());
+        activePool.update();
+    }
 
     function flashLoanColl(uint _amount) public setup {
         bool success;
@@ -646,13 +635,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -706,13 +689,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -791,13 +768,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -898,13 +869,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -974,13 +939,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -1050,13 +1009,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -1126,13 +1079,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -1208,13 +1155,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -1287,13 +1228,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
