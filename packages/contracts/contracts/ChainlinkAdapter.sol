@@ -11,6 +11,9 @@ contract ChainlinkAdapter is AggregatorV3Interface {
      * @notice Maximum number of resulting and feed decimals
      */
     uint8 public constant MAX_DECIMALS = 18;
+
+    /// @notice PriceFeed always fetches current and previous rounds. It's ok to
+    /// hardcode round IDs as long as they are greater than 0.
     uint80 public constant CURRENT_ROUND = 2;
     uint80 public constant PREVIOUS_ROUND = 1;
     int256 internal constant ADAPTER_PRECISION = int256(10 ** decimals);
@@ -57,6 +60,28 @@ contract ChainlinkAdapter is AggregatorV3Interface {
         return CURRENT_ROUND;
     }
 
+    function _getRoundData(
+        AggregatorV3Interface _feed,
+        uint80 _roundId
+    ) private view returns (int256 answer, uint256 updatedAt) {
+        uint80 latestRoundId = _feed.latestRound();
+        uint80 feedRoundId;
+        (feedRoundId, answer, , updatedAt, ) = _feed.getRoundData(
+            _roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1
+        );
+        require(feedRoundId > 0);
+        require(answer > 0);
+    }
+
+    function _latestRoundData(
+        AggregatorV3Interface _feed
+    ) private view returns (int256 answer, uint256 updatedAt) {
+        uint80 feedRoundId;
+        (feedRoundId, answer, , updatedAt, ) = _feed.latestRoundData();
+        require(feedRoundId > 0);
+        require(answer > 0);
+    }
+
     // getRoundData and latestRoundData should both raise "No data present"
     // if they do not have data to report, instead of returning unset values
     // which could be misinterpreted as actual reported values.
@@ -75,35 +100,8 @@ contract ChainlinkAdapter is AggregatorV3Interface {
     {
         require(_roundId == CURRENT_ROUND || _roundId == PREVIOUS_ROUND);
 
-        int256 btcUsdPrice;
-        uint256 btcUsdUpdatedAt;
-        uint80 latestRoundId = BTC_USD_CL_FEED.latestRound();
-        (
-            roundId,
-            btcUsdPrice /* startedAt */,
-            ,
-            btcUsdUpdatedAt /* answeredInRound */,
-
-        ) = BTC_USD_CL_FEED.getRoundData(
-            _roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1
-        );
-        require(roundId > 0);
-        require(btcUsdPrice > 0);
-
-        int256 ethUsdPrice;
-        uint256 ethUsdUpdatedAt;
-        latestRoundId = ETH_USD_CL_FEED.latestRound();
-        (
-            roundId,
-            ethUsdPrice /* startedAt */,
-            ,
-            ethUsdUpdatedAt /* answeredInRound */,
-
-        ) = ETH_USD_CL_FEED.getRoundData(
-            _roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1
-        );
-        require(roundId > 0);
-        require(ethUsdPrice > 0);
+        (int256 btcUsdPrice, uint256 btcUsdUpdatedAt) = _getRoundData(BTC_USD_CL_FEED, _roundId);
+        (int256 ethUsdPrice, uint256 ethUsdUpdatedAt) = _getRoundData(ETH_USD_CL_FEED, _roundId);
 
         roundId = _roundId;
         updatedAt = _min(btcUsdUpdatedAt, ethUsdUpdatedAt);
@@ -121,29 +119,8 @@ contract ChainlinkAdapter is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
-        int256 btcUsdPrice;
-        uint256 btcUsdUpdatedAt;
-        (
-            roundId,
-            btcUsdPrice /* startedAt */,
-            ,
-            btcUsdUpdatedAt /* answeredInRound */,
-
-        ) = BTC_USD_CL_FEED.latestRoundData();
-        require(roundId > 0);
-        require(btcUsdPrice > 0);
-
-        int256 ethUsdPrice;
-        uint256 ethUsdUpdatedAt;
-        (
-            roundId,
-            ethUsdPrice /* startedAt */,
-            ,
-            ethUsdUpdatedAt /* answeredInRound */,
-
-        ) = ETH_USD_CL_FEED.latestRoundData();
-        require(roundId > 0);
-        require(ethUsdPrice > 0);
+        (int256 btcUsdPrice, uint256 btcUsdUpdatedAt) = _latestRoundData(BTC_USD_CL_FEED);
+        (int256 ethUsdPrice, uint256 ethUsdUpdatedAt) = _latestRoundData(ETH_USD_CL_FEED);
 
         roundId = CURRENT_ROUND;
         updatedAt = _min(btcUsdUpdatedAt, ethUsdUpdatedAt);
