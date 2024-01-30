@@ -456,12 +456,11 @@ class EBTCDeployerScript {
             3: "CDPManager: all",
             4: "CDPManager+BorrowerOperations+ActivePool: pause",
             5: "BorrowerOperations+ActivePool: setFeeBps",
-            6: "BorrowerOperations+ActivePool: setFeeRecipientAddress",
-            7: "ActivePool+CollSurplusPool: sweepToken",
-            8: "ActivePool: claimFeeRecipientCollShares",
-            9: "EbtcFeed: setPrimaryOracle",
-            10: "EbtcFeed: setSecondaryOracle",
-            11: "PriceFeed: setFallbackCaller",
+            6: "ActivePool+CollSurplusPool: sweepToken",
+            7: "ActivePool: claimFeeRecipientCollShares",
+            8: "EbtcFeed: setPrimaryOracle",
+            9: "EbtcFeed: setSecondaryOracle",
+            10: "PriceFeed: setFallbackCaller",
         };
 
         // Get the list of role numbers
@@ -520,23 +519,19 @@ class EBTCDeployerScript {
                 { target: coreContracts.activePool, signature: govSig.SET_FEE_BPS_SIG },
             ],
             6: [
-                { target: coreContracts.borrowerOperations, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
-                { target: coreContracts.activePool, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
-            ],
-            7: [
                 { target: coreContracts.activePool, signature: govSig.SWEEP_TOKEN_SIG },
                 { target: coreContracts.collSurplusPool, signature: govSig.SWEEP_TOKEN_SIG },
             ],
-            8: [
+            7: [
                 { target: coreContracts.activePool, signature: govSig.CLAIM_FEE_RECIPIENT_COLL_SIG },
             ],
-            9: [
+            8: [
                 { target: coreContracts.ebtcFeed, signature: govSig.SET_PRIMARY_ORACLE_SIG },
             ],
-            10: [
+            9: [
                 { target: coreContracts.ebtcFeed, signature: govSig.SET_SECONDARY_ORACLE_SIG },
             ],
-            11: [
+            10: [
                 { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
             ]
         };
@@ -559,12 +554,15 @@ class EBTCDeployerScript {
         console.log(chalk.cyan("\nAssigning roles to users\n"));
 
         // Assign roles to Timelocks
-        // HighSec timelock should have access to all functions except for minting/burning
+        // HighSec timelock should have access to all functions except for minting/burning and changing the fee recipient
         // LowSec timelock should have access to all functions except for minting/burning and authority admin
-        // Fee recipient should be able to claim collateral and sweep
+        // Treasury Vault should be able to change the fee recipient
+        // Fee recipient should be able to claim collateral
         const userAddressToRoleNumberMap = {
             [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7],
             [this.lowSecTimelock.address]: [3, 4, 5, 6],
+            [this.securityMultisig]: [4],
+            [this.cdpTechOpsMultisig]: [3, 4, 5, 6],
             [this.feeRecipientMultisig]: [6],
         };
         
@@ -581,6 +579,17 @@ class EBTCDeployerScript {
                 }
             }
         }
+
+        // Burn the ability of changing the fee recipient address
+        // NOTE: Consider making the fee recipient immutable
+        let signature = govSig.SET_FEE_RECIPIENT_ADDRESS_SIG;
+        console.log(`Burning `, + signature + ` on BorrowrOperations`)
+        tx = await authority.burnCapability(coreContracts.borrowerOperations, signature);
+        await tx.wait();
+        console.log(`Burning `, + signature + ` on ActivePool`)
+        tx = await authority.burnCapability(coreContracts.activePool, signature);
+        await tx.wait();
+
 
         // console.log(chalk.cyan("\nTransfer ownership to HighSecTimelock\n"));
 
