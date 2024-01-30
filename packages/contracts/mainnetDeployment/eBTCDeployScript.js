@@ -45,6 +45,7 @@ class EBTCDeployerScript {
         this.feeRecipientMultisig = checkValidItem(configParams.externalAddress['feeRecipientMultisig']) ? configParams.externalAddress['feeRecipientMultisig'] : deployerWallet.address;
         this.securityMultisig = checkValidItem(configParams.externalAddress['securityMultisig']) ? configParams.externalAddress['securityMultisig'] : deployerWallet.address;
         this.cdpTechOpsMultisig = checkValidItem(configParams.externalAddress['cdpTechOpsMultisig']) ? configParams.externalAddress['cdpTechOpsMultisig'] : deployerWallet.address;
+        this.treasuryVaultMultisig = checkValidItem(configParams.externalAddress['treasuryVaultMultisig']) ? configParams.externalAddress['treasuryVaultMultisig'] : deployerWallet.address;
         this.highSecAdmin = checkValidItem(configParams.ADDITIONAL_HIGHSEC_ADMIN) ? configParams.ADDITIONAL_HIGHSEC_ADMIN : deployerWallet.address;
         this.lowSecAdmin = checkValidItem(configParams.ADDITIONAL_LOWSEC_ADMIN) ? configParams.ADDITIONAL_LOWSEC_ADMIN : deployerWallet.address;
 
@@ -364,9 +365,9 @@ class EBTCDeployerScript {
 
         // HIGHSEC TIMELOCK
         // ==========================
-        // PROPOSERS: Ecosystem
-        // CANCELLERS: Ecosystem
-        // EXECUTORS: Ecosystem
+        // PROPOSERS: Security
+        // CANCELLERS: Security
+        // EXECUTORS: Security
         // Admin: Only Timelock
         // Delay: 7 days (mainnet)
         // ==========================
@@ -397,9 +398,9 @@ class EBTCDeployerScript {
 
         // LOWSEC TIMELOCK
         // ==========================
-        // PROPOSERS: Ecosystem, CDP Council, CDP TechOps
-        // CANCELLERS: Ecosystem
-        // EXECUTORS: Ecosystem, CDP Council, CDP TechOps
+        // PROPOSERS: Security and CDP TechOps
+        // CANCELLERS: Security
+        // EXECUTORS: Security and CDP TechOps
         // Admin: Only Timelock
         // Delay: 2 days (mainnet)
         // ==========================
@@ -425,7 +426,7 @@ class EBTCDeployerScript {
             console.log("Revoked CANCELLER_ROLE of cdpTechOpsMultisig on lowSecTimelock");
         }
         assert.isFalse(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1); // Only ecosystem should be canceller
+        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1); // Only Security should be canceller
 
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.lowSecTimelock.address));
@@ -663,7 +664,7 @@ async function main() {
         eds.feeRecipientMultisig = (await ethers.getSigners())[3].address;
     }
 
-    console.log(`\nEcosystem Multisig: ${eds.securityMultisig}`)
+    console.log(`\nSecurity Multisig: ${eds.securityMultisig}`)
     console.log(`CDP TechOps Multisig: ${eds.cdpTechOpsMultisig}`)
     console.log(`Fee Recipient Multisig: ${eds.feeRecipientMultisig}`)
 
