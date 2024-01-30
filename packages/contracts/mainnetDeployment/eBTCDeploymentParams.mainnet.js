@@ -3,7 +3,7 @@ const externalAddress  = {
   "collEthCLFeed": "0x86392dC19c0b719886221c78AB11eb8Cf5c52812",//mainnet
   "ethBtcCLFeed": "0xAc559F25B1619171CbC396a50854A3240b6A4e99",//mainnet
   "authorityOwner": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
-  "feeRecipientOwner": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
+  "feeRecipientMultisig": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
 }
 
 const OUTPUT_FILE = './mainnetDeployment/eBTCMainnetDeploymentOutput.json'

@@ -42,8 +42,8 @@ class EBTCDeployerScript {
         this.configParams = configParams;
 
         this.authorityOwner = checkValidItem(configParams.externalAddress['authorityOwner']) ? configParams.externalAddress['authorityOwner'] : deployerWallet.address;
-        this.feeRecipientOwner = checkValidItem(configParams.externalAddress['feeRecipientOwner']) ? configParams.externalAddress['feeRecipientOwner'] : deployerWallet.address;
-        this.ecosystemMultisig = checkValidItem(configParams.externalAddress['ecosystemMultisig']) ? configParams.externalAddress['ecosystemMultisig'] : deployerWallet.address;
+        this.feeRecipientMultisig = checkValidItem(configParams.externalAddress['feeRecipientMultisig']) ? configParams.externalAddress['feeRecipientMultisig'] : deployerWallet.address;
+        this.securityMultisig = checkValidItem(configParams.externalAddress['securityMultisig']) ? configParams.externalAddress['securityMultisig'] : deployerWallet.address;
         this.cdpTechOpsMultisig = checkValidItem(configParams.externalAddress['cdpTechOpsMultisig']) ? configParams.externalAddress['cdpTechOpsMultisig'] : deployerWallet.address;
         this.highSecAdmin = checkValidItem(configParams.ADDITIONAL_HIGHSEC_ADMIN) ? configParams.ADDITIONAL_HIGHSEC_ADMIN : deployerWallet.address;
         this.lowSecAdmin = checkValidItem(configParams.ADDITIONAL_LOWSEC_ADMIN) ? configParams.ADDITIONAL_LOWSEC_ADMIN : deployerWallet.address;
@@ -71,7 +71,7 @@ class EBTCDeployerScript {
         let deploymentState = this.deploymentState
         let ebtcDeployer = this.ebtcDeployer
         let authorityOwner = this.authorityOwner
-        let feeRecipientOwner = this.feeRecipientOwner
+        let feeRecipientMultisig = this.feeRecipientMultisig
         let collateralAddr = this.collateralAddr
 
         let _deployedState;
@@ -83,7 +83,7 @@ class EBTCDeployerScript {
         } else if (_stateName == CDP_MANAGER_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCdpManager(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == BORROWER_OPERATIONS_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, this.feeRecipientOwner, collateralAddr);
+            _deployedState = await DeploymentHelper.deployBorrowerOperations(ebtcDeployer, _expectedAddr, this.feeRecipientMultisig, collateralAddr);
         } else if (_stateName == EBTC_TOKEN_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
@@ -92,7 +92,7 @@ class EBTCDeployerScript {
         } else if (_stateName == EBTC_FEED_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEbtcFeed(ebtcDeployer, _expectedAddr);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr, this.feeRecipientOwner);
+            _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr, this.feeRecipientMultisig);
         } else if (_stateName == COLL_SURPLUS_POOL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == SORTED_CDPS_STATE_NAME) {
@@ -100,7 +100,7 @@ class EBTCDeployerScript {
         } else if (_stateName == HINT_HELPERS_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployHintHelper(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == FEE_RECIPIENT_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, feeRecipientOwner)
+            _deployedState = await DeploymentHelper.deployFeeRecipient(ebtcDeployer, _expectedAddr, feeRecipientMultisig)
         } else if (_stateName == EBTC_DEPLOYER_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEBTCDeployer();
         } else if (_stateName == COLLATERAL_STATE_NAME) {
@@ -108,12 +108,12 @@ class EBTCDeployerScript {
         } else if (_stateName == MULTI_CDP_GETTER_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployMultiCdpGetter(ebtcDeployer, _expectedAddr);
         } else if (_stateName == HIGHSEC_TIMELOCK_STATE_NAME) {
-            let proposers = [this.ecosystemMultisig]
-            let executors = [this.ecosystemMultisig]
+            let proposers = [this.securityMultisig]
+            let executors = [this.securityMultisig]
             _deployedState = await DeploymentHelper.deployTimelock(this.highSecDelay, proposers, executors, this.highSecAdmin);
         } else if (_stateName == LOWSEC_TIMELOCK_STATE_NAME) {
-            let proposers = [this.ecosystemMultisig, this.cdpTechOpsMultisig]
-            let executors = [this.ecosystemMultisig, this.cdpTechOpsMultisig]
+            let proposers = [this.securityMultisig, this.cdpTechOpsMultisig]
+            let executors = [this.securityMultisig, this.cdpTechOpsMultisig]
             _deployedState = await DeploymentHelper.deployTimelock(this.lowSecDelay, proposers, executors, this.lowSecAdmin);
         }
         await this.saveToDeploymentStateFile(mainnetDeploymentHelper, _stateName, deploymentState, _deployedState);
@@ -217,11 +217,11 @@ class EBTCDeployerScript {
 
     async loadOrDeployTimelocks() {
         console.log(chalk.cyan("[HighSecTimelock]"))
-        let _constructorArgs = [this.highSecDelay, [this.ecosystemMultisig], [this.ecosystemMultisig], this.highSecAdmin]
+        let _constructorArgs = [this.highSecDelay, [this.securityMultisig], [this.securityMultisig], this.highSecAdmin]
         this.highSecTimelock = await this.deployOrLoadState(HIGHSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
 
         console.log(chalk.cyan("[LowhSecTimelock]"))
-        _constructorArgs = [this.lowSecDelay, [this.ecosystemMultisig, this.cdpTechOpsMultisig], [this.ecosystemMultisig, this.cdpTechOpsMultisig], this.lowSecAdmin]
+        _constructorArgs = [this.lowSecDelay, [this.securityMultisig, this.cdpTechOpsMultisig], [this.securityMultisig, this.cdpTechOpsMultisig], this.lowSecAdmin]
         this.lowSecTimelock = await this.deployOrLoadState(LOWSEC_TIMELOCK_STATE_NAME, [], _constructorArgs)
     }
 
@@ -246,7 +246,7 @@ class EBTCDeployerScript {
 
         // deploy borrowerOperations
         console.log(chalk.cyan("[BorrowerOperations]"))
-        _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[12], _expectedAddr[5], _expectedAddr[9], this.feeRecipientOwner, this.collateralAddr];
+        _constructorArgs = [_expectedAddr[2], _expectedAddr[6], _expectedAddr[7], _expectedAddr[12], _expectedAddr[5], _expectedAddr[9], this.feeRecipientMultisig, this.collateralAddr];
         let borrowerOperations = await this.deployOrLoadState(BORROWER_OPERATIONS_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy eBTCToken
@@ -266,7 +266,7 @@ class EBTCDeployerScript {
 
         // deploy activePool
         console.log(chalk.cyan("[ActivePool]"))
-        _constructorArgs = [_expectedAddr[3], _expectedAddr[2], this.collateralAddr, _expectedAddr[7], this.feeRecipientOwner];
+        _constructorArgs = [_expectedAddr[3], _expectedAddr[2], this.collateralAddr, _expectedAddr[7], this.feeRecipientMultisig];
         let activePool = await this.deployOrLoadState(ACTIVE_POOL_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy collSurplusPool
@@ -286,7 +286,7 @@ class EBTCDeployerScript {
 
         // deploy feeRecipient
         console.log(chalk.cyan("[FeeRecipient]"))
-        _constructorArgs = [this.feeRecipientOwner, _expectedAddr[1]];
+        _constructorArgs = [this.feeRecipientMultisig, _expectedAddr[1]];
         let feeRecipient = await this.deployOrLoadState(FEE_RECIPIENT_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy multiCdpGetter
@@ -377,9 +377,9 @@ class EBTCDeployerScript {
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 1);
         assert.isTrue(await this.highSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1);
 
-        assert.isTrue(await this.highSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
-        assert.isTrue(await this.highSecTimelock.hasRole(EXECUTOR_ROLE, this.ecosystemMultisig));
-        assert.isTrue(await this.highSecTimelock.hasRole(CANCELLER_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.highSecTimelock.hasRole(PROPOSER_ROLE, this.securityMultisig));
+        assert.isTrue(await this.highSecTimelock.hasRole(EXECUTOR_ROLE, this.securityMultisig));
+        assert.isTrue(await this.highSecTimelock.hasRole(CANCELLER_ROLE, this.securityMultisig));
 
         // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
         assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
@@ -412,11 +412,11 @@ class EBTCDeployerScript {
         assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 2);
         assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 2);
 
-        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.securityMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpTechOpsMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.securityMultisig));
         assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpTechOpsMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.ecosystemMultisig));
+        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.securityMultisig));
 
         // We remove the canceller from TechOps
         if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig)) {
@@ -552,7 +552,7 @@ class EBTCDeployerScript {
         const userAddressToRoleNumberMap = {
             [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7],
             [this.lowSecTimelock.address]: [3, 4, 5, 6],
-            [this.feeRecipientOwner]: [6],
+            [this.feeRecipientMultisig]: [6],
         };
         
         // Iterate over the user addresses and set the role numbers
@@ -658,14 +658,14 @@ async function main() {
 
     let eds = new EBTCDeployerScript(useMockCollateral, useMockPriceFeed, mdh, deploymentState, configParams, _deployer);
     if (configParams == configParamsLocal) {
-        eds.ecosystemMultisig = (await ethers.getSigners())[1].address;
+        eds.securityMultisig = (await ethers.getSigners())[1].address;
         eds.cdpTechOpsMultisig = (await ethers.getSigners())[2].address;
-        eds.feeRecipientOwner = (await ethers.getSigners())[3].address;
+        eds.feeRecipientMultisig = (await ethers.getSigners())[3].address;
     }
 
-    console.log(`\nEcosystem Multisig: ${eds.ecosystemMultisig}`)
+    console.log(`\nEcosystem Multisig: ${eds.securityMultisig}`)
     console.log(`CDP TechOps Multisig: ${eds.cdpTechOpsMultisig}`)
-    console.log(`Fee Recipient Multisig: ${eds.feeRecipientOwner}`)
+    console.log(`Fee Recipient Multisig: ${eds.feeRecipientMultisig}`)
 
     await eds.loadOrDeployEBTCDeployer();
     await eds.loadOrDeployCollateral(configParams);
