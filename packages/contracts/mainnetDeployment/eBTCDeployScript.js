@@ -454,10 +454,14 @@ class EBTCDeployerScript {
             1: "eBTCToken: mint",
             2: "eBTCToken: burn",
             3: "CDPManager: all",
-            4: "PriceFeed: setFallbackCaller",
-            5: "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress",
-            6: "ActivePool: sweep tokens & claim fee recipient coll",
-            7: "EbtcFeed: set primary & secondary oracles"
+            4: "CDPManager+BorrowerOperations+ActivePool: pause",
+            5: "BorrowerOperations+ActivePool: setFeeBps",
+            6: "BorrowerOperations+ActivePool: setFeeRecipientAddress",
+            7: "ActivePool+CollSurplusPool: sweepToken",
+            8: "ActivePool: claimFeeRecipientCollShares",
+            9: "EbtcFeed: setPrimaryOracle",
+            10: "EbtcFeed: setSecondaryOracle",
+            11: "PriceFeed: setFallbackCaller",
         };
 
         // Get the list of role numbers
@@ -504,28 +508,36 @@ class EBTCDeployerScript {
                 { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTION_FEE_FLOOR_SIG },
                 { target: coreContracts.cdpManager, signature: govSig.SET_MINUTE_DECAY_FACTOR_SIG },
                 { target: coreContracts.cdpManager, signature: govSig.SET_BETA_SIG },
-                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTIONS_PAUSED_SIG },
                 { target: coreContracts.cdpManager, signature: govSig.SET_GRACE_PERIOD_SIG },
             ],
             4: [
-                { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTIONS_PAUSED_SIG },
+                { target: coreContracts.activePool, signature: govSig.SET_FLASH_LOANS_PAUSED_SIG },
+                { target: coreContracts.borrowerOperations, signature: govSig.SET_FLASH_LOANS_PAUSED_SIG },
             ],
             5: [
                 { target: coreContracts.borrowerOperations, signature: govSig.SET_FEE_BPS_SIG },
-                { target: coreContracts.borrowerOperations, signature: govSig.SET_FLASH_LOANS_PAUSED_SIG },
-                { target: coreContracts.borrowerOperations, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
                 { target: coreContracts.activePool, signature: govSig.SET_FEE_BPS_SIG },
-                { target: coreContracts.activePool, signature: govSig.SET_FLASH_LOANS_PAUSED_SIG },
-                { target: coreContracts.activePool, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
             ],
             6: [
-                { target: coreContracts.activePool, signature: govSig.SWEEP_TOKEN_SIG },
-                { target: coreContracts.activePool, signature: govSig.CLAIM_FEE_RECIPIENT_COLL_SIG },
-                { target: coreContracts.collSurplusPool, signature: govSig.SWEEP_TOKEN_SIG },
+                { target: coreContracts.borrowerOperations, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
+                { target: coreContracts.activePool, signature: govSig.SET_FEE_RECIPIENT_ADDRESS_SIG },
             ],
             7: [
+                { target: coreContracts.activePool, signature: govSig.SWEEP_TOKEN_SIG },
+                { target: coreContracts.collSurplusPool, signature: govSig.SWEEP_TOKEN_SIG },
+            ],
+            8: [
+                { target: coreContracts.activePool, signature: govSig.CLAIM_FEE_RECIPIENT_COLL_SIG },
+            ],
+            9: [
                 { target: coreContracts.ebtcFeed, signature: govSig.SET_PRIMARY_ORACLE_SIG },
+            ],
+            10: [
                 { target: coreContracts.ebtcFeed, signature: govSig.SET_SECONDARY_ORACLE_SIG },
+            ],
+            11: [
+                { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
             ]
         };
 
