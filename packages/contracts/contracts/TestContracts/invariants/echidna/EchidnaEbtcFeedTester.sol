@@ -8,7 +8,10 @@ import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 import "../../../Interfaces/IOracleCaller.sol";
 import "../../../PriceFeed.sol";
 import "../../../EbtcFeed.sol";
+import "../../../ChainlinkAdapter.sol";
 import "../../MockAggregator.sol";
+import "../Asserts.sol";
+import "./EchidnaAsserts.sol";
 import {MockFallbackCaller} from "../../MockFallbackCaller.sol";
 import "../../../Dependencies/AuthNoOwner.sol";
 import {PriceFeedOracleTester} from "../../PriceFeedOracleTester.sol";
@@ -18,13 +21,15 @@ import "../PropertiesDescriptions.sol";
 
 import "@crytic/properties/contracts/util/Hevm.sol";
 
-contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, PropertiesDescriptions {
+abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, PropertiesDescriptions {
     EbtcFeed internal ebtcFeed;
     PriceFeedOracleTester internal primaryTester;
     PriceFeedOracleTester internal secondaryTester;
     PriceFeed internal priceFeed;
     MockAggregator internal collEthCLFeed;
-    MockAggregator internal ethBtcCLFeed;
+    MockAggregator internal btcUsdCLFeed;
+    MockAggregator internal ethUsdCLFeed;
+    ChainlinkAdapter internal chainlinkAdapter;
     MockAlwaysTrueAuthority internal authority;
     MockFallbackCaller internal fallbackCaller;
 
@@ -43,15 +48,17 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
     uint256 internal constant MAX_ETH_VALUE = 100000000000000000000;
     uint256 internal constant MIN_ETH_VALUE = 1000000000000000;
 
-    // https://etherscan.io/address/0xac559f25b1619171cbc396a50854a3240b6a4e99#code
-    // https://etherscan.io/address/0x0f00392FcB466c0E4E4310d81b941e07B4d5a079
-    uint256 internal constant MAX_BTC_VALUE = 1000000000;
-    uint256 internal constant MIN_BTC_VALUE = 10000;
+    uint256 internal constant MAX_BTC_USD_VALUE = 10000000000000000000000;
+    uint256 internal constant MIN_BTC_USD_VALUE = 1;
 
-    constructor() payable {
+    uint256 internal constant MAX_ETH_USD_VALUE = 10000000000000000000000;
+    uint256 internal constant MIN_ETH_USD_VALUE = 1;
+
+    function setUp() public virtual {
         authority = new MockAlwaysTrueAuthority();
         collEthCLFeed = new MockAggregator();
-        ethBtcCLFeed = new MockAggregator();
+        btcUsdCLFeed = new MockAggregator();
+        ethUsdCLFeed = new MockAggregator();
 
         hevm.roll(123123131);
 
@@ -62,18 +69,27 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
         collEthCLFeed.setPrice(1 ether - 3);
         collEthCLFeed.setPrevPrice(1 ether - 1337);
 
-        ethBtcCLFeed.setLatestRoundId(2);
-        ethBtcCLFeed.setPrevRoundId(1);
-        ethBtcCLFeed.setUpdateTime(block.timestamp);
-        ethBtcCLFeed.setPrevUpdateTime(block.timestamp - 1);
-        ethBtcCLFeed.setPrice(3 ether - 2);
-        ethBtcCLFeed.setPrevPrice(3 ether - 42);
+        btcUsdCLFeed.setLatestRoundId(2);
+        btcUsdCLFeed.setPrevRoundId(1);
+        btcUsdCLFeed.setUpdateTime(block.timestamp);
+        btcUsdCLFeed.setPrevUpdateTime(block.timestamp);
+        btcUsdCLFeed.setPrice(3 ether - 2);
+        btcUsdCLFeed.setPrevPrice(3 ether - 42);
+
+        ethUsdCLFeed.setLatestRoundId(2);
+        ethUsdCLFeed.setPrevRoundId(1);
+        ethUsdCLFeed.setUpdateTime(block.timestamp);
+        ethUsdCLFeed.setPrevUpdateTime(block.timestamp);
+        ethUsdCLFeed.setPrice(3 ether - 2);
+        ethUsdCLFeed.setPrevPrice(3 ether - 42);
+
+        chainlinkAdapter = new ChainlinkAdapter(btcUsdCLFeed, ethUsdCLFeed);
 
         priceFeed = new PriceFeed(
             address(fallbackCaller),
             address(authority),
             address(collEthCLFeed),
-            address(ethBtcCLFeed)
+            address(chainlinkAdapter)
         );
 
         // do we have a fallback caller?
@@ -88,7 +104,7 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
             address(secondaryTester)
         );
 
-        fallbackCaller.setFallbackResponse(priceFeed.lastGoodPrice() - 10, block.timestamp, true);
+        fallbackCaller.setFallbackResponse(ebtcFeed.lastGoodPrice() - 10, block.timestamp, true);
     }
 
     // Risk of overflow, so we cap to 0
@@ -102,6 +118,17 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
         return block.timestamp + MAX_UPDATE_TIME_CHANGE;
     }
 
+    function _selectFeed(uint256 feedId) private returns (MockAggregator) {
+        feedId = between(feedId, 0, 2);
+        if (feedId == 0) {
+            return collEthCLFeed;
+        } else if (feedId == 1) {
+            return btcUsdCLFeed;
+        } else {
+            return ethUsdCLFeed;
+        }
+    }
+
     function setFallbackCaller(bool useFallbackCallerFlag) public {
         priceFeed.setFallbackCaller(useFallbackCallerFlag ? address(fallbackCaller) : address(0));
     }
@@ -110,14 +137,14 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
         // We should let prices go crazy instead of clamp them
         // But we should limit them by a max and min value
         answer = (
-            clampBetween(
+            between(
                 answer,
                 MIN_FALLBACK_VALUE, // THIS WAS ALWAYS ZERO
                 MAX_FALLBACK_VALUE
             )
         );
         timestampRetrieved = (
-            clampBetween(
+            between(
                 timestampRetrieved,
                 _getOldestAcceptableTimestamp(),
                 _getNewestAcceptableTimestamp()
@@ -130,27 +157,26 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
         fallbackCaller.setGetFallbackResponseRevert();
     }
 
-    function setLatestRevert(bool flag) public {
-        MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
+    function setLatestRevert(uint8 feedId) public {
+        MockAggregator aggregator = _selectFeed(feedId);
         aggregator.setLatestRevert();
     }
 
-    function setPrevRevert(bool flag) public {
-        MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
+    function setPrevRevert(uint8 feedId) public {
+        MockAggregator aggregator = _selectFeed(feedId);
         aggregator.setPrevRevert();
     }
 
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
-    function setDecimals(uint8 decimals, bool flag) external {
+    function setDecimals(uint8 decimals) external {
         // https://github.com/d-xo/weird-erc20
-        decimals = uint8(clampBetween(uint256(decimals), 2, 18));
-        MockAggregator aggregator = flag ? collEthCLFeed : ethBtcCLFeed;
-        aggregator.setDecimals(decimals);
+        decimals = uint8(between(uint256(decimals), 2, 18));
+        collEthCLFeed.setDecimals(decimals);
     }
 
     function setPrimaryErrorState(uint8 errorState) external {
         errorState = uint8(
-            clampBetween(
+            between(
                 uint256(errorState),
                 uint256(PriceFeedOracleTester.ErrorState.NONE),
                 uint256(PriceFeedOracleTester.ErrorState.SELF_DESTRUCT)
@@ -161,7 +187,7 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
 
     function setSecondaryErrorState(uint8 errorState) external {
         errorState = uint8(
-            clampBetween(
+            between(
                 uint256(errorState),
                 uint256(PriceFeedOracleTester.ErrorState.NONE),
                 uint256(PriceFeedOracleTester.ErrorState.SELF_DESTRUCT)
@@ -178,21 +204,13 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.latestRoundData();
 
         latestRoundId = uint80(
-            clampBetween(
-                uint256(latestRoundId),
-                uint256(roundId),
-                uint256(roundId + MAX_ROUND_ID_CHANGE)
-            )
+            between(uint256(latestRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE))
         );
         // NOTE: Updated to clamp based on proper realistic prices
-        price = clampBetween(price, MIN_ETH_VALUE, MAX_ETH_VALUE);
+        price = between(price, MIN_ETH_VALUE, MAX_ETH_VALUE);
 
         updateTime = (
-            clampBetween(
-                updateTime,
-                _getOldestAcceptableTimestamp(),
-                _getNewestAcceptableTimestamp()
-            )
+            between(updateTime, _getOldestAcceptableTimestamp(), _getNewestAcceptableTimestamp())
         );
 
         collEthCLFeed.setLatestRoundId(latestRoundId);
@@ -203,71 +221,87 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
     function setPreviousEth(uint80 prevRoundId, uint256 prevPrice, uint256 prevUpdateTime) public {
         (uint80 roundId, int256 answer, , uint256 updatedAt, ) = collEthCLFeed.getRoundData(0);
         prevRoundId = uint80(
-            clampBetween(
-                uint256(prevRoundId),
-                uint256(roundId),
-                uint256(roundId + MAX_ROUND_ID_CHANGE)
-            )
+            between(uint256(prevRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE))
         );
-        prevPrice = (clampBetween(prevPrice, MIN_ETH_VALUE, MAX_ETH_VALUE));
+        prevPrice = (between(prevPrice, MIN_ETH_VALUE, MAX_ETH_VALUE));
         prevUpdateTime = (
-            clampBetween(
-                prevUpdateTime,
-                _getOldestAcceptableTimestamp(),
-                _getNewestAcceptableTimestamp()
-            )
+            between(prevUpdateTime, _getOldestAcceptableTimestamp(), _getNewestAcceptableTimestamp())
         );
         collEthCLFeed.setPrevRoundId(prevRoundId);
         collEthCLFeed.setPrevPrice(int256(prevPrice));
         collEthCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
-    function setLatestBTC(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
-        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.latestRoundData();
+    function setLatestBTCUSD(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = btcUsdCLFeed.latestRoundData();
 
         latestRoundId = uint80(
-            clampBetween(
-                uint256(latestRoundId),
-                uint256(roundId),
-                uint256(roundId + MAX_ROUND_ID_CHANGE)
-            )
+            between(uint256(latestRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE))
         );
         // NOTE: Updated to clamp based on proper realistic prices
-        price = (clampBetween(price, MIN_BTC_VALUE, MAX_BTC_VALUE));
+        price = (between(price, MIN_BTC_USD_VALUE, MAX_BTC_USD_VALUE));
 
         updateTime = (
-            clampBetween(
-                updateTime,
-                _getOldestAcceptableTimestamp(),
-                _getNewestAcceptableTimestamp()
-            )
+            between(updateTime, _getOldestAcceptableTimestamp(), _getNewestAcceptableTimestamp())
         );
 
-        ethBtcCLFeed.setLatestRoundId(latestRoundId);
-        ethBtcCLFeed.setPrice(int256(price));
-        ethBtcCLFeed.setUpdateTime(updateTime);
+        btcUsdCLFeed.setLatestRoundId(latestRoundId);
+        btcUsdCLFeed.setPrice(int256(price));
+        btcUsdCLFeed.setUpdateTime(updateTime);
     }
 
-    function setPreviousBTC(uint80 prevRoundId, uint256 prevPrice, uint256 prevUpdateTime) public {
-        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethBtcCLFeed.getRoundData(0);
+    function setLatestETHUSD(uint80 latestRoundId, uint256 price, uint256 updateTime) public {
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethUsdCLFeed.latestRoundData();
+
+        latestRoundId = uint80(
+            between(uint256(latestRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE))
+        );
+        // NOTE: Updated to clamp based on proper realistic prices
+        price = (between(price, MIN_ETH_USD_VALUE, MAX_ETH_USD_VALUE));
+
+        updateTime = (
+            between(updateTime, _getOldestAcceptableTimestamp(), _getNewestAcceptableTimestamp())
+        );
+
+        ethUsdCLFeed.setLatestRoundId(latestRoundId);
+        ethUsdCLFeed.setPrice(int256(price));
+        ethUsdCLFeed.setUpdateTime(updateTime);
+    }
+
+    function setPreviousBTCUSD(
+        uint80 prevRoundId,
+        uint256 prevPrice,
+        uint256 prevUpdateTime
+    ) public {
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = btcUsdCLFeed.getRoundData(0);
         prevRoundId = uint80(
-            clampBetween(
-                uint256(prevRoundId),
-                uint256(roundId),
-                uint256(roundId + MAX_ROUND_ID_CHANGE)
-            )
+            between(uint256(prevRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE))
         );
-        prevPrice = (clampBetween(prevPrice, MIN_BTC_VALUE, MAX_BTC_VALUE));
+        prevPrice = (between(prevPrice, MIN_BTC_USD_VALUE, MAX_BTC_USD_VALUE));
         prevUpdateTime = (
-            clampBetween(
-                prevUpdateTime,
-                _getOldestAcceptableTimestamp(),
-                _getNewestAcceptableTimestamp()
-            )
+            between(prevUpdateTime, _getOldestAcceptableTimestamp(), _getNewestAcceptableTimestamp())
         );
-        ethBtcCLFeed.setPrevRoundId(prevRoundId);
-        ethBtcCLFeed.setPrevPrice(int256(prevPrice));
-        ethBtcCLFeed.setPrevUpdateTime(prevUpdateTime);
+        btcUsdCLFeed.setPrevRoundId(prevRoundId);
+        btcUsdCLFeed.setPrevPrice(int256(prevPrice));
+        btcUsdCLFeed.setPrevUpdateTime(prevUpdateTime);
+    }
+
+    function setPreviousETHUSD(
+        uint80 prevRoundId,
+        uint256 prevPrice,
+        uint256 prevUpdateTime
+    ) public {
+        (uint80 roundId, int256 answer, , uint256 updatedAt, ) = ethUsdCLFeed.getRoundData(0);
+        prevRoundId = uint80(
+            between(uint256(prevRoundId), uint256(roundId), uint256(roundId + MAX_ROUND_ID_CHANGE))
+        );
+        prevPrice = (between(prevPrice, MIN_ETH_USD_VALUE, MAX_ETH_USD_VALUE));
+        prevUpdateTime = (
+            between(prevUpdateTime, _getOldestAcceptableTimestamp(), _getNewestAcceptableTimestamp())
+        );
+        ethUsdCLFeed.setPrevRoundId(prevRoundId);
+        ethUsdCLFeed.setPrevPrice(int256(prevPrice));
+        ethUsdCLFeed.setPrevUpdateTime(prevUpdateTime);
     }
 
     function fetchPriceEbtcFeed() public {
@@ -278,20 +312,26 @@ contract EchidnaEbtcFeedTester is PropertiesConstants, PropertiesAsserts, Proper
             PriceFeedOracleTester.ErrorState secondaryErrorState = secondaryTester.errorState();
 
             if (primaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
-                assertWithMsg(price == primaryTester.fetchPrice(), PF_07);
+                t(price == primaryTester.fetchPrice(), PF_07);
             } else {
                 if (ebtcFeed.secondaryOracle() != address(0)) {
                     if (secondaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
-                        assertWithMsg(price == secondaryTester.fetchPrice(), PF_08);
+                        t(price == secondaryTester.fetchPrice(), PF_08);
                     } else {
-                        assertWithMsg(price == lastGoodPrice, PF_09);
+                        t(price == lastGoodPrice, PF_09);
                     }
                 } else {
-                    assertWithMsg(price == lastGoodPrice, PF_09);
+                    t(price == lastGoodPrice, PF_09);
                 }
             }
         } catch {
-            assertWithMsg(false, PF_01);
+            t(false, PF_01);
         }
+    }
+}
+
+contract EchidnaEbtcFeedTester is EbtcFeedTesterBase, EchidnaAsserts {
+    constructor() payable {
+        super.setUp();
     }
 }
