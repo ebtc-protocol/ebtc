@@ -554,15 +554,16 @@ class EBTCDeployerScript {
         console.log(chalk.cyan("\nAssigning roles to users\n"));
 
         // Assign roles to Timelocks
-        // HighSec timelock should have access to all functions except for minting/burning and changing the fee recipient
-        // LowSec timelock should have access to all functions except for minting/burning and authority admin
-        // Treasury Vault should be able to change the fee recipient
-        // Fee recipient should be able to claim collateral
+        // HighSec timelock should have access to all functions except for minting/burning
+        // LowSec timelock should have access to all functions except for minting/burning, authority admin and changing the primary oracle
+        // Security Multisig should be able to pause redemptions and flash loans
+        // CDP TechOps should be able to pause redemptions and flash loans
+        // Fee recipient should be able to claim collateral shares
         const userAddressToRoleNumberMap = {
-            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7],
-            [this.lowSecTimelock.address]: [3, 4, 5, 6],
+            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7, 8, 9, 10],
+            [this.lowSecTimelock.address]: [3, 4, 5, 6, 7, 9, 10],
             [this.securityMultisig]: [4],
-            [this.cdpTechOpsMultisig]: [3, 4, 5, 6],
+            [this.cdpTechOpsMultisig]: [4],
             [this.feeRecipientMultisig]: [6],
         };
         
@@ -583,11 +584,11 @@ class EBTCDeployerScript {
         // Burn the ability of changing the fee recipient address
         // NOTE: Consider making the fee recipient immutable
         let signature = govSig.SET_FEE_RECIPIENT_ADDRESS_SIG;
-        console.log(`Burning `, + signature + ` on BorrowrOperations`)
-        tx = await authority.burnCapability(coreContracts.borrowerOperations, signature);
+        console.log(`\nBurning `, + signature + ` on BorrowrOperations`)
+        tx = await authority.burnCapability(coreContracts.borrowerOperations.address, signature);
         await tx.wait();
-        console.log(`Burning `, + signature + ` on ActivePool`)
-        tx = await authority.burnCapability(coreContracts.activePool, signature);
+        console.log(`\nBurning `, + signature + ` on ActivePool`)
+        tx = await authority.burnCapability(coreContracts.activePool.address, signature);
         await tx.wait();
 
 
