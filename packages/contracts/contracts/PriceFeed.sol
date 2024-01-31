@@ -31,6 +31,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Maximum time period allowed since Chainlink's latest round data timestamp, beyond which Chainlink is considered frozen.
     uint256 public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
     uint256 public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
+    uint256 constant INVALID_PRICE = 0;
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint256 public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -112,7 +113,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // If Fallback is broken then both oracles are untrusted, so return the last good price
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
                 /*
                  * If Fallback is only frozen but otherwise returning valid data, return the last good price.
@@ -120,7 +121,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                  */
                 if (_fallbackIsFrozen(fallbackResponse)) {
                     _changeStatus(Status.usingFallbackChainlinkUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Chainlink is broken and Fallback is working, switch to Fallback and return current Fallback price
@@ -133,14 +134,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // If Fallback is broken too, remember Fallback broke, and return last good price
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.usingChainlinkFallbackUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Fallback is frozen or working, remember Chainlink froze, and switch to Fallback
                 _changeStatus(Status.usingFallbackChainlinkFrozen);
 
                 if (_fallbackIsFrozen(fallbackResponse)) {
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Fallback is working, use it
@@ -153,14 +154,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // We don't trust CL for now given this large price differential
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Fallback is frozen, switch to Fallback and return last good price
                 // We don't trust CL for now given this large price differential
                 if (_fallbackIsFrozen(fallbackResponse)) {
                     _changeStatus(Status.usingFallbackChainlinkUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 /*
@@ -190,7 +191,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         if (status == Status.usingFallbackChainlinkUntrusted) {
             if (_fallbackIsBroken(fallbackResponse)) {
                 _changeStatus(Status.bothOraclesUntrusted);
-                return lastGoodPrice;
+                return INVALID_PRICE;
             }
 
             /*
@@ -198,7 +199,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
              * Fallback may need to be tipped to return current data.
              */
             if (_fallbackIsFrozen(fallbackResponse)) {
-                return lastGoodPrice;
+                return INVALID_PRICE;
             }
 
             // If both Fallback and Chainlink are live, unbroken, and reporting similar prices, switch back to Chainlink
@@ -232,7 +233,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                     _changeStatus(Status.usingChainlinkFallbackUntrusted);
                     return _storeChainlinkPrice(chainlinkResponse.answer);
                 } else {
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
             }
 
@@ -252,7 +253,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             }
 
             // Otherwise, return the last good price - both oracles are still untrusted (no status change)
-            return lastGoodPrice;
+            return INVALID_PRICE;
         }
 
         // --- CASE 4: Using Fallback, and Chainlink is frozen ---
@@ -261,14 +262,14 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // If both Oracles are broken, return last good price
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Chainlink is broken, remember it and switch to using Fallback
                 _changeStatus(Status.usingFallbackChainlinkUntrusted);
 
                 if (_fallbackIsFrozen(fallbackResponse)) {
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Fallback is working, return Fallback current price
@@ -279,12 +280,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // if Chainlink is frozen and Fallback is broken, remember Fallback broke, and return last good price
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.usingChainlinkFallbackUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If both are frozen, just use lastGoodPrice
                 if (_fallbackIsFrozen(fallbackResponse)) {
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // if Chainlink is frozen and Fallback is working, keep using Fallback (no status change)
@@ -295,7 +296,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
                 // if Chainlink price is deviated between rounds and fallback is broken, just use lastGoodPrice
                 if (_fallbackIsBroken(fallbackResponse)) {
                     _changeStatus(Status.bothOraclesUntrusted);
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // If Chainlink price is deviated between rounds, remember it and keep using fallback
@@ -303,7 +304,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
                 // If fallback is frozen, just use lastGoodPrice
                 if (_fallbackIsFrozen(fallbackResponse)) {
-                    return lastGoodPrice;
+                    return INVALID_PRICE;
                 }
 
                 // otherwise fallback is working and keep using its latest response
@@ -318,7 +319,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
             // If Chainlink is live and Fallback is frozen, just use last good price (no status change) since we have no basis for comparison
             if (_fallbackIsFrozen(fallbackResponse)) {
-                return lastGoodPrice;
+                return INVALID_PRICE;
             }
 
             // If Chainlink is live and Fallback is working, compare prices. Switch to Chainlink
@@ -338,19 +339,19 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             // If Chainlink breaks, now both oracles are untrusted
             if (_chainlinkIsBroken(chainlinkResponse, prevChainlinkResponse)) {
                 _changeStatus(Status.bothOraclesUntrusted);
-                return lastGoodPrice;
+                return INVALID_PRICE;
             }
 
             // If Chainlink is frozen, return last good price (no status change)
             if (_chainlinkIsFrozen(chainlinkResponse)) {
-                return lastGoodPrice;
+                return INVALID_PRICE;
             }
 
             // If Chainlink is live but deviated >50% from it's previous price and Fallback is still untrusted, switch
             // to bothOraclesUntrusted and return last good price
             if (_chainlinkPriceChangeAboveMax(chainlinkResponse, prevChainlinkResponse)) {
                 _changeStatus(Status.bothOraclesUntrusted);
-                return lastGoodPrice;
+                return INVALID_PRICE;
             }
 
             // If Chainlink and Fallback are both live, unbroken and similar price, switch back to chainlinkWorking and return Chainlink price
@@ -373,7 +374,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
 
         /// @audit This should never be used, but we added it for the Certora Prover
-        return lastGoodPrice;
+        return INVALID_PRICE;
     }
 
     // --- Governance Functions ---
@@ -579,7 +580,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @notice Stores the latest valid price.
     /// @param _currentPrice The price to be stored.
     function _storePrice(uint256 _currentPrice) internal {
-        lastGoodPrice = _currentPrice;
         emit LastGoodPriceUpdated(_currentPrice);
     }
 
@@ -598,7 +598,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     /// @return The price reported by the Chainlink oracle.
     function _storeChainlinkPrice(uint256 _answer) internal returns (uint256) {
         _storePrice(_answer);
-
         return _answer;
     }
 

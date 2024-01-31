@@ -177,12 +177,14 @@ contract HintHelpers is EbtcBase {
         latestRandomSeed = _inputRandomSeed;
 
         uint256 i = 1;
+        bytes32[] memory cdpIds = sortedCdpsToArray();
 
         while (i < _numTrials) {
             latestRandomSeed = uint256(keccak256(abi.encodePacked(latestRandomSeed)));
 
             uint256 arrayIndex = latestRandomSeed % arrayLength;
-            bytes32 _cId = cdpManager.getIdFromCdpIdsArray(arrayIndex);
+            bytes32 _cId = cdpIds[arrayIndex];
+
             uint256 currentNICR = cdpManager.getSyncedNominalICR(_cId);
 
             // check if abs(current - CR) > abs(closest - CR), and update closest if current is closer
@@ -194,6 +196,29 @@ contract HintHelpers is EbtcBase {
             }
             i++;
         }
+    }
+
+    function sortedCdpsToArray() public view returns (bytes32[] memory cdpIdArray) {
+        uint256 size = sortedCdps.getSize();
+        cdpIdArray = new bytes32[](size);
+
+        if (size == 0) {
+            // If the list is empty, return an empty array
+            return cdpIdArray;
+        }
+
+        // Initialize the first CDP in the list
+        bytes32 currentCdpId = sortedCdps.getFirst();
+
+        for (uint256 i = 0; i < size; ++i) {
+            // Add the current CDP to the array
+            cdpIdArray[i] = currentCdpId;
+
+            // Move to the next CDP in the list
+            currentCdpId = sortedCdps.getNext(currentCdpId);
+        }
+
+        return cdpIdArray;
     }
 
     /// @notice Compute nominal CR for a specified collateral and debt amount

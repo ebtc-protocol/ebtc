@@ -201,9 +201,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
     /* Individual CDP Fee accumulator tracker, used to calculate fee split distribution */
     mapping(bytes32 => uint256) public cdpStEthFeePerUnitIndex;
 
-    // Array of all active cdp Ids - used to to compute an approximate hint off-chain, for the sorted list insertion
-    bytes32[] public CdpIds;
-
     /// @notice Initializes the contract with the provided addresses and sets up the required initial state
     /// @param _liquidationLibraryAddress The address of the Liquidation Library
     /// @param _authorityAddress The address of the Authority
@@ -263,7 +260,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             "CdpManagerStorage: close non-exist or non-active CDP!"
         );
 
-        uint256 cdpIdsArrayLength = CdpIds.length;
+        uint256 cdpIdsArrayLength = getActiveCdpsCount();
         _requireMoreThanOneCdpInSystem(cdpIdsArrayLength);
 
         _removeStake(_cdpId);
@@ -275,8 +272,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
 
         cdpDebtRedistributionIndex[_cdpId] = 0;
         cdpStEthFeePerUnitIndex[_cdpId] = 0;
-
-        _removeCdp(_cdpId, cdpIdsArrayLength);
     }
 
     /*
@@ -454,33 +449,6 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             stake = (_coll * totalStakesSnapshot) / totalCollateralSnapshot;
         }
         return stake;
-    }
-
-    /*
-     * Remove a Cdp owner from the CdpOwners array, not preserving array order. Removing owner 'B' does the following:
-     * [A B C D E] => [A E C D], and updates E's Cdp struct to point to its new array index.
-     */
-    function _removeCdp(bytes32 _cdpId, uint256 cdpIdsArrayLength) internal {
-        Status cdpStatus = Cdps[_cdpId].status;
-        // It’s set in caller function `_closeCdp`
-        require(
-            cdpStatus != Status.nonExistent && cdpStatus != Status.active,
-            "CdpManagerStorage: remove non-exist or non-active CDP!"
-        );
-
-        uint128 index = Cdps[_cdpId].arrayIndex;
-        uint256 length = cdpIdsArrayLength;
-        uint256 idxLast = length - 1;
-
-        require(index <= idxLast, "CdpManagerStorage: CDP indexing overflow!");
-
-        bytes32 idToMove = CdpIds[idxLast];
-
-        CdpIds[index] = idToMove;
-        Cdps[idToMove].arrayIndex = index;
-        emit CdpArrayIndexUpdated(idToMove, index);
-
-        CdpIds.pop();
     }
 
     // --- Recovery Mode and TCR functions ---
@@ -867,11 +835,8 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         return _calculateCR(_collShare, _debt, _price);
     }
 
-    /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken
-    /// @param _price The ETH:eBTC price to be used in TCR calculation
-    /// @return The TCR of the eBTC system including debt distribution and fee split considered
-    /// @dev Should always use this as the first(default) choice for TCR query
-    function getSyncedTCR(uint256 _price) public view returns (uint256) {
+    /// @notice return system collateral share, including pending fee split to be taken
+    function getSyncedSystemCollShares() public view returns (uint256) {
         (uint256 _oldIndex, uint256 _newIndex) = _readStEthIndex();
         (uint256 _feeTaken, , ) = _calcSyncedGlobalAccounting(_newIndex, _oldIndex);
 
@@ -879,8 +844,23 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
         if (_feeTaken > 0) {
             _systemCollShare = _systemCollShare - _feeTaken;
         }
+        return _systemCollShare;
+    }
+
+    /// @notice Calculate the TCR, including pending debt distribution and fee split to be taken
+    /// @param _price The ETH:eBTC price to be used in TCR calculation
+    /// @return The TCR of the eBTC system including debt distribution and fee split considered
+    /// @dev Should always use this as the first(default) choice for TCR query
+    function getSyncedTCR(uint256 _price) public view returns (uint256) {
+        uint256 _systemCollShare = getSyncedSystemCollShares();
         uint256 _systemDebt = activePool.getSystemDebt();
         return _calculateCR(_systemCollShare, _systemDebt, _price);
+    }
+
+    /// @notice Get the count of active Cdps in the system
+    /// @return The number of current active Cdps (not closed) in the system.
+    function getActiveCdpsCount() public view override returns (uint256) {
+        return sortedCdps.getSize();
     }
 
     /// @param icr The ICR of a Cdp to check if liquidatable

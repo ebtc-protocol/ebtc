@@ -14,6 +14,7 @@ contract EBTCDeployer is Ownable {
     string public constant BORROWER_OPERATIONS = "ebtc.v1.borrowerOperations";
 
     string public constant PRICE_FEED = "ebtc.v1.priceFeed";
+    string public constant EBTC_FEED = "ebtc.v1.ebtcFeed";
     string public constant SORTED_CDPS = "ebtc.v1.sortedCdps";
 
     string public constant ACTIVE_POOL = "ebtc.v1.activePool";
@@ -39,6 +40,7 @@ contract EBTCDeployer is Ownable {
         address ebtcTokenAddress;
         address feeRecipientAddress;
         address multiCdpGetterAddress;
+        address ebtcFeedAddress;
     }
 
     /**
@@ -57,6 +59,7 @@ contract EBTCDeployer is Ownable {
     9: eBTCToken
     10: feeRecipient
     11: multiCdpGetter
+    12: ebtcFeed
 
 
      */
@@ -73,7 +76,8 @@ contract EBTCDeployer is Ownable {
             Create3.addressOf(keccak256(abi.encodePacked(HINT_HELPERS))),
             Create3.addressOf(keccak256(abi.encodePacked(EBTC_TOKEN))),
             Create3.addressOf(keccak256(abi.encodePacked(FEE_RECIPIENT))),
-            Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER)))
+            Create3.addressOf(keccak256(abi.encodePacked(MULTI_CDP_GETTER))),
+            Create3.addressOf(keccak256(abi.encodePacked(EBTC_FEED)))
         );
 
         return addresses;

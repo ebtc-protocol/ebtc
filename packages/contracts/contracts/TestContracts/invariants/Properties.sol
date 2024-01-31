@@ -47,9 +47,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 diff_tolerance
     ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _sum += _coll;
         }
         uint256 _activeColl = activePool.getSystemCollShares();
@@ -62,9 +64,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 diff_tolerance
     ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _sum += _debt;
         }
 
@@ -84,20 +88,22 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
     function invariant_CDPM_02(CdpManager cdpManager) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            _sum += cdpManager.getCdpStake(cdpManager.CdpIds(i));
+            _sum += cdpManager.getCdpStake(cdpIds[i]);
         }
         return (_sum == cdpManager.totalStakes());
     }
 
     function invariant_CDPM_03(CdpManager cdpManager) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (
-                systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpManager.CdpIds(i))
-            ) {
+            if (systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpIds[i])) {
                 return false;
             }
         }
@@ -313,6 +319,26 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return totalSupply >= cdpsBalance;
     }
 
+    function invariant_GENERAL_17(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18;
+        uint256 _systemDebt = activePool.getSystemDebt();
+
+        return sumOfDebt < (_systemDebt + 1);
+    }
+
     function invariant_GENERAL_08(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
@@ -333,6 +359,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
+        uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
+        uint256 _systemDebt = activePool.getSystemDebt();
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
 
         uint256 tcrFromSums = EbtcMath._computeCR(
@@ -340,8 +368,16 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             sumOfDebt,
             curentPrice
         );
-        /// @audit 1e8 precision
-        return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+
+        bool _acceptedTcrDiff = _assertApproximateEq(tcrFromSystem, tcrFromSums, 1e8);
+
+        // add generic diff function (original, second, diff) - all at once
+
+        /// @audit 1e8 precision in absoulte value (not the percent)
+        //return  isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+        bool _acceptedCollDiff = _assertApproximateEq(_systemCollShares, sumOfColl, 1e8);
+        bool _acceptedDebtDiff = _assertApproximateEq(_systemDebt, sumOfDebt, 1e8);
+        return (_acceptedCollDiff && _acceptedDebtDiff);
     }
 
     function invariant_GENERAL_09(

@@ -5,16 +5,16 @@
 		"timeout": 0,
 		"testLimit": 0,
 		"callSequenceLength": 100,
-		"corpusDirectory": "medusa-price-bias",
+		"corpusDirectory": "medusa",
 		"coverageEnabled": true,
 		"deploymentOrder": [
-			"EchidnaFeedUnbiasedTester"
+			"EchidnaTester"
 		],
 		"targetContracts": [
-			"EchidnaFeedUnbiasedTester"
+			"EchidnaTester"
 		],
 		"targetContractsBalances": [
-			"0x27b46536c66c8e3000000"
+			"0x4F68CA6D8CD91C6000000"
 		],
 		"constructorArgs": {},
 		"deployerAddress": "0x30000",
@@ -73,7 +73,7 @@
 	"compilation": {
 		"platform": "crytic-compile",
 		"platformConfig": {
-			"target": "contracts/TestContracts/invariants/echidna/EchidnaFeedUnbiasedTester.sol",
+			"target": "contracts/TestContracts/invariants/echidna/EchidnaTester.sol",
 			"solcVersion": "",
 			"exportDirectory": "",
 			"args": [

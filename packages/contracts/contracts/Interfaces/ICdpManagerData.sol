@@ -98,9 +98,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 debt;
         uint256 coll;
         uint256 stake;
-        uint256 liquidatorRewardShares;
+        uint128 liquidatorRewardShares;
         Status status;
-        uint128 arrayIndex;
     }
 
     /*
@@ -216,6 +215,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 newPartialNICR;
     }
 
+    function getActiveCdpsCount() external view returns (uint256);
+
     function totalStakes() external view returns (uint256);
 
     function ebtcToken() external view returns (IEBTCToken);
@@ -251,6 +252,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     function getSyncedICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
 
     function getSyncedTCR(uint256 _price) external view returns (uint256);
+
+    function getSyncedSystemCollShares() external view returns (uint256);
 
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256);
 

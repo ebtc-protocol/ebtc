@@ -62,8 +62,8 @@ abstract contract TargetFunctions is Properties {
         uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
-            ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getSyncedICR(currentCdp, _price)});
-            /// @audit NOTE: Synced to ensure it's realistic
+            uint256 _currentCdpDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getSyncedICR(currentCdp, _price)}); /// @audit NOTE: Synced to ensure it's realistic
 
             currentCdp = sortedCdps.getNext(currentCdp);
         }
@@ -88,9 +88,10 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function _getRandomCdp(uint256 _i) internal view returns (bytes32) {
-        uint256 _cdpIdx = _i % cdpManager.getActiveCdpsCount();
-        return cdpManager.CdpIds(_cdpIdx);
+    function _getRandomCdp(uint _i) internal view returns (bytes32) {
+        uint _cdpIdx = _i % cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+        return cdpIds[_cdpIdx];
     }
 
     event FlashLoanAction(uint256, uint256);
@@ -270,6 +271,8 @@ abstract contract TargetFunctions is Properties {
                     collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
                 L_09
             );
+
+            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -361,6 +364,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -382,6 +386,10 @@ abstract contract TargetFunctions is Properties {
             _n,
             vars.priceBefore
         );
+
+        for (uint i; i < batch.length; i++) {
+            bytes32 _idToLiq = batch[i];
+        }
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
@@ -432,6 +440,7 @@ abstract contract TargetFunctions is Properties {
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+            t(cdpManager.lastEBTCDebtErrorRedistribution() < cdpManager.totalStakes(), L_17);
         } else if (vars.sortedCdpsSizeBefore > _n) {
             if (_atLeastOneCdpIsLiquidatable(cdpsBefore, vars.isRecoveryModeBefore)) {
                 assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -609,8 +618,8 @@ abstract contract TargetFunctions is Properties {
 
         _after(bytes32(0));
 
-        uint256 _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-        eq(_balAfter - _balBefore, _fee, F_03);
+        uint _balAfter = collateral.sharesOf(activePool.feeRecipientAddress());
+        eq(_balAfter - _balBefore, collateral.getSharesByPooledEth(_fee), F_03);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
