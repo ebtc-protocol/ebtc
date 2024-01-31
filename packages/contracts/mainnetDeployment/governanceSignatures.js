@@ -28,8 +28,6 @@ const SET_FLASH_LOANS_PAUSED_SIG = ethers.utils.id('setFlashLoansPaused(bool)').
 const SWEEP_TOKEN_SIG = ethers.utils.id('sweepToken(address,uint256)').substring(0, 10);
 // ActivePool
 const CLAIM_FEE_RECIPIENT_COLL_SIG = ethers.utils.id('claimFeeRecipientCollShares(uint256)').substring(0, 10);
-// ActivePool & BorrowerOperations
-const SET_FEE_RECIPIENT_ADDRESS_SIG = ethers.utils.id('setFeeRecipientAddress(address)').substring(0, 10);
 // Governor
 const SET_ROLE_NAME_SIG = ethers.utils.id('setRoleName(uint8,string)').substring(0, 10);
 // RolesAuthority

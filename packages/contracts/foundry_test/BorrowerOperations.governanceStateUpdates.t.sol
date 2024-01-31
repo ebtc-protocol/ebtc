@@ -42,18 +42,4 @@ contract BorrowerOperationsGovernanceStateUpdatesTest is eBTCBaseInvariants {
 
         _ensureSystemInvariants();
     }
-
-    /**
-        Set fee recipient address to a valid address
-        Confirm global state is updated afterwards
-     */
-    function test_FeeRecipientAddressGlobalStateUpdated() public {
-        (uint256 oldIndex, uint256 newIndex, uint256 storedIndex) = _increaseCollateralIndex();
-
-        vm.startPrank(defaultGovernance);
-        borrowerOperations.setFeeRecipientAddress(address(1));
-        vm.stopPrank();
-
-        _ensureSystemInvariants();
-    }
 }

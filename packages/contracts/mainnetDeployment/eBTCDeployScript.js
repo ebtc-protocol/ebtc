@@ -581,17 +581,6 @@ class EBTCDeployerScript {
             }
         }
 
-        // Burn the ability of changing the fee recipient address
-        // NOTE: Consider making the fee recipient immutable
-        let signature = govSig.SET_FEE_RECIPIENT_ADDRESS_SIG;
-        console.log(`\nBurning `, + signature + ` on BorrowrOperations`)
-        tx = await authority.burnCapability(coreContracts.borrowerOperations.address, signature);
-        await tx.wait();
-        console.log(`\nBurning `, + signature + ` on ActivePool`)
-        tx = await authority.burnCapability(coreContracts.activePool.address, signature);
-        await tx.wait();
-
-
         // console.log(chalk.cyan("\nTransfer ownership to HighSecTimelock\n"));
 
         // // Once manual wiring is performed, authority ownership is transferred to the HighSec Timelock

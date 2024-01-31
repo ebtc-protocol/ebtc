@@ -54,7 +54,7 @@ contract BorrowerOperations is
 
     ICollSurplusPool public immutable collSurplusPool;
 
-    address public feeRecipientAddress;
+    address public immutable feeRecipientAddress;
 
     IEBTCToken public immutable ebtcToken;
 
@@ -131,8 +131,6 @@ contract BorrowerOperations is
         _HASHED_VERSION = hashedVersion;
         _CACHED_CHAIN_ID = _chainID();
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
-
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
     /**
@@ -1150,20 +1148,6 @@ contract BorrowerOperations is
     }
 
     // === Governed Functions ==
-
-    /// @notice Set new FeeRecipient
-    /// @param _feeRecipientAddress The new fee recipient address to be set
-    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
-        require(
-            _feeRecipientAddress != address(0),
-            "BorrowerOperations: Cannot set feeRecipient to zero address"
-        );
-
-        cdpManager.syncGlobalAccounting();
-
-        feeRecipientAddress = _feeRecipientAddress;
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
-    }
 
     /// @notice Sets new Fee for FlashLoans
     /// @param _newFee The new flashloan fee to be set
