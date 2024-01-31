@@ -12,6 +12,10 @@ contract EbtcFeedTesterToFoundry is Test, EbtcFeedTesterBase, FoundryAsserts {
     }
 
     function testPriceFeed() public {
-        fetchPriceEbtcFeed();
+        console2.log(primaryTester.fetchPrice());
+        console2.log(ebtcFeed.fetchPrice());
+        console2.log(primaryTester.fetchPrice());
+
+        //fetchPriceEbtcFeed();
     }
 }

@@ -37,6 +37,7 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
     uint256 internal constant MAX_ROUND_ID_CHANGE = 5;
     uint256 internal constant MAX_UPDATE_TIME_CHANGE = 2 days;
     uint256 internal constant MAX_REVERT_PERCENTAGE = 0.1e18;
+    uint256 internal constant INVALID_PRICE = 0;
 
     // NOTE: These values imply BIAS, you should EDIT THESE based on the target application
     uint256 internal constant MAX_FALLBACK_VALUE = type(uint128).max;
@@ -312,11 +313,21 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
             PriceFeedOracleTester.ErrorState secondaryErrorState = secondaryTester.errorState();
 
             if (primaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
-                t(price == primaryTester.fetchPrice(), PF_07);
+                uint256 primaryFeedPrice = primaryTester.fetchPrice();
+                // INVALID_PRICE == lastGoodPrice if errorState is NONE
+                if (primaryFeedPrice == INVALID_PRICE) {
+                    primaryFeedPrice = lastGoodPrice;
+                }
+                t(price == primaryFeedPrice, PF_07);
             } else {
                 if (ebtcFeed.secondaryOracle() != address(0)) {
                     if (secondaryErrorState == PriceFeedOracleTester.ErrorState.NONE) {
-                        t(price == secondaryTester.fetchPrice(), PF_08);
+                        uint256 secondaryFeedPrice = secondaryTester.fetchPrice();
+                        // INVALID_PRICE == lastGoodPrice if errorState is NONE
+                        if (secondaryFeedPrice == INVALID_PRICE) {
+                            secondaryFeedPrice = lastGoodPrice;
+                        }
+                        t(price == secondaryFeedPrice, PF_08);
                     } else {
                         t(price == lastGoodPrice, PF_09);
                     }
