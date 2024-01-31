@@ -622,19 +622,21 @@ async function main() {
     let useMockCollateral = false;
     let useMockPriceFeed = true;
 
-    // let configParams = configParamsLocal;
-    let configParams = configParamsSepolia;
+    let configParams = configParamsLocal;
+    // let configParams = configParamsSepolia;
     // let configParams = configParamsMainnet;
     // let configParams = configParamsGoerli;
 
-    // flag override: always use mock price feed on local as no feed will exist
+    // flag override: always use mock price feed and collateral on local as no feed will exist
     if (configParams == configParamsLocal) {
         useMockPriceFeed = true;
+        useMockCollateral = true;
     }
 
-    // flag override: always use mock collateral if not on mainnet as collateral will not exist
-    if (configParams != configParamsMainnet) {
+    // flag override: do not use mock collateral and price feed on mainnet
+    if (configParams == configParamsMainnet) {
         useMockCollateral = false;
+        useMockPriceFeed = false;
     }
 
     const date = new Date()
