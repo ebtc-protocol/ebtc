@@ -110,7 +110,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    /** TODO: See EchidnaToFoundry._getValue */
+    /**
+     * TODO: See EchidnaToFoundry._getValue
+     */
     function invariant_CDPM_04(Vars memory vars) internal view returns (bool) {
         return
             vars.valueInSystemAfter >= vars.valueInSystemBefore ||

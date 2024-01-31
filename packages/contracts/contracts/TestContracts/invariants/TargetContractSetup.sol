@@ -26,17 +26,17 @@ import "./Actor.sol";
 import "../BaseStorageVariables.sol";
 
 abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstants {
-    using SafeMath for uint;
+    using SafeMath for uint256;
 
     bytes4 internal constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
 
-    uint internal numberOfCdps;
+    uint256 internal numberOfCdps;
 
     struct CDPChange {
-        uint collAddition;
-        uint collReduction;
-        uint debtAddition;
-        uint debtReduction;
+        uint256 collAddition;
+        uint256 collReduction;
+        uint256 debtAddition;
+        uint256 debtReduction;
     }
 
     function _setUp() internal {
@@ -379,7 +379,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         addresses[1] = USER2;
         addresses[2] = USER3;
         Actor[] memory actorsArray = new Actor[](NUMBER_OF_ACTORS);
-        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
+        for (uint256 i = 0; i < NUMBER_OF_ACTORS; i++) {
             actors[addresses[i]] = new Actor(tokens, callers);
             (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
             assert(success);
@@ -430,7 +430,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         address[] memory addresses = new address[](2);
         addresses[0] = USER1;
         addresses[1] = USER2;
-        for (uint i = 0; i < addresses.length; i++) {
+        for (uint256 i = 0; i < addresses.length; i++) {
             (success, ) = actor.proxy(
                 address(eBTCToken),
                 abi.encodeWithSelector(

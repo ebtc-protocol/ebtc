@@ -29,8 +29,9 @@ abstract contract Asserts {
     }
 
     function diffPercent(uint256 _num1, uint256 _num2) internal pure returns (uint256) {
-        if (_num1 == _num2) return 0;
-        else if (_num1 > _num2) {
+        if (_num1 == _num2) {
+            return 0;
+        } else if (_num1 > _num2) {
             return ((_num1 - _num2) * 1e18) / ((_num1 + _num2) / 2);
         } else {
             return ((_num2 - _num1) * 1e18) / ((_num1 + _num2) / 2);
@@ -56,12 +57,12 @@ abstract contract Asserts {
         if (returnData.length == 4 + 32) {
             // Check that the data starts with the Panic signature
             bytes4 panicSignature = bytes4(keccak256(bytes("Panic(uint256)")));
-            for (uint i = 0; i < 4; i++) {
+            for (uint256 i = 0; i < 4; i++) {
                 if (returnData[i] != panicSignature[i]) return "Undefined signature";
             }
 
             uint256 panicCode;
-            for (uint i = 4; i < 36; i++) {
+            for (uint256 i = 4; i < 36; i++) {
                 panicCode = panicCode << 8;
                 panicCode |= uint8(returnData[i]);
             }

@@ -7,6 +7,7 @@ import {Actor} from "./Actor.sol";
 
 contract Simulator {
     uint256 public constant TRUE = uint256(keccak256(abi.encodePacked("TRUE")));
+
     event Log(string);
 
     Actor[] private actors;

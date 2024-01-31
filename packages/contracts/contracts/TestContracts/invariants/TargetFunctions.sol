@@ -94,7 +94,7 @@ abstract contract TargetFunctions is Properties {
         return cdpIds[_cdpIdx];
     }
 
-    event FlashLoanAction(uint, uint);
+    event FlashLoanAction(uint256, uint256);
 
     function _getFlashLoanActions(uint256 value) internal returns (bytes memory) {
         uint256 _actions = between(value, 1, MAX_FLASHLOAN_ACTIONS);
@@ -206,7 +206,7 @@ abstract contract TargetFunctions is Properties {
     // CdpManager
     ///////////////////////////////////////////////////////
 
-    function liquidate(uint _i) public setup {
+    function liquidate(uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -278,7 +278,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function partialLiquidate(uint _i, uint _partialAmount) public setup {
+    function partialLiquidate(uint256 _i, uint256 _partialAmount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -370,7 +370,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function liquidateCdps(uint _n) public setup {
+    function liquidateCdps(uint256 _n) public setup {
         bool success;
         bytes memory returnData;
 
@@ -449,10 +449,10 @@ abstract contract TargetFunctions is Properties {
     }
 
     function redeemCollateral(
-        uint _EBTCAmount,
-        uint _partialRedemptionHintNICR,
-        uint _maxFeePercentage,
-        uint _maxIterations
+        uint256 _EBTCAmount,
+        uint256 _partialRedemptionHintNICR,
+        uint256 _maxFeePercentage,
+        uint256 _maxIterations
     ) public setup {
         _redeemCollateral(
             _EBTCAmount,
@@ -597,12 +597,12 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         _amount = between(_amount, 0, activePool.maxFlashLoan(address(collateral)));
-        uint _fee = activePool.flashFee(address(collateral), _amount);
+        uint256 _fee = activePool.flashFee(address(collateral), _amount);
 
         _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = collateral.sharesOf(activePool.feeRecipientAddress());
+        uint256 _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
         (success, returnData) = actor.proxy(
             address(activePool),
             abi.encodeWithSelector(
@@ -656,12 +656,12 @@ abstract contract TargetFunctions is Properties {
 
         _amount = between(_amount, 0, borrowerOperations.maxFlashLoan(address(eBTCToken)));
 
-        uint _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
+        uint256 _fee = borrowerOperations.flashFee(address(eBTCToken), _amount);
 
         _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        uint256 _balBefore = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
         (success, returnData) = actor.proxy(
             address(borrowerOperations),
             abi.encodeWithSelector(
@@ -678,7 +678,7 @@ abstract contract TargetFunctions is Properties {
 
         _after(bytes32(0));
 
-        uint _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
+        uint256 _balAfter = eBTCToken.balanceOf(borrowerOperations.feeRecipientAddress());
         eq(_balAfter - _balBefore, _fee, F_03);
 
         if (
@@ -711,7 +711,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         // we pass in CCR instead of MCR in case it's the first one
-        uint price = priceFeedMock.getPrice();
+        uint256 price = priceFeedMock.getPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
@@ -797,7 +797,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function addColl(uint _coll, uint256 _i) public setup {
+    function addColl(uint256 _coll, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -903,7 +903,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawColl(uint _amount, uint256 _i) public setup {
+    function withdrawColl(uint256 _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -979,7 +979,7 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function withdrawDebt(uint _amount, uint256 _i) public setup {
+    function withdrawDebt(uint256 _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -1053,7 +1053,7 @@ abstract contract TargetFunctions is Properties {
         gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
-    function repayDebt(uint _amount, uint256 _i) public setup {
+    function repayDebt(uint256 _amount, uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -1129,7 +1129,7 @@ abstract contract TargetFunctions is Properties {
         gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
-    function closeCdp(uint _i) public setup {
+    function closeCdp(uint256 _i) public setup {
         bool success;
         bytes memory returnData;
 
@@ -1212,9 +1212,9 @@ abstract contract TargetFunctions is Properties {
     }
 
     function adjustCdp(
-        uint _i,
-        uint _collWithdrawal,
-        uint _EBTCChange,
+        uint256 _i,
+        uint256 _collWithdrawal,
+        uint256 _EBTCChange,
         bool _isDebtIncrease
     ) public setup {
         bool success;
