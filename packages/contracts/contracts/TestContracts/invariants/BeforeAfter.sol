@@ -66,6 +66,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         bool hasGracePeriodPassedAfter;
         uint256 systemDebtRedistributionIndexBefore;
         uint256 systemDebtRedistributionIndexAfter;
+        uint256 feeRecipientCollSharesBalBefore;
+        uint256 feeRecipientCollSharesBalAfter;
     }
 
     Vars vars;
@@ -100,6 +102,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             : (0, 0, 0);
         vars.feeRecipientTotalCollBefore = collateral.balanceOf(activePool.feeRecipientAddress());
         vars.feeRecipientCollSharesBefore = activePool.getFeeRecipientClaimableCollShares();
+        vars.feeRecipientCollSharesBalBefore = collateral.sharesOf(activePool.feeRecipientAddress());
         vars.actorCollBefore = collateral.balanceOf(address(actor));
         vars.actorEbtcBefore = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountBefore = sortedCdps.cdpCountOf(address(actor));
@@ -155,6 +158,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         vars.feeRecipientTotalCollAfter = collateral.balanceOf(activePool.feeRecipientAddress());
         vars.feeRecipientCollSharesAfter = activePool.getFeeRecipientClaimableCollShares();
+        vars.feeRecipientCollSharesBalAfter = collateral.sharesOf(activePool.feeRecipientAddress());
         vars.actorCollAfter = collateral.balanceOf(address(actor));
         vars.actorEbtcAfter = eBTCToken.balanceOf(address(actor));
         vars.actorCdpCountAfter = sortedCdps.cdpCountOf(address(actor));

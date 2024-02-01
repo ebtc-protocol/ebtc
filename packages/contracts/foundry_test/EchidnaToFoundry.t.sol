@@ -1471,6 +1471,29 @@ contract EToFoundry is
         assertTrue(invariant_CDPM_04(vars), CDPM_04);
     }
 
+    function testR06_GovSetParam1() public {
+        openCdp(1425906582787110, 1000);
+        setEthPerShare(92193417667607775);
+        addColl(1003, 0);
+        setEthPerShare(0);
+        vm.stopPrank(); // NOTE: NEcessary to avoid prank error
+        setGovernanceParameters(1, 1);
+    }
+
+    function testR06_GovSetParam2() public {
+        openCdp(0, 1006);
+        addColl(10741501159779673, 0);
+        setEthPerShare(0);
+        vm.stopPrank(); // NOTE: NEcessary to avoid prank error
+        setGovernanceParameters(5939259503147539201404676, 126145876287103911251);
+        setEthPerShare(91174392265722087723717071228019349893709);
+        withdrawColl(1000, 12834720596717931034803300807523955622837538406174600313088967532560);
+        setGovernanceParameters(
+            1438928212499202756133426614658617100769581865525477858243133880155682,
+            1
+        );
+    }
+
     // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/15
     // function testPropertySL05() public {
     //     setEthPerShare(
