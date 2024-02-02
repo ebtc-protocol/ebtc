@@ -98,7 +98,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 debt;
         uint256 coll;
         uint256 stake;
-        uint256 liquidatorRewardShares;
+        uint128 liquidatorRewardShares;
         Status status;
     }
 

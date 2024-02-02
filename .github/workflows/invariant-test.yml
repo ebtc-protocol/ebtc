@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Create Fuzzy Job 
+      - name: Create Recon Job 
         run: |
           curl -XPOST                                     \
           -H 'Content-Type: application/json'             \

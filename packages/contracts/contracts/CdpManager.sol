@@ -148,8 +148,9 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             // No debt left in the Cdp, therefore the cdp gets closed
             {
                 address _borrower = sortedCdps.getOwnerAddress(_redeemColFromCdp.cdpId);
-                uint256 _liquidatorRewardShares = Cdps[_redeemColFromCdp.cdpId]
-                    .liquidatorRewardShares;
+                uint256 _liquidatorRewardShares = uint256(
+                    Cdps[_redeemColFromCdp.cdpId].liquidatorRewardShares
+                );
 
                 singleRedemption.collSurplus = newColl; // Collateral surplus processed on full redemption
                 singleRedemption.liquidatorRewardShares = _liquidatorRewardShares;
@@ -878,7 +879,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
     /// @param _cdpId ID of the Cdp to get liquidator reward shares for
     /// @return Liquidator reward shares value of the Cdp
     function getCdpLiquidatorRewardShares(bytes32 _cdpId) external view override returns (uint256) {
-        return Cdps[_cdpId].liquidatorRewardShares;
+        return uint256(Cdps[_cdpId].liquidatorRewardShares);
     }
 
     // --- Cdp property setters, called by BorrowerOperations ---
@@ -903,7 +904,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].debt = _debt;
         Cdps[_cdpId].coll = _coll;
         Cdps[_cdpId].status = Status.active;
-        Cdps[_cdpId].liquidatorRewardShares = _liquidatorRewardShares;
+        Cdps[_cdpId].liquidatorRewardShares = uint128(_liquidatorRewardShares);
 
         cdpStEthFeePerUnitIndex[_cdpId] = systemStEthFeePerUnitIndex; /// @audit We critically assume global accounting is synced here
         _updateRedistributedDebtIndex(_cdpId);
