@@ -468,7 +468,13 @@ contract eBTCBaseFixture is
         collateral.deposit{value: 10000 ether}();
     }
 
-    function _openTestCDPWithHints(address _user, uint256 _coll, uint256 _debt, bytes32 _upperHint, bytes32 _lowerHint) {
+    function _openTestCDPWithHints(
+        address _user,
+        uint256 _coll,
+        uint256 _debt,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) internal returns (bytes32) {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
