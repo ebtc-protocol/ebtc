@@ -87,16 +87,12 @@ contract PriceFeedTester is PriceFeed {
 
     function formatClAggregateAnswer(
         int256 _ethBtcAnswer,
-        int256 _stEthEthAnswer,
-        uint8 _ethBtcDecimals,
-        uint8 _stEthEthDecimals
+        int256 _stEthEthAnswer
     ) external view returns (uint256) {
         return
             _formatClAggregateAnswer(
                 _ethBtcAnswer,
-                _stEthEthAnswer,
-                _ethBtcDecimals,
-                _stEthEthDecimals
+                _stEthEthAnswer
             );
     }
 }

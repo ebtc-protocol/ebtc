@@ -25,6 +25,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
     AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
 
+    uint256 public immutable DENOMINATOR;
+    uint256 public immutable SCALED_DECIMAL;
+
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
 
@@ -32,6 +35,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     uint256 public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
     uint256 public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
     uint256 constant INVALID_PRICE = 0;
+
+
+    /**
+     * @notice Maximum number of resulting and feed decimals
+     */
+    uint8 public constant MAX_DECIMALS = 18;
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint256 public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -69,6 +78,16 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
         STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
+
+        uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
+        require(ethBtcDecimals <= MAX_DECIMALS);
+        uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
+        require(stEthEthDecimals <= MAX_DECIMALS);
+
+        DENOMINATOR = 10 ** (stEthEthDecimals > ethBtcDecimals ? stEthEthDecimals : ethBtcDecimals);
+        SCALED_DECIMAL = stEthEthDecimals > ethBtcDecimals
+            ? 10 ** (stEthEthDecimals - ethBtcDecimals)
+            : 10 ** (ethBtcDecimals - stEthEthDecimals);
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -639,26 +658,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         view
         returns (ChainlinkResponse memory chainlinkResponse)
     {
-        // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals;
-        uint8 stEthEthDecimals;
-
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            ethBtcDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
-
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            stEthEthDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
-
         // Try to get latest prices data:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
@@ -700,9 +699,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         ) {
             chainlinkResponse.answer = _formatClAggregateAnswer(
                 ethBtcAnswer,
-                stEthEthAnswer,
-                ethBtcDecimals,
-                stEthEthDecimals
+                stEthEthAnswer
             );
         } else {
             return chainlinkResponse;
@@ -724,26 +721,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // and _currentRoundStEthEthId - 1
         // Behavior should be indentical to following block if this revert was caught
         if (_currentRoundEthBtcId == 0 || _currentRoundStEthEthId == 0) {
-            return prevChainlinkResponse;
-        }
-
-        // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals;
-        uint8 stEthEthDecimals;
-
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            ethBtcDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return prevChainlinkResponse;
-        }
-
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            stEthEthDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
             return prevChainlinkResponse;
         }
 
@@ -788,9 +765,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         ) {
             prevChainlinkResponse.answer = _formatClAggregateAnswer(
                 ethBtcAnswer,
-                stEthEthAnswer,
-                ethBtcDecimals,
-                stEthEthDecimals
+                stEthEthAnswer
             );
         } else {
             return prevChainlinkResponse;
@@ -818,20 +793,12 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // @return The aggregated calculated price for stETH:BTC
     function _formatClAggregateAnswer(
         int256 _ethBtcAnswer,
-        int256 _stEthEthAnswer,
-        uint8 _ethBtcDecimals,
-        uint8 _stEthEthDecimals
+        int256 _stEthEthAnswer
     ) internal view returns (uint256) {
-        uint256 _decimalDenominator = _stEthEthDecimals > _ethBtcDecimals
-            ? _stEthEthDecimals
-            : _ethBtcDecimals;
-        uint256 _scaledDecimal = _stEthEthDecimals > _ethBtcDecimals
-            ? 10 ** (_stEthEthDecimals - _ethBtcDecimals)
-            : 10 ** (_ethBtcDecimals - _stEthEthDecimals);
         return
-            (_scaledDecimal *
+            (SCALED_DECIMAL *
                 uint256(_ethBtcAnswer) *
                 uint256(_stEthEthAnswer) *
-                EbtcMath.DECIMAL_PRECISION) / 10 ** (_decimalDenominator * 2);
+                EbtcMath.DECIMAL_PRECISION) / DENOMINATOR;
     }
 }

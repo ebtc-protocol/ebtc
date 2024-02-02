@@ -457,9 +457,7 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
         uint8 _clEthBTCDecimal = _mockChainLinkEthBTC.decimals();
         uint256 _clAnswer = priceFeedTester.formatClAggregateAnswer(
             _clEthBTCPrice,
-            _mockChainLinkStEthETH.getPrice(),
-            _clEthBTCDecimal,
-            _mockChainLinkStEthETH.decimals()
+            _mockChainLinkStEthETH.getPrice()
         );
         uint256 _flAnswer = _mockTellor.retrieveData(0, 0);
         if (_clAnswer < _flAnswer && _clAnswer > 0) {
