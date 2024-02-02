@@ -83,7 +83,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
         require(stEthEthDecimals <= MAX_DECIMALS);
 
-        DENOMINATOR = 10 ** (stEthEthDecimals > ethBtcDecimals ? stEthEthDecimals : ethBtcDecimals);
+        DENOMINATOR =
+            10 ** ((stEthEthDecimals > ethBtcDecimals ? stEthEthDecimals : ethBtcDecimals) * 2);
         SCALED_DECIMAL = stEthEthDecimals > ethBtcDecimals
             ? 10 ** (stEthEthDecimals - ethBtcDecimals)
             : 10 ** (ethBtcDecimals - stEthEthDecimals);
@@ -781,8 +782,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // @notice Returns the price of stETH:BTC in 18 decimals denomination
     // @param _ethBtcAnswer CL price retrieve from ETH:BTC feed
     // @param _stEthEthAnswer CL price retrieve from stETH:BTC feed
-    // @param _ethBtcDecimals ETH:BTC feed decimals
-    // @param _stEthEthDecimals stETH:BTC feed decimalss
     // @return The aggregated calculated price for stETH:BTC
     function _formatClAggregateAnswer(
         int256 _ethBtcAnswer,

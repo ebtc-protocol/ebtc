@@ -117,6 +117,9 @@ contract('PriceFeed', async accounts => {
       tellorCaller = await TellorCaller.new(mockTellor.address)
       TellorCaller.setAsDeployed(tellorCaller)
 
+      await mockEthBtcChainlink.setDecimals(8);
+      await mockStEthEthChainlink.setDecimals(18);
+
       // Set Chainlink latest and prev round Id's to non-zero
       await mockEthBtcChainlink.setLatestRoundId(3)
       await mockEthBtcChainlink.setPrevRoundId(2)
@@ -2286,6 +2289,9 @@ contract('PriceFeed', async accounts => {
 
       tellorCaller = await TellorCaller.new(mockTellor.address)
       TellorCaller.setAsDeployed(tellorCaller)
+
+      mockEthBtcChainlink.setDecimals(8);
+      mockStEthEthChainlink.setDecimals(18);
 
       // Set Chainlink latest and prev round Id's to non-zero
       await mockEthBtcChainlink.setLatestRoundId(3)
