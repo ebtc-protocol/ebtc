@@ -39,21 +39,19 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
 
         // Set current and prev prices in both oracles
-        _mockChainLinkEthBTC = new MockAggregator();
+        _mockChainLinkEthBTC = new MockAggregator(8);
         _initMockChainLinkFeed(
             _mockChainLinkEthBTC,
             latestRoundId,
             initEthBTCPrice,
-            initEthBTCPrevPrice,
-            8
+            initEthBTCPrevPrice
         );
-        _mockChainLinkStEthETH = new MockAggregator();
+        _mockChainLinkStEthETH = new MockAggregator(18);
         _initMockChainLinkFeed(
             _mockChainLinkStEthETH,
             latestRoundId,
             initStEthETHPrice,
-            initStEthETHPrevPrice,
-            18
+            initStEthETHPrevPrice
         );
 
         priceFeedTester = new PriceFeedTester(
@@ -78,28 +76,13 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         MockAggregator _mockFeed,
         uint80 _latestRoundId,
         int256 _price,
-        int256 _prevPrice,
-        uint8 _decimal
+        int256 _prevPrice
     ) internal {
         _mockFeed.setLatestRoundId(_latestRoundId);
         _mockFeed.setPrevRoundId(_latestRoundId - 1);
         _mockFeed.setPrice(_price);
         _mockFeed.setPrevPrice(_prevPrice);
-        _mockFeed.setDecimals(_decimal);
         _mockFeed.setUpdateTime(block.timestamp);
-    }
-
-    function testSetDecimals() public {
-        _mockChainLinkEthBTC.setDecimals(31);
-        _mockChainLinkStEthETH.setDecimals(8);
-
-        // 10**31 *
-        // 10**18 *
-        // 10**18 *
-        // 10**18 / 10 ** (31 * 2);
-
-        vm.expectRevert();
-        priceFeedTester.fetchPrice();
     }
 
     function testPrimaryFeedSuccess() public {

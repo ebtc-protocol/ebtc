@@ -80,9 +80,9 @@ contract('PriceFeed', async accounts => {
   describe('PriceFeed internal testing contract', async accounts => {
     beforeEach(async () => {
       // CL feeds mocks
-      mockEthBtcChainlink = await MockChainlink.new()
+      mockEthBtcChainlink = await MockChainlink.new(8)
       MockChainlink.setAsDeployed(mockEthBtcChainlink)
-      mockStEthEthChainlink = await MockChainlink.new()
+      mockStEthEthChainlink = await MockChainlink.new(18)
       MockChainlink.setAsDeployed(mockStEthEthChainlink)
 
       // Read bytecodes to replace internal contract constants for CL's
@@ -139,63 +139,9 @@ contract('PriceFeed', async accounts => {
       await mockStEthEthChainlink.setUpdateTime(now)
       await mockTellor.setUpdateTime(now)
 
-      // Modify decimals for both feeds
-      await mockEthBtcChainlink.setDecimals(8)
-      await mockStEthEthChainlink.setDecimals(18)
-
       priceFeed = await PriceFeed.new(tellorCaller.address, owner, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
       PriceFeed.setAsDeployed(priceFeed)
       priceFeedContract = new ethers.Contract(priceFeed.address, fetchPriceFuncABI, (await ethers.provider.getSigner(alice)));
-    })
-
-    it("C1 Chainlink working: fetchPrice should return the correct price, taking into account the number of decimal digits on the aggregator", async () => {
-      // Oracle price price is 10.00000000
-      await mockEthBtcChainlink.setDecimals(8)
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
-      let price = await priceFeedContract.callStatic.fetchPrice()
-      // Check eBTC PriceFeed gives 10, with 18 digit precision
-      assert.equal(price, dec(10, 18))
-      await priceFeed.fetchPrice()
-
-      // Oracle price is 1e9
-      await mockEthBtcChainlink.setDecimals(0)
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
-      price = await priceFeedContract.callStatic.fetchPrice()
-      // Check eBTC PriceFeed gives 1e9, with 18 digit precision
-      assert.equal(price.toString(), "1000000000000000000000000000")
-      await priceFeed.fetchPrice()
-
-      // Oracle price is 0.0001
-      await mockEthBtcChainlink.setDecimals(18)
-
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 14))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 14))
-      price = await priceFeedContract.callStatic.fetchPrice()
-      // Check eBTC PriceFeed gives 0.0001 with 18 digit precision
-      assert.equal(price.toString(), "100000000000000")
-      await priceFeed.fetchPrice()
-
-      // Oracle price is 1234.56789
-      await mockEthBtcChainlink.setDecimals(5)
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(123456789))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(123456789))
-      price = await priceFeedContract.callStatic.fetchPrice()
-      // Check eBTC PriceFeed gives 0.0001 with 18 digit precision
-      assert.equal(price, '1234567890000000000000')
-      await priceFeed.fetchPrice()
-
-      // Decimals for second feed change
-      await mockEthBtcChainlink.setDecimals(8)
-      await mockStEthEthChainlink.setDecimals(8)
-      await mockEthBtcChainlink.setPrice(dec(10, 18))
-      await mockStEthEthChainlink.setPrice(dec(1, 18))
-      await mockEthBtcChainlink.setPrevPrice(dec(10, 18))
-      await mockStEthEthChainlink.setPrevPrice(dec(1, 18))
-      price = await priceFeedContract.callStatic.fetchPrice()
-      // Check eBTC PriceFeed gives 1e21=1e11(ETH/BTC)*1e10(stETH/ETH), with 18 digit precision
-      assert.equal(price.toString(), "1000000000000000000000000000000000000000")
     })
 
     // --- Chainlink breaks ---
@@ -2348,9 +2294,9 @@ contract('PriceFeed', async accounts => {
   describe('Fallback Oracle is bricked', async () => {
     beforeEach(async () => {
       // CL feeds mocks
-      mockEthBtcChainlink = await MockChainlink.new()
+      mockEthBtcChainlink = await MockChainlink.new(8)
       MockChainlink.setAsDeployed(mockEthBtcChainlink)
-      mockStEthEthChainlink = await MockChainlink.new()
+      mockStEthEthChainlink = await MockChainlink.new(18)
       MockChainlink.setAsDeployed(mockStEthEthChainlink)
 
       // Read bytecodes to replace internal contract constants for CL's

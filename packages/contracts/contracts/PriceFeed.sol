@@ -36,7 +36,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     uint256 public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
     uint256 constant INVALID_PRICE = 0;
 
-
     /**
      * @notice Maximum number of resulting and feed decimals
      */
@@ -697,10 +696,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
             _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
         ) {
-            chainlinkResponse.answer = _formatClAggregateAnswer(
-                ethBtcAnswer,
-                stEthEthAnswer
-            );
+            chainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
         } else {
             return chainlinkResponse;
         }
@@ -763,10 +759,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
             _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
         ) {
-            prevChainlinkResponse.answer = _formatClAggregateAnswer(
-                ethBtcAnswer,
-                stEthEthAnswer
-            );
+            prevChainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
         } else {
             return prevChainlinkResponse;
         }

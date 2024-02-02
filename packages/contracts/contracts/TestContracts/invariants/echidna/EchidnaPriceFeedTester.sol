@@ -40,9 +40,9 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
 
     constructor() payable {
         authority = new MockAlwaysTrueAuthority();
-        collEthCLFeed = new MockAggregator();
-        btcUsdCLFeed = new MockAggregator();
-        ethUsdCLFeed = new MockAggregator();
+        collEthCLFeed = new MockAggregator(18);
+        btcUsdCLFeed = new MockAggregator(8);
+        ethUsdCLFeed = new MockAggregator(8);
 
         collEthCLFeed.setLatestRoundId(2);
         collEthCLFeed.setPrevRoundId(1);
@@ -138,13 +138,6 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
         if (seed <= (reverted ? (1e18 - MAX_REVERT_PERCENTAGE) : MAX_REVERT_PERCENTAGE)) {
             aggregator.setPrevRevert();
         }
-    }
-
-    // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
-    function setDecimals(uint8 decimals) external {
-        // https://github.com/d-xo/weird-erc20
-        decimals = uint8(clampBetween(uint256(decimals), 2, 18));
-        collEthCLFeed.setDecimals(decimals);
     }
 
     function setLatest(

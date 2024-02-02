@@ -89,10 +89,6 @@ contract PriceFeedTester is PriceFeed {
         int256 _ethBtcAnswer,
         int256 _stEthEthAnswer
     ) external view returns (uint256) {
-        return
-            _formatClAggregateAnswer(
-                _ethBtcAnswer,
-                _stEthEthAnswer
-            );
+        return _formatClAggregateAnswer(_ethBtcAnswer, _stEthEthAnswer);
     }
 }

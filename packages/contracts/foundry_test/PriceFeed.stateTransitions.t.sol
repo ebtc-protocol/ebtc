@@ -34,10 +34,10 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
         super.connectLQTYContractsToCore();
 
         // Set current and prev prices in both oracles
-        _mockChainLinkEthBTC = new MockAggregator();
-        _initMockChainLinkFeed(_mockChainLinkEthBTC, latestRoundId, initEthBTCPrice, 8);
-        _mockChainLinkStEthETH = new MockAggregator();
-        _initMockChainLinkFeed(_mockChainLinkStEthETH, latestRoundId, initStEthETHPrice, 18);
+        _mockChainLinkEthBTC = new MockAggregator(8);
+        _initMockChainLinkFeed(_mockChainLinkEthBTC, latestRoundId, initEthBTCPrice);
+        _mockChainLinkStEthETH = new MockAggregator(18);
+        _initMockChainLinkFeed(_mockChainLinkStEthETH, latestRoundId, initStEthETHPrice);
         _mockTellor = new MockTellor();
         _initMockTellor(initStEthBTCPrice);
         _tellorCaller = new TellorCaller(address(_mockTellor));
@@ -70,14 +70,12 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
     function _initMockChainLinkFeed(
         MockAggregator _mockFeed,
         uint80 _latestRoundId,
-        int256 _price,
-        uint8 _decimal
+        int256 _price
     ) internal {
         _mockFeed.setLatestRoundId(_latestRoundId);
         _mockFeed.setPrevRoundId(_latestRoundId - 1);
         _mockFeed.setPrice(_price);
         _mockFeed.setPrevPrice(_price);
-        _mockFeed.setDecimals(_decimal);
         _mockFeed.setUpdateTime(block.timestamp);
     }
 

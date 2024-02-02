@@ -6,7 +6,7 @@ import "../Dependencies/AggregatorV3Interface.sol";
 
 contract MockAggregator is AggregatorV3Interface {
     // storage variables to hold the mock data
-    uint8 private decimalsVal = 8;
+    uint8 private immutable decimalsVal;
     int private price;
     int private prevPrice;
     uint256 private updateTime;
@@ -19,11 +19,11 @@ contract MockAggregator is AggregatorV3Interface {
     bool public prevRevert;
     bool public decimalsRevert;
 
-    // --- Functions ---
-
-    function setDecimals(uint8 _decimals) external {
+    constructor(uint8 _decimals) {
         decimalsVal = _decimals;
     }
+
+    // --- Functions ---
 
     function setPrice(int _price) external {
         price = _price;

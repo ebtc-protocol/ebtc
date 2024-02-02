@@ -11,8 +11,8 @@ contract ChainlinkAdapterTest is Test {
     ChainlinkAdapter internal chainlinkAdapter;
 
     function setUp() public {
-        usdBtcAggregator = new MockAggregator();
-        ethUsdAggregator = new MockAggregator();
+        usdBtcAggregator = new MockAggregator(8);
+        ethUsdAggregator = new MockAggregator(8);
         chainlinkAdapter = new ChainlinkAdapter(usdBtcAggregator, ethUsdAggregator);
     }
 
