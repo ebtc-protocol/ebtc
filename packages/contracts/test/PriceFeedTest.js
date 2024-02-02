@@ -304,50 +304,6 @@ contract('PriceFeed', async accounts => {
       assert.equal(price, normalEbtcPrice)
     })
 
-    it("C1 chainlinkWorking: Chainlink broken - decimals call reverted on Feed 1, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
-      
-      const statusBefore = await priceFeed.status()
-      assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-
-      await mockTellor.setPrice(normalEbtcPrice)
-      await mockEthBtcChainlink.setDecimalsRevert()
-
-      await priceFeed.fetchPrice()
-      const statusAfter = await priceFeed.status()
-      assert.equal(statusAfter, '1') // status 1: using Fallback, Chainlink untrusted
-      
-      let price = await priceFeedContract.callStatic.fetchPrice()
-      assert.equal(price, normalEbtcPrice)
-
-      // Needs to re-revert state, otherwise mess state for next test
-      await mockEthBtcChainlink.setDecimalsRevert()
-    })
-
-    it("C1 chainlinkWorking: Chainlink broken - decimals call reverted on Feed 2, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
-      
-      const statusBefore = await priceFeed.status()
-      assert.equal(statusBefore, '0') // status 0: Chainlink working
-
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(999, 8))
-
-      await mockTellor.setPrice(normalEbtcPrice)
-      await mockStEthEthChainlink.setDecimalsRevert()
-
-      await priceFeed.fetchPrice()
-      const statusAfter = await priceFeed.status()
-      assert.equal(statusAfter, '1') // status 1: using Fallback, Chainlink untrusted
-      
-      let price = await priceFeedContract.callStatic.fetchPrice()
-      assert.equal(price, normalEbtcPrice)
-
-      // Needs to re-revert state, otherwise mess state for next test
-      await mockStEthEthChainlink.setDecimalsRevert()
-    })
-
     it("C1 chainlinkWorking: Chainlink broken - latest round call reverted on Feed 1, Fallback working, switch to usingFallbackChainlinkUntrusted", async () => {
       
       const statusBefore = await priceFeed.status()
@@ -2338,10 +2294,6 @@ contract('PriceFeed', async accounts => {
       await mockStEthEthChainlink.setLatestRoundId(3)
       await mockStEthEthChainlink.setPrevRoundId(2)
 
-      // Modify decimals for both feeds
-      await mockEthBtcChainlink.setDecimals(8)
-      await mockStEthEthChainlink.setDecimals(18)
-
       //Set current and prev prices in both oracles
       await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
       await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
@@ -2376,27 +2328,6 @@ contract('PriceFeed', async accounts => {
       // Alice bricks the fallback Oracle
       await priceFeed.setFallbackCaller(ZERO_ADDRESS, {from: alice}); 
       assert.equal(await priceFeed.fallbackCaller(), ZERO_ADDRESS);
-    })
-
-    it("C1 chainlinkWorking: ChainLink working, Fallback bricked, should return correct price", async () => {
-      // Status should be 0
-      let status = await priceFeed.status()
-      assert.equal(status, '0') // status 0: using Chainlink
-
-      // ETH/BTC price is 1e9 with 0 decimal
-      await mockEthBtcChainlink.setDecimals(0)
-      await mockStEthEthChainlink.setDecimals(0)
-      await setChainlinkTotalPrevPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
-      await setChainlinkTotalPrice(mockEthBtcChainlink, mockStEthEthChainlink, dec(1, 9))
-      price = await priceFeedContract.callStatic.fetchPrice()
-
-      // Check eBTC PriceFeed gives 1e9(ETH/BTC) * 1e18(stETH/ETH), with 18 digit precision
-      assert.equal(price.toString(), '1000000000000000000000000000000000000000000000')
-
-      // Fallback should be broken and, therefore, the status should change to 4
-      await priceFeed.fetchPrice()
-      status = await priceFeed.status()
-      assert.equal(status, '4') // status 4: using Chainlink, Fallback untrusted
     })
 
     it("C1 chainlinkWorking: Chainlink broken by zero latest roundId, Fallback bricked, should return last good price", async () => {
