@@ -88,7 +88,7 @@ contract HintHelpersTest is eBTCBaseInvariants {
         }
     }
 
-    /// @dev Comapare exact hint to approximate hint
+    /// @dev Compare exact hint to approximate hint
     function test_OpenCdp_HintHelperInsert(
         uint n,
         uint targetIcr,
@@ -213,6 +213,131 @@ contract HintHelpersTest is eBTCBaseInvariants {
             vm.stopPrank();
             _checkExactHintAfterInsertion(_targetCDP, _originalLast, _originalFirst, exactHint);
         }
+    }
+
+    /// @dev Compare exact hint for partial redemption
+    function test_PartiallyRedeem_HintHelperReInsert(
+        uint n,
+        uint redeemedDebt,
+        uint randomSeed
+    ) public {
+        n = bound(n, 3, 1000);
+
+        redeemedDebt = bound(redeemedDebt, crIncrement, standardDebt - crIncrement);
+
+        _prepareCdps(n, 0);
+
+        uint256 price = priceFeedMock.fetchPrice();
+        (bytes32 firstRedempHint, uint256 partialRedempNICR, , ) = hintHelpers.getRedemptionHints(
+            redeemedDebt,
+            price,
+            0
+        );
+
+        uint256 _targetExistColl = cdpManager.getSyncedCdpCollShares(firstRedempHint);
+        uint256 _targetExistDebt = cdpManager.getSyncedCdpDebt(firstRedempHint);
+        require(redeemedDebt < _targetExistDebt, "not partial redemption!");
+
+        uint256 _targetNicr = _calculateNICRWithAdjustment(
+            _targetExistColl,
+            _targetExistDebt,
+            (redeemedDebt * 1e18) / price,
+            false,
+            redeemedDebt,
+            false
+        );
+        bytes32 exactHint = _getExactHint(_targetNicr);
+
+        bytes32 _originalLast = sortedCdps.getLast();
+        bytes32 _originalFirst = sortedCdps.getFirst();
+
+        // get redemption hints
+        {
+            (bytes32 approxHint, , ) = hintHelpers.getApproxHint(_targetNicr, 14, randomSeed);
+            (bytes32 upperHint, bytes32 lowerHint) = sortedCdps.findInsertPosition(
+                _targetNicr,
+                approxHint,
+                approxHint
+            );
+            _syncSystemDebtTwapToSpotValue();
+            vm.startPrank(sortedCdps.getOwnerAddress(firstRedempHint));
+            cdpManager.redeemCollateral(
+                redeemedDebt,
+                firstRedempHint,
+                upperHint,
+                lowerHint,
+                partialRedempNICR,
+                0,
+                1e18
+            );
+            vm.stopPrank();
+        }
+
+        console2.log("n:", n);
+        console2.log("redeemedDebt:", redeemedDebt);
+        console2.log("price:", price);
+
+        _checkExactHintAfterInsertion(firstRedempHint, _originalLast, _originalFirst, exactHint);
+    }
+
+    /// @dev Compare exact hint for partial liquidation
+    function test_PartiallyLiquidate_HintHelperReInsert(
+        uint n,
+        uint repaidDebt,
+        uint randomSeed
+    ) public {
+        n = bound(n, 3, 1000);
+
+        repaidDebt = bound(repaidDebt, crIncrement, (standardDebt - 30 * crIncrement));
+
+        _prepareCdps(n, 0);
+
+        bytes32 _originalLast = sortedCdps.getLast();
+        bytes32 _originalFirst = sortedCdps.getFirst();
+
+        uint256 price = priceFeedMock.fetchPrice();
+        bytes32 targetCdpId = _originalLast;
+
+        uint256 _targetExistColl = cdpManager.getSyncedCdpCollShares(targetCdpId);
+        uint256 _targetExistDebt = cdpManager.getSyncedCdpDebt(targetCdpId);
+        require(repaidDebt < _targetExistDebt, "not partial liquidation!");
+
+        // price drops to liquidate target CDP
+        price =
+            (price * (cdpManager.MCR() - crIncrement)) /
+            cdpManager.getSyncedICR(targetCdpId, price);
+        priceFeedMock.setPrice(price);
+        price = priceFeedMock.fetchPrice();
+        require(cdpManager.getSyncedICR(targetCdpId, price) < cdpManager.MCR(), "!not liquidatable");
+
+        uint256 _targetNicr = _calculateNICRWithAdjustment(
+            _targetExistColl,
+            _targetExistDebt,
+            (repaidDebt * cdpManager.getSyncedICR(targetCdpId, price)) / price,
+            false,
+            repaidDebt,
+            false
+        );
+        bytes32 exactHint = _getExactHint(_targetNicr);
+
+        // get liquidation hints
+        {
+            (bytes32 approxHint, , ) = hintHelpers.getApproxHint(_targetNicr, 14, randomSeed);
+            (bytes32 upperHint, bytes32 lowerHint) = sortedCdps.findInsertPosition(
+                _targetNicr,
+                approxHint,
+                approxHint
+            );
+            vm.startPrank(sortedCdps.getOwnerAddress(targetCdpId));
+            cdpManager.partiallyLiquidate(targetCdpId, repaidDebt, upperHint, lowerHint);
+            vm.stopPrank();
+        }
+
+        console2.log("n:", n);
+        console2.log("repaidDebt:", repaidDebt);
+        console2.log("price:", price);
+
+        _checkExactHintAfterInsertion(targetCdpId, _originalLast, _originalFirst, exactHint);
     }
 
     function _calculateNICRWithAdjustment(
