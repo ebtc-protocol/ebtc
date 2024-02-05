@@ -93,7 +93,7 @@ class EBTCDeployerScript {
         } else if (_stateName == EBTC_FEED_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEbtcFeed(ebtcDeployer, _expectedAddr);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
-            _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr, this.feeRecipientMultisig);
+            _deployedState = await DeploymentHelper.deployActivePool(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == COLL_SURPLUS_POOL_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployCollSurplusPool(ebtcDeployer, _expectedAddr, collateralAddr);
         } else if (_stateName == SORTED_CDPS_STATE_NAME) {

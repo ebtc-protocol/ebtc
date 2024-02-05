@@ -6,6 +6,7 @@ import "./Interfaces/IActivePool.sol";
 import "./Interfaces/ICollSurplusPool.sol";
 import "./Dependencies/ICollateralToken.sol";
 import "./Interfaces/ICdpManagerData.sol";
+import "./Interfaces/IBorrowerOperations.sol";
 import "./Dependencies/ERC3156FlashLender.sol";
 import "./Dependencies/SafeERC20.sol";
 import "./Dependencies/ReentrancyGuard.sol";
@@ -49,20 +50,18 @@ contract ActivePool is
     /// @param _cdpManagerAddress The address of the Cdp Manager contract
     /// @param _collTokenAddress The address of the collateral token
     /// @param _collSurplusAddress The address of the collateral surplus pool
-    /// @param _feeRecipientAddress The address of the fee recipient
 
     constructor(
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _collTokenAddress,
-        address _collSurplusAddress,
-        address _feeRecipientAddress
+        address _collSurplusAddress
     ) TwapWeightedObserver(0) {
         borrowerOperationsAddress = _borrowerOperationsAddress;
         cdpManagerAddress = _cdpManagerAddress;
         collateral = ICollateralToken(_collTokenAddress);
         collSurplusPoolAddress = _collSurplusAddress;
-        feeRecipientAddress = _feeRecipientAddress;
+        feeRecipientAddress = IBorrowerOperations(borrowerOperationsAddress).feeRecipientAddress();
 
         // TEMP: read authority to avoid signature change
         address _authorityAddress = address(AuthNoOwner(cdpManagerAddress).authority());

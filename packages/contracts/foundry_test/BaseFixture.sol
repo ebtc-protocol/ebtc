@@ -276,8 +276,7 @@ contract eBTCBaseFixture is
                 addr.borrowerOperationsAddress,
                 addr.cdpManagerAddress,
                 address(collateral),
-                addr.collSurplusPoolAddress,
-                addr.feeRecipientAddress
+                addr.collSurplusPoolAddress
             );
 
             activePool = ActivePool(

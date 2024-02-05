@@ -16,8 +16,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
             address(borrowerOperations),
             address(cdpManager),
             address(collateral),
-            address(collSurplusPool),
-            address(feeRecipient)
+            address(collSurplusPool)
         );
     }
 
