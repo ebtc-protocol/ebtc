@@ -57,6 +57,12 @@ contract('PriceFeed', async accounts => {
     await mockStEthEthChainlink.setPrevPrice(dec(1, 18))
   }
 
+  const enableDynamicFeed = async (priceFeed, authority, user) => {
+    await authority.setRoleCapability(4, priceFeed.address, "0x9a60bfe3", true, {from: user});	  
+    await authority.setUserRole(user, 4, true, {from: user});
+    await priceFeed.setCollateralFeedSource(true, {from: user});       
+  }
+
   // -- Test suites
   
   describe('PriceFeedTestnet basic tests', async () => {
@@ -142,8 +148,12 @@ contract('PriceFeed', async accounts => {
       await mockStEthEthChainlink.setUpdateTime(now)
       await mockTellor.setUpdateTime(now)
 
-      priceFeed = await PriceFeed.new(tellorCaller.address, owner, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
-      priceFeed.setCollateralFeedSource(true, {from: owner});
+      let _newAuthority = await GovernorTester.new(owner);    
+
+      priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
+
+      await enableDynamicFeed(priceFeed, _newAuthority, owner);
+      
       PriceFeed.setAsDeployed(priceFeed)
       priceFeedContract = new ethers.Contract(priceFeed.address, fetchPriceFuncABI, (await ethers.provider.getSigner(alice)));
     })
@@ -2222,7 +2232,6 @@ contract('PriceFeed', async accounts => {
       const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
       let _newAuthority = await GovernorTester.new(alice);    
       let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
-      myPriceFeed.setCollateralFeedSource(true, {from: _newAuthority.address});
       
       await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
       assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
@@ -2318,7 +2327,8 @@ contract('PriceFeed', async accounts => {
 
       // Deploy PriceFeed and set it up
       priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
-      priceFeed.setCollateralFeedSource(true, {from: _newAuthority.address});
+      
+      await enableDynamicFeed(priceFeed, _newAuthority, alice);
 
       PriceFeed.setAsDeployed(priceFeed)
       assert.isTrue(_newAuthority.address == (await priceFeed.authority()));
