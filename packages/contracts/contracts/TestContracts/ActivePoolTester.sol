@@ -9,15 +9,13 @@ contract ActivePoolTester is ActivePool {
         address _borrowerOperationsAddress,
         address _cdpManagerAddress,
         address _collTokenAddress,
-        address _collSurplusAddress,
-        address _feeRecipientAddress
+        address _collSurplusAddress
     )
         ActivePool(
             _borrowerOperationsAddress,
             _cdpManagerAddress,
             _collTokenAddress,
-            _collSurplusAddress,
-            _feeRecipientAddress
+            _collSurplusAddress
         )
     {}
 
