@@ -58,6 +58,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
     Status public status;
 
+    // Dynamic feed = Chainlink stETH/ETH feed
+    // Static feed = 1:1 FixedAdapter
+    // defaults to static feed
     bool public useDynamicFeed;
 
     // --- Dependency setters ---
@@ -111,6 +114,9 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         // Explicitly set initial system status after `require` checks
         status = Status.chainlinkWorking;
+
+        // emit STETH_ETH_FIXED_FEED address
+        emit CollateralFeedSourceUpdated(address(_collateralFeed()));
     }
 
     // --- Functions ---
