@@ -690,14 +690,32 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        chainlinkResponse.answer = _formatClAggregateAnswer(
-            ethBtcAnswer,
-            stEthEthAnswer,
-            ethBtcDecimals,
-            stEthEthDecimals
-        );
+        if (
+            _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
+        ) {
+            chainlinkResponse.answer = _formatClAggregateAnswer(
+                ethBtcAnswer,
+                stEthEthAnswer,
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
+        } else {
+            return chainlinkResponse;
+        }
 
         chainlinkResponse.success = true;
+    }
+
+    /// @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
+    /// @param _roundId The aggregator round of the target CL feed
+    /// @param _answer CL price price reported for target feeds
+    /// @return The boolean state indicating CL response health for aggregation
+    function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
+        if (_answer <= 0) return false;
+        if (_roundId == 0) return false;
+
+        return true;
     }
 
     /// @notice Fetches Chainlink responses for the previous round of data for both ETH-BTC and stETH-ETH price feeds.
@@ -771,12 +789,20 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        prevChainlinkResponse.answer = _formatClAggregateAnswer(
-            ethBtcAnswer,
-            stEthEthAnswer,
-            ethBtcDecimals,
-            stEthEthDecimals
-        );
+        if (
+            _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
+            _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
+        ) {
+            prevChainlinkResponse.answer = _formatClAggregateAnswer(
+                ethBtcAnswer,
+                stEthEthAnswer,
+                ethBtcDecimals,
+                stEthEthDecimals
+            );
+        } else {
+            return prevChainlinkResponse;
+        }
+
         prevChainlinkResponse.success = true;
     }
 
