@@ -58,7 +58,8 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
             address(0),
             address(authority),
             address(_mockChainLinkStEthETH),
-            address(_mockChainLinkEthBTC)
+            address(_mockChainLinkEthBTC),
+            true
         );
 
         // Grant permission on pricefeed

@@ -91,7 +91,8 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
             address(fallbackCaller),
             address(authority),
             address(collEthCLFeed),
-            address(chainlinkAdapter)
+            address(chainlinkAdapter),
+            true
         );
 
         // do we have a fallback caller?

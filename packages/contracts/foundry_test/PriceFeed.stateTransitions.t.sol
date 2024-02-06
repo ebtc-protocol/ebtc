@@ -56,7 +56,8 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
             address(_tellorCaller),
             address(authority),
             address(_mockChainLinkStEthETH),
-            address(_mockChainLinkEthBTC)
+            address(_mockChainLinkEthBTC),
+            true
         );
 
         // Grant permission on pricefeed
@@ -71,9 +72,6 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
             true
         );
         vm.stopPrank();
-
-        vm.prank(authUser);
-        priceFeedTester.setCollateralFeedSource(true);
     }
 
     function _initMockChainLinkFeed(

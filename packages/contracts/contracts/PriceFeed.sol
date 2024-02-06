@@ -25,6 +25,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Chainlink oracles in mainnet
     AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
     AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
+    // STETH_ETH_FIXED_FEED must have the same decimals as STETH_ETH_CL_FEED
     AggregatorV3Interface public immutable STETH_ETH_FIXED_FEED;
 
     uint256 public immutable DENOMINATOR;
@@ -74,7 +75,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         address _fallbackCallerAddress,
         address _authorityAddress,
         address _collEthCLFeed,
-        address _ethBtcCLFeed
+        address _ethBtcCLFeed,
+        bool _useDynamicFeed
     ) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
@@ -90,12 +92,15 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         require(ethBtcDecimals <= MAX_DECIMALS);
         uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
         require(stEthEthDecimals <= MAX_DECIMALS);
+        require(stEthEthDecimals == STETH_ETH_FIXED_FEED.decimals());
 
         DENOMINATOR =
             10 ** ((stEthEthDecimals > ethBtcDecimals ? stEthEthDecimals : ethBtcDecimals) * 2);
         SCALED_DECIMAL = stEthEthDecimals > ethBtcDecimals
             ? 10 ** (stEthEthDecimals - ethBtcDecimals)
             : 10 ** (ethBtcDecimals - stEthEthDecimals);
+
+        useDynamicFeed = _useDynamicFeed;
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
