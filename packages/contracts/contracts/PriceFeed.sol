@@ -8,6 +8,7 @@ import "./Dependencies/AggregatorV3Interface.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/EbtcMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "./FixedAdapter.sol";
 
 /*
  * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
@@ -24,6 +25,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Chainlink oracles in mainnet
     AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
     AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
+    AggregatorV3Interface public immutable STETH_ETH_FIXED_FEED;
 
     uint256 public immutable DENOMINATOR;
     uint256 public immutable SCALED_DECIMAL;
@@ -56,6 +58,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
     Status public status;
 
+    bool public useDynamicFeed;
+
     // --- Dependency setters ---
 
     /// @notice Sets the addresses of the contracts and initializes the system
@@ -77,6 +81,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
         STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
+        STETH_ETH_FIXED_FEED = new FixedAdapter();
 
         uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
         require(ethBtcDecimals <= MAX_DECIMALS);
@@ -112,6 +117,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     function latestRound() external view returns (uint80) {
         return ETH_BTC_CL_FEED.latestRound();
+    }
+
+    function setCollateralFeedSource(bool _useDynamicFeed) external requiresAuth {
+        useDynamicFeed = _useDynamicFeed;
+        emit CollateralFeedSourceUpdated(address(_collateralFeed()));
     }
 
     /// @notice Returns the latest price obtained from the Oracle
@@ -651,6 +661,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Return is implicit
     }
 
+    function _collateralFeed() private view returns (AggregatorV3Interface) {
+        return useDynamicFeed ? STETH_ETH_CL_FEED : STETH_ETH_FIXED_FEED;
+    }
+
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
     function _getCurrentChainlinkResponse()
@@ -677,7 +691,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.latestRoundData() returns (
+        try _collateralFeed().latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256,
@@ -740,7 +754,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
+        try _collateralFeed().getRoundData(_currentRoundStEthEthId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256,

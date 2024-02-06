@@ -61,6 +61,7 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
         btcUsdCLFeed = new MockAggregator(8);
         ethUsdCLFeed = new MockAggregator(8);
 
+        hevm.warp(2);
         hevm.roll(123123131);
 
         collEthCLFeed.setLatestRoundId(2);

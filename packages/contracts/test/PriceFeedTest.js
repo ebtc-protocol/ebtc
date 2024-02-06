@@ -143,6 +143,7 @@ contract('PriceFeed', async accounts => {
       await mockTellor.setUpdateTime(now)
 
       priceFeed = await PriceFeed.new(tellorCaller.address, owner, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
+      priceFeed.setCollateralFeedSource(true, {from: owner});
       PriceFeed.setAsDeployed(priceFeed)
       priceFeedContract = new ethers.Contract(priceFeed.address, fetchPriceFuncABI, (await ethers.provider.getSigner(alice)));
     })
@@ -2221,6 +2222,7 @@ contract('PriceFeed', async accounts => {
       const STETH_ETH_CL_FEED = "0x86392dC19c0b719886221c78AB11eb8Cf5c52812";
       let _newAuthority = await GovernorTester.new(alice);    
       let myPriceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
+      myPriceFeed.setCollateralFeedSource(true, {from: _newAuthority.address});
       
       await assertRevert(myPriceFeed.setFallbackCaller(_newAuthority.address, {from: alice}), "Auth: UNAUTHORIZED"); 
       assert.isTrue(tellorCaller.address == (await myPriceFeed.fallbackCaller())); 
@@ -2316,6 +2318,8 @@ contract('PriceFeed', async accounts => {
 
       // Deploy PriceFeed and set it up
       priceFeed = await PriceFeed.new(tellorCaller.address, _newAuthority.address, STETH_ETH_CL_FEED, ETH_BTC_CL_FEED)
+      priceFeed.setCollateralFeedSource(true, {from: _newAuthority.address});
+
       PriceFeed.setAsDeployed(priceFeed)
       assert.isTrue(_newAuthority.address == (await priceFeed.authority()));
 
