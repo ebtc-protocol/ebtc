@@ -107,7 +107,7 @@ contract MockAggregator is AggregatorV3Interface {
     }
 
     function getRoundData(
-        uint80
+        uint80 _roundId
     )
         external
         view
@@ -120,6 +120,14 @@ contract MockAggregator is AggregatorV3Interface {
             uint80 answeredInRound
         )
     {
+        if (_roundId == latestRoundId) {
+            if (latestRevert) {
+                require(1 == 0, "latestRoundData reverted");
+            }
+
+            return (latestRoundId, price, 0, updateTime, 0);
+        }
+
         if (prevRevert) {
             require(1 == 0, "getRoundData reverted");
         }

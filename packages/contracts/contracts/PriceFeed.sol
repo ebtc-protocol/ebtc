@@ -110,10 +110,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
     // --- Functions ---
 
-    function latestRound() external view returns (uint80) {
-        return ETH_BTC_CL_FEED.latestRound();
-    }
-
     /// @notice Returns the latest price obtained from the Oracle
     /// @dev Called by eBTC functions that require a current price. Also callable permissionlessly.
     /// @dev Non-view function - it updates and stores the last good price seen by eBTC.
@@ -705,6 +701,17 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         chainlinkResponse.success = true;
     }
 
+    /// @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
+    /// @param _roundId The aggregator round of the target CL feed
+    /// @param _answer CL price price reported for target feeds
+    /// @return The boolean state indicating CL response health for aggregation
+    function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
+        if (_answer <= 0) return false;
+        if (_roundId == 0) return false;
+
+        return true;
+    }
+
     /// @notice Fetches Chainlink responses for the previous round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @param _currentRoundEthBtcId The current round ID for the ETH-BTC price feed.
     /// @param _currentRoundStEthEthId The current round ID for the stETH-ETH price feed.
@@ -766,17 +773,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         }
 
         prevChainlinkResponse.success = true;
-    }
-
-    /// @notice Returns if the CL feed is healthy or not, based on: negative value and null round id. For price aggregation
-    /// @param _roundId The aggregator round of the target CL feed
-    /// @param _answer CL price price reported for target feeds
-    /// @return The boolean state indicating CL response health for aggregation
-    function _checkHealthyCLResponse(uint80 _roundId, int256 _answer) internal view returns (bool) {
-        if (_answer <= 0) return false;
-        if (_roundId == 0) return false;
-
-        return true;
     }
 
     // @notice Returns the price of stETH:BTC in 18 decimals denomination
