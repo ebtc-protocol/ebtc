@@ -99,7 +99,7 @@ contract eBTCBaseFixture is
         bytes4(keccak256(bytes("setPrimaryOracle(address)")));
     bytes4 public constant SET_SECONDARY_ORACLE_SIG =
         bytes4(keccak256(bytes("setSecondaryOracle(address)")));
-    bytes4 public constant SET_COLLATERAL_FEED_SOURCE_CALLER_SIG =
+    bytes4 public constant SET_COLLATERAL_FEED_SOURCE_SIG =
         bytes4(keccak256(bytes("setCollateralFeedSource(bool)")));
 
     // Flash Lender
@@ -385,12 +385,7 @@ contract eBTCBaseFixture is
         authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
-        authority.setRoleCapability(
-            4,
-            address(priceFeedMock),
-            SET_COLLATERAL_FEED_SOURCE_CALLER_SIG,
-            true
-        );
+        authority.setRoleCapability(4, address(priceFeedMock), SET_COLLATERAL_FEED_SOURCE_SIG, true);
         authority.setRoleCapability(4, address(ebtcFeed), SET_PRIMARY_ORACLE_SIG, true);
         authority.setRoleCapability(4, address(ebtcFeed), SET_SECONDARY_ORACLE_SIG, true);
 

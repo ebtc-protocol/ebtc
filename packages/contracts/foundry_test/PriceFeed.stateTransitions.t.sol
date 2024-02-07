@@ -68,7 +68,7 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
         authority.setRoleCapability(
             4,
             address(priceFeedTester),
-            SET_COLLATERAL_FEED_SOURCE_CALLER_SIG,
+            SET_COLLATERAL_FEED_SOURCE_SIG,
             true
         );
         vm.stopPrank();
