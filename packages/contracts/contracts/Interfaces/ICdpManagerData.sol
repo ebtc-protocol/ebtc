@@ -13,7 +13,6 @@ import "../Dependencies/ICollateralTokenOracle.sol";
 interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Events ---
 
-    event FeeRecipientAddressChanged(address indexed _feeRecipientAddress);
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);

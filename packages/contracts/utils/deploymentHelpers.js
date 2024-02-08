@@ -283,8 +283,8 @@ class DeploymentHelper {
   }
 
   static async deployActivePoolTester(ebtcDeployer, _expectedAddr, collateralAddress) {
-    const _argTypes = ['address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], _expectedAddr[10]];
+    const _argTypes = ['address', 'address', 'address', 'address'];
+    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7]];
 
     const _salt = await ebtcDeployer.ACTIVE_POOL();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, ActivePoolTester, _salt);
@@ -362,9 +362,9 @@ class DeploymentHelper {
     return await BorrowerOperations.at(_deployedAddr);
   }
 
-  static async deployActivePool(ebtcDeployer, _expectedAddr, collateralAddress, feeRecipient){
-    const _argTypes = ['address', 'address', 'address', 'address', 'address'];
-    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7], feeRecipient];
+  static async deployActivePool(ebtcDeployer, _expectedAddr, collateralAddress){
+    const _argTypes = ['address', 'address', 'address', 'address'];
+    const _argValues = [_expectedAddr[3], _expectedAddr[2], collateralAddress, _expectedAddr[7]];
 
     const _salt = await ebtcDeployer.ACTIVE_POOL();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, ActivePool, _salt);

@@ -1,9 +1,9 @@
 const externalAddress  = {
   "collEthCLFeed": "0xb4c4a493AB6356497713A78FFA6c60FB53517c63",//goerli
   "ethBtcCLFeed": "0x779877A7B0D9E8603169DdbD7836e478b4624789",//goerli
-  "ecosystemMultisig": "0x0A8fE898020f5E02C8D7ac29CCb907198f77ed92", //goerli
+  "securityMultisig": "0x0A8fE898020f5E02C8D7ac29CCb907198f77ed92", //goerli
   "cdpTechOpsMultisig": "0xb1939449B5612F632F2651cBe56b8FDc7f04dE26", //goerli
-  "feeRecipientOwner": "0x821Ef96C19db290d2E4856460C730E59F4688539", //goerli
+  "feeRecipientMultisig": "0x821Ef96C19db290d2E4856460C730E59F4688539", //goerli
 }
 
 const OUTPUT_FILE = './mainnetDeployment/eBTCGoerliDeploymentOutput.json'

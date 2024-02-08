@@ -75,13 +75,13 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         // authority.setUserRole(address(highSecTimelock), 2, true); // eBTCToken: burn (timelock shouldn't burn)
         authority.setUserRole(address(highSecTimelock), 3, true); // CDPManager: all
         authority.setUserRole(address(highSecTimelock), 4, true); // PriceFeed: setFallbackCaller
-        authority.setUserRole(address(highSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
+        authority.setUserRole(address(highSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused
         authority.setUserRole(address(highSecTimelock), 6, true); // ActivePool: sweep tokens & claim fee recipient coll
 
         // Grant the Low-Sec timelock access as per spec
         authority.setUserRole(address(lowSecTimelock), 3, true); // CDPManager: all
         authority.setUserRole(address(lowSecTimelock), 4, true); // PriceFeed: setFallbackCaller
-        authority.setUserRole(address(lowSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
+        authority.setUserRole(address(lowSecTimelock), 5, true); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused
         authority.setUserRole(address(lowSecTimelock), 6, true); // ActivePool: sweep tokens & claim fee recipient coll
 
         // Remove roles from defaultGov
@@ -90,7 +90,7 @@ contract TimelockOperationsTest is eBTCBaseFixture {
         authority.setUserRole(defaultGovernance, 2, false); // eBTCToken: burn
         authority.setUserRole(defaultGovernance, 3, false); // CDPManager: all
         authority.setUserRole(defaultGovernance, 4, false); // PriceFeed: setFallbackCaller
-        authority.setUserRole(defaultGovernance, 5, false); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress
+        authority.setUserRole(defaultGovernance, 5, false); // BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused
         authority.setUserRole(defaultGovernance, 6, false); // ActivePool: sweep tokens & claim fee recipient coll
 
         // Transfer Governance (Admin) capabilities to high-sec timelock

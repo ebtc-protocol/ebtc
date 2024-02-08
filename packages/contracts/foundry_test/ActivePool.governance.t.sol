@@ -171,62 +171,6 @@ contract ActivePoolGovernanceTest is eBTCBaseFixture {
         assertEq(feeRecipientColl, 0, "fee recipient should not gain claimable shares");
     }
 
-    function test_UserWithPermissionCanSetRecipientAddressToValidAddress(
-        address _newRecipient
-    ) public {
-        vm.assume(_newRecipient != address(0));
-        address user = _utils.getNextUserAddress();
-
-        // grant permission to set the recipient address
-        vm.prank(defaultGovernance);
-        authority.setUserRole(user, 5, true);
-
-        // user sets recipient address
-        vm.prank(user);
-        activePool.setFeeRecipientAddress(_newRecipient);
-        assertEq(_newRecipient, activePool.feeRecipientAddress());
-    }
-
-    function test_UserWithoutPermissionCannotSetRecipientAddressToValidAddress(
-        address _newRecipient
-    ) public {
-        vm.assume(_newRecipient != address(0));
-
-        address oldFeeRecipient = activePool.feeRecipientAddress();
-        address user = _utils.getNextUserAddress();
-
-        // user sets recipient address
-        vm.expectRevert("Auth: UNAUTHORIZED");
-        vm.prank(user);
-        activePool.setFeeRecipientAddress(_newRecipient);
-        assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
-    }
-
-    function test_UserWithPermissionCannotSetRecipientAddressToZeroAddress() public {
-        address oldFeeRecipient = activePool.feeRecipientAddress();
-        address user = _utils.getNextUserAddress();
-
-        // grant permission to set the recipient address
-        vm.prank(defaultGovernance);
-        authority.setUserRole(user, 5, true);
-
-        // user sets recipient address
-        vm.prank(user);
-        vm.expectRevert("ActivePool: Cannot set fee recipient to zero address");
-        activePool.setFeeRecipientAddress(address(0));
-        assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
-    }
-
-    function test_UserWithoutPermissionCannotSetRecipientAddressToZeroAddress() public {
-        address oldFeeRecipient = activePool.feeRecipientAddress();
-        address user = _utils.getNextUserAddress();
-
-        // user sets recipient address
-        vm.expectRevert("Auth: UNAUTHORIZED");
-        activePool.setFeeRecipientAddress(address(0));
-        assertEq(oldFeeRecipient, activePool.feeRecipientAddress());
-    }
-
     function _sendCollateralToActivePoolAndAllocateAsClaimableFee(uint256 amount) internal {
         // send actual tokens to activePool
         uint256 ethAmount = collateral.getPooledEthByShares(amount);
