@@ -71,7 +71,8 @@ contract EchidnaPriceFeedTester is PropertiesConstants, PropertiesAsserts, Prope
             address(0),
             address(authority),
             address(collEthCLFeed),
-            address(chainlinkAdapter)
+            address(chainlinkAdapter),
+            true
         );
 
         fallbackCaller = new MockFallbackCaller(priceFeed.fetchPrice());

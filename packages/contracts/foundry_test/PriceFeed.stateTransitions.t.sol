@@ -56,7 +56,8 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
             address(_tellorCaller),
             address(authority),
             address(_mockChainLinkStEthETH),
-            address(_mockChainLinkEthBTC)
+            address(_mockChainLinkEthBTC),
+            true
         );
 
         // Grant permission on pricefeed
@@ -64,6 +65,12 @@ contract PriceFeedStateTransitionTest is eBTCBaseInvariants {
         vm.startPrank(defaultGovernance);
         authority.setUserRole(authUser, 4, true);
         authority.setRoleCapability(4, address(priceFeedTester), SET_FALLBACK_CALLER_SIG, true);
+        authority.setRoleCapability(
+            4,
+            address(priceFeedTester),
+            SET_COLLATERAL_FEED_SOURCE_SIG,
+            true
+        );
         vm.stopPrank();
     }
 

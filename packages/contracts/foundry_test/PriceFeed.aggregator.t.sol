@@ -58,7 +58,8 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
             address(0),
             address(authority),
             address(_mockChainLinkStEthETH),
-            address(_mockChainLinkEthBTC)
+            address(_mockChainLinkEthBTC),
+            true
         );
 
         // Grant permission on pricefeed
@@ -130,5 +131,46 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
                 assertEq(ebtcFeed.fetchPrice(), 1.1e18);
             }
         }
+    }
+
+    function testCollateralFeedSources() public {
+        _mockChainLinkEthBTC.setPrice(0.05e8);
+        _mockChainLinkEthBTC.setPrevPrice(0.05e8);
+        _mockChainLinkStEthETH.setPrice(0.9e18);
+        _mockChainLinkStEthETH.setPrevPrice(0.9e18);
+
+        // Dynamic feed price (0.05 * 0.9)
+        assertEq(priceFeedTester.fetchPrice(), 45000000000000000);
+
+        // Can't set collateral feed source without auth
+        vm.startPrank(authUser);
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        priceFeedTester.setCollateralFeedSource(false);
+        vm.stopPrank();
+
+        // Give auth
+        vm.startPrank(defaultGovernance);
+        authority.setRoleCapability(
+            4,
+            address(priceFeedTester),
+            SET_COLLATERAL_FEED_SOURCE_SIG,
+            true
+        );
+        vm.stopPrank();
+
+        // Can set collateral feed source
+        vm.startPrank(authUser);
+        priceFeedTester.setCollateralFeedSource(false);
+        vm.stopPrank();
+
+        // Fixed feed price (0.05 * 1.0)
+        assertEq(priceFeedTester.fetchPrice(), 50000000000000000);
+
+        vm.startPrank(authUser);
+        priceFeedTester.setCollateralFeedSource(true);
+        vm.stopPrank();
+
+        // Back to dynamic price (0.05 * 0.9)
+        assertEq(priceFeedTester.fetchPrice(), 45000000000000000);
     }
 }
