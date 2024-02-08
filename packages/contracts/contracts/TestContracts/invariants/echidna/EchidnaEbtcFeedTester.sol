@@ -57,10 +57,11 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
 
     function setUp() public virtual {
         authority = new MockAlwaysTrueAuthority();
-        collEthCLFeed = new MockAggregator();
-        btcUsdCLFeed = new MockAggregator();
-        ethUsdCLFeed = new MockAggregator();
+        collEthCLFeed = new MockAggregator(18);
+        btcUsdCLFeed = new MockAggregator(8);
+        ethUsdCLFeed = new MockAggregator(8);
 
+        hevm.warp(2);
         hevm.roll(123123131);
 
         collEthCLFeed.setLatestRoundId(2);
@@ -90,7 +91,8 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
             address(fallbackCaller),
             address(authority),
             address(collEthCLFeed),
-            address(chainlinkAdapter)
+            address(chainlinkAdapter),
+            true
         );
 
         // do we have a fallback caller?
@@ -166,13 +168,6 @@ abstract contract EbtcFeedTesterBase is PropertiesConstants, Asserts, Properties
     function setPrevRevert(uint8 feedId) public {
         MockAggregator aggregator = _selectFeed(feedId);
         aggregator.setPrevRevert();
-    }
-
-    // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/7
-    function setDecimals(uint8 decimals) external {
-        // https://github.com/d-xo/weird-erc20
-        decimals = uint8(between(uint256(decimals), 2, 18));
-        collEthCLFeed.setDecimals(decimals);
     }
 
     function setPrimaryErrorState(uint8 errorState) external {

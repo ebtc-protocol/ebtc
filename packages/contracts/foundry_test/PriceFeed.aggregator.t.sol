@@ -39,28 +39,27 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         eBTCBaseFixture.connectLQTYContractsToCore();
 
         // Set current and prev prices in both oracles
-        _mockChainLinkEthBTC = new MockAggregator();
+        _mockChainLinkEthBTC = new MockAggregator(8);
         _initMockChainLinkFeed(
             _mockChainLinkEthBTC,
             latestRoundId,
             initEthBTCPrice,
-            initEthBTCPrevPrice,
-            8
+            initEthBTCPrevPrice
         );
-        _mockChainLinkStEthETH = new MockAggregator();
+        _mockChainLinkStEthETH = new MockAggregator(18);
         _initMockChainLinkFeed(
             _mockChainLinkStEthETH,
             latestRoundId,
             initStEthETHPrice,
-            initStEthETHPrevPrice,
-            18
+            initStEthETHPrevPrice
         );
 
         priceFeedTester = new PriceFeedTester(
             address(0),
             address(authority),
             address(_mockChainLinkStEthETH),
-            address(_mockChainLinkEthBTC)
+            address(_mockChainLinkEthBTC),
+            true
         );
 
         // Grant permission on pricefeed
@@ -78,28 +77,13 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
         MockAggregator _mockFeed,
         uint80 _latestRoundId,
         int256 _price,
-        int256 _prevPrice,
-        uint8 _decimal
+        int256 _prevPrice
     ) internal {
         _mockFeed.setLatestRoundId(_latestRoundId);
         _mockFeed.setPrevRoundId(_latestRoundId - 1);
         _mockFeed.setPrice(_price);
         _mockFeed.setPrevPrice(_prevPrice);
-        _mockFeed.setDecimals(_decimal);
         _mockFeed.setUpdateTime(block.timestamp);
-    }
-
-    function testSetDecimals() public {
-        _mockChainLinkEthBTC.setDecimals(31);
-        _mockChainLinkStEthETH.setDecimals(8);
-
-        // 10**31 *
-        // 10**18 *
-        // 10**18 *
-        // 10**18 / 10 ** (31 * 2);
-
-        vm.expectRevert();
-        priceFeedTester.fetchPrice();
     }
 
     function testPrimaryFeedSuccess() public {
@@ -147,5 +131,46 @@ contract PriceFeedAggregatorTest is eBTCBaseFixture {
                 assertEq(ebtcFeed.fetchPrice(), 1.1e18);
             }
         }
+    }
+
+    function testCollateralFeedSources() public {
+        _mockChainLinkEthBTC.setPrice(0.05e8);
+        _mockChainLinkEthBTC.setPrevPrice(0.05e8);
+        _mockChainLinkStEthETH.setPrice(0.9e18);
+        _mockChainLinkStEthETH.setPrevPrice(0.9e18);
+
+        // Dynamic feed price (0.05 * 0.9)
+        assertEq(priceFeedTester.fetchPrice(), 45000000000000000);
+
+        // Can't set collateral feed source without auth
+        vm.startPrank(authUser);
+        vm.expectRevert("Auth: UNAUTHORIZED");
+        priceFeedTester.setCollateralFeedSource(false);
+        vm.stopPrank();
+
+        // Give auth
+        vm.startPrank(defaultGovernance);
+        authority.setRoleCapability(
+            4,
+            address(priceFeedTester),
+            SET_COLLATERAL_FEED_SOURCE_SIG,
+            true
+        );
+        vm.stopPrank();
+
+        // Can set collateral feed source
+        vm.startPrank(authUser);
+        priceFeedTester.setCollateralFeedSource(false);
+        vm.stopPrank();
+
+        // Fixed feed price (0.05 * 1.0)
+        assertEq(priceFeedTester.fetchPrice(), 50000000000000000);
+
+        vm.startPrank(authUser);
+        priceFeedTester.setCollateralFeedSource(true);
+        vm.stopPrank();
+
+        // Back to dynamic price (0.05 * 0.9)
+        assertEq(priceFeedTester.fetchPrice(), 45000000000000000);
     }
 }

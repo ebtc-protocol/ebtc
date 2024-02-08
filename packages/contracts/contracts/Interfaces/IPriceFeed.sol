@@ -11,6 +11,7 @@ interface IPriceFeed {
         address indexed _newFallbackCaller
     );
     event UnhealthyFallbackCaller(address indexed _fallbackCaller, uint256 timestamp);
+    event CollateralFeedSourceUpdated(address indexed stEthFeed);
 
     // --- Structs ---
 

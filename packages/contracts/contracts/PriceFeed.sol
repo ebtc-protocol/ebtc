@@ -8,6 +8,7 @@ import "./Dependencies/AggregatorV3Interface.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/EbtcMath.sol";
 import "./Dependencies/AuthNoOwner.sol";
+import "./FixedAdapter.sol";
 
 /*
  * PriceFeed for mainnet deployment, it connects to two Chainlink's live feeds, ETH:BTC and
@@ -24,6 +25,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // Chainlink oracles in mainnet
     AggregatorV3Interface public immutable ETH_BTC_CL_FEED;
     AggregatorV3Interface public immutable STETH_ETH_CL_FEED;
+    // STETH_ETH_FIXED_FEED must have the same decimals as STETH_ETH_CL_FEED
+    AggregatorV3Interface public immutable STETH_ETH_FIXED_FEED;
+
+    uint256 public immutable DENOMINATOR;
+    uint256 public immutable SCALED_DECIMAL;
 
     // Fallback feed
     IFallbackCaller public fallbackCaller; // Wrapper contract that calls the fallback system
@@ -32,6 +38,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     uint256 public constant TIMEOUT_ETH_BTC_FEED = 4800; // 1 hours & 20min: 60 * 80
     uint256 public constant TIMEOUT_STETH_ETH_FEED = 90000; // 25 hours: 60 * 60 * 25
     uint256 constant INVALID_PRICE = 0;
+
+    /**
+     * @notice Maximum number of resulting and feed decimals
+     */
+    uint8 public constant MAX_DECIMALS = 18;
 
     // Maximum deviation allowed between two consecutive Chainlink oracle prices. 18-digit precision.
     uint256 public constant MAX_PRICE_DEVIATION_FROM_PREVIOUS_ROUND = 5e17; // 50%
@@ -48,6 +59,11 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // The current status of the PriceFeed, which determines the conditions for the next price fetch attempt
     Status public status;
 
+    // Dynamic feed = Chainlink stETH/ETH feed
+    // Static feed = 1:1 FixedAdapter
+    // defaults to static feed
+    bool public useDynamicFeed;
+
     // --- Dependency setters ---
 
     /// @notice Sets the addresses of the contracts and initializes the system
@@ -59,7 +75,8 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         address _fallbackCallerAddress,
         address _authorityAddress,
         address _collEthCLFeed,
-        address _ethBtcCLFeed
+        address _ethBtcCLFeed,
+        bool _useDynamicFeed
     ) {
         fallbackCaller = IFallbackCaller(_fallbackCallerAddress);
 
@@ -69,6 +86,21 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         ETH_BTC_CL_FEED = AggregatorV3Interface(_ethBtcCLFeed);
         STETH_ETH_CL_FEED = AggregatorV3Interface(_collEthCLFeed);
+        STETH_ETH_FIXED_FEED = new FixedAdapter();
+
+        uint8 ethBtcDecimals = ETH_BTC_CL_FEED.decimals();
+        require(ethBtcDecimals <= MAX_DECIMALS);
+        uint8 stEthEthDecimals = STETH_ETH_CL_FEED.decimals();
+        require(stEthEthDecimals <= MAX_DECIMALS);
+        require(stEthEthDecimals == STETH_ETH_FIXED_FEED.decimals());
+
+        DENOMINATOR =
+            10 ** ((stEthEthDecimals > ethBtcDecimals ? stEthEthDecimals : ethBtcDecimals) * 2);
+        SCALED_DECIMAL = stEthEthDecimals > ethBtcDecimals
+            ? 10 ** (stEthEthDecimals - ethBtcDecimals)
+            : 10 ** (ethBtcDecimals - stEthEthDecimals);
+
+        useDynamicFeed = _useDynamicFeed;
 
         // Get an initial price from Chainlink to serve as first reference for lastGoodPrice
         ChainlinkResponse memory chainlinkResponse = _getCurrentChainlinkResponse();
@@ -87,9 +119,17 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
 
         // Explicitly set initial system status after `require` checks
         status = Status.chainlinkWorking;
+
+        // emit STETH_ETH_FIXED_FEED address
+        emit CollateralFeedSourceUpdated(address(_collateralFeed()));
     }
 
     // --- Functions ---
+
+    function setCollateralFeedSource(bool _useDynamicFeed) external requiresAuth {
+        useDynamicFeed = _useDynamicFeed;
+        emit CollateralFeedSourceUpdated(address(_collateralFeed()));
+    }
 
     /// @notice Returns the latest price obtained from the Oracle
     /// @dev Called by eBTC functions that require a current price. Also callable permissionlessly.
@@ -628,6 +668,10 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         // Return is implicit
     }
 
+    function _collateralFeed() private view returns (AggregatorV3Interface) {
+        return useDynamicFeed ? STETH_ETH_CL_FEED : STETH_ETH_FIXED_FEED;
+    }
+
     /// @notice Fetches Chainlink responses for the current round of data for both ETH-BTC and stETH-ETH price feeds.
     /// @return chainlinkResponse A struct containing data retrieved from the price feeds, including the round IDs, timestamps, aggregated price, and a success flag.
     function _getCurrentChainlinkResponse()
@@ -635,26 +679,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
         view
         returns (ChainlinkResponse memory chainlinkResponse)
     {
-        // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals;
-        uint8 stEthEthDecimals;
-
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            ethBtcDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
-
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            stEthEthDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return chainlinkResponse;
-        }
-
         // Try to get latest prices data:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
@@ -674,7 +698,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return chainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.latestRoundData() returns (
+        try _collateralFeed().latestRoundData() returns (
             uint80 roundId,
             int256 answer,
             uint256,
@@ -694,12 +718,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             _checkHealthyCLResponse(chainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
             _checkHealthyCLResponse(chainlinkResponse.roundStEthEthId, stEthEthAnswer)
         ) {
-            chainlinkResponse.answer = _formatClAggregateAnswer(
-                ethBtcAnswer,
-                stEthEthAnswer,
-                ethBtcDecimals,
-                stEthEthDecimals
-            );
+            chainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
         } else {
             return chainlinkResponse;
         }
@@ -734,26 +753,6 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        // Fetch decimals for both feeds:
-        uint8 ethBtcDecimals;
-        uint8 stEthEthDecimals;
-
-        try ETH_BTC_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            ethBtcDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return prevChainlinkResponse;
-        }
-
-        try STETH_ETH_CL_FEED.decimals() returns (uint8 decimals) {
-            // If call to Chainlink succeeds, record the current decimal precision
-            stEthEthDecimals = decimals;
-        } catch {
-            // If call to Chainlink aggregator reverts, return a zero response with success = false
-            return prevChainlinkResponse;
-        }
-
         // Try to get latest prices data from prev round:
         int256 ethBtcAnswer;
         int256 stEthEthAnswer;
@@ -773,7 +772,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             return prevChainlinkResponse;
         }
 
-        try STETH_ETH_CL_FEED.getRoundData(_currentRoundStEthEthId - 1) returns (
+        try _collateralFeed().getRoundData(_currentRoundStEthEthId - 1) returns (
             uint80 roundId,
             int256 answer,
             uint256,
@@ -793,12 +792,7 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
             _checkHealthyCLResponse(prevChainlinkResponse.roundEthBtcId, ethBtcAnswer) &&
             _checkHealthyCLResponse(prevChainlinkResponse.roundStEthEthId, stEthEthAnswer)
         ) {
-            prevChainlinkResponse.answer = _formatClAggregateAnswer(
-                ethBtcAnswer,
-                stEthEthAnswer,
-                ethBtcDecimals,
-                stEthEthDecimals
-            );
+            prevChainlinkResponse.answer = _formatClAggregateAnswer(ethBtcAnswer, stEthEthAnswer);
         } else {
             return prevChainlinkResponse;
         }
@@ -809,25 +803,15 @@ contract PriceFeed is BaseMath, IPriceFeed, AuthNoOwner {
     // @notice Returns the price of stETH:BTC in 18 decimals denomination
     // @param _ethBtcAnswer CL price retrieve from ETH:BTC feed
     // @param _stEthEthAnswer CL price retrieve from stETH:BTC feed
-    // @param _ethBtcDecimals ETH:BTC feed decimals
-    // @param _stEthEthDecimals stETH:BTC feed decimalss
     // @return The aggregated calculated price for stETH:BTC
     function _formatClAggregateAnswer(
         int256 _ethBtcAnswer,
-        int256 _stEthEthAnswer,
-        uint8 _ethBtcDecimals,
-        uint8 _stEthEthDecimals
+        int256 _stEthEthAnswer
     ) internal view returns (uint256) {
-        uint256 _decimalDenominator = _stEthEthDecimals > _ethBtcDecimals
-            ? _stEthEthDecimals
-            : _ethBtcDecimals;
-        uint256 _scaledDecimal = _stEthEthDecimals > _ethBtcDecimals
-            ? 10 ** (_stEthEthDecimals - _ethBtcDecimals)
-            : 10 ** (_ethBtcDecimals - _stEthEthDecimals);
         return
-            (_scaledDecimal *
+            (SCALED_DECIMAL *
                 uint256(_ethBtcAnswer) *
                 uint256(_stEthEthAnswer) *
-                EbtcMath.DECIMAL_PRECISION) / 10 ** (_decimalDenominator * 2);
+                EbtcMath.DECIMAL_PRECISION) / DENOMINATOR;
     }
 }
