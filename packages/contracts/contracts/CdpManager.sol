@@ -10,6 +10,7 @@ import "./Dependencies/ICollateralTokenOracle.sol";
 import "./CdpManagerStorage.sol";
 import "./Dependencies/Proxy.sol";
 import "./Dependencies/EbtcBase.sol";
+import "./Dependencies/EbtcMath.sol";
 
 /// @title CdpManager is mainly in charge of all Cdp related core processing like collateral & debt accounting, split fee calculation, redemption, etc
 /// @notice Except for redemption, end user typically will interact with BorrowerOeprations for individual Cdp actions
@@ -904,7 +905,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
         Cdps[_cdpId].debt = _debt;
         Cdps[_cdpId].coll = _coll;
         Cdps[_cdpId].status = Status.active;
-        Cdps[_cdpId].liquidatorRewardShares = uint128(_liquidatorRewardShares);
+        Cdps[_cdpId].liquidatorRewardShares = EbtcMath.toUint128(_liquidatorRewardShares);
 
         cdpStEthFeePerUnitIndex[_cdpId] = systemStEthFeePerUnitIndex; /// @audit We critically assume global accounting is synced here
         _updateRedistributedDebtIndex(_cdpId);
