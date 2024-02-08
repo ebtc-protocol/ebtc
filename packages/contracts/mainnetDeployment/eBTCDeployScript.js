@@ -564,7 +564,7 @@ class EBTCDeployerScript {
             [this.lowSecTimelock.address]: [3, 4, 5, 6, 7, 9, 10],
             [this.securityMultisig]: [4],
             [this.cdpTechOpsMultisig]: [4],
-            [this.feeRecipientMultisig]: [6],
+            [this.feeRecipientMultisig]: [7],
         };
         
         // Iterate over the user addresses and set the role numbers
