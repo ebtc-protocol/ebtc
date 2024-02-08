@@ -451,6 +451,13 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         collateral.approve(address(borrowerOperations), funds);
         collateral.deposit{value: funds}();
 
+        bytes32 _cdpId0 = borrowerOperations.openCdp(
+            minChange,
+            bytes32(0),
+            bytes32(0),
+            2293234842987251430
+        );
+
         bytes32 _cdpId1 = borrowerOperations.openCdp(
             4 * minChange,
             bytes32(0),
@@ -598,6 +605,41 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         assert(_zeroNICR > _secondNICR);
         assert(_firstNICR > _fourthNICR);
 
+        vm.stopPrank();
+    }
+
+    function test_RedemptionsRevertWhenTriggerRM() public {
+        (address user, bytes32 userCdpId) = _singleCdpRedemptionSetup();
+        uint256 debt = cdpManager.getCdpDebt(userCdpId);
+
+        (address user2, bytes32 userCdpId2) = _singleCdpRedemptionSetup();
+        uint256 _moreDebt = (cdpManager.getCdpCollShares(userCdpId2) * priceFeedMock.fetchPrice()) /
+            cdpManager.CCR();
+
+        vm.startPrank(user2);
+        borrowerOperations.withdrawDebt(
+            userCdpId2,
+            _moreDebt - cdpManager.getCdpDebt(userCdpId2),
+            bytes32(0),
+            bytes32(0)
+        );
+        vm.stopPrank();
+
+        uint256 _newPrice = (priceFeedMock.fetchPrice() * 8000) / 10000;
+        priceFeedMock.setPrice(_newPrice);
+        require(
+            cdpManager.getSyncedICR(userCdpId, _newPrice) > cdpManager.MCR(),
+            "!no CDP to redeem"
+        );
+        require(
+            cdpManager.getSyncedICR(userCdpId2, _newPrice) < cdpManager.MCR(),
+            "!RM not trigger"
+        );
+
+        _syncSystemDebtTwapToSpotValue();
+        vm.startPrank(user);
+        vm.expectRevert("CdpManager: redemption should not trigger RecoveryMode");
+        cdpManager.redeemCollateral(debt, userCdpId, bytes32(0), bytes32(0), 0, 0, 1e18);
         vm.stopPrank();
     }
 }

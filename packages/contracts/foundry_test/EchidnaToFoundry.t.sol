@@ -853,12 +853,12 @@ contract EToFoundry is
     // https://fuzzy-fyi-output.s3.us-east-1.amazonaws.com/job/5414c08a-742e-49c1-8ca4-40e53b0a339c/logs.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIA46FZI5L426LZ5IFS%2F20230922%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20230922T151344Z&X-Amz-Expires=3600&X-Amz-Signature=ec081f6d369188a914e2fad9bf9d5c505b7a7596b16fe18690fe711bed9da22d&X-Amz-SignedHeaders=host&x-id=GetObject
     function testCdpAgain() public {
         setEthPerShare(1000);
-        openCdp(4524377229654262, 1000);
+        bytes32 _cdp1 = openCdp(4524377229654262, 1000);
         setEthPerShare(590);
         setPrice(62585740236349503659258829433448686991336332142246890573120200334913125020112);
-        openCdp(2657952782541674, 1000);
-        openCdp(172506625533584, 9000);
-        openCdp(
+        bytes32 _cdp2 = openCdp(2657952782541674, 1000);
+        bytes32 _cdp3 = openCdp(172506625533584, 9000);
+        bytes32 _cdp4 = openCdp(
             70904944448444413766718256551751006946686858338215426210784442951345040628276,
             233679843592838171
         );
@@ -867,7 +867,7 @@ contract EToFoundry is
         );
         setPrice(4);
         setEthPerShare(0);
-        openCdp(4828486340510796, 2000);
+        bytes32 _cdp5 = openCdp(4828486340510796, 2000);
         closeCdp(1345287747116898108965462631934150381390299335717054913487485891514232193537);
         closeCdp(26877208931871548936656503713107409645415224744284780026010032151217117725615);
         setEthPerShare(60);
@@ -876,8 +876,19 @@ contract EToFoundry is
         uint256 startValue = _getValue();
 
         _syncSystemDebtTwapToSpotValue();
+
+        uint256 _addedColl = cdpManager.getSyncedCdpCollShares(_cdp4) * 10;
+        uint256 _repaidDebt = cdpManager.getSyncedCdpDebt(_cdp4) - borrowerOperations.MIN_CHANGE();
+        vm.startPrank(sortedCdps.getOwnerAddress(_cdp4));
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+        eBTCToken.approve(address(borrowerOperations), type(uint256).max);
+        collateral.deposit{value: _addedColl}();
+        borrowerOperations.addColl(_cdp4, bytes32(0), bytes32(0), _addedColl);
+        borrowerOperations.repayDebt(_cdp4, _repaidDebt, bytes32(0), bytes32(0));
+        vm.stopPrank();
+
         redeemCollateral(
-            35656245429178740,
+            cdpManager.getSyncedCdpDebt(_cdp2) + cdpManager.getSyncedCdpDebt(_cdp3),
             43,
             704006032010148001431895171996,
             22212171859233866095593919364911988290126468271901060749390510031300370298087
@@ -1122,6 +1133,7 @@ contract EToFoundry is
         );
         openCdp(34478, 1033);
         setPrice(3666795467634520);
+        setEthPerShare((collateral.getPooledEthByShares(1e18) * 9900) / 10000);
         redeemCollateral(
             718780372911491122765826722217049074039388035154418716116265482,
             17268878654132361665102131395058366943707414977184214293359135232785,
@@ -1144,6 +1156,7 @@ contract EToFoundry is
         );
         openCdp(0, 132228045257898500);
         setEthPerShare(399939313310560428087669884029316685484610140132361934700);
+        setEthPerShare((collateral.getPooledEthByShares(1e18) * 7500) / 10000);
         redeemCollateral(
             14137388847110170738427612173732844374034338617940,
             11660283874823652521291225289745565728921299099470,
