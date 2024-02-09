@@ -2998,6 +2998,8 @@ contract('CdpManager', async accounts => {
     // Put Bob's Cdp below 110% ICR
     const price = dec(3714, 13);
     await priceFeed.setPrice(price)
+	
+    await openCdp({ ICR: toBN(dec(10, 18)), extraEBTCAmount: A_debt, extraParams: { from: carol } })
 
     // --- TEST --- 
     await th.syncTwapSystemDebt(contracts, ethers.provider);
@@ -3808,6 +3810,7 @@ contract('CdpManager', async accounts => {
 
 
     const A_balanceBefore = await ebtcToken.balanceOf(A)
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // A redeems 10 EBTC
     await th.redeemCollateral(A, contracts, dec(10, 18), GAS_PRICE)

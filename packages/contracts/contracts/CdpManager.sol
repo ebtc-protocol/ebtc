@@ -489,6 +489,14 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
 
         // CEI: Send the stETH drawn to the redeemer
         activePool.transferSystemCollShares(msg.sender, totals.collSharesToRedeemer);
+
+        // final check if we not in RecoveryMode at redemption start
+        if (!_checkRecoveryModeForTCR(totals.tcrAtStart)) {
+            require(
+                !_checkRecoveryMode(totals.price),
+                "CdpManager: redemption should not trigger RecoveryMode"
+            );
+        }
     }
 
     // --- Helper functions ---
