@@ -9,8 +9,17 @@ contract PriceFeedTester is PriceFeed {
         address _tellorCallerAddress,
         address _authorityAddress,
         address _collEthCLFeed,
-        address _ethBtcCLFeed
-    ) PriceFeed(_tellorCallerAddress, _authorityAddress, _collEthCLFeed, _ethBtcCLFeed) {}
+        address _ethBtcCLFeed,
+        bool _useDynamicFeed
+    )
+        PriceFeed(
+            _tellorCallerAddress,
+            _authorityAddress,
+            _collEthCLFeed,
+            _ethBtcCLFeed,
+            _useDynamicFeed
+        )
+    {}
 
     function setLastGoodPrice(uint256 _lastGoodPrice) external {
         lastGoodPrice = _lastGoodPrice;
@@ -87,16 +96,8 @@ contract PriceFeedTester is PriceFeed {
 
     function formatClAggregateAnswer(
         int256 _ethBtcAnswer,
-        int256 _stEthEthAnswer,
-        uint8 _ethBtcDecimals,
-        uint8 _stEthEthDecimals
+        int256 _stEthEthAnswer
     ) external view returns (uint256) {
-        return
-            _formatClAggregateAnswer(
-                _ethBtcAnswer,
-                _stEthEthAnswer,
-                _ethBtcDecimals,
-                _stEthEthDecimals
-            );
+        return _formatClAggregateAnswer(_ethBtcAnswer, _stEthEthAnswer);
     }
 }

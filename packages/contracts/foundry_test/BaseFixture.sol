@@ -99,6 +99,8 @@ contract eBTCBaseFixture is
         bytes4(keccak256(bytes("setPrimaryOracle(address)")));
     bytes4 public constant SET_SECONDARY_ORACLE_SIG =
         bytes4(keccak256(bytes("setSecondaryOracle(address)")));
+    bytes4 public constant SET_COLLATERAL_FEED_SOURCE_SIG =
+        bytes4(keccak256(bytes("setCollateralFeedSource(bool)")));
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
@@ -147,7 +149,7 @@ contract eBTCBaseFixture is
     */
     function setUp() public virtual {
         console.log("block.timestamp", block.timestamp);
-        vm.warp(1);
+        vm.warp(3);
         _utils = new Utilities();
 
         defaultGovernance = _utils.getNextSpecialAddress();
@@ -375,6 +377,7 @@ contract eBTCBaseFixture is
         authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
+        authority.setRoleCapability(4, address(priceFeedMock), SET_COLLATERAL_FEED_SOURCE_SIG, true);
         authority.setRoleCapability(4, address(ebtcFeed), SET_PRIMARY_ORACLE_SIG, true);
         authority.setRoleCapability(4, address(ebtcFeed), SET_SECONDARY_ORACLE_SIG, true);
 
