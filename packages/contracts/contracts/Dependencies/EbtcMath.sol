@@ -6,13 +6,6 @@ library EbtcMath {
     uint256 internal constant DECIMAL_PRECISION = 1e18;
     uint256 public constant MAX_TCR = type(uint256).max;
 
-    /// credit to OpenZeppelin
-    /// Downcasting from uint256/int256 in Solidity does not revert on overflow. This can
-    /// easily result in undesired exploitation or bugs, since developers usually
-    /// assume that overflows raise errors. `SafeCast` restores this intuition by
-    /// reverting the transaction when such an operation overflows.
-    error SafeCastOverflowedUintDowncast(uint8 bits, uint256 value);
-
     /* Precision for Nominal ICR (independent of price). Rationale for the value:
      *
      * - Making it “too high” could lead to overflows.
@@ -33,6 +26,7 @@ library EbtcMath {
     }
 
     /**
+     * credit to OpenZeppelin
      * @dev Returns the downcasted uint128 from uint256, reverting on
      * overflow (when the input is greater than largest uint128).
      *
@@ -43,9 +37,7 @@ library EbtcMath {
      * - input must fit into 128 bits
      */
     function toUint128(uint256 value) internal pure returns (uint128) {
-        if (value > type(uint128).max) {
-            revert SafeCastOverflowedUintDowncast(128, value);
-        }
+        require(value <= type(uint128).max, "EbtcMath: downcast to uint128 will overflow");
         return uint128(value);
     }
 
