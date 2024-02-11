@@ -776,6 +776,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+            require(invariant_BO_09(cdpManager, priceFeedMock.getPrice(), _cdpId), BO_09);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
