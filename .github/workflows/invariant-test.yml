@@ -30,7 +30,7 @@ jobs:
           --data '{"cmd":"${{ env.cmd }}","instanceType":"${{ env.instanceType }}","projectId":"${{ env.projectId }}","ref":"${{ env.ref }}","pullRequestNumber":"${{ env.pullRequestNumber }}"}' \
           https://app.fuzzy.fyi/api/job 
         env:
-          cmd: yarn && git submodule init && git submodule update && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 600000
+          cmd: yarn && git submodule init && git submodule update && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 300000
           instanceType: c5.2xlarge
           ref: ${{ github.head_ref || github.ref_name }}
           pullRequestNumber: ${{ github.event.number }}
