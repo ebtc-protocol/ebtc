@@ -18,7 +18,6 @@ import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
 import {CRLens} from "../../CRLens.sol";
 import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
 import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
-import "forge-std/console2.sol";
 
 abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, PropertiesConstants {
     function invariant_AP_01(
@@ -335,7 +334,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18;
         uint256 _systemDebt = activePool.getSystemDebt();
 
-        if(cdpManager.lastEBTCDebtErrorRedistribution() % 1e18 > 0) sumOfDebt += 1; // Round up debt
+        if (cdpManager.lastEBTCDebtErrorRedistribution() % 1e18 > 0) sumOfDebt += 1; // Round up debt
 
         return sumOfDebt == _systemDebt;
     }
