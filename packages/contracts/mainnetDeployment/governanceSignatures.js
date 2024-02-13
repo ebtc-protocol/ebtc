@@ -20,6 +20,8 @@ const BURN_SIG = ethers.utils.id('burn(address,uint256)').substring(0, 10);
 const BURN2_SIG = ethers.utils.id('burn(uint256)').substring(0, 10);
 // PriceFeed
 const SET_FALLBACK_CALLER_SIG = ethers.utils.id('setFallbackCaller(address)').substring(0, 10);
+// PriceFeed
+const SET_COLLATERAL_FEED_SOURCE_SIG = ethers.utils.id('setCollateralFeedSource(bool').substring(0, 10);
 // ActivePool & BorrowerOperations
 const SET_FEE_BPS_SIG = ethers.utils.id('setFeeBps(uint256)').substring(0, 10);
 // ActivePool & BorrowerOperations
@@ -58,6 +60,7 @@ module.exports = {
   BURN_SIG,
   BURN2_SIG,
   SET_FALLBACK_CALLER_SIG,
+  SET_COLLATERAL_FEED_SOURCE_SIG,
   SET_FEE_BPS_SIG,
   SET_FLASH_LOANS_PAUSED_SIG,
   SWEEP_TOKEN_SIG,

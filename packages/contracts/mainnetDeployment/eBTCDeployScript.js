@@ -533,6 +533,10 @@ class EBTCDeployerScript {
             ],
             10: [
                 { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
+            ],
+            11: [
+                { target: coreContracts.priceFeed, signature: govSig.SET_COLLATERAL_FEED_SOURCE_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTION_FEE_FLOOR_SIG },
             ]
         };
 
