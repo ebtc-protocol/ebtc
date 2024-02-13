@@ -278,6 +278,7 @@ abstract contract TargetFunctions is Properties {
             if (_icrToLiq <= cdpManager.LICR()) {
                 //bad debt to redistribute
                 lt(cdpManager.lastEBTCDebtErrorRedistribution(), cdpManager.totalStakes(), L_17);
+                totalCdpDustMaxCap += cdpManager.getActiveCdpsCount();
             }
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -441,6 +442,7 @@ abstract contract TargetFunctions is Properties {
             }
             if (_badDebtToRedistribute) {
                 lt(cdpManager.lastEBTCDebtErrorRedistribution(), cdpManager.totalStakes(), L_17);
+                totalCdpDustMaxCap += cdpManager.getActiveCdpsCount();
             }
         } else if (vars.sortedCdpsSizeBefore > _n) {
             if (_atLeastOneCdpIsLiquidatable(cdpsBefore, vars.isRecoveryModeBefore)) {
