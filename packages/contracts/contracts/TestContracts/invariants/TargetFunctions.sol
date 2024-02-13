@@ -372,6 +372,32 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
+    /** Active Pool TWAP Revert Checks */
+    function observe() public {
+        // We verify that any observation will never rever
+        try activePool.observe() {
+
+        } catch {
+            t(false, "Observe Should Never Revert");
+        }
+    }
+
+    function update() public {
+        // We verify that any observation will never rever
+        try activePool.update() {
+
+        } catch {
+            t(false, "Update Should Never Revert");
+        }
+    }
+
+    // TODO: Add the increase and decrease debts
+    
+
+    /** END Active Pool TWAP Revert Checks */
+
+
+
     function liquidateCdps(uint _n) public setup {
         bool success;
         bytes memory returnData;
