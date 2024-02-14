@@ -375,18 +375,14 @@ abstract contract TargetFunctions is Properties {
     /** Active Pool TWAP Revert Checks */
     function observe() public {
         // We verify that any observation will never rever
-        try activePool.observe() {
-
-        } catch {
+        try activePool.observe() {} catch {
             t(false, "Observe Should Never Revert");
         }
     }
 
     function update() public {
         // We verify that any observation will never rever
-        try activePool.update() {
-
-        } catch {
+        try activePool.update() {} catch {
             t(false, "Update Should Never Revert");
         }
     }
@@ -394,8 +390,6 @@ abstract contract TargetFunctions is Properties {
     // NOTE: Added a bunch of stuff in other function to check against overflow reverts
 
     /** END Active Pool TWAP Revert Checks */
-
-
 
     function liquidateCdps(uint _n) public setup {
         bool success;
@@ -1008,7 +1002,7 @@ abstract contract TargetFunctions is Properties {
 
         // Require(success) -> If success, we check same stuff
         // Else we ony verify no overflow
-        if(success) {
+        if (success) {
             _after(_cdpId);
 
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
@@ -1077,8 +1071,7 @@ abstract contract TargetFunctions is Properties {
                 _cdpId
             )
         );
-        if(success) {
-
+        if (success) {
             _after(_cdpId);
 
             eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
