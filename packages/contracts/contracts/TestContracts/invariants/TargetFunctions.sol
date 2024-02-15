@@ -1272,7 +1272,7 @@ abstract contract TargetFunctions is Properties {
         vars.afterStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
 
         if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
-            vars.cumulativeCdpAtTimesOfRedistribution += cdpManager.getActiveCdpsCount();
+            vars.cumulativeCdpsAtTimeOfRebase += cdpManager.getActiveCdpsCount();
         }
     }
 

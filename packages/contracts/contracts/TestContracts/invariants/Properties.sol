@@ -365,15 +365,15 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         sumOfColl -= cdpManager.systemStEthFeePerUnitIndexError() / 1e18;
         uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
 
-        // if (cdpManager.systemStEthFeePerUnitIndexError() % 1e18 > 0) sumOfColl -= 1; // Round down coll
+        if (cdpManager.systemStEthFeePerUnitIndexError() % 1e18 > 0) sumOfColl -= 1; // Round down coll
 
         // sumOfColl can have rounding error
         // And rounding error is capped by:
         // 1 wei of rounding error in systemStEthFeePerUnitIndexError
         // 1 wei for each cdp at each index change (as their index may round down causing them to lose 1 wei of fee split)
         return
-            sumOfColl >= _systemCollShares &&
-            sumOfColl - vars.cumulativeCdpAtTimesOfRedistribution <= _systemCollShares;
+            sumOfColl <= _systemCollShares &&
+            sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
     }
 
     function invariant_GENERAL_08(

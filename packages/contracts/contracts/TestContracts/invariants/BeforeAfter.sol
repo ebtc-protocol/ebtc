@@ -68,7 +68,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 systemDebtRedistributionIndexAfter;
         uint256 feeRecipientCollSharesBalBefore;
         uint256 feeRecipientCollSharesBalAfter;
-        uint256 cumulativeCdpAtTimesOfRedistribution;
+        uint256 cumulativeCdpsAtTimeOfRebase;
         uint256 prevStEthFeeIndex;
         uint256 afterStEthFeeIndex;
     }
@@ -198,7 +198,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.afterStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
 
         if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
-            vars.cumulativeCdpAtTimesOfRedistribution += cdpManager.getActiveCdpsCount();
+            vars.cumulativeCdpsAtTimeOfRebase += cdpManager.getActiveCdpsCount();
         }
     }
 
