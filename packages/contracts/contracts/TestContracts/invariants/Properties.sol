@@ -336,7 +336,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         if (cdpManager.lastEBTCDebtErrorRedistribution() % 1e18 > 0) sumOfDebt += 1; // Round up debt
 
-        return sumOfDebt == _systemDebt;
+        // SumOfDebt can have rounding error
+        // And rounding error is capped by:
+        // 1 wei of rounding error in lastEBTCDebtErrorRedistribution
+        // 1 wei for each cdp at each redistribution (as their index may round down causing them to lose 1 wei of debt)
+        return sumOfDebt <= _systemDebt && sumOfDebt + totalCdpDustMaxCap >= _systemDebt;
     }
 
     function invariant_GENERAL_08(
