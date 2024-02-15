@@ -13,6 +13,7 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/TwapWeightedObserver.sol";
+import "./Dependencies/EbtcMath.sol";
 
 /**
  * @title The Active Pool holds the collateral and EBTC debt (only accounting but not EBTC tokens) for all active cdps.
@@ -203,7 +204,7 @@ contract ActivePool is
 
         uint256 cachedSystemDebt = systemDebt + _amount;
 
-        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
+        _setValue(EbtcMath.toUint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
         update(); // @audit update TWAP Observer accumulator and weighted average
 
         systemDebt = cachedSystemDebt;
@@ -219,7 +220,7 @@ contract ActivePool is
 
         uint256 cachedSystemDebt = systemDebt - _amount;
 
-        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
+        _setValue(EbtcMath.toUint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
         update(); // @audit update TWAP Observer accumulator and weighted average
 
         systemDebt = cachedSystemDebt;
