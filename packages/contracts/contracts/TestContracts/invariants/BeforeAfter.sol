@@ -68,6 +68,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 systemDebtRedistributionIndexAfter;
         uint256 feeRecipientCollSharesBalBefore;
         uint256 feeRecipientCollSharesBalAfter;
+        uint256 cumulativeCdpAtTimesOfRedistribution;
+        uint256 prevStEthFeeIndex;
+        uint256 afterStEthFeeIndex;
     }
 
     Vars vars;
@@ -133,6 +136,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
             ) * vars.priceBefore) /
                 1e18 -
                 vars.activePoolDebtBefore;
+        vars.prevStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -191,6 +195,11 @@ abstract contract BeforeAfter is BaseStorageVariables {
             ) * vars.priceAfter) /
             1e18 -
             vars.activePoolDebtAfter;
+        vars.afterStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
+
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            vars.cumulativeCdpAtTimesOfRedistribution += cdpManager.getActiveCdpsCount();
+        }
     }
 
     function _diff() internal view returns (string memory log) {

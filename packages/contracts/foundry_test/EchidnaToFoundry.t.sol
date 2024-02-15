@@ -1690,6 +1690,43 @@ contract EToFoundry is
         );
     }
 
+    function testGeneral18() public {
+        openCdp(
+            35357598180476335425759222131472247525461475573348969932830848136642645020603,
+            131048
+        );
+        setEthPerShare(
+            41378848040624382584367279927243122469040292223723294238497644873257391261216
+        );
+        addColl(
+            115792089237316195423570985008042581378843437462327153970303678099387767205587,
+            65536
+        );
+        assertTrue(
+            invariant_GENERAL_18(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_18
+        );
+    }
+
+    function testGeneral18_2() public {
+        setEthPerShare(
+            89881518671079703870294276899030806385474893558239050149405390472923682932329
+        );
+        setEthPerShare(4);
+        setEthPerShare(196608);
+        openCdp(
+            98082609205057687186075083011775666459780695153488586950620579228598801350839,
+            65536
+        );
+        setEthPerShare(
+            110340477583465004871149265518320948589227304532207098552888399921786591528718
+        );
+        assertTrue(
+            invariant_GENERAL_18(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_18
+        );
+    }
+
     function testF01() public {
         openCdp(98395894838500698392817722927941537132848065121834445032333865318330537647396, 8);
         setEthPerShare(

@@ -1266,7 +1266,14 @@ abstract contract TargetFunctions is Properties {
             (currentEthPerShare * 1e18) / MAX_REBASE_PERCENT,
             (currentEthPerShare * MAX_REBASE_PERCENT) / 1e18
         );
+        vars.prevStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
         collateral.setEthPerShare(_newEthPerShare);
+        AccruableCdpManager(address(cdpManager)).syncGlobalAccountingInternal();
+        vars.afterStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
+
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            vars.cumulativeCdpAtTimesOfRedistribution += cdpManager.getActiveCdpsCount();
+        }
     }
 
     ///////////////////////////////////////////////////////
