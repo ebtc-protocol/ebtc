@@ -487,4 +487,17 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
     }
+
+    function invariant_BO_09(
+        CdpManager cdpManager,
+        uint256 price,
+        bytes32 cdpId
+    ) internal view returns (bool) {
+        uint256 _icr = cdpManager.getSyncedICR(cdpId, price);
+        if (cdpManager.checkRecoveryMode(price)) {
+            return _icr >= cdpManager.CCR();
+        } else {
+            return _icr >= cdpManager.MCR();
+        }
+    }
 }

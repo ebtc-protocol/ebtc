@@ -62,6 +62,7 @@ abstract contract PropertiesDescriptions {
         "BO-05: When a borrower closes their active CDP, the gas compensation is refunded to the user";
     string constant BO_07 = "BO-07: eBTC tokens are burned upon repayment of a CDP's debt";
     string constant BO_08 = "BO-08: TCR must increase after a repayment";
+    string constant BO_09 = "BO-09: Borrower can not open a CDP that is immediately liquidatable";
 
     ///////////////////////////////////////////////////////
     // General
