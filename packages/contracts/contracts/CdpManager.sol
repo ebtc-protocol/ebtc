@@ -336,13 +336,17 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
             totals.systemCollSharesAtStart = systemCollSharesAtStart;
             totals.systemDebtAtStart = systemDebtAtStart;
 
-            try activePool.observe() returns (uint256 _twapSystemDebtAtStart) {
-                // @audit Return the smaller value of the two, bias towards a larger redemption scaling fee
-                totals.twapSystemDebtAtStart = EbtcMath._min(
-                    _twapSystemDebtAtStart,
-                    systemDebtAtStart
-                );
-            } catch {
+            if (!activePool.twapDisabled()) {
+                try activePool.observe() returns (uint256 _twapSystemDebtAtStart) {
+                    // @audit Return the smaller value of the two, bias towards a larger redemption scaling fee
+                    totals.twapSystemDebtAtStart = EbtcMath._min(
+                        _twapSystemDebtAtStart,
+                        systemDebtAtStart
+                    );
+                } catch {
+                    totals.twapSystemDebtAtStart = systemDebtAtStart;
+                }
+            } else {
                 totals.twapSystemDebtAtStart = systemDebtAtStart;
             }
         }

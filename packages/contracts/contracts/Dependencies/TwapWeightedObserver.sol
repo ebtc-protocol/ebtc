@@ -8,6 +8,7 @@ import {ITwapWeightedObserver} from "../Interfaces/ITwapWeightedObserver.sol";
 contract TwapWeightedObserver is ITwapWeightedObserver {
     PackedData public data;
     uint128 public valueToTrack;
+    bool public twapDisabled;
 
     constructor(uint128 initialValue) {
         PackedData memory cachedData = PackedData({

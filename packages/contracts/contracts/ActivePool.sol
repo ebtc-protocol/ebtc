@@ -205,7 +205,9 @@ contract ActivePool is
         uint256 cachedSystemDebt = systemDebt + _amount;
 
         /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
-        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {}
+        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {
+            twapDisabled = true;
+        }
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
@@ -221,7 +223,9 @@ contract ActivePool is
         uint256 cachedSystemDebt = systemDebt - _amount;
 
         /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
-        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {}
+        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {
+            twapDisabled = true;
+        }
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
