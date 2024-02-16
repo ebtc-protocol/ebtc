@@ -374,14 +374,14 @@ abstract contract TargetFunctions is Properties {
 
     /** Active Pool TWAP Revert Checks */
     function observe() public {
-        // We verify that any observation will never rever
+        // We verify that any observation will never revert
         try activePool.observe() {} catch {
             t(false, "Observe Should Never Revert");
         }
     }
 
     function update() public {
-        // We verify that any observation will never rever
+        // We verify that any observation will never revert
         try activePool.update() {} catch {
             t(false, "Update Should Never Revert");
         }
