@@ -54,9 +54,6 @@ abstract contract BaseStorageVariables {
     CRLens internal crLens;
     Simulator internal simulator;
 
-    // Upper limit for debt redistribution error per CDP per redistribution round
-    uint256 internal totalCdpDustMaxCap;
-
     uint internal constant NUMBER_OF_ACTORS = 3;
     uint internal constant INITIAL_ETH_BALANCE = 1e24;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;

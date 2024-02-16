@@ -1678,59 +1678,6 @@ contract EToFoundry is
         );
     }
 
-    function _checkTotals() internal {
-        bytes32 currentCdp = sortedCdps.getFirst();
-
-        uint256 sumOfDebt;
-        console2.log("start");
-        while (currentCdp != bytes32(0)) {
-            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
-            sumOfDebt += entireDebt;
-            currentCdp = sortedCdps.getNext(currentCdp);
-        }
-        console2.log("end");
-
-        sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18;
-        uint256 _systemDebt = activePool.getSystemDebt();
-
-        if (cdpManager.lastEBTCDebtErrorRedistribution() % 1e18 > 0) sumOfDebt += 1; // Round up debt
-
-        console2.log(
-            "cdpManager.lastEBTCDebtErrorRedistribution()",
-            cdpManager.lastEBTCDebtErrorRedistribution()
-        );
-
-        console2.log("sumOfDebt", sumOfDebt);
-        console2.log("_systemDebt", _systemDebt);
-    }
-
-    function testgeneral17AgainMore() public {
-        setPrice(66531461645193706457886099089185635277164627279739430387883587167892938687437);
-        setPrice(105716364876786618018311136713001242028904091192545034849267737636917345070979);
-        setPrice(2000000);
-        setPrice(105716364876786618018311136713001242028904091192545034849267737636917345070979);
-        // NOTE: Changing the amount of these, changes the redistribution value, up to a limit
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
-        // NOTE: Changing the amount of these, changes the redistribution value, up to a limit
-        openCdp(64, 999037758833783000);
-        setEthPerShare(65891);
-        setEthPerShare(65891);
-        openCdp(
-            115792089237316195423570985008687907853269984665640564039457084007913129639936,
-            10000000000000000
-        );
-        liquidateCdps(
-            115792089237316195423570985008687907853269984665640564039456554007913129639936
-        );
-        _checkTotals();
-    }
-
     function testGeneral17_2() public {
         openCdp(0, 100000000);
         setEthPerShare(
