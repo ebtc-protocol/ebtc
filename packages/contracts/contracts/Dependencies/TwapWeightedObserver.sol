@@ -132,6 +132,12 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
         }
     }
 
+    function setValueAndUpdate(uint128 value) external {
+        require(msg.sender == address(this), "TwapWeightedObserver: Only self call");
+        _setValue(value);
+        update();
+    }
+
     function getData() external view returns (PackedData memory) {
         return data;
     }

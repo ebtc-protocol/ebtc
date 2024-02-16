@@ -204,8 +204,8 @@ contract ActivePool is
 
         uint256 cachedSystemDebt = systemDebt + _amount;
 
-        _setValue(EbtcMath.toUint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
-        update(); // @audit update TWAP Observer accumulator and weighted average
+        /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
+        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {}
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
@@ -220,8 +220,8 @@ contract ActivePool is
 
         uint256 cachedSystemDebt = systemDebt - _amount;
 
-        _setValue(EbtcMath.toUint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
-        update(); // @audit update TWAP Observer accumulator and weighted average
+        /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
+        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {}
 
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
