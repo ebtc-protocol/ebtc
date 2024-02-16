@@ -5,6 +5,8 @@ import {eBTCBaseFixture} from "./BaseFixture.sol";
 import {ActivePoolTester} from "../contracts/TestContracts/ActivePoolTester.sol";
 
 contract ActivePoolTwapAccTest is eBTCBaseFixture {
+    event TwapDisabled();
+
     ActivePoolTester internal apTester;
 
     function setUp() public override {
@@ -97,5 +99,28 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
         // ensure observe is not obviously manipulated by pike
         console.log("new observe=", _obsv);
         assertGt(_diffObsvPike, _diffObsvNormal);
+    }
+
+    function testTwapOverflow() public {
+        assertEq(activePool.twapDisabled(), false);
+
+        address payable[] memory users;
+        users = _utils.createUsers(2);
+
+        vm.warp(1000);
+
+        _openTestCDP(users[0], 5e18, 0.1e18);
+
+        vm.warp(uint256(type(uint64).max) + 1);
+
+        dealCollateral(users[1], 5e18);
+        vm.startPrank(users[1]);
+        collateral.approve(address(borrowerOperations), type(uint256).max);
+
+        vm.expectEmit(false, false, false, false);
+        emit TwapDisabled();
+        borrowerOperations.openCdp(0.1e18, bytes32(0), bytes32(0), 5e18);
+
+        assertEq(activePool.twapDisabled(), true);
     }
 }
