@@ -111,6 +111,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
 
         _openTestCDP(users[0], 5e18, 0.1e18);
 
+        // force TWAP to overflow
         vm.warp(uint256(type(uint64).max) + 1);
 
         dealCollateral(users[1], 5e18);
