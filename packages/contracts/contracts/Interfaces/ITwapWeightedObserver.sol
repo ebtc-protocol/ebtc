@@ -4,7 +4,7 @@ import {IBaseTwapWeightedObserver} from "./IBaseTwapWeightedObserver.sol";
 
 interface ITwapWeightedObserver is IBaseTwapWeightedObserver {
     event TwapDisabled();
-    
+
     function PERIOD() external view returns (uint256);
 
     function valueToTrack() external view returns (uint128);
