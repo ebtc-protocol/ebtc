@@ -110,7 +110,7 @@ contract SyncedLiquidationSequencer is EbtcBase {
         uint256 _icr,
         uint256 _TCR
     ) internal view returns (bool) {
-        bool _liquidatable = _recovery ? (_icr < MCR || _icr < _TCR) : _icr < MCR;
+        bool _liquidatable = _recovery ? (_icr < MCR || _icr <= _TCR) : _icr < MCR;
 
         return _liquidatable;
     }

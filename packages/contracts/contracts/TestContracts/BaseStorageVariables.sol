@@ -65,4 +65,6 @@ abstract contract BaseStorageVariables {
     uint internal constant MAX_PRICE_CHANGE_PERCENT = 1.05e18; //compared to 1e18
     uint internal constant MAX_REBASE_PERCENT = 1.1e18; //compared to 1e18
     uint internal constant MAX_FLASHLOAN_ACTIONS = 4;
+
+    uint256 totalCdpDustMaxCap; // The amount of dust we expect if each cdp will lock in at most 1 wei of error
 }

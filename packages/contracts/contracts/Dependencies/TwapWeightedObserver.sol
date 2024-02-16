@@ -8,6 +8,7 @@ import {ITwapWeightedObserver} from "../Interfaces/ITwapWeightedObserver.sol";
 contract TwapWeightedObserver is ITwapWeightedObserver {
     PackedData public data;
     uint128 public valueToTrack;
+    bool public twapDisabled;
 
     constructor(uint128 initialValue) {
         PackedData memory cachedData = PackedData({
@@ -95,8 +96,9 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
             return virtualAvgValue;
         }
 
-        uint256 weightedAvg = data.lastObservedAverage * (PERIOD - futureWeight);
-        uint256 weightedVirtual = virtualAvgValue * (futureWeight);
+        uint256 weightedAvg = uint256(data.lastObservedAverage) *
+            (uint256(PERIOD) - uint256(futureWeight));
+        uint256 weightedVirtual = uint256(virtualAvgValue) * (uint256(futureWeight));
 
         uint256 weightedMean = (weightedAvg + weightedVirtual) / PERIOD;
 
@@ -129,6 +131,12 @@ contract TwapWeightedObserver is ITwapWeightedObserver {
             (uint128 avgValue, uint128 latestAcc) = _calcUpdatedAvg();
             _update(avgValue, latestAcc);
         }
+    }
+
+    function setValueAndUpdate(uint128 value) external {
+        require(msg.sender == address(this), "TwapWeightedObserver: Only self call");
+        _setValue(value);
+        update();
     }
 
     function getData() external view returns (PackedData memory) {

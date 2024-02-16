@@ -13,6 +13,7 @@ import "./Dependencies/ReentrancyGuard.sol";
 import "./Dependencies/AuthNoOwner.sol";
 import "./Dependencies/BaseMath.sol";
 import "./Dependencies/TwapWeightedObserver.sol";
+import "./Dependencies/EbtcMath.sol";
 
 /**
  * @title The Active Pool holds the collateral and EBTC debt (only accounting but not EBTC tokens) for all active cdps.
@@ -202,10 +203,16 @@ contract ActivePool is
         _requireCallerIsBOorCdpM();
 
         uint256 cachedSystemDebt = systemDebt + _amount;
+        uint128 castedSystemDebt = EbtcMath.toUint128(cachedSystemDebt);
 
-        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
-        update(); // @audit update TWAP Observer accumulator and weighted average
+        if (!twapDisabled) {
+            /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
+            try this.setValueAndUpdate(castedSystemDebt) {} catch {
+                twapDisabled = true;
+            }
+        }
 
+        /// @audit If above uint128 max, will have reverted in safeCast
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
@@ -218,10 +225,16 @@ contract ActivePool is
         _requireCallerIsBOorCdpM();
 
         uint256 cachedSystemDebt = systemDebt - _amount;
+        uint128 castedSystemDebt = EbtcMath.toUint128(cachedSystemDebt);
 
-        _setValue(uint128(cachedSystemDebt)); // @audit update TWAP global spot value and accumulator variable along with a timestamp
-        update(); // @audit update TWAP Observer accumulator and weighted average
+        if (!twapDisabled) {
+            /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
+            try this.setValueAndUpdate(EbtcMath.toUint128(castedSystemDebt)) {} catch {
+                twapDisabled = true;
+            }
+        }
 
+        /// @audit If above uint128 max, will have reverted in safeCast
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
