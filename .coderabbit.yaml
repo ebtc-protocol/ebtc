@@ -127,7 +127,7 @@
                                 {
                                   "type": "array",
                                   "items": { "type": "string" },
-                                  "default": [main, release-0.7rc2, release-0.7],
+                                  "default": ["main", "release-0.7rc2", "release-0.7"],
                                   "description": "A list of base branches, other than the default branch, where reviews will take place. Accepts regex patterns."
                                 }
                             },
