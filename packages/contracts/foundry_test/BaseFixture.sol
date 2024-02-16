@@ -468,6 +468,12 @@ contract eBTCBaseFixture is
         collateral.approve(address(borrowerOperations), type(uint256).max);
         bytes32 _cdpId = borrowerOperations.openCdp(_debt, _upperHint, _lowerHint, _coll);
         vm.stopPrank();
+
+        require(
+            _checkLiquidatablePostOpen(priceFeedMock.fetchPrice(), _cdpId),
+            "BO-09: Borrower can not open a CDP that is immediately liquidatable"
+        );
+
         return _cdpId;
     }
 
@@ -659,4 +665,13 @@ contract eBTCBaseFixture is
         uint256 systemDebtAtStartTwap,
         uint256 systemDebtAtStartUsed
     ) internal {}
+
+    function _checkLiquidatablePostOpen(uint256 price, bytes32 cdpId) internal view returns (bool) {
+        uint256 _icr = cdpManager.getSyncedICR(cdpId, price);
+        if (cdpManager.checkRecoveryMode(price)) {
+            return _icr >= cdpManager.CCR();
+        } else {
+            return _icr >= cdpManager.MCR();
+        }
+    }
 }

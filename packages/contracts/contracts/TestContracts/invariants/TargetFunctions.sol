@@ -797,6 +797,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+            require(invariant_BO_09(cdpManager, priceFeedMock.getPrice(), _cdpId), BO_09);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)"); /// Done
         }
@@ -1291,7 +1292,14 @@ abstract contract TargetFunctions is Properties {
             (currentEthPerShare * 1e18) / MAX_REBASE_PERCENT,
             (currentEthPerShare * MAX_REBASE_PERCENT) / 1e18
         );
+        vars.prevStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
         collateral.setEthPerShare(_newEthPerShare);
+        AccruableCdpManager(address(cdpManager)).syncGlobalAccountingInternal();
+        vars.afterStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
+
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            vars.cumulativeCdpsAtTimeOfRebase += cdpManager.getActiveCdpsCount();
+        }
     }
 
     ///////////////////////////////////////////////////////
