@@ -1,0 +1,146 @@
+{
+  "$ref": "#/definitions/schema",
+  "definitions":
+    {
+      "schema":
+        {
+          "type": "object",
+          "properties":
+            {
+              "language":
+                {
+                  "type": "string",
+                  "default": "en",
+                  "description": "Set the language for reviews by using the corresponding ISO language code."
+                },
+              "early_access":
+                {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Enables early-access features."
+                },
+              "chat":
+                {
+                  "type": "object",
+                  "properties":
+                    {
+                      "auto_reply":
+                        {
+                          "type": "boolean",
+                          "default": true,
+                          "description": "Enables the bot to reply automatically without requiring the user to tag it."
+                        }
+                    },
+                  "additionalProperties": false
+                },
+              "reviews":
+                {
+                  "type": "object",
+                  "properties":
+                    {
+                      "request_changes_workflow":
+                        {
+                          "type": "boolean",
+                          "default": false,
+                          "description": "Enable Request Changes review workflow for CodeRabbit reviews."
+                        },
+                      "high_level_summary":
+                        {
+                          "type": "boolean",
+                          "default": true,
+                          "description": "Generates a high level summary of the changes."
+                        },
+                      "poem":
+                        {
+                          "type": "boolean",
+                          "default": true,
+                          "description": "Indicates whether a creative poem should be included in the review."
+                        },
+                      "review_status":
+                        {
+                          "type": "boolean",
+                          "default": true,
+                          "description": "Indicates the status of the review."
+                        },
+                      "collapse_walkthrough":
+                        {
+                          "type": "boolean",
+                          "default": false,
+                          "description": "Collapses the walkthrough comment."
+                        },
+                      "path_filters":
+                        {
+                          "type": "array",
+                          "items": { "type": "string" },
+                          "default": [],
+                          "description": "Specifies file patterns to exclude or include for a review. Accepts glob patterns."
+                        },
+                      "path_instructions":
+                        {
+                          "type": "array",
+                          "items":
+                            {
+                              "type": "object",
+                              "properties":
+                                {
+                                  "path": { "type": "string" },
+                                  "instructions": { "type": "string" }
+                                },
+                              "required": ["path", "instructions"],
+                              "additionalProperties": false
+                            },
+                          "default": [],
+                          "description": "Specific review instructions for certain file paths.\n\t\t\t\tExample: path_based_instructions:\n\t\t\t\t- path: \"src/**.py\",\n\t\t\t\t\tinstructions: \"Please make sure to add docstrings to all functions and classes\",\n\t\t\t\t- path: \"src/**.js\",\n\t\t\t\t\tinstructions: \"Please make sure to add jsdoc to all functions and classes\". File path accepts glob patterns."
+                        },
+                      "auto_review":
+                        {
+                          "type": "object",
+                          "properties":
+                            {
+                              "enabled":
+                                {
+                                  "type": "boolean",
+                                  "default": true,
+                                  "description": "Automated code review."
+                                },
+                              "ignore_title_keywords":
+                                {
+                                  "type": "array",
+                                  "items": { "type": "string" },
+                                  "default": [],
+                                  "description": "The review will be ignored if the title of the pull request contains any of these keywords."
+                                },
+                              "labels":
+                                {
+                                  "type": "array",
+                                  "items": { "type": "string" },
+                                  "default": [],
+                                  "description": "Restrict automated reviews to only those pull requests that contain one of the specified labels."
+                                },
+                              "drafts":
+                                {
+                                  "type": "boolean",
+                                  "default": false,
+                                  "description": "Determines whether draft pull requests are reviewed."
+                                },
+                              "base_branches":
+                                {
+                                  "type": "array",
+                                  "items": { "type": "string" },
+                                  "default": [main, release-0.7rc2, release-0.7],
+                                  "description": "A list of base branches, other than the default branch, where reviews will take place. Accepts regex patterns."
+                                }
+                            },
+                          "additionalProperties": false
+                        }
+                    },
+                  "required": ["auto_review"],
+                  "additionalProperties": false
+                }
+            },
+          "required": ["chat", "reviews"],
+          "additionalProperties": false
+        }
+    },
+  "$schema": "http://json-schema.org/draft-07/schema#"
+}
