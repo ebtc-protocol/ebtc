@@ -62,6 +62,7 @@ abstract contract PropertiesDescriptions {
         "BO-05: When a borrower closes their active CDP, the gas compensation is refunded to the user";
     string constant BO_07 = "BO-07: eBTC tokens are burned upon repayment of a CDP's debt";
     string constant BO_08 = "BO-08: TCR must increase after a repayment";
+    string constant BO_09 = "BO-09: Borrower can not open a CDP that is immediately liquidatable";
 
     ///////////////////////////////////////////////////////
     // General
@@ -95,6 +96,8 @@ abstract contract PropertiesDescriptions {
         "GENERAL-16: Collateral and debt change amounts should always be greater than MIN_CHANGE (1000 Wei)";
     string constant GENERAL_17 =
         "GENERAL-17: Sum of synced debt values of all Cdps + the stored debt redistribution error accumulator should never be more than the total system debt + 1";
+    string constant GENERAL_18 =
+        "GENERAL-18: Sum of synced coll shares of all Cdps - cumulative errors should never be more than _systemCollShares";
 
     ///////////////////////////////////////////////////////
     // Redemptions
