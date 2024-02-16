@@ -209,6 +209,7 @@ contract ActivePool is
             /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
             try this.setValueAndUpdate(castedSystemDebt) {} catch {
                 twapDisabled = true;
+                emit TwapDisabled();
             }
         }
 
@@ -231,6 +232,7 @@ contract ActivePool is
             /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
             try this.setValueAndUpdate(EbtcMath.toUint128(castedSystemDebt)) {} catch {
                 twapDisabled = true;
+                 emit TwapDisabled();
             }
         }
 
