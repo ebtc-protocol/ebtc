@@ -203,12 +203,16 @@ contract ActivePool is
         _requireCallerIsBOorCdpM();
 
         uint256 cachedSystemDebt = systemDebt + _amount;
+        uint128 castedSystemDebt = EbtcMath.toUint128(cachedSystemDebt);
 
-        /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
-        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {
-            twapDisabled = true;
+        if (!twapDisabled) {
+            /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
+            try this.setValueAndUpdate(castedSystemDebt) {} catch {
+                twapDisabled = true;
+            }
         }
 
+        /// @audit If above uint128 max, will have reverted in safeCast
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
@@ -221,12 +225,16 @@ contract ActivePool is
         _requireCallerIsBOorCdpM();
 
         uint256 cachedSystemDebt = systemDebt - _amount;
+        uint128 castedSystemDebt = EbtcMath.toUint128(cachedSystemDebt);
 
-        /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
-        try this.setValueAndUpdate(EbtcMath.toUint128(cachedSystemDebt)) {} catch {
-            twapDisabled = true;
+        if (!twapDisabled) {
+            /// @audit If TWAP fails it should allow transaction to continue. Failure is preferrable to permanent DOS and can practically be mitigated by managing the redemption baseFee.
+            try this.setValueAndUpdate(EbtcMath.toUint128(castedSystemDebt)) {} catch {
+                twapDisabled = true;
+            }
         }
 
+        /// @audit If above uint128 max, will have reverted in safeCast
         systemDebt = cachedSystemDebt;
         emit ActivePoolEBTCDebtUpdated(cachedSystemDebt);
     }
