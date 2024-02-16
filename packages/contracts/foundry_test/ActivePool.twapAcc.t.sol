@@ -120,6 +120,7 @@ contract ActivePoolTwapAccTest is eBTCBaseFixture {
         vm.expectEmit(false, false, false, false);
         emit TwapDisabled();
         borrowerOperations.openCdp(0.1e18, bytes32(0), bytes32(0), 5e18);
+        vm.stopPrank();
 
         assertEq(activePool.twapDisabled(), true);
     }
