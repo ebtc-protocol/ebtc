@@ -6,7 +6,6 @@ test = 'foundry_test'
 cache_path  = 'forge-cache'
 gas_reports = ["*"]
 no_match_contract = 'Echidna'
-evm_version = 'london'
 
 evm_version = 'london'
 
