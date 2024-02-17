@@ -6,6 +6,7 @@ test = 'foundry_test'
 cache_path  = 'forge-cache'
 gas_reports = ["*"]
 no_match_contract = 'Echidna'
+evm_version = 'london'
 
 [fuzz]
 max_test_rejects=2147483647
