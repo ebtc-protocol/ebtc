@@ -376,6 +376,10 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
     }
 
+    function invariant_GENERAL_19(ActivePool activePool) internal view returns (bool) {
+        return !activePool.twapDisabled();
+    }
+
     function invariant_GENERAL_08(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
