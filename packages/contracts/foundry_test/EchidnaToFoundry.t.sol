@@ -34,6 +34,73 @@ contract EToFoundry is
         vm.startPrank(address(actor));
     }
 
+    function _checkTotals() internal {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18;
+        uint256 _systemDebt = activePool.getSystemDebt();
+
+        if (cdpManager.lastEBTCDebtErrorRedistribution() % 1e18 > 0) sumOfDebt += 1; // Round up debt
+
+        console2.log(
+            "cdpManager.lastEBTCDebtErrorRedistribution()",
+            cdpManager.lastEBTCDebtErrorRedistribution()
+        );
+
+        console2.log("sumOfDebt", sumOfDebt);
+        console2.log("_systemDebt", _systemDebt);
+    }
+
+    function testgeneral17AgainByOneWei() public {
+        setPrice(105716364876786618018311136713001242028904091192545034849267737636917345070979);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(64, 999037758833783000);
+        setEthPerShare(65891);
+        openCdp(
+            115792089237316195423570985008687907853269984665640564039457084007913129639936,
+            10000000000000000
+        );
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039457584007913129443328
+        );
+        setEthPerShare(1000000000000000000000);
+        liquidate(109095556486030365862869780353695935221442416434573719619520634414909095307866);
+        _checkTotals();
+    }
+
+    function testgeneral17AgainMore() public {
+        setPrice(66531461645193706457886099089185635277164627279739430387883587167892938687437);
+        setPrice(105716364876786618018311136713001242028904091192545034849267737636917345070979);
+        setPrice(2000000);
+        setPrice(105716364876786618018311136713001242028904091192545034849267737636917345070979);
+        // NOTE: Changing the amount of these, changes the redistribution value, up to a limit
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        openCdp(48208118611277045854468138204394981259094887602417600019611914873258245340495, 3707);
+        // NOTE: Changing the amount of these, changes the redistribution value, up to a limit
+        openCdp(64, 999037758833783000);
+        setEthPerShare(65891);
+        setEthPerShare(65891);
+        openCdp(
+            115792089237316195423570985008687907853269984665640564039457084007913129639936,
+            10000000000000000
+        );
+        liquidateCdps(
+            115792089237316195423570985008687907853269984665640564039456554007913129639936
+        );
+        _checkTotals();
+    }
+
     function testPropertySL05ViaSplitCompareBroken() public {
         openCdp(16197885815696368879720681653477338690355059549524354304240887819103932625910, 2090);
         _logRatiosForStakeAndColl();
@@ -51,7 +118,9 @@ contract EToFoundry is
         _logRatiosForStakeAndColl();
         _logStakes();
 
-        withdrawColl(1000, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        withdrawColl(1000, 528117742564021316393271938428361066789996829083);
+
+        /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
         _logRatiosForStakeAndColl();
         _logStakes();
 
@@ -86,7 +155,9 @@ contract EToFoundry is
         _logStakes();
         _syncAllCdps();
 
-        withdrawColl(1000, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        withdrawColl(1000, 528117742564021316393271938428361066789996829083);
+
+        /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
         _logRatiosForStakeAndColl();
         _logStakes();
 
@@ -118,7 +189,8 @@ contract EToFoundry is
         console2.log("");
         console2.log("2");
         _logRatiosForStakeAndColl();
-        withdrawColl(1000, 528117742564021316393271938428361066789996829083); /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
+        withdrawColl(1000, 528117742564021316393271938428361066789996829083);
+        /// TODO: Must be an issue with how re-insertion happens | or how stake is recomputed virtually?
         _syncAllCdps();
         console2.log("");
         console2.log("3");
@@ -495,7 +567,6 @@ contract EToFoundry is
      *     3) EchidnaTester.setEthPerShare(1000000000000000000) (block=28684, time=979712, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
      *     4) EchidnaTester.addColl(16, 115792089237316195423570985008687907853269984665640564039457584007913129508864) (block=54621, ti
      */
-
     function testBo03() public {
         setEthPerShare(
             31656099540918703381915350012813182642308405422272958668865762453755205317560
@@ -526,7 +597,6 @@ contract EToFoundry is
      *     7) EchidnaTester.liquidateCdps(2) (block=74280, time=1191523, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
      *     8) EchidnaTester.redeemCollateral(46569391515833093424627317458962525217707765577058029473090855375431272918988, 0, 14229479364104465894069837803513832929478804353344870192956752971009762732884, 84531756315918705342020165315694316831239657177696340854927806097286510294339) (block=130886, time=1730710, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
      */
-
     function testCdpm04() public {
         bytes32 firstCdp = openCdp(1999999999998000000, 9000);
         setEthPerShare(1250000000000000000);
@@ -665,15 +735,15 @@ contract EToFoundry is
         }
 
         /**
-        PYTHON
-        >>> activePoolCollBefore = 11166023933140299463
-        >>> collSurplusPoolBefore = 0
-        >>> feeRecipientTotalCollBefore = 0
-        >>> activePoolDebtBefore = 392223419614173403
-        >>> activePoolCollAfter = 8251456769332992047
-        >>> collSurplusPoolAfter = 640951562503257069
-        >>> feeRecipientTotalCollAfter = 441787493250854661
-        >>> activePoolDebtAfter = 260972099767576354
+         * PYTHON
+         *     >>> activePoolCollBefore = 11166023933140299463
+         *     >>> collSurplusPoolBefore = 0
+         *     >>> feeRecipientTotalCollBefore = 0
+         *     >>> activePoolDebtBefore = 392223419614173403
+         *     >>> activePoolCollAfter = 8251456769332992047
+         *     >>> collSurplusPoolAfter = 640951562503257069
+         *     >>> feeRecipientTotalCollAfter = 441787493250854661
+         *     >>> activePoolDebtAfter = 260972099767576354
          */
         _syncSystemDebtTwapToSpotValue();
         redeemCollateral(
@@ -766,24 +836,23 @@ contract EToFoundry is
     }
 
     /**
-        TODO: ECHIDNA
-        setEthPerShare(1000) Time delay: 127761 seconds Block delay: 9880
-    openCdp(4524377229654262,1)
-    setEthPerShare(590)
-    setPrice(62585740236349503659258829433448686991336332142246890573120200334913125020112) Time delay: 444463 seconds Block delay: 30040
-    openCdp(2657952782541674,1)
-    openCdp(172506625533584,9)
-    openCdp(70904944448444413766718256551751006946686858338215426210784442951345040628276,233679843592838171)
-    setEthPerShare(30760764109311844204706504954759457409868061391948563936927790118012690823836) Time delay: 504709 seconds Block delay: 43002
-    setPrice(4)
-    setEthPerShare(0)
-    openCdp(4828486340510796,2)
-    closeCdp(1345287747116898108965462631934150381390299335717054913487485891514232193537)
-    closeCdp(26877208931871548936656503713107409645415224744284780026010032151217117725615)
-    setEthPerShare(60)
-    liquidate(4) Time delay: 19105 seconds Block delay: 183
-    redeemCollateral(2494964906324939450636487309639740620040425748472758226468879113711198275036,43,704006032010148001431895171996,22212171859233866095593919364911988290126468271901060749390510031300370298087) Time delay: 119384 seconds Block delay: 23684
-
+     * TODO: ECHIDNA
+     *     setEthPerShare(1000) Time delay: 127761 seconds Block delay: 9880
+     * openCdp(4524377229654262,1)
+     * setEthPerShare(590)
+     * setPrice(62585740236349503659258829433448686991336332142246890573120200334913125020112) Time delay: 444463 seconds Block delay: 30040
+     * openCdp(2657952782541674,1)
+     * openCdp(172506625533584,9)
+     * openCdp(70904944448444413766718256551751006946686858338215426210784442951345040628276,233679843592838171)
+     * setEthPerShare(30760764109311844204706504954759457409868061391948563936927790118012690823836) Time delay: 504709 seconds Block delay: 43002
+     * setPrice(4)
+     * setEthPerShare(0)
+     * openCdp(4828486340510796,2)
+     * closeCdp(1345287747116898108965462631934150381390299335717054913487485891514232193537)
+     * closeCdp(26877208931871548936656503713107409645415224744284780026010032151217117725615)
+     * setEthPerShare(60)
+     * liquidate(4) Time delay: 19105 seconds Block delay: 183
+     * redeemCollateral(2494964906324939450636487309639740620040425748472758226468879113711198275036,43,704006032010148001431895171996,22212171859233866095593919364911988290126468271901060749390510031300370298087) Time delay: 119384 seconds Block delay: 23684
      */
 
     /**
@@ -954,7 +1023,6 @@ contract EToFoundry is
      *     13) EchidnaTester.openCdp(110953018886617049369109243176193885383860427032951825314358709007138889273943, 4) (block=205390, time=2672554, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000010000)
      *     14) EchidnaTester.closeCdp(57413278564244504453191656087298467315431246439675010725238485654181166168124) (block=228276, time=3033171, gas=12500000, gasprice=1, value=0, sender=0x0000000000000000000000000000000000030000)
      */
-
     function testBrokenInvariantFive() external {
         setEthPerShare(
             86688896451552136001225523381455512999487671226724657278887281953146484774479
@@ -1585,6 +1653,120 @@ contract EToFoundry is
         _after(bytes32(0));
         console2.log(_diff());
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
+    }
+
+    function testGeneral17() public {
+        setPrice(113290725923451524724356926138082459205154590681450821768273750342902011457932);
+        openCdp(
+            115792089237316195423570985008687907853269984665640564039457584007913129508864,
+            100000000
+        );
+        openCdp(
+            28948022309329048855892746252171976963317496166410141009864396001978282409734,
+            200000000000000000
+        );
+        setEthPerShare(
+            31735769616524395083995028322181402724486341350527511744003181326679136061166
+        );
+        setEthPerShare(
+            62622310682895150159023052880898850878003969927411138828796317124390154450120
+        );
+        liquidateCdps(64);
+        assertTrue(
+            invariant_GENERAL_17(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_17
+        );
+    }
+
+    function testGeneral17_2() public {
+        openCdp(0, 100000000);
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640564039457584007913129638936
+        );
+        setEthPerShare(65543);
+        openCdp(
+            115792089237316195423570985008687907853269984665640564039456334007913129639936,
+            2000000000000000000
+        );
+        setPrice(9);
+        setEthPerShare(9073366200816670898827846852506157770751051048310993308850639627861531120402);
+        addColl(
+            115792089237316195423570985008687907853269984665640564039455584007913129639936,
+            50000000000000000
+        );
+        openCdp(
+            115792089237316195423570985008687907853269984665640564039456334007913129639936,
+            2000000000000000000
+        );
+        liquidateCdps(10000000000040);
+        assertTrue(
+            invariant_GENERAL_17(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_17
+        );
+    }
+
+    function testGeneral18() public {
+        openCdp(
+            35357598180476335425759222131472247525461475573348969932830848136642645020603,
+            131048
+        );
+        setEthPerShare(
+            41378848040624382584367279927243122469040292223723294238497644873257391261216
+        );
+        addColl(
+            115792089237316195423570985008042581378843437462327153970303678099387767205587,
+            65536
+        );
+        assertTrue(
+            invariant_GENERAL_18(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_18
+        );
+    }
+
+    function testGeneral18_2() public {
+        setEthPerShare(
+            89881518671079703870294276899030806385474893558239050149405390472923682932329
+        );
+        setEthPerShare(4);
+        setEthPerShare(196608);
+        openCdp(
+            98082609205057687186075083011775666459780695153488586950620579228598801350839,
+            65536
+        );
+        setEthPerShare(
+            110340477583465004871149265518320948589227304532207098552888399921786591528718
+        );
+        assertTrue(
+            invariant_GENERAL_18(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_18
+        );
+    }
+
+    function testGeneral18_3() public {
+        setPrice(54034647401270903295545791093822934497171069320685591447013803729574173270809);
+        openCdp(
+            45994989394881359558968610615983134041399772754466865355223201575889591278454,
+            10000000000000
+        );
+        setEthPerShare(
+            110532071391236473925887386944857060438434526712714149135906429005455428365235
+        );
+        openCdp(
+            23296362395378560093099268507145392444895022300991733391630636005168007228774,
+            999999999999999999
+        );
+        setEthPerShare(604808);
+        addColl(
+            1273085944690585089466618884538704481757146938342,
+            2132524454544532321315156004876673629691851012102650250243630269465940056809
+        );
+        setEthPerShare(
+            37362851543251067775919514327973949078245144412556408849910124037308176161094
+        );
+        assertTrue(
+            invariant_GENERAL_18(cdpManager, sortedCdps, priceFeedMock, collateral),
+            GENERAL_18
+        );
     }
 
     function testF01() public {

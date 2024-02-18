@@ -32,6 +32,10 @@ contract AccruableCdpManager is CdpManager {
         // require(block.chainid != 1, "No prod!!!!"); /// @audit CANNOT SET, PLS HAAAALP
     }
 
+    function syncGlobalAccountingInternal() external {
+        _syncGlobalAccounting();
+    }
+
     function syncAccounting(bytes32 _cdpId) external virtual override {
         return _syncAccounting(_cdpId);
     }
