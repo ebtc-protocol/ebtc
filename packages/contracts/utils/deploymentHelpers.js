@@ -250,14 +250,14 @@ class DeploymentHelper {
   }
 
   static async deployDualChainlinkPriceFeed(ebtcDeployer, _expectedAddr, _collEthCLFeed, _ethBtcCLFeed) {
-    const _argTypes = ['address', 'address', 'address', 'address'];
-    const _argValues = [ethers.constants.AddressZero, _expectedAddr[0], _collEthCLFeed, _ethBtcCLFeed];// use address(0) for IFallbackCaller
+    const _argTypes = ['address', 'address', 'address', 'address', 'bool'];
+    const _argValues = [ethers.constants.AddressZero, _expectedAddr[0], _collEthCLFeed, _ethBtcCLFeed, false];// use address(0) for IFallbackCaller
 
     const _salt = await ebtcDeployer.PRICE_FEED();
     const _deployedAddr = await this.deployViaCreate3(ebtcDeployer, _argTypes, _argValues, PriceFeed, _salt);
     console.log(_deployedAddr)
     assert.isTrue(_deployedAddr == _expectedAddr[4]);
-    return await PriceFeedTestnet.at(_deployedAddr);
+    return await PriceFeed.at(_deployedAddr);
   }
 
   static async deployEbtcFeed(ebtcDeployer, _expectedAddr) {

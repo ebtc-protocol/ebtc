@@ -54,6 +54,7 @@ class EBTCDeployerScript {
 
         this.collEthCLFeed = checkValidItem(configParams.externalAddress['collEthCLFeed']) ? configParams.externalAddress['collEthCLFeed'] : deployerWallet.address;
         this.ethBtcCLFeed = checkValidItem(configParams.externalAddress['ethBtcCLFeed']) ? configParams.externalAddress['ethBtcCLFeed'] : deployerWallet.address;
+        this.chainlinkAdapter = checkValidItem(configParams.externalAddress['chainlinkAdapter']) ? configParams.externalAddress['chainlinkAdapter'] : deployerWallet.address;    
     }
 
     async verifyState(_checkExistDeployment, _stateName, _constructorArgs) {
@@ -89,7 +90,7 @@ class EBTCDeployerScript {
             _deployedState = await DeploymentHelper.deployEBTCToken(ebtcDeployer, _expectedAddr);
         } else if (_stateName == PRICE_FEED_STATE_NAME) {
             _deployedState = useMockPriceFeed ? await DeploymentHelper.deployPriceFeedTestnet(ebtcDeployer, _expectedAddr) :
-                await DeploymentHelper.deployDualChainlinkPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.ethBtcCLFeed);
+                await DeploymentHelper.deployDualChainlinkPriceFeed(ebtcDeployer, _expectedAddr, this.collEthCLFeed, this.chainlinkAdapter);
         } else if (_stateName == EBTC_FEED_STATE_NAME) {
             _deployedState = await DeploymentHelper.deployEbtcFeed(ebtcDeployer, _expectedAddr);
         } else if (_stateName == ACTIVE_POOL_STATE_NAME) {
@@ -257,7 +258,7 @@ class EBTCDeployerScript {
 
         // deploy priceFeed
         console.log(chalk.cyan("[PriceFeed]"))
-        _constructorArgs = this.useMockPriceFeed ? [_expectedAddr[0]] : [ethers.constants.AddressZero, _expectedAddr[0], this.collEthCLFeed, this.ethBtcCLFeed];
+        _constructorArgs = this.useMockPriceFeed ? [_expectedAddr[0]] : [ethers.constants.AddressZero, _expectedAddr[0], this.collEthCLFeed, this.chainlinkAdapter, false];
         let priceFeed = await this.deployOrLoadState(PRICE_FEED_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy ebtcFeed
@@ -267,7 +268,7 @@ class EBTCDeployerScript {
 
         // deploy activePool
         console.log(chalk.cyan("[ActivePool]"))
-        _constructorArgs = [_expectedAddr[3], _expectedAddr[2], this.collateralAddr, _expectedAddr[7], this.feeRecipientMultisig];
+        _constructorArgs = [_expectedAddr[3], _expectedAddr[2], this.collateralAddr, _expectedAddr[7]];
         let activePool = await this.deployOrLoadState(ACTIVE_POOL_STATE_NAME, _expectedAddr, _constructorArgs);
 
         // deploy collSurplusPool

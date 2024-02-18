@@ -1,4 +1,9 @@
 const externalAddress  = {
+  "collEthCLFeed": "0x007C2f192D648cBe79Ef3CC5A3DaB43D7D8c893e",
+  "btcUsdCLFeed": "",
+  "ethUsdCLFeed": "",
+  "chainlinkAdapter": "",
+  "authorityOwner": "0xC8A7768D2a9EE15437c981a7130268622083c2BD",// security multisig
   "collateral": "0x97BA9AA7B7DC74f7a74864A62c4fF93b2b22f015", //sepolia
   "securityMultisig": "0xC8A7768D2a9EE15437c981a7130268622083c2BD", //sepolia
   "cdpTechOpsMultisig": "0x664F43229dDa9fdEE00e723753f88f3Ba81967F6", //sepolia
@@ -20,8 +25,8 @@ const ETHERSCAN_BASE_URL = 'https://sepolia.etherscan.io/address'
 const HIGHSEC_MIN_DELAY = 600 // 10 mins
 const LOWSEC_MIN_DELAY = 300 // 5 mins
 
-const ADDITIONAL_HIGHSEC_ADMIN = ""
-const ADDITIONAL_LOWSEC_ADMIN = ""
+const ADDITIONAL_HIGHSEC_ADMIN = "0xC8A7768D2a9EE15437c981a7130268622083c2BD" // security msig
+const ADDITIONAL_LOWSEC_ADMIN = "0xC8A7768D2a9EE15437c981a7130268622083c2BD" // security msig
 
 module.exports = {
   OUTPUT_FILE,

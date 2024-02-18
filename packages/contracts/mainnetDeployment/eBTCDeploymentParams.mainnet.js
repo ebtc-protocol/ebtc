@@ -1,9 +1,13 @@
 const externalAddress  = {
   "collateral": "0xae7ab96520de3a18e5e111b5eaab095312d7fe84",//mainnet
   "collEthCLFeed": "0x86392dC19c0b719886221c78AB11eb8Cf5c52812",//mainnet
-  "ethBtcCLFeed": "0xAc559F25B1619171CbC396a50854A3240b6A4e99",//mainnet
-  "authorityOwner": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
-  "feeRecipientMultisig": "0xB65cef03b9B89f99517643226d76e286ee999e77",//mainnet badger dev multisig
+  "btcUsdCLFeed": "0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c",
+  "ethUsdCLFeed": "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
+  "authorityOwner": "",// security multisig
+  "securityMultisig": "", //mainnet
+  "cdpTechOpsMultisig": "", //mainnet
+  "feeRecipientMultisig": "", //mainnet
+  "treasuryVaultMultisig": "", //mainnet
 }
 
 const OUTPUT_FILE = './mainnetDeployment/eBTCMainnetDeploymentOutput.json'
