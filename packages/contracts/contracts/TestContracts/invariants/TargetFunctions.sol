@@ -41,7 +41,7 @@ abstract contract TargetFunctions is Properties {
         uint256 ans;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.getPrice();
+        uint256 _price = priceFeedMock.fetchPrice();
 
         while (currentCdp != bytes32(0)) {
             if (cdpManager.getCachedICR(currentCdp, _price) < cdpManager.MCR()) {
@@ -54,12 +54,12 @@ abstract contract TargetFunctions is Properties {
         return ans;
     }
 
-    function _getCdpIdsAndICRs() internal view returns (Cdp[] memory ans) {
+    function _getCdpIdsAndICRs() internal returns (Cdp[] memory ans) {
         ans = new Cdp[](sortedCdps.getSize());
         uint256 i = 0;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.getPrice();
+        uint256 _price = priceFeedMock.fetchPrice();
 
         while (currentCdp != bytes32(0)) {
             uint256 _currentCdpDebt = cdpManager.getSyncedCdpDebt(currentCdp);
@@ -179,7 +179,7 @@ abstract contract TargetFunctions is Properties {
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getCachedICR(_cId, priceFeedMock.getPrice()) < cdpManager.MCR()
+            cdpManager.getCachedICR(_cId, priceFeedMock.fetchPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -225,7 +225,7 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
-        uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.getPrice());
+        uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.fetchPrice());
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
@@ -531,7 +531,7 @@ abstract contract TargetFunctions is Properties {
         _before(_cdpId);
 
         {
-            uint price = priceFeedMock.getPrice();
+            uint price = priceFeedMock.fetchPrice();
 
             (bytes32 firstRedemptionHintVal, uint256 partialRedemptionHintNICR, , ) = hintHelpers
                 .getRedemptionHints(_EBTCAmount, price, _maxIterations);
@@ -722,7 +722,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         // we pass in CCR instead of MCR in case it's the first one
-        uint price = priceFeedMock.getPrice();
+        uint price = priceFeedMock.fetchPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
@@ -797,7 +797,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
-            require(invariant_BO_09(cdpManager, priceFeedMock.getPrice(), _cdpId), BO_09);
+            require(invariant_BO_09(cdpManager, priceFeedMock.fetchPrice(), _cdpId), BO_09);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)"); /// Done
         }
@@ -1285,7 +1285,7 @@ abstract contract TargetFunctions is Properties {
     // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
-    function setEthPerShare(uint256 _newEthPerShare) public {
+    function setEthPerShare(uint256 _newEthPerShare) public virtual {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = between(
             _newEthPerShare,
@@ -1307,7 +1307,7 @@ abstract contract TargetFunctions is Properties {
     ///////////////////////////////////////////////////////
 
     function setPrice(uint256 _newPrice) public virtual {
-        uint256 currentPrice = priceFeedMock.getPrice();
+        uint256 currentPrice = priceFeedMock.fetchPrice();
         _newPrice = between(
             _newPrice,
             (currentPrice * 1e18) / MAX_PRICE_CHANGE_PERCENT,

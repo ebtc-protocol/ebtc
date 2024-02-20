@@ -23,4 +23,9 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
     function setGovernanceParameters(uint256, uint256) public pure override {
         require(false, "Skip. TODO: call hevm.store to bypass timelock");
     }
+
+    function setEthPerShare(uint256) public pure override {
+        require(false, "Skip. TODO: call hevm.store to seth ETH per share");
+    }
+
 }
