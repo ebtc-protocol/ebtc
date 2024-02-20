@@ -14,4 +14,13 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         hevm.roll(19258626);
         hevm.warp(1708307303);
     }
+
+    function setPrice(uint256) public pure override {
+        require(false, "Skip. TODO: call hevm.store to update the price");
+    }
+
+
+    function setGovernanceParameters(uint256, uint256) public pure override {
+        require(false, "Skip. TODO: call hevm.store to bypass timelock");
+    }
 }

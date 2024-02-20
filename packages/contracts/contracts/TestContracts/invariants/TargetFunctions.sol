@@ -1306,7 +1306,7 @@ abstract contract TargetFunctions is Properties {
     // PriceFeed
     ///////////////////////////////////////////////////////
 
-    function setPrice(uint256 _newPrice) public {
+    function setPrice(uint256 _newPrice) public virtual {
         uint256 currentPrice = priceFeedMock.getPrice();
         _newPrice = between(
             _newPrice,
@@ -1320,7 +1320,7 @@ abstract contract TargetFunctions is Properties {
     // Governance
     ///////////////////////////////////////////////////////
 
-    function setGovernanceParameters(uint256 parameter, uint256 value) public {
+    function setGovernanceParameters(uint256 parameter, uint256 value) public virtual {
         parameter = between(parameter, 0, 6);
 
         if (parameter == 0) {

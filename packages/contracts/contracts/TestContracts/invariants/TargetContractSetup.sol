@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 import "@crytic/properties/contracts/util/Hevm.sol";
 
-import "../../Interfaces/ICdpManagerData.sol";
 import "../../Dependencies/SafeMath.sol";
 import "../../CdpManager.sol";
 import "../AccruableCdpManager.sol";
@@ -340,13 +339,13 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     function _setUpFork() internal {
         defaultGovernance = address(0x0);
         ebtcDeployer = EBTCDeployer(0xA93A9CBBD47AA7B57853D460f442E2de2FB1dA4D);
-        collateral = CollateralTokenTester(payable(0x0));
+        collateral = CollateralTokenTester(payable(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // stETH
         {
             authority = Governor(0x93d4f82903B87E94796Ec3665efa5f67F2072c6e);
             liqudationLibrary = LiquidationLibrary(0x55262e1128FafD9Bb0B0fD59A8998c13299c4AD4);
             cdpManager = CdpManager(0x3c672ee8e13Cde7617923658138B111e157C8997);
             borrowerOperations = BorrowerOperations(0x99c4ea5d7aDF5d115c85AEEDD98Bd26DdBa714Cb);
-            priceFeedMock = PriceFeedTestnet(address(0x0));
+            priceFeedMock = PriceFeedTestnet(address(0x4039ca03Ce49021655c9B7C52Ab817d42DB7325e)); // PriceFeed
             sortedCdps = SortedCdps(0x6cb99cF839c5AD3C24431c85da5Fdb7c7ab66d97);
             activePool = ActivePool(0x1e3Bf0965dca89Cd057d63c0cD65A37Acf920590);
             collSurplusPool = CollSurplusPool(0x596EfaF17dFb3fd2CAE7543Ffa399F6e31658E4D);
@@ -385,7 +384,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             assert(success);
             (success, ) = actors[addresses[i]].proxy(
                 address(collateral),
-                abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
+                "",
                 INITIAL_COLL_BALANCE
             );
             assert(success);
