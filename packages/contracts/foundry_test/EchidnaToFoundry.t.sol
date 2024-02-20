@@ -25,13 +25,16 @@ contract EToFoundry is
 {
     modifier setup() override {
         _;
+        address sender = uint160(msg.sender) % 3 == 0
+            ? address(USER1)
+            : uint160(msg.sender) % 3 == 1 ? address(USER2) : address(USER3);
+        actor = actors[sender];
     }
 
     function setUp() public {
         _setUp();
         _setUpActors();
-        actor = actors[USER1];
-        vm.startPrank(address(actor));
+        actor = actors[address(USER1)];
     }
 
     function _checkTotals() internal {
