@@ -19,7 +19,6 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         require(false, "Skip. TODO: call hevm.store to update the price");
     }
 
-
     function setGovernanceParameters(uint256, uint256) public pure override {
         require(false, "Skip. TODO: call hevm.store to bypass timelock");
     }
@@ -27,5 +26,4 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
     function setEthPerShare(uint256) public pure override {
         require(false, "Skip. TODO: call hevm.store to seth ETH per share");
     }
-
 }

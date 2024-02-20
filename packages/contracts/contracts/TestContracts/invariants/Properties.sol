@@ -15,7 +15,7 @@ import {PriceFeedTestnet} from "../testnet/PriceFeedTestnet.sol";
 import {ICdpManagerData} from "../../Interfaces/ICdpManagerData.sol";
 import {BeforeAfter} from "./BeforeAfter.sol";
 import {PropertiesDescriptions} from "./PropertiesDescriptions.sol";
-import {CRLens} from "../../CRLens.sol";
+import {CRLens} from "../CRLens.sol";
 import {LiquidationSequencer} from "../../LiquidationSequencer.sol";
 import {SyncedLiquidationSequencer} from "../../SyncedLiquidationSequencer.sol";
 

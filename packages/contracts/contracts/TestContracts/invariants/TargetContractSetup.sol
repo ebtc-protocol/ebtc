@@ -315,7 +315,11 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             authority.setUserRole(defaultGovernance, 4, true);
             authority.setUserRole(defaultGovernance, 5, true);
 
-            crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+            crLens = new CRLens(
+                address(cdpManager),
+                address(borrowerOperations),
+                address(priceFeedMock)
+            );
 
             liquidationSequencer = new LiquidationSequencer(
                 address(cdpManager),
@@ -353,7 +357,11 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             eBTCToken = EBTCTokenTester(0xead18fD27CAa1CFf909B5f2BD26ac9a46a6Ab1b5);
             feeRecipient = FeeRecipient(0x522ef088d94BD2125eC47F0967bf5B4E79Af4ed8);
 
-            crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+            crLens = new CRLens(
+                address(cdpManager),
+                address(borrowerOperations),
+                address(priceFeedMock)
+            );
 
             liquidationSequencer = new LiquidationSequencer(
                 address(cdpManager),
@@ -382,11 +390,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actors[addresses[i]] = new Actor(tokens, callers);
             (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
             assert(success);
-            (success, ) = actors[addresses[i]].proxy(
-                address(collateral),
-                "",
-                INITIAL_COLL_BALANCE
-            );
+            (success, ) = actors[addresses[i]].proxy(address(collateral), "", INITIAL_COLL_BALANCE);
             assert(success);
             actorsArray[i] = actors[addresses[i]];
         }
