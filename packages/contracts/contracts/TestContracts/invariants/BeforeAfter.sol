@@ -10,6 +10,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
     using Pretty for bool;
 
     struct Vars {
+        uint256 userSurplusBefore;
+        uint256 userSurplusAfter;
         uint256 valueInSystemBefore;
         uint256 valueInSystemAfter;
         uint256 nicrBefore;
@@ -82,6 +84,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _before(bytes32 _cdpId) internal {
         vars.priceBefore = priceFeedMock.fetchPrice();
 
+        address ownerToCheck = sortedCdps.getOwnerAddress(_cdpId);
+        vars.userSurplusBefore = collSurplusPool.getSurplusCollShares(ownerToCheck);
+
         (uint256 debtBefore, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
@@ -140,6 +145,9 @@ abstract contract BeforeAfter is BaseStorageVariables {
     }
 
     function _after(bytes32 _cdpId) internal {
+        address ownerToCheck = sortedCdps.getOwnerAddress(_cdpId);
+        vars.userSurplusAfter = collSurplusPool.getSurplusCollShares(ownerToCheck);
+
         vars.priceAfter = priceFeedMock.fetchPrice();
 
         vars.nicrAfter = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;

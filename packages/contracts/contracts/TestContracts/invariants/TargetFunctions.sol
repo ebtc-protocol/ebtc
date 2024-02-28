@@ -226,6 +226,7 @@ abstract contract TargetFunctions is Properties {
         _before(_cdpId);
 
         uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.getPrice());
+        
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
@@ -234,6 +235,11 @@ abstract contract TargetFunctions is Properties {
         _after(_cdpId);
 
         if (success) {
+            
+            // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: Proxy of growth, storage var would further refine
+            gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1");
+            gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2");
+
             // if ICR >= TCR then we ignore
             // We could check that Liquidated is not above TCR
             if (
@@ -421,6 +427,9 @@ abstract contract TargetFunctions is Properties {
         _after(bytes32(0));
 
         if (success) {
+            // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: We use Liquidate for the exact CDP check
+            gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1");
+
             Cdp[] memory cdpsAfter = _getCdpIdsAndICRs();
 
             Cdp[] memory cdpsLiquidated = _cdpIdsAndICRsDiff(cdpsBefore, cdpsAfter);
