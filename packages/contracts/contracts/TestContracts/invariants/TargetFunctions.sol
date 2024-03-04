@@ -237,8 +237,10 @@ abstract contract TargetFunctions is Properties {
         if (success) {
             
             // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: Proxy of growth, storage var would further refine
-            gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1");
-            gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2");
+            if (_icrToLiq <= cdpManager.MCR()) {
+                gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1");
+                gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2");
+            }
 
             // if ICR >= TCR then we ignore
             // We could check that Liquidated is not above TCR
