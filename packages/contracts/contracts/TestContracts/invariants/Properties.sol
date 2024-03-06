@@ -117,6 +117,61 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
     }
 
+    function invariant_CDPM_07(Vars memory vars) internal view returns (bool) {
+        if (vars.cdpCollAfter < vars.cdpCollBefore) {
+            return vars.cdpStakeAfter < vars.cdpStakeBefore;
+        }
+        return true;
+    }
+
+    function invariant_CDPM_08(Vars memory vars) internal view returns (bool) {
+        if (vars.cdpCollAfter > vars.cdpCollBefore) {
+            return vars.cdpStakeAfter > vars.cdpStakeBefore;
+        }
+        return true;
+    }
+
+    function invariant_CDPM_09(Vars memory vars) internal view returns (bool) {
+        return
+            vars.cdpStakeAfter ==
+            (vars.cdpCollAfter * vars.totalStakesSnapshotAfter) / vars.totalCollateralSnapshotAfter;
+    }
+
+    function invariant_CDPM_10(
+        CdpManager cdpManager,
+        Vars memory vars
+    ) internal view returns (bool) {
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            return cdpManager.totalStakesSnapshot() == vars.totalStakesAfter;
+        }
+        return true;
+    }
+
+    function invariant_CDPM_11(
+        CdpManager cdpManager,
+        Vars memory vars
+    ) internal view returns (bool) {
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            return cdpManager.totalCollateralSnapshot() == vars.totalCollateralSnapshotAfter;
+        }
+        return true;
+    }
+
+    function invariant_CDPM_12(
+        SortedCdps sortedCdps,
+        Vars memory vars
+    ) internal view returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumStakes;
+        while (currentCdp != bytes32(0)) {
+            sumStakes += cdpManager.getCdpStake(currentCdp);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        return sumStakes == vars.totalStakesAfter;
+    }
+
     function invariant_CSP_01(
         ICollateralToken collateral,
         CollSurplusPool collSurplusPool
