@@ -131,12 +131,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    function invariant_CDPM_09(Vars memory vars) internal view returns (bool) {
-        return
-            vars.cdpStakeAfter ==
-            (vars.cdpCollAfter * vars.totalStakesSnapshotAfter) / vars.totalCollateralSnapshotAfter;
-    }
-
     function invariant_CDPM_10(
         CdpManager cdpManager,
         Vars memory vars

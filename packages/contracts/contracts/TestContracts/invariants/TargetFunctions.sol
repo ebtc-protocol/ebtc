@@ -534,6 +534,8 @@ abstract contract TargetFunctions is Properties {
         uint _maxFeePercentage,
         uint _maxIterations
     ) internal {
+        require(cdpManager.getActiveCdpsCount() > 1, "Cannot redeem last CDP");
+
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
 
         _maxIterations = between(_maxIterations, 0, 10);
