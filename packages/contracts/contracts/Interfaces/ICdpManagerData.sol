@@ -81,7 +81,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,
-        partiallyLiquidate
+        partiallyLiquidate,
+        failedPartialRedemption
     }
 
     enum Status {

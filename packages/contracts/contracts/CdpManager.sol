@@ -193,6 +193,19 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 newDebt < MIN_CHANGE
             ) {
                 _updateStakeAndTotalStakes(_redeemColFromCdp.cdpId);
+
+                emit CdpUpdated(
+                    _redeemColFromCdp.cdpId,
+                    ISortedCdps(sortedCdps).getOwnerAddress(_redeemColFromCdp.cdpId),
+                    msg.sender,
+                    _oldDebtAndColl.debt,
+                    _oldDebtAndColl.collShares,
+                    _oldDebtAndColl.debt,
+                    _oldDebtAndColl.collShares,
+                    Cdps[_redeemColFromCdp.cdpId].stake,
+                    CdpOperation.failedPartialRedemption
+                );
+
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
