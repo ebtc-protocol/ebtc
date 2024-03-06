@@ -192,6 +192,7 @@ contract CdpManager is CdpManagerStorage, ICdpManager, Proxy {
                 collateral.getPooledEthByShares(newColl) < MIN_NET_STETH_BALANCE ||
                 newDebt < MIN_CHANGE
             ) {
+                _updateStakeAndTotalStakes(_redeemColFromCdp.cdpId);
                 singleRedemption.cancelledPartial = true;
                 return singleRedemption;
             }
