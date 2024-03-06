@@ -466,7 +466,7 @@ abstract contract TargetFunctions is Properties {
                 }
             }
             // At most, each liquidate cdp must generate 4 wei of rounding error in the surplus
-            if(cdpsWithSurplus == 0) {
+            if(!hasCdpWithSurplus) {
                 gte(vars.collSurplusPoolBefore + 12 * cdpsLiquidated.length, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_12");
                 gte(vars.collSurplusPoolBefore + 8 * cdpsLiquidated.length, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_8");
                 gte(vars.collSurplusPoolBefore + 4 * cdpsLiquidated.length, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_4");                
