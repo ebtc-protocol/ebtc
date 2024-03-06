@@ -238,7 +238,11 @@ abstract contract TargetFunctions is Properties {
             // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: Proxy of growth, storage var would further refine
 
             if (_icrToLiq <= cdpManager.MCR()) {
-                gte(vars.collSurplusPoolBefore + 12, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_12");
+                gte(
+                    vars.collSurplusPoolBefore + 12,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_12"
+                );
                 gte(vars.userSurplusBefore + 12, vars.userSurplusAfter, "SURPLUS-CHECK-2_12");
 
                 gte(vars.collSurplusPoolBefore + 8, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_8");
@@ -465,15 +469,26 @@ abstract contract TargetFunctions is Properties {
                 }
             }
             // At most, each liquidate cdp must generate 4 wei of rounding error in the surplus
-            if(!hasCdpWithSurplus) {
-                gte(vars.collSurplusPoolBefore + 12 * cdpsLiquidated.length, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_12");
-                gte(vars.collSurplusPoolBefore + 8 * cdpsLiquidated.length, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_8");
-                gte(vars.collSurplusPoolBefore + 4 * cdpsLiquidated.length, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_4");                
+            if (!hasCdpWithSurplus) {
+                gte(
+                    vars.collSurplusPoolBefore + 12 * cdpsLiquidated.length,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_12"
+                );
+                gte(
+                    vars.collSurplusPoolBefore + 8 * cdpsLiquidated.length,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_8"
+                );
+                gte(
+                    vars.collSurplusPoolBefore + 4 * cdpsLiquidated.length,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_4"
+                );
             }
 
-
             // If all Cdps Liquidated are below 10% then we check surplus is at most 4 wei
-            // We 
+            // We
 
             if (
                 vars.lastGracePeriodStartTimestampIsSetBefore &&
