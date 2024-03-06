@@ -21,7 +21,7 @@ import {CollateralTokenTester} from "./CollateralTokenTester.sol";
 import {Governor} from "../Governor.sol";
 import {EBTCDeployer} from "../EBTCDeployer.sol";
 import {Actor} from "./invariants/Actor.sol";
-import {CRLens} from "../CRLens.sol";
+import {CRLens} from "./CRLens.sol";
 import {Simulator} from "./invariants/Simulator.sol";
 
 abstract contract BaseStorageVariables {

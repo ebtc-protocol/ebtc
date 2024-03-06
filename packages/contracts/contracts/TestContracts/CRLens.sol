@@ -2,17 +2,22 @@
 
 pragma solidity 0.8.17;
 
-import "./Interfaces/IPriceFeed.sol";
-import "./Interfaces/ICdpManager.sol";
+import "@crytic/properties/contracts/util/Hevm.sol";
+
+import "../Interfaces/IPriceFeed.sol";
+import "../Interfaces/IBorrowerOperations.sol";
+import "../Interfaces/ICdpManager.sol";
 
 /// @notice The contract allows to check real CR of Cdps
 ///   Acknowledgement: https://github.com/Uniswap/v3-periphery/blob/main/contracts/lens/Quoter.sol
 contract CRLens {
     ICdpManager public immutable cdpManager;
+    IBorrowerOperations public immutable borrowerOperations;
     IPriceFeed public immutable priceFeed;
 
-    constructor(address _cdpManager, address _priceFeed) {
+    constructor(address _cdpManager, address _borrowerOperations, address _priceFeed) {
         cdpManager = ICdpManager(_cdpManager);
+        borrowerOperations = IBorrowerOperations(_borrowerOperations);
         priceFeed = IPriceFeed(_priceFeed);
     }
 
@@ -42,6 +47,7 @@ contract CRLens {
     /// @notice Return the ICR of a CDP after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     function getRealICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
+        hevm.prank(address(borrowerOperations));
         cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
         uint256 icr = cdpManager.getCachedICR(cdpId, price);
@@ -60,6 +66,7 @@ contract CRLens {
     /// @notice Return the ICR of a CDP after the fee split
     /// @dev Call this from offChain with `eth_call` to avoid paying for gas
     function getRealNICR(bytes32 cdpId, bool revertValue) external returns (uint256) {
+        hevm.prank(address(borrowerOperations));
         cdpManager.syncAccounting(cdpId);
         uint price = priceFeed.fetchPrice();
         uint256 icr = cdpManager.getCachedNominalICR(cdpId);
