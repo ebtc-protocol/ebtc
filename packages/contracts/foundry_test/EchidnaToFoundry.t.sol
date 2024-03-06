@@ -25,13 +25,16 @@ contract EToFoundry is
 {
     modifier setup() override {
         _;
+        address sender = uint160(msg.sender) % 3 == 0 ? address(USER1) : uint160(msg.sender) % 3 == 1
+            ? address(USER2)
+            : address(USER3);
+        actor = actors[sender];
     }
 
     function setUp() public {
         _setUp();
         _setUpActors();
-        actor = actors[USER1];
-        vm.startPrank(address(actor));
+        actor = actors[address(USER1)];
     }
 
     function _checkTotals() internal {
@@ -221,9 +224,17 @@ contract EToFoundry is
     function _logStakes() internal {
         bytes32 currentCdp = sortedCdps.getFirst();
 
+        console2.log("=== LogStakes ===");
+
+        uint256 currentPrice = priceFeedMock.fetchPrice();
+        uint256 currentPricePerShare = collateral.getPooledEthByShares(1 ether);
+        console2.log("currentPrice", currentPrice);
+        console2.log("currentPricePerShare", currentPricePerShare);
+
         while (currentCdp != bytes32(0)) {
             emit DebugBytes32(currentCdp);
             console2.log("CdpId", vm.toString(currentCdp));
+            console2.log("===============================");
             console2.log("cdpManager.getCdpStake(currentCdp)", cdpManager.getCdpStake(currentCdp));
             console2.log(
                 "cdpManager.getSyncedCdpCollShares(currentCdp)",
@@ -239,7 +250,16 @@ contract EToFoundry is
                 "cdpManager.getSyncedNominalICR(currentCdp)",
                 cdpManager.getSyncedNominalICR(currentCdp)
             );
+            console2.log(
+                "cdpManager.getCachedICR(currentCdp, currentPrice)",
+                cdpManager.getCachedICR(currentCdp, currentPrice)
+            );
+            console2.log(
+                "cdpManager.getSyncedICR(currentCdp, currentPrice)",
+                cdpManager.getSyncedICR(currentCdp, currentPrice)
+            );
             currentCdp = sortedCdps.getNext(currentCdp);
+            console2.log("");
         }
 
         console2.log(
@@ -1653,6 +1673,23 @@ contract EToFoundry is
         _after(bytes32(0));
         console2.log(_diff());
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
+    }
+
+    function test_debugTheLiquidation() public {
+        openCdp(3979204251130340497718654781931317513776851992409413887935202910391326, 1000);
+        openCdp(
+            3306424426048366109580062000503759874070670921097371866772152350788399154439,
+            1069959377727045012
+        );
+        _logStakes();
+        setEthPerShare(0);
+        _logStakes();
+        liquidateCdps(0);
+        vm.warp(block.timestamp + 902);
+        liquidateCdps(0);
+        _logStakes();
+
+        _checkTotals();
     }
 
     function testGeneral17() public {
