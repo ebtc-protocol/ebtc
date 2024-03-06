@@ -225,7 +225,7 @@ contract EToFoundry is
         bytes32 currentCdp = sortedCdps.getFirst();
 
         console2.log("=== LogStakes ===");
-        
+
         uint256 currentPrice = priceFeedMock.fetchPrice();
         uint256 currentPricePerShare = collateral.getPooledEthByShares(1 ether);
         console2.log("currentPrice", currentPrice);
@@ -1676,8 +1676,11 @@ contract EToFoundry is
     }
 
     function test_debugTheLiquidation() public {
-        openCdp(3979204251130340497718654781931317513776851992409413887935202910391326,1000);
-        openCdp(3306424426048366109580062000503759874070670921097371866772152350788399154439,1069959377727045012);
+        openCdp(3979204251130340497718654781931317513776851992409413887935202910391326, 1000);
+        openCdp(
+            3306424426048366109580062000503759874070670921097371866772152350788399154439,
+            1069959377727045012
+        );
         _logStakes();
         setEthPerShare(0);
         _logStakes();
