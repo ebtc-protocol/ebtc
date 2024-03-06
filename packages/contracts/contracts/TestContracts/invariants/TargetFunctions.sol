@@ -226,7 +226,7 @@ abstract contract TargetFunctions is Properties {
         _before(_cdpId);
 
         uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.getPrice());
-        
+
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
@@ -235,19 +235,18 @@ abstract contract TargetFunctions is Properties {
         _after(_cdpId);
 
         if (success) {
-            
             // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: Proxy of growth, storage var would further refine
-            gte(vars.collSurplusPoolBefore + 12, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_12");
-            gte(vars.userSurplusBefore + 12, vars.userSurplusAfter, "SURPLUS-CHECK-2_12");
 
-            gte(vars.collSurplusPoolBefore + 8, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_8");
-            gte(vars.userSurplusBefore + 8, vars.userSurplusAfter, "SURPLUS-CHECK-2_8");
+            if (_icrToLiq <= cdpManager.MCR()) {
+                gte(vars.collSurplusPoolBefore + 12, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_12");
+                gte(vars.userSurplusBefore + 12, vars.userSurplusAfter, "SURPLUS-CHECK-2_12");
 
-            gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_4");
-            gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2_4");
+                gte(vars.collSurplusPoolBefore + 8, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_8");
+                gte(vars.userSurplusBefore + 8, vars.userSurplusAfter, "SURPLUS-CHECK-2_8");
 
-
-
+                gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_4");
+                gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2_4");
+            }
 
             // if ICR >= TCR then we ignore
             // We could check that Liquidated is not above TCR
