@@ -282,7 +282,7 @@ abstract contract TargetFunctions is Properties {
                 totalCdpDustMaxCap += cdpManager.getActiveCdpsCount();
             }
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -375,7 +375,15 @@ abstract contract TargetFunctions is Properties {
         }
     }
 
-    function _check_CDPM_09() private {
+    function _checkStakeInvariants() private {
+        if (vars.cdpCollAfter < vars.cdpCollBefore) {
+            lt(vars.cdpStakeAfter, vars.cdpStakeBefore, CDPM_07);
+        }
+
+        if (vars.cdpCollAfter > vars.cdpCollBefore) {
+            gt(vars.cdpStakeAfter, vars.cdpStakeBefore, CDPM_08);
+        }
+
         if (vars.totalCollateralSnapshotAfter > 0) {
             eq(
                 vars.cdpStakeAfter,
@@ -480,7 +488,7 @@ abstract contract TargetFunctions is Properties {
                 totalCdpDustMaxCap += cdpManager.getActiveCdpsCount();
             }
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else if (vars.sortedCdpsSizeBefore > _n) {
             if (_atLeastOneCdpIsLiquidatable(cdpsBefore, vars.isRecoveryModeBefore)) {
                 assertRevertReasonNotEqual(returnData, "Panic(17)");
@@ -629,7 +637,7 @@ abstract contract TargetFunctions is Properties {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
 
-        _check_CDPM_09();
+        _checkStakeInvariants();
     }
 
     ///////////////////////////////////////////////////////
@@ -688,7 +696,7 @@ abstract contract TargetFunctions is Properties {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
 
-        _check_CDPM_09();
+        _checkStakeInvariants();
     }
 
     ///////////////////////////////////////////////////////
@@ -744,7 +752,7 @@ abstract contract TargetFunctions is Properties {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
 
-        _check_CDPM_09();
+        _checkStakeInvariants();
     }
 
     function openCdp(uint256 _col, uint256 _EBTCAmount) public setup returns (bytes32 _cdpId) {
@@ -829,7 +837,7 @@ abstract contract TargetFunctions is Properties {
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
             require(invariant_BO_09(cdpManager, priceFeedMock.getPrice(), _cdpId), BO_09);
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)"); /// Done
         }
@@ -931,7 +939,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_coll, borrowerOperations.MIN_CHANGE(), GENERAL_16);
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1003,7 +1011,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1077,7 +1085,7 @@ abstract contract TargetFunctions is Properties {
             gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1151,7 +1159,7 @@ abstract contract TargetFunctions is Properties {
             gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1229,7 +1237,7 @@ abstract contract TargetFunctions is Properties {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
 
-            _check_CDPM_09();
+            _checkStakeInvariants();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -1318,7 +1326,7 @@ abstract contract TargetFunctions is Properties {
         }
         gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
 
-        _check_CDPM_09();
+        _checkStakeInvariants();
     }
 
     ///////////////////////////////////////////////////////

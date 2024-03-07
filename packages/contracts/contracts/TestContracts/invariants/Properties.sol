@@ -117,20 +117,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
     }
 
-    function invariant_CDPM_07(Vars memory vars) internal view returns (bool) {
-        if (vars.cdpCollAfter < vars.cdpCollBefore) {
-            return vars.cdpStakeAfter < vars.cdpStakeBefore;
-        }
-        return true;
-    }
-
-    function invariant_CDPM_08(Vars memory vars) internal view returns (bool) {
-        if (vars.cdpCollAfter > vars.cdpCollBefore) {
-            return vars.cdpStakeAfter > vars.cdpStakeBefore;
-        }
-        return true;
-    }
-
     function invariant_CDPM_10(CdpManager cdpManager) internal view returns (bool) {
         if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
             return cdpManager.totalStakesSnapshot() == cdpManager.totalStakes();

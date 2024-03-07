@@ -90,15 +90,15 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _before(bytes32 _cdpId) internal {
         vars.priceBefore = priceFeedMock.fetchPrice();
 
-        (uint256 debtBefore, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrBefore = _cdpId != bytes32(0)
             ? cdpManager.getCachedICR(_cdpId, vars.priceBefore)
             : 0;
-        vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
+        vars.cdpCollBefore = _cdpId != bytes32(0) ? collBefore : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
-        vars.cdpStakeBefore = _cdpId != bytes32(0) ? cdpManager.getCdpStake(_cdpId) : 0;
+        vars.cdpStakeBefore = _cdpId != bytes32(0) ? crLens.getRealStake(_cdpId) : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
@@ -155,11 +155,13 @@ abstract contract BeforeAfter is BaseStorageVariables {
     function _after(bytes32 _cdpId) internal {
         vars.priceAfter = priceFeedMock.fetchPrice();
 
+        (, uint256 collAfter) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+
         vars.nicrAfter = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getCachedICR(_cdpId, vars.priceAfter) : 0;
-        vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
+        vars.cdpCollAfter = _cdpId != bytes32(0) ? collAfter : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
-        vars.cdpStakeAfter = _cdpId != bytes32(0) ? cdpManager.getCdpStake(_cdpId) : 0;
+        vars.cdpStakeAfter = _cdpId != bytes32(0) ? crLens.getRealStake(_cdpId) : 0;
         vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
