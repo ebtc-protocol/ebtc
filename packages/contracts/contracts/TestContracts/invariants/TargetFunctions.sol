@@ -26,7 +26,6 @@ import "./BeforeAfter.sol";
 import "./TargetContractSetup.sol";
 import "./Asserts.sol";
 import "../BaseStorageVariables.sol";
-import "forge-std/console2.sol";
 
 abstract contract TargetFunctions is Properties {
     modifier setup() virtual {
