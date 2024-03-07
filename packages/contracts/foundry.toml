@@ -13,3 +13,7 @@ evm_version = 'london'
 [fuzz]
 max_test_rejects=2147483647
 runs=200
+
+remappings = [
+    "@crytic/=lib/"
+]
