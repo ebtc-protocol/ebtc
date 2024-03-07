@@ -370,35 +370,21 @@ abstract contract TargetFunctions is Properties {
 
             gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
-
-            _check_CDPM_09();
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
     }
 
     function _check_CDPM_09() private {
-        console2.log("cdpStakeAfter", vars.cdpStakeAfter);
-        console2.log("cdpCollAfter", vars.cdpCollAfter);
-        console2.log("cdpManager.totalStakes()", cdpManager.totalStakes());
-        console2.log("cdpManager.getSystemCollShares()", cdpManager.getSystemCollShares());
-        console2.log("cdpManager.totalStakesSnapshot()", cdpManager.totalStakesSnapshot());
-        console2.log("cdpManager.totalCollateralSnapshot()", cdpManager.totalCollateralSnapshot());
-        console2.log("totalStakesSnapshotAfter", vars.totalStakesSnapshotAfter);
-        console2.log("totalCollateralSnapshotAfter", vars.totalCollateralSnapshotAfter);
-
         if (vars.totalCollateralSnapshotAfter > 0) {
             eq(
                 vars.cdpStakeAfter,
-                (vars.cdpCollAfter * vars.totalStakesSnapshotAfter) / vars.totalCollateralSnapshotAfter,
+                (vars.cdpCollAfter * vars.totalStakesSnapshotAfter) /
+                    vars.totalCollateralSnapshotAfter,
                 CDPM_09
             );
         } else {
-            eq(
-                vars.cdpStakeAfter,
-                vars.cdpCollAfter,
-                CDPM_09
-            );
+            eq(vars.cdpStakeAfter, vars.cdpCollAfter, CDPM_09);
         }
     }
 
