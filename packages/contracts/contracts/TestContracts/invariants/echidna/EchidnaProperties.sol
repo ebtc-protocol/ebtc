@@ -49,11 +49,11 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
     }
 
     function echidna_cdp_manager_invariant_10() public returns (bool) {
-        return invariant_CDPM_10(cdpManager, vars);
+        return invariant_CDPM_10(cdpManager);
     }
 
     function echidna_cdp_manager_invariant_11() public returns (bool) {
-        return invariant_CDPM_11(cdpManager, vars);
+        return invariant_CDPM_11(cdpManager);
     }
 
     function echidna_cdp_manager_invariant_12() public returns (bool) {

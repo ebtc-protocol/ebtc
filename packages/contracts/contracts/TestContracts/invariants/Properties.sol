@@ -131,22 +131,16 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    function invariant_CDPM_10(
-        CdpManager cdpManager,
-        Vars memory vars
-    ) internal view returns (bool) {
+    function invariant_CDPM_10(CdpManager cdpManager) internal view returns (bool) {
         if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
-            return cdpManager.totalStakesSnapshot() == vars.totalStakesAfter;
+            return cdpManager.totalStakesSnapshot() == cdpManager.totalStakes();
         }
         return true;
     }
 
-    function invariant_CDPM_11(
-        CdpManager cdpManager,
-        Vars memory vars
-    ) internal view returns (bool) {
+    function invariant_CDPM_11(CdpManager cdpManager) internal view returns (bool) {
         if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
-            return cdpManager.totalCollateralSnapshot() == vars.totalCollateralSnapshotAfter;
+            return cdpManager.totalCollateralSnapshot() == cdpManager.getSystemCollShares();
         }
         return true;
     }
