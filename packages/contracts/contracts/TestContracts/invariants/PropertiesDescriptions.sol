@@ -28,6 +28,16 @@ abstract contract PropertiesDescriptions {
     string constant CDPM_04 = "CDPM-04: The total system value does not decrease during redemptions";
     string constant CDPM_05 = "CDPM-05: Redemptions do not increase the total system debt";
     string constant CDPM_06 = "CDPM-06: Redemptions do not increase the total system debt";
+    string constant CDPM_07 = "CDPM-07: Stake decreases when collShares decreases for a CDP";
+    string constant CDPM_08 = "CDPM-08: Stake increases when collShares increases for a CDP";
+    string constant CDPM_09 =
+        "CDPM-09: expectedStake = coll * totalStakesSnapshot / totalCollateralSnapshot after every operation involving a CDP";
+    string constant CDPM_10 =
+        "CDPM-10: totalStakesSnapshot matches totalStakes after an operation, if rebase index changed during the OP";
+    string constant CDPM_11 =
+        "CDPM-11: totalCollateralSnapshot matches activePool.systemCollShares after an operation, if rebase index changed during the OP";
+    string constant CDPM_12 =
+        "CDPM-12: Sum of all individual CDP stakes should equal to totalStakes";
 
     ///////////////////////////////////////////////////////
     // Collateral Surplus Pool
