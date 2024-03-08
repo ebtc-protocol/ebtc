@@ -1675,23 +1675,6 @@ contract EToFoundry is
         assertTrue(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
-    function test_debugTheLiquidation() public {
-        openCdp(3979204251130340497718654781931317513776851992409413887935202910391326, 1000);
-        openCdp(
-            3306424426048366109580062000503759874070670921097371866772152350788399154439,
-            1069959377727045012
-        );
-        _logStakes();
-        setEthPerShare(0);
-        _logStakes();
-        liquidateCdps(0);
-        vm.warp(block.timestamp + 902);
-        liquidateCdps(0);
-        _logStakes();
-
-        _checkTotals();
-    }
-
     function testGeneral17() public {
         setPrice(113290725923451524724356926138082459205154590681450821768273750342902011457932);
         openCdp(
