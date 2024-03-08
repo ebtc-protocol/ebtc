@@ -25,13 +25,16 @@ contract EToFoundry is
 {
     modifier setup() override {
         _;
+        address sender = uint160(msg.sender) % 3 == 0 ? address(USER1) : uint160(msg.sender) % 3 == 1
+            ? address(USER2)
+            : address(USER3);
+        actor = actors[sender];
     }
 
     function setUp() public {
         _setUp();
         _setUpActors();
-        actor = actors[USER1];
-        vm.startPrank(address(actor));
+        actor = actors[address(USER1)];
     }
 
     function _checkTotals() internal {
@@ -221,9 +224,17 @@ contract EToFoundry is
     function _logStakes() internal {
         bytes32 currentCdp = sortedCdps.getFirst();
 
+        console2.log("=== LogStakes ===");
+
+        uint256 currentPrice = priceFeedMock.fetchPrice();
+        uint256 currentPricePerShare = collateral.getPooledEthByShares(1 ether);
+        console2.log("currentPrice", currentPrice);
+        console2.log("currentPricePerShare", currentPricePerShare);
+
         while (currentCdp != bytes32(0)) {
             emit DebugBytes32(currentCdp);
             console2.log("CdpId", vm.toString(currentCdp));
+            console2.log("===============================");
             console2.log("cdpManager.getCdpStake(currentCdp)", cdpManager.getCdpStake(currentCdp));
             console2.log(
                 "cdpManager.getSyncedCdpCollShares(currentCdp)",
@@ -239,7 +250,16 @@ contract EToFoundry is
                 "cdpManager.getSyncedNominalICR(currentCdp)",
                 cdpManager.getSyncedNominalICR(currentCdp)
             );
+            console2.log(
+                "cdpManager.getCachedICR(currentCdp, currentPrice)",
+                cdpManager.getCachedICR(currentCdp, currentPrice)
+            );
+            console2.log(
+                "cdpManager.getSyncedICR(currentCdp, currentPrice)",
+                cdpManager.getSyncedICR(currentCdp, currentPrice)
+            );
             currentCdp = sortedCdps.getNext(currentCdp);
+            console2.log("");
         }
 
         console2.log(
