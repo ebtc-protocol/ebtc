@@ -75,6 +75,16 @@ contract CRLens {
         return icr;
     }
 
+    function getRealStake(bytes32 cdpId) external returns (uint256) {
+        cdpManager.syncAccounting(cdpId);
+        uint256 collShares = cdpManager.getCdpCollShares(cdpId);
+        return
+            cdpManager.totalCollateralSnapshot() == 0
+                ? collShares
+                : (collShares * cdpManager.totalStakesSnapshot()) /
+                    cdpManager.totalCollateralSnapshot();
+    }
+
     /// @dev Returns 1 if we're in RM
     function getCheckRecoveryMode(bool revertValue) external returns (uint256) {
         // Synch State

@@ -36,6 +36,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 cdpCollAfter;
         uint256 cdpDebtBefore;
         uint256 cdpDebtAfter;
+        uint256 cdpStakeBefore;
+        uint256 cdpStakeAfter;
         uint256 liquidatorRewardSharesBefore;
         uint256 liquidatorRewardSharesAfter;
         uint256 sortedCdpsSizeBefore;
@@ -73,6 +75,12 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 cumulativeCdpsAtTimeOfRebase;
         uint256 prevStEthFeeIndex;
         uint256 afterStEthFeeIndex;
+        uint256 totalStakesBefore;
+        uint256 totalStakesAfter;
+        uint256 totalStakesSnapshotBefore;
+        uint256 totalStakesSnapshotAfter;
+        uint256 totalCollateralSnapshotBefore;
+        uint256 totalCollateralSnapshotAfter;
     }
 
     Vars vars;
@@ -87,14 +95,15 @@ abstract contract BeforeAfter is BaseStorageVariables {
         address ownerToCheck = sortedCdps.getOwnerAddress(_cdpId);
         vars.userSurplusBefore = collSurplusPool.getSurplusCollShares(ownerToCheck);
 
-        (uint256 debtBefore, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (uint256 debtBefore, uint256 collBefore) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 
         vars.nicrBefore = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrBefore = _cdpId != bytes32(0)
             ? cdpManager.getCachedICR(_cdpId, vars.priceBefore)
             : 0;
-        vars.cdpCollBefore = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
+        vars.cdpCollBefore = _cdpId != bytes32(0) ? collBefore : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
+        vars.cdpStakeBefore = _cdpId != bytes32(0) ? crLens.getRealStake(_cdpId) : 0;
         vars.liquidatorRewardSharesBefore = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
@@ -142,6 +151,10 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 1e18 -
                 vars.activePoolDebtBefore;
         vars.prevStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
+
+        vars.totalStakesBefore = cdpManager.totalStakes();
+        vars.totalStakesSnapshotBefore = cdpManager.totalStakesSnapshot();
+        vars.totalCollateralSnapshotBefore = cdpManager.totalCollateralSnapshot();
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -150,10 +163,13 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         vars.priceAfter = priceFeedMock.fetchPrice();
 
+        (, uint256 collAfter) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+
         vars.nicrAfter = _cdpId != bytes32(0) ? crLens.quoteRealNICR(_cdpId) : 0;
         vars.icrAfter = _cdpId != bytes32(0) ? cdpManager.getCachedICR(_cdpId, vars.priceAfter) : 0;
-        vars.cdpCollAfter = _cdpId != bytes32(0) ? cdpManager.getCdpCollShares(_cdpId) : 0;
+        vars.cdpCollAfter = _cdpId != bytes32(0) ? collAfter : 0;
         vars.cdpDebtAfter = _cdpId != bytes32(0) ? cdpManager.getCdpDebt(_cdpId) : 0;
+        vars.cdpStakeAfter = _cdpId != bytes32(0) ? crLens.getRealStake(_cdpId) : 0;
         vars.liquidatorRewardSharesAfter = _cdpId != bytes32(0)
             ? cdpManager.getCdpLiquidatorRewardShares(_cdpId)
             : 0;
@@ -208,6 +224,10 @@ abstract contract BeforeAfter is BaseStorageVariables {
         if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
             vars.cumulativeCdpsAtTimeOfRebase += cdpManager.getActiveCdpsCount();
         }
+
+        vars.totalStakesAfter = cdpManager.totalStakes();
+        vars.totalStakesSnapshotAfter = cdpManager.totalStakesSnapshot();
+        vars.totalCollateralSnapshotAfter = cdpManager.totalCollateralSnapshot();
     }
 
     function _diff() internal view returns (string memory log) {
