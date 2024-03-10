@@ -462,6 +462,7 @@ class EBTCDeployerScript {
             8: "EbtcFeed: setPrimaryOracle",
             9: "EbtcFeed: setSecondaryOracle",
             10: "PriceFeed: setFallbackCaller",
+            11: "PriceFeed+CDPManager: CollFeedSource & RedemptionFeeFloor"
         };
 
         // Get the list of role numbers
@@ -534,6 +535,10 @@ class EBTCDeployerScript {
             ],
             10: [
                 { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
+            ],
+            11: [
+                { target: coreContracts.priceFeed, signature: govSig.SET_COLLATERAL_FEED_SOURCE_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTION_FEE_FLOOR_SIG },
             ]
         };
 
@@ -561,8 +566,8 @@ class EBTCDeployerScript {
         // CDP TechOps should be able to pause redemptions and flash loans
         // Fee recipient should be able to claim collateral shares
         const userAddressToRoleNumberMap = {
-            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7, 8, 9, 10],
-            [this.lowSecTimelock.address]: [3, 4, 5, 6, 7, 9, 10],
+            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            [this.lowSecTimelock.address]: [3, 4, 5, 6, 7, 9, 10, 11],
             [this.securityMultisig]: [4],
             [this.cdpTechOpsMultisig]: [4],
             [this.feeRecipientMultisig]: [6, 7],
