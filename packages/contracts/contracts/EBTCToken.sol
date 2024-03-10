@@ -25,7 +25,7 @@ import "./Dependencies/PermitNonce.sol";
 
 contract EBTCToken is IEBTCToken, AuthNoOwner, PermitNonce {
     uint256 private _totalSupply;
-    string internal constant _NAME = "EBTC Stablecoin";
+    string internal constant _NAME = "eBTC";
     string internal constant _SYMBOL = "EBTC";
     string internal constant _VERSION = "1";
     uint8 internal constant _DECIMALS = 18;
