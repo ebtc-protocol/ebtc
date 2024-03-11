@@ -62,6 +62,7 @@ abstract contract TargetFunctions is Properties {
         uint256 _price = priceFeedMock.getPrice();
 
         while (currentCdp != bytes32(0)) {
+            uint256 _currentCdpDebt = cdpManager.getSyncedCdpDebt(currentCdp);
             ans[i++] = Cdp({id: currentCdp, icr: cdpManager.getSyncedICR(currentCdp, _price)}); /// @audit NOTE: Synced to ensure it's realistic
 
             currentCdp = sortedCdps.getNext(currentCdp);
@@ -89,7 +90,8 @@ abstract contract TargetFunctions is Properties {
 
     function _getRandomCdp(uint _i) internal view returns (bytes32) {
         uint _cdpIdx = _i % cdpManager.getActiveCdpsCount();
-        return cdpManager.CdpIds(_cdpIdx);
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+        return cdpIds[_cdpIdx];
     }
 
     event FlashLoanAction(uint, uint);
@@ -204,6 +206,12 @@ abstract contract TargetFunctions is Properties {
     // CdpManager
     ///////////////////////////////////////////////////////
 
+    function _checkL_15IfRecoveryMode() internal {
+        if (vars.isRecoveryModeAfter) {
+            t(vars.lastGracePeriodStartTimestampIsSetAfter, L_15);
+        }
+    }
+
     function liquidate(uint _i) public setup {
         bool success;
         bytes memory returnData;
@@ -217,6 +225,7 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
+        uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.getPrice());
         (success, returnData) = actor.proxy(
             address(cdpManager),
             abi.encodeWithSelector(CdpManager.liquidate.selector, _cdpId)
@@ -231,7 +240,9 @@ abstract contract TargetFunctions is Properties {
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                if (vars.newIcrBefore <= vars.newTcrBefore) {
+                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             t(
@@ -251,13 +262,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -269,6 +274,12 @@ abstract contract TargetFunctions is Properties {
                     collateral.getPooledEthByShares(vars.liquidatorRewardSharesBefore),
                 L_09
             );
+
+            if (_icrToLiq <= cdpManager.LICR()) {
+                //bad debt to redistribute
+                lt(cdpManager.lastEBTCDebtErrorRedistribution(), cdpManager.totalStakes(), L_17);
+                totalCdpDustMaxCap += cdpManager.getActiveCdpsCount();
+            }
         } else if (vars.sortedCdpsSizeBefore > _i) {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -309,7 +320,9 @@ abstract contract TargetFunctions is Properties {
                 vars.newIcrBefore >= cdpManager.LICR() // 103% else liquidating locks in bad debt
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
-                gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                if (vars.newIcrBefore <= vars.newTcrBefore) {
+                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
             t(
@@ -346,21 +359,37 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_partialAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
     }
+
+    /** Active Pool TWAP Revert Checks */
+    function observe() public {
+        // We verify that any observation will never revert
+        try activePool.observe() {} catch {
+            t(false, "Observe Should Never Revert");
+        }
+    }
+
+    function update() public {
+        // We verify that any observation will never revert
+        try activePool.update() {} catch {
+            t(false, "Update Should Never Revert");
+        }
+    }
+
+    // NOTE: Added a bunch of stuff in other function to check against overflow reverts
+
+    /** END Active Pool TWAP Revert Checks */
 
     function liquidateCdps(uint _n) public setup {
         bool success;
@@ -378,6 +407,11 @@ abstract contract TargetFunctions is Properties {
             _n,
             vars.priceBefore
         );
+
+        bool _badDebtToRedistribute = false;
+        for (uint i; i < batch.length; i++) {
+            bytes32 _idToLiq = batch[i];
+        }
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
@@ -403,6 +437,9 @@ abstract contract TargetFunctions is Properties {
                         (cdpsLiquidated[i].icr < cdpManager.CCR() && vars.isRecoveryModeBefore),
                     L_01
                 );
+                if (cdpsLiquidated[i].icr <= cdpManager.LICR()) {
+                    _badDebtToRedistribute = true;
+                }
             }
 
             if (
@@ -417,16 +454,14 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
+            if (_badDebtToRedistribute) {
+                lt(cdpManager.lastEBTCDebtErrorRedistribution(), cdpManager.totalStakes(), L_17);
+                totalCdpDustMaxCap += cdpManager.getActiveCdpsCount();
             }
         } else if (vars.sortedCdpsSizeBefore > _n) {
             if (_atLeastOneCdpIsLiquidatable(cdpsBefore, vars.isRecoveryModeBefore)) {
@@ -441,11 +476,49 @@ abstract contract TargetFunctions is Properties {
         uint _maxFeePercentage,
         uint _maxIterations
     ) public setup {
-        bool success;
-        bytes memory returnData;
+        _redeemCollateral(
+            _EBTCAmount,
+            bytes32(0),
+            _partialRedemptionHintNICR,
+            false,
+            false,
+            _maxFeePercentage,
+            _maxIterations
+        );
+    }
 
+    function redeemCollateral(
+        uint _EBTCAmount,
+        bytes32 _firstRedemptionHintFromMedusa,
+        uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
+        bool useProperPartialHint,
+        uint _maxFeePercentage,
+        uint _maxIterations
+    ) public setup {
+        _redeemCollateral(
+            _EBTCAmount,
+            _firstRedemptionHintFromMedusa,
+            _partialRedemptionHintNICRFromMedusa,
+            useProperFirstHint,
+            useProperPartialHint,
+            _maxFeePercentage,
+            _maxIterations
+        );
+    }
+
+    function _redeemCollateral(
+        uint _EBTCAmount,
+        bytes32 _firstRedemptionHintFromMedusa,
+        uint256 _partialRedemptionHintNICRFromMedusa,
+        bool useProperFirstHint,
+        bool useProperPartialHint,
+        uint _maxFeePercentage,
+        uint _maxIterations
+    ) internal {
         _EBTCAmount = between(_EBTCAmount, 0, eBTCToken.balanceOf(address(actor)));
-        _maxIterations = between(_maxIterations, 0, 1);
+
+        _maxIterations = between(_maxIterations, 0, 10);
 
         _maxFeePercentage = between(
             _maxFeePercentage,
@@ -457,21 +530,42 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
-        (success, returnData) = actor.proxy(
-            address(cdpManager),
-            abi.encodeWithSelector(
-                CdpManager.redeemCollateral.selector,
-                _EBTCAmount,
-                bytes32(0),
-                bytes32(0),
-                bytes32(0),
-                _partialRedemptionHintNICR,
-                _maxIterations,
-                _maxFeePercentage
-            )
-        );
+        {
+            uint price = priceFeedMock.getPrice();
 
-        require(success);
+            (bytes32 firstRedemptionHintVal, uint256 partialRedemptionHintNICR, , ) = hintHelpers
+                .getRedemptionHints(_EBTCAmount, price, _maxIterations);
+
+            _firstRedemptionHintFromMedusa = useProperFirstHint
+                ? firstRedemptionHintVal
+                : _firstRedemptionHintFromMedusa;
+
+            _partialRedemptionHintNICRFromMedusa = useProperPartialHint
+                ? partialRedemptionHintNICR
+                : _partialRedemptionHintNICRFromMedusa;
+        }
+
+        _syncAPDebtTwapToSpotValue();
+
+        {
+            bool success;
+
+            (success, ) = actor.proxy(
+                address(cdpManager),
+                abi.encodeWithSelector(
+                    CdpManager.redeemCollateral.selector,
+                    _EBTCAmount,
+                    _firstRedemptionHintFromMedusa,
+                    bytes32(0),
+                    bytes32(0),
+                    _partialRedemptionHintNICRFromMedusa,
+                    _maxIterations,
+                    _maxFeePercentage
+                )
+            );
+
+            require(success);
+        }
 
         _after(_cdpId);
 
@@ -505,13 +599,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -522,7 +610,12 @@ abstract contract TargetFunctions is Properties {
     // ActivePool
     ///////////////////////////////////////////////////////
 
-    function flashLoanColl(uint _amount) internal setup {
+    function _syncAPDebtTwapToSpotValue() internal {
+        hevm.warp(block.timestamp + activePool.PERIOD());
+        activePool.update();
+    }
+
+    function flashLoanColl(uint _amount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -532,7 +625,7 @@ abstract contract TargetFunctions is Properties {
         _before(bytes32(0));
 
         // take the flashloan which should always cost the fee paid by caller
-        uint _balBefore = collateral.balanceOf(activePool.feeRecipientAddress());
+        uint _balBefore = collateral.sharesOf(activePool.feeRecipientAddress());
         (success, returnData) = actor.proxy(
             address(activePool),
             abi.encodeWithSelector(
@@ -548,8 +641,8 @@ abstract contract TargetFunctions is Properties {
 
         _after(bytes32(0));
 
-        uint _balAfter = collateral.balanceOf(activePool.feeRecipientAddress());
-        eq(_balAfter - _balBefore, _fee, F_03);
+        uint _balAfter = collateral.sharesOf(activePool.feeRecipientAddress());
+        eq(_balAfter - _balBefore, collateral.getSharesByPooledEth(_fee), F_03);
 
         if (
             vars.lastGracePeriodStartTimestampIsSetBefore &&
@@ -563,13 +656,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -580,7 +667,7 @@ abstract contract TargetFunctions is Properties {
     // BorrowerOperations
     ///////////////////////////////////////////////////////
 
-    function flashLoanEBTC(uint _amount) internal setup {
+    function flashLoanEBTC(uint _amount) public setup {
         bool success;
         bytes memory returnData;
 
@@ -623,13 +710,7 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -708,19 +789,17 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+            require(invariant_BO_09(cdpManager, priceFeedMock.getPrice(), _cdpId), BO_09);
         } else {
-            assertRevertReasonNotEqual(returnData, "Panic(17)");
+            assertRevertReasonNotEqual(returnData, "Panic(17)"); /// Done
         }
     }
 
@@ -812,17 +891,13 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_coll, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -886,17 +961,13 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
             }
+
+            gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
         } else {
             assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
@@ -915,7 +986,7 @@ abstract contract TargetFunctions is Properties {
 
         // TODO verify the assumption below, maybe there's a more sensible (or Governance-defined/hardcoded) limit for the maximum amount of minted eBTC at a single operation
         // Can only withdraw up to type(uint128).max eBTC, so that `BorrwerOperations._getNewCdpAmounts` does not overflow
-        _amount = between(_amount, 0, type(uint128).max);
+        _amount = between(_amount, 0, type(uint128).max); /// NOTE: Implicitly testing for caps
 
         _before(_cdpId);
 
@@ -930,46 +1001,47 @@ abstract contract TargetFunctions is Properties {
             )
         );
 
-        require(success);
+        // Require(success) -> If success, we check same stuff
+        // Else we ony verify no overflow
+        if (success) {
+            _after(_cdpId);
 
-        _after(_cdpId);
-
-        eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
-        gte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawDebt must not decrease debt");
-        eq(
-            vars.actorEbtcAfter,
-            vars.actorEbtcBefore + _amount,
-            "withdrawDebt must increase debt by requested amount"
-        );
-        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-        gte(
-            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_STETH_BALANCE(),
-            GENERAL_10
-        );
-
-        if (
-            vars.lastGracePeriodStartTimestampIsSetBefore &&
-            vars.isRecoveryModeBefore &&
-            vars.isRecoveryModeAfter
-        ) {
+            eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
+            gte(vars.cdpDebtAfter, vars.cdpDebtBefore, "withdrawDebt must not decrease debt");
             eq(
-                vars.lastGracePeriodStartTimestampBefore,
-                vars.lastGracePeriodStartTimestampAfter,
-                L_14
+                vars.actorEbtcAfter,
+                vars.actorEbtcBefore + _amount,
+                "withdrawDebt must increase debt by requested amount"
             );
-        }
-
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            gte(
+                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
+                GENERAL_10
             );
-        }
 
-        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
+
+            _checkL_15IfRecoveryMode();
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
+
+            gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
     }
 
@@ -985,6 +1057,7 @@ abstract contract TargetFunctions is Properties {
         t(_cdpId != bytes32(0), "CDP ID must not be null if the index is valid");
 
         (uint256 entireDebt, ) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+
         _amount = between(_amount, 0, entireDebt);
 
         _before(_cdpId);
@@ -999,49 +1072,48 @@ abstract contract TargetFunctions is Properties {
                 _cdpId
             )
         );
-        require(success);
+        if (success) {
+            _after(_cdpId);
 
-        _after(_cdpId);
+            eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
 
-        eq(vars.newTcrAfter, vars.tcrAfter, GENERAL_11);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            gte(vars.newTcrAfter, vars.newTcrBefore, BO_08);
 
-        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-        gte(vars.newTcrAfter, vars.newTcrBefore, BO_08);
-
-        eq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
-        eq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
-        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
-        t(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
-        t(invariant_GENERAL_01(vars), GENERAL_01);
-        // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
-        gte(
-            collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
-            borrowerOperations.MIN_NET_STETH_BALANCE(),
-            GENERAL_10
-        );
-
-        if (
-            vars.lastGracePeriodStartTimestampIsSetBefore &&
-            vars.isRecoveryModeBefore &&
-            vars.isRecoveryModeAfter
-        ) {
-            eq(
-                vars.lastGracePeriodStartTimestampBefore,
-                vars.lastGracePeriodStartTimestampAfter,
-                L_14
+            eq(vars.ebtcTotalSupplyBefore - _amount, vars.ebtcTotalSupplyAfter, BO_07);
+            eq(vars.actorEbtcBefore - _amount, vars.actorEbtcAfter, BO_07);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/3
+            t(invariant_GENERAL_09(cdpManager, vars), GENERAL_09);
+            t(invariant_GENERAL_01(vars), GENERAL_01);
+            // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/4
+            gte(
+                collateral.getPooledEthByShares(cdpManager.getCdpCollShares(_cdpId)),
+                borrowerOperations.MIN_NET_STETH_BALANCE(),
+                GENERAL_10
             );
-        }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+            if (
+                vars.lastGracePeriodStartTimestampIsSetBefore &&
+                vars.isRecoveryModeBefore &&
+                vars.isRecoveryModeAfter
+            ) {
+                eq(
+                    vars.lastGracePeriodStartTimestampBefore,
+                    vars.lastGracePeriodStartTimestampAfter,
+                    L_14
+                );
+            }
 
-        if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
-            t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            _checkL_15IfRecoveryMode();
+
+            if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
+                t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
+            }
+
+            gte(_amount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
+        } else {
+            assertRevertReasonNotEqual(returnData, "Panic(17)");
         }
     }
 
@@ -1111,13 +1183,7 @@ abstract contract TargetFunctions is Properties {
                 );
             }
 
-            if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-                t(
-                    !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                        vars.lastGracePeriodStartTimestampIsSetAfter,
-                    L_15
-                );
-            }
+            _checkL_15IfRecoveryMode();
 
             if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
                 t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
@@ -1190,17 +1256,25 @@ abstract contract TargetFunctions is Properties {
             );
         }
 
-        if (!vars.isRecoveryModeBefore && vars.isRecoveryModeAfter) {
-            t(
-                !vars.lastGracePeriodStartTimestampIsSetBefore &&
-                    vars.lastGracePeriodStartTimestampIsSetAfter,
-                L_15
-            );
-        }
+        _checkL_15IfRecoveryMode();
 
         if (vars.isRecoveryModeBefore && !vars.isRecoveryModeAfter) {
             t(!vars.lastGracePeriodStartTimestampIsSetAfter, L_16);
         }
+
+        if (_collWithdrawal > 0) {
+            gte(_collWithdrawal, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        }
+
+        if (_isDebtIncrease) {
+            gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+        } else {
+            // it's ok for _EBTCChange to be 0 if we are not increasing debt (coll only operation)
+            if (_EBTCChange > 0) {
+                gte(_EBTCChange, borrowerOperations.MIN_CHANGE(), GENERAL_16);
+            }
+        }
+        gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
     }
 
     ///////////////////////////////////////////////////////
@@ -1218,7 +1292,14 @@ abstract contract TargetFunctions is Properties {
             (currentEthPerShare * 1e18) / MAX_REBASE_PERCENT,
             (currentEthPerShare * MAX_REBASE_PERCENT) / 1e18
         );
+        vars.prevStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
         collateral.setEthPerShare(_newEthPerShare);
+        AccruableCdpManager(address(cdpManager)).syncGlobalAccountingInternal();
+        vars.afterStEthFeeIndex = cdpManager.systemStEthFeePerUnitIndex();
+
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            vars.cumulativeCdpsAtTimeOfRebase += cdpManager.getActiveCdpsCount();
+        }
     }
 
     ///////////////////////////////////////////////////////
@@ -1257,7 +1338,8 @@ abstract contract TargetFunctions is Properties {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/22
                 // Claiming will increase the balance
                 // Strictly GT
-                gt(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
+                gt(vars.feeRecipientCollSharesBalAfter, vars.feeRecipientCollSharesBalBefore, F_01);
+                gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
             }
         } else if (parameter == 2) {
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());

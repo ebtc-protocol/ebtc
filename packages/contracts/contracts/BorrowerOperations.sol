@@ -54,7 +54,7 @@ contract BorrowerOperations is
 
     ICollSurplusPool public immutable collSurplusPool;
 
-    address public feeRecipientAddress;
+    address public immutable feeRecipientAddress;
 
     IEBTCToken public immutable ebtcToken;
 
@@ -91,7 +91,6 @@ contract BorrowerOperations is
         uint256 ICR;
         uint256 NICR;
         uint256 stake;
-        uint256 arrayIndex;
     }
 
     struct MoveTokensParams {
@@ -132,8 +131,6 @@ contract BorrowerOperations is
         _HASHED_VERSION = hashedVersion;
         _CACHED_CHAIN_ID = _chainID();
         _CACHED_DOMAIN_SEPARATOR = _buildDomainSeparator(_TYPE_HASH, hashedName, hashedVersion);
-
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
     }
 
     /**
@@ -347,10 +344,16 @@ contract BorrowerOperations is
         vars.price = priceFeed.fetchPrice();
 
         if (_isDebtIncrease) {
-            _requireNonZeroDebtChange(_debtChange);
+            _requireMinDebtChange(_debtChange);
+        } else {
+            _requireZeroOrMinAdjustment(_debtChange);
         }
+
         _requireSingularCollChange(_stEthBalanceIncrease, _stEthBalanceDecrease);
         _requireNonZeroAdjustment(_stEthBalanceIncrease, _stEthBalanceDecrease, _debtChange);
+        _requireZeroOrMinAdjustment(_stEthBalanceIncrease);
+        _requireZeroOrMinAdjustment(_stEthBalanceDecrease);
+        // min debt adjustment checked above
 
         // Get the collSharesChange based on the collateral value transferred in the transaction
         (vars.collSharesChange, vars.isCollIncrease) = _getCollSharesChangeFromStEthChange(
@@ -393,7 +396,7 @@ contract BorrowerOperations is
         if (!_isDebtIncrease && _debtChange > 0) {
             _requireValidDebtRepayment(vars.debt, vars.netDebtChange);
             _requireSufficientEbtcTokenBalance(msg.sender, vars.netDebtChange);
-            _requireNonZeroDebt(vars.debt - vars.netDebtChange);
+            _requireMinDebt(vars.debt - vars.netDebtChange);
         }
 
         (vars.newCollShares, vars.newDebt) = _getNewCdpAmounts(
@@ -405,6 +408,7 @@ contract BorrowerOperations is
             _isDebtIncrease
         );
 
+        _requireMinDebt(vars.newDebt);
         _requireAtLeastMinNetStEthBalance(collateral.getPooledEthByShares(vars.newCollShares));
 
         cdpManager.updateCdp(
@@ -443,7 +447,7 @@ contract BorrowerOperations is
         uint256 _stEthBalance,
         address _borrower
     ) internal returns (bytes32) {
-        _requireNonZeroDebt(_debt);
+        _requireMinDebt(_debt);
         _requireBorrowerOrPositionManagerAndUpdateManagerApproval(_borrower);
 
         OpenCdpLocals memory vars;
@@ -816,8 +820,15 @@ contract BorrowerOperations is
         uint256 _stEthBalanceDecrease
     ) internal pure {
         require(
-            _stEthBalanceIncrease != 0 || _stEthBalanceDecrease != 0 || _debtChange != 0,
-            "BorrowerOperations: There must be either a collateral change or a debt change"
+            _stEthBalanceIncrease > 0 || _stEthBalanceDecrease > 0 || _debtChange > 0,
+            "BorrowerOperations: There must be either a collateral or debt change"
+        );
+    }
+
+    function _requireZeroOrMinAdjustment(uint256 _change) internal pure {
+        require(
+            _change == 0 || _change >= MIN_CHANGE,
+            "BorrowerOperations: Collateral or debt change must be zero or above min"
         );
     }
 
@@ -831,8 +842,11 @@ contract BorrowerOperations is
         require(status == 0, "BorrowerOperations: Cdp is active or has been previously closed");
     }
 
-    function _requireNonZeroDebtChange(uint _debtChange) internal pure {
-        require(_debtChange > 0, "BorrowerOperations: Debt increase requires non-zero debtChange");
+    function _requireMinDebtChange(uint _debtChange) internal pure {
+        require(
+            _debtChange >= MIN_CHANGE,
+            "BorrowerOperations: Debt increase requires min debtChange"
+        );
     }
 
     function _requireNotInRecoveryMode(uint256 _tcr) internal view {
@@ -932,8 +946,8 @@ contract BorrowerOperations is
         );
     }
 
-    function _requireNonZeroDebt(uint256 _debt) internal pure {
-        require(_debt > 0, "BorrowerOperations: Debt must be non-zero");
+    function _requireMinDebt(uint256 _debt) internal pure {
+        require(_debt >= MIN_CHANGE, "BorrowerOperations: Debt must be above min");
     }
 
     function _requireAtLeastMinNetStEthBalance(uint256 _stEthBalance) internal pure {
@@ -1134,20 +1148,6 @@ contract BorrowerOperations is
     }
 
     // === Governed Functions ==
-
-    /// @notice Set new FeeRecipient
-    /// @param _feeRecipientAddress The new fee recipient address to be set
-    function setFeeRecipientAddress(address _feeRecipientAddress) external requiresAuth {
-        require(
-            _feeRecipientAddress != address(0),
-            "BorrowerOperations: Cannot set feeRecipient to zero address"
-        );
-
-        cdpManager.syncGlobalAccounting();
-
-        feeRecipientAddress = _feeRecipientAddress;
-        emit FeeRecipientAddressChanged(_feeRecipientAddress);
-    }
 
     /// @notice Sets new Fee for FlashLoans
     /// @param _newFee The new flashloan fee to be set

@@ -5,8 +5,10 @@ import "forge-std/Test.sol";
 import {WETH9} from "../contracts/TestContracts/WETH9.sol";
 import {BorrowerOperations} from "../contracts/BorrowerOperations.sol";
 import {PriceFeedTestnet} from "../contracts/TestContracts/testnet/PriceFeedTestnet.sol";
+import {EbtcFeed} from "../contracts/EbtcFeed.sol";
 import {SortedCdps} from "../contracts/SortedCdps.sol";
 import {AccruableCdpManager} from "../contracts/TestContracts/AccruableCdpManager.sol";
+import {PriceFeedOracleTester} from "../contracts/TestContracts/PriceFeedOracleTester.sol";
 import {CdpManager} from "../contracts/CdpManager.sol";
 import {LiquidationLibrary} from "../contracts/LiquidationLibrary.sol";
 import {LiquidationSequencer} from "../contracts/LiquidationSequencer.sol";
@@ -21,23 +23,32 @@ import {CollateralTokenTester} from "../contracts/TestContracts/CollateralTokenT
 import {Governor} from "../contracts/Governor.sol";
 import {EBTCDeployer} from "../contracts/EBTCDeployer.sol";
 import {Utilities} from "./utils/Utilities.sol";
-import {LogUtils} from "./utils/LogUtils.sol";
 import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
 import {CRLens} from "../contracts/CRLens.sol";
-import {BeforeAfter} from "../contracts/TestContracts/invariants/BeforeAfter.sol";
+import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
+import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
+import {IBaseTwapWeightedObserver} from "../contracts/Interfaces/IBaseTwapWeightedObserver.sol";
+import {EbtcMath} from "../contracts/Dependencies/EbtcMath.sol";
 
 contract eBTCBaseFixture is
     Test,
     BaseStorageVariables,
-    BeforeAfter,
+    BeforeAfterWithLogging,
     FoundryAsserts,
     BytecodeReader,
-    LogUtils
+    IBaseTwapWeightedObserver
 {
+    using Strings for string;
+    using Pretty for uint256;
+    using Pretty for uint128;
+    using Pretty for uint64;
+    using Pretty for int256;
+    using Pretty for bool;
+
     uint256 internal constant FEE = 5e15; // 0.5%
     uint256 internal constant MINIMAL_COLLATERAL_RATIO = 110e16; // MCR: 110%
     uint256 public constant CCR = 125e16; // 125%
@@ -49,6 +60,9 @@ contract eBTCBaseFixture is
     uint256 internal constant AMOUNT_OF_CDPS = 3;
     uint256 internal DECIMAL_PRECISION = 1e18;
     bytes32 public constant ZERO_ID = bytes32(0);
+    bool public verbose = true;
+    uint256 internal constant ONE_DAY = 86400;
+    uint256 internal constant ONE_WEEK = 604800;
 
     uint256 internal constant MAX_BPS = 10000;
     uint256 private ICR_COMPARE_TOLERANCE = 1000000; //in the scale of 1e18
@@ -81,6 +95,12 @@ contract eBTCBaseFixture is
     // PriceFeed
     bytes4 public constant SET_FALLBACK_CALLER_SIG =
         bytes4(keccak256(bytes("setFallbackCaller(address)")));
+    bytes4 public constant SET_PRIMARY_ORACLE_SIG =
+        bytes4(keccak256(bytes("setPrimaryOracle(address)")));
+    bytes4 public constant SET_SECONDARY_ORACLE_SIG =
+        bytes4(keccak256(bytes("setSecondaryOracle(address)")));
+    bytes4 public constant SET_COLLATERAL_FEED_SOURCE_SIG =
+        bytes4(keccak256(bytes("setCollateralFeedSource(bool)")));
 
     // Flash Lender
     bytes4 internal constant SET_FEE_BPS_SIG = bytes4(keccak256(bytes("setFeeBps(uint256)")));
@@ -94,18 +114,23 @@ contract eBTCBaseFixture is
     bytes4 private constant CLAIM_FEE_RECIPIENT_COLL_SIG =
         bytes4(keccak256(bytes("claimFeeRecipientCollShares(uint256)")));
 
-    // Fee Recipient
-    bytes4 internal constant SET_FEE_RECIPIENT_ADDRESS_SIG =
-        bytes4(keccak256(bytes("setFeeRecipientAddress(address)")));
-
     event FlashFeeSet(address indexed _setter, uint256 _oldFee, uint256 _newFee);
     event MaxFlashFeeSet(address indexed _setter, uint256 _oldMaxFee, uint256 _newMaxFee);
 
     uint256 constant maxBytes32 = type(uint256).max;
     bytes32 constant HINT = "hint";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_DEBT =
+        "BorrowerOperations: Debt must be above min";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_DEBT_CHANGE =
+        "BorrowerOperations: Debt increase requires min debtChange";
+    bytes internal constant ERR_BORROWER_OPERATIONS_NON_ZERO_CHANGE =
+        "BorrowerOperations: There must be either a collateral or debt change";
+    bytes internal constant ERR_BORROWER_OPERATIONS_MIN_CHANGE =
+        "BorrowerOperations: Collateral or debt change must be zero or above min";
 
     MultiCdpGetter internal cdpGetter;
     Utilities internal _utils;
+    uint256 internal minChange;
 
     address[] internal emptyAddresses;
 
@@ -123,6 +148,8 @@ contract eBTCBaseFixture is
     Consider overriding this function if in need of custom setup
     */
     function setUp() public virtual {
+        console.log("block.timestamp", block.timestamp);
+        vm.warp(3);
         _utils = new Utilities();
 
         defaultGovernance = _utils.getNextSpecialAddress();
@@ -226,11 +253,14 @@ contract eBTCBaseFixture is
                 )
             );
 
-            // Price Feed Mock
-            creationCode = type(PriceFeedTestnet).creationCode;
-            args = abi.encode(addr.authorityAddress);
+            priceFeedMock = new PriceFeedTestnet(addr.authorityAddress);
+            primaryOracle = new PriceFeedOracleTester(address(priceFeedMock));
 
-            priceFeedMock = PriceFeedTestnet(
+            // Price Feed Mock
+            creationCode = type(EbtcFeed).creationCode;
+            args = abi.encode(addr.authorityAddress, address(primaryOracle), address(0));
+
+            ebtcFeed = EbtcFeed(
                 ebtcDeployer.deploy(ebtcDeployer.PRICE_FEED(), abi.encodePacked(creationCode, args))
             );
 
@@ -248,8 +278,7 @@ contract eBTCBaseFixture is
                 addr.borrowerOperationsAddress,
                 addr.cdpManagerAddress,
                 address(collateral),
-                addr.collSurplusPoolAddress,
-                addr.feeRecipientAddress
+                addr.collSurplusPoolAddress
             );
 
             activePool = ActivePool(
@@ -331,10 +360,7 @@ contract eBTCBaseFixture is
         authority.setRoleName(2, "eBTCToken: burn");
         authority.setRoleName(3, "CDPManager: all");
         authority.setRoleName(4, "PriceFeed: setFallbackCaller");
-        authority.setRoleName(
-            5,
-            "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused, setFeeRecipientAddress"
-        );
+        authority.setRoleName(5, "BorrowerOperations+ActivePool: setFeeBps, setFlashLoansPaused");
         authority.setRoleName(6, "ActivePool: sweep tokens & claim fee recipient coll");
 
         // TODO: Admin should be granted all permissions on the authority contract to manage it if / when owner is renounced.
@@ -351,6 +377,9 @@ contract eBTCBaseFixture is
         authority.setRoleCapability(3, address(cdpManager), SET_GRACE_PERIOD_SIG, true);
 
         authority.setRoleCapability(4, address(priceFeedMock), SET_FALLBACK_CALLER_SIG, true);
+        authority.setRoleCapability(4, address(priceFeedMock), SET_COLLATERAL_FEED_SOURCE_SIG, true);
+        authority.setRoleCapability(4, address(ebtcFeed), SET_PRIMARY_ORACLE_SIG, true);
+        authority.setRoleCapability(4, address(ebtcFeed), SET_SECONDARY_ORACLE_SIG, true);
 
         authority.setRoleCapability(5, address(borrowerOperations), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(
@@ -359,16 +388,9 @@ contract eBTCBaseFixture is
             SET_FLASH_LOANS_PAUSED_SIG,
             true
         );
-        authority.setRoleCapability(
-            5,
-            address(borrowerOperations),
-            SET_FEE_RECIPIENT_ADDRESS_SIG,
-            true
-        );
 
         authority.setRoleCapability(5, address(activePool), SET_FEE_BPS_SIG, true);
         authority.setRoleCapability(5, address(activePool), SET_FLASH_LOANS_PAUSED_SIG, true);
-        authority.setRoleCapability(5, address(activePool), SET_FEE_RECIPIENT_ADDRESS_SIG, true);
 
         authority.setRoleCapability(6, address(activePool), SWEEP_TOKEN_SIG, true);
         authority.setRoleCapability(6, address(activePool), CLAIM_FEE_RECIPIENT_COLL_SIG, true);
@@ -381,16 +403,18 @@ contract eBTCBaseFixture is
         authority.setUserRole(defaultGovernance, 5, true);
         authority.setUserRole(defaultGovernance, 6, true);
 
-        crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+        crLens = new CRLens(address(cdpManager), address(ebtcFeed));
         liquidationSequencer = new LiquidationSequencer(
             address(cdpManager),
             address(sortedCdps),
-            address(priceFeedMock),
+            address(ebtcFeed),
             address(activePool),
             address(collateral)
         );
 
         vm.stopPrank();
+
+        minChange = borrowerOperations.MIN_CHANGE();
     }
 
     /* connectCoreContracts() - wiring up deployed contracts and setting up infrastructure
@@ -432,13 +456,29 @@ contract eBTCBaseFixture is
         collateral.deposit{value: 10000 ether}();
     }
 
-    function _openTestCDP(address _user, uint256 _coll, uint256 _debt) internal returns (bytes32) {
+    function _openTestCDPWithHints(
+        address _user,
+        uint256 _coll,
+        uint256 _debt,
+        bytes32 _upperHint,
+        bytes32 _lowerHint
+    ) internal returns (bytes32) {
         dealCollateral(_user, _coll);
         vm.startPrank(_user);
         collateral.approve(address(borrowerOperations), type(uint256).max);
-        bytes32 _cdpId = borrowerOperations.openCdp(_debt, bytes32(0), bytes32(0), _coll);
+        bytes32 _cdpId = borrowerOperations.openCdp(_debt, _upperHint, _lowerHint, _coll);
         vm.stopPrank();
+
+        require(
+            _checkLiquidatablePostOpen(priceFeedMock.fetchPrice(), _cdpId),
+            "BO-09: Borrower can not open a CDP that is immediately liquidatable"
+        );
+
         return _cdpId;
+    }
+
+    function _openTestCDP(address _user, uint256 _coll, uint256 _debt) internal returns (bytes32) {
+        return _openTestCDPWithHints(_user, _coll, _debt, bytes32(0), bytes32(0));
     }
 
     /// @dev Automatically adds liquidator gas stipend to the Cdp in addition to specified coll
@@ -474,7 +514,6 @@ contract eBTCBaseFixture is
             uint256 _coll,
             uint256 _stake,
             uint256 _liquidatorRewardShares,
-            ,
 
         ) = cdpManager.Cdps(cdpId);
         uint256 _status = cdpManager.getCdpStatus(cdpId);
@@ -510,37 +549,12 @@ contract eBTCBaseFixture is
         return cdpManager.getCachedICR(cdpId, price);
     }
 
-    function _printAllCdps() internal {
-        uint256 price = priceFeedMock.fetchPrice();
-        uint256 numCdps = sortedCdps.getSize();
-        bytes32 node = sortedCdps.getLast();
-        address borrower = sortedCdps.getOwnerAddress(node);
-
-        while (borrower != address(0)) {
-            console.log("=== ", bytes32ToString(node));
-            console.log("debt       (realized) :", cdpManager.getCdpDebt(node));
-            console.log("collShares (realized) :", cdpManager.getCdpCollShares(node));
-            console.log("ICR                   :", cdpManager.getCachedICR(node, price));
-            console.log(
-                "Percent of System     :",
-                (cdpManager.getCdpCollShares(node) * DECIMAL_PRECISION) /
-                    activePool.getSystemCollShares()
-            );
-            console.log("");
-
-            node = sortedCdps.getPrev(node);
-            borrower = sortedCdps.getOwnerAddress(node);
-        }
-    }
-
     function _printSortedCdpsList() internal {
         bytes32 _currentCdpId = sortedCdps.getLast();
         uint counter = 0;
 
         while (_currentCdpId != sortedCdps.dummyId()) {
             uint NICR = cdpManager.getCachedNominalICR(_currentCdpId);
-            console.log(counter, bytes32ToString(_currentCdpId));
-            console.log(NICR);
             _currentCdpId = sortedCdps.getPrev(_currentCdpId);
             counter += 1;
         }
@@ -596,7 +610,68 @@ contract eBTCBaseFixture is
         }
 
         for (uint256 i = 0; i < _cdpArray.length; i++) {
-            console.log(bytes32ToString(_cdpArray[i]));
+            // console.log(bytes32ToString(_cdpArray[i]));
+        }
+    }
+
+    function _syncSystemDebtTwapToSpotValue() internal {
+        vm.warp(block.timestamp + activePool.PERIOD());
+        activePool.update();
+    }
+
+    function _printTwapState() internal {
+        PackedData memory data = activePool.getData();
+        uint256 valueToTrack = activePool.valueToTrack();
+        uint256 getRealValue = activePool.valueToTrack();
+        uint256 getLatestAccumulator = activePool.getLatestAccumulator();
+        uint256 observe = activePool.observe();
+
+        console.log("=== TWAP State ===");
+        console.log("valueToTrack: ", valueToTrack.pretty());
+        console.log("getRealValue: ", getRealValue.pretty());
+        console.log("getLatestAccumulator: ", getLatestAccumulator.pretty());
+        console.log("observe: ", observe.pretty());
+        console.log("");
+        console.log("data.priceCumulative0: ", data.observerCumuVal);
+        console.log("data.accumulator: ", data.accumulator);
+        console.log("data.t0: ", data.lastObserved);
+        console.log("data.lastUpdate: ", data.lastAccrued);
+        console.log("data.avgValue: ", data.lastObservedAverage);
+        console.log("");
+    }
+
+    function _calcSystemDebtBeforeRedemption()
+        internal
+        returns (
+            uint256 systemDebtAtStartSpot,
+            uint256 systemDebtAtStartTwap,
+            uint256 systemDebtAtStartUsed
+        )
+    {
+        systemDebtAtStartSpot = cdpManager.getSystemDebt();
+        systemDebtAtStartTwap = activePool.observe();
+        systemDebtAtStartUsed = EbtcMath._min(systemDebtAtStartTwap, systemDebtAtStartSpot);
+
+        if (verbose) {
+            console.log("systemDebtSpot: %s", systemDebtAtStartSpot.pretty());
+            console.log("systemDebtTwap: %s", systemDebtAtStartTwap.pretty());
+            console.log("systemDebtUsed: %s", systemDebtAtStartUsed.pretty());
+        }
+    }
+
+    function _calcExpectedRedemnptionFeeFromEthDrawn(
+        uint256 ETHDrawn,
+        uint256 systemDebtAtStartSpot,
+        uint256 systemDebtAtStartTwap,
+        uint256 systemDebtAtStartUsed
+    ) internal {}
+
+    function _checkLiquidatablePostOpen(uint256 price, bytes32 cdpId) internal view returns (bool) {
+        uint256 _icr = cdpManager.getSyncedICR(cdpId, price);
+        if (cdpManager.checkRecoveryMode(price)) {
+            return _icr >= cdpManager.CCR();
+        } else {
+            return _icr >= cdpManager.MCR();
         }
     }
 }

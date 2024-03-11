@@ -46,11 +46,13 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_fee3(LocalFeeSplitVar memory _var) internal {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpIds[i]);
             assertGt(
                 collateral.getPooledEthByShares(_cdpState.coll),
-                _targetCdpPrevCollUnderlyings[cdpManager.CdpIds(i)],
+                _targetCdpPrevCollUnderlyings[cdpIds[i]],
                 "System Invariant: cdp_manager_fee3"
             );
         }
@@ -58,14 +60,16 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_fee4(LocalFeeSplitVar memory _var) internal view {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
-            uint256 _diffColl = _targetCdpPrevColls[cdpManager.CdpIds(i)] - _cdpState.coll;
+            CdpState memory _cdpState = _getSyncedDebtAndCollShares(cdpIds[i]);
+            uint256 _diffColl = _targetCdpPrevColls[cdpIds[i]] - _cdpState.coll;
 
             require(
                 _utils.assertApproximateEq(
                     _diffColl,
-                    _targetCdpPrevFeeApplied[cdpManager.CdpIds(i)],
+                    _targetCdpPrevFeeApplied[cdpIds[i]],
                     _tolerance
                 ),
                 "!SplitFeeInCdp"
@@ -105,7 +109,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         _targetCdpPrevFeeApplied[_cdpId] = _feeSplitDistributed / 1e18;
 
         vm.startPrank(_user);
-        borrowerOperations.withdrawDebt(_cdpId, 1, _cdpId, _cdpId);
+        borrowerOperations.withdrawDebt(_cdpId, minChange, _cdpId, _cdpId);
         vm.stopPrank();
     }
 

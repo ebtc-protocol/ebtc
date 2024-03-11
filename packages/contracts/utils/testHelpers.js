@@ -304,6 +304,35 @@ class TestHelper {
     await provider.send("evm_increaseTime", [_gracePeriod.add(web3.utils.toBN('1')).toNumber()]);
     await provider.send("evm_mine");
   }
+  
+  static async syncTwapSystemDebt(contracts, provider){
+    let _period = await contracts.activePool.PERIOD();	  	  
+    await provider.send("evm_increaseTime", [_period.add(web3.utils.toBN('1234')).toNumber()]);
+    await provider.send("evm_mine");	  
+    await contracts.activePool.update();
+  }
+  
+  static async simulateObserveForTWAP(contracts, provider, diffTimeBtwBlocks){
+    await this.syncGlobalStateAndGracePeriod(contracts, provider);
+    let blockTimestampStart = (await provider.getBlock('latest')).timestamp;
+    console.log('twap blockTimestampStart=' + blockTimestampStart);
+    let _twapDebtData = await contracts.activePool.getData();
+    console.log('twap data=' + JSON.stringify(_twapDebtData));
+    let _valToCheck = await contracts.activePool.valueToTrack();
+    console.log('twap valToCheck=' + _valToCheck);	
+    let _period = await contracts.activePool.PERIOD();
+    let _diffTime = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["lastAccrued"])
+    console.log('twap diffTime=' + _diffTime);	
+    let _acc = this.toBN(_twapDebtData["accumulator"]).add(this.toBN(_valToCheck).mul(_diffTime))
+    console.log('twap acc=' + _acc);	
+    let _diffTimeT0 = this.toBN(blockTimestampStart + diffTimeBtwBlocks - _twapDebtData["lastObserved"])
+    console.log('twap diffTimeT0=' + _diffTimeT0);	
+    let _avg = _acc.sub(this.toBN(_twapDebtData["observerCumuVal"])).div(_diffTimeT0);
+    console.log('twap _avg=' + _avg);	
+    let _weightedMean = (this.toBN(_twapDebtData["lastObservedAverage"]).mul(_period.sub(_diffTimeT0)).add(_avg.mul(_diffTimeT0))).div(_period);
+    console.log('twap _weightedMean=' + _weightedMean);	
+    return _weightedMean;
+  }
 
   // --- Gas compensation calculation functions ---
 
@@ -609,7 +638,6 @@ class TestHelper {
 
     return { newColl, newDebt }
   }
-
  
   // --- BorrowerOperations gas functions ---
 

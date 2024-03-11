@@ -25,6 +25,22 @@ library EbtcMath {
         return (_a >= _b) ? _a : _b;
     }
 
+    /**
+     * credit to OpenZeppelin
+     * @dev Returns the downcasted uint128 from uint256, reverting on
+     * overflow (when the input is greater than largest uint128).
+     *
+     * Counterpart to Solidity's `uint128` operator.
+     *
+     * Requirements:
+     *
+     * - input must fit into 128 bits
+     */
+    function toUint128(uint256 value) internal pure returns (uint128) {
+        require(value <= type(uint128).max, "EbtcMath: downcast to uint128 will overflow");
+        return uint128(value);
+    }
+
     /*
      * Multiply two decimal numbers and use normal rounding rules:
      * -round product up if 19'th mantissa digit >= 5

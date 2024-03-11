@@ -13,7 +13,6 @@ import "../Dependencies/ICollateralTokenOracle.sol";
 interface ICdpManagerData is IRecoveryModeGracePeriod {
     // --- Events ---
 
-    event FeeRecipientAddressChanged(address indexed _feeRecipientAddress);
     event StakingRewardSplitSet(uint256 _stakingRewardSplit);
     event RedemptionFeeFloorSet(uint256 _redemptionFeeFloor);
     event MinuteDecayFactorSet(uint256 _minuteDecayFactor);
@@ -98,9 +97,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 debt;
         uint256 coll;
         uint256 stake;
-        uint256 liquidatorRewardShares;
+        uint128 liquidatorRewardShares;
         Status status;
-        uint128 arrayIndex;
     }
 
     /*
@@ -201,6 +199,7 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 decayedBaseRate;
         uint256 price;
         uint256 systemDebtAtStart;
+        uint256 twapSystemDebtAtStart;
         uint256 systemCollSharesAtStart;
         uint256 tcrAtStart;
     }
@@ -212,7 +211,10 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         uint256 liquidatorRewardShares;
         bool cancelledPartial;
         bool fullRedemption;
+        uint256 newPartialNICR;
     }
+
+    function getActiveCdpsCount() external view returns (uint256);
 
     function totalStakes() external view returns (uint256);
 
@@ -249,6 +251,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     function getSyncedICR(bytes32 _cdpId, uint256 _price) external view returns (uint256);
 
     function getSyncedTCR(uint256 _price) external view returns (uint256);
+
+    function getSyncedSystemCollShares() external view returns (uint256);
 
     function getSyncedNominalICR(bytes32 _cdpId) external view returns (uint256);
 

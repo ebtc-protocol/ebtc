@@ -247,9 +247,9 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         // Pre valid
         _assertRevertOnAllLiquidations(cdps);
 
-        _execValidRMAction(cdps, action);
+        uint256 _timeWarped = _execValidRMAction(cdps, action);
 
-        _postValidActionLiquidationChecks(cdps);
+        _postValidActionLiquidationChecks(_timeWarped, cdps);
     }
 
     /// @dev Enumerate variants of ways the grace period could be reset
@@ -341,7 +341,10 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
         _postExitRMLiquidationChecks(cdps);
     }
 
-    function _execValidRMAction(bytes32[] memory cdps, uint256 action) internal {
+    function _execValidRMAction(
+        bytes32[] memory cdps,
+        uint256 action
+    ) internal returns (uint256 _timeWarped) {
         address borrower = sortedCdps.getOwnerAddress(cdps[0]);
         uint256 price = priceFeedMock.fetchPrice();
         if (action == 0) {
@@ -355,14 +358,14 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             borrowerOperations.openCdp(debt, ZERO_ID, ZERO_ID, coll);
         } else if (action == 1) {
             // adjustCdp: addColl
-            dealCollateral(borrower, 1);
+            dealCollateral(borrower, minChange);
 
             vm.prank(borrower);
-            borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, 1);
+            borrowerOperations.addColl(cdps[0], ZERO_ID, ZERO_ID, minChange);
         } else if (action == 2) {
             //adjustCdp: repayDebt
             vm.prank(borrower);
-            borrowerOperations.repayDebt(cdps[0], 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], minChange, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             uint256 toRedeem = 5e17;
             //redemption
@@ -373,6 +376,8 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
                 uint256 partialRedemptionNewColl
             ) = hintHelpers.getRedemptionHints(toRedeem, price, 0);
 
+            _syncSystemDebtTwapToSpotValue();
+            _timeWarped = activePool.PERIOD();
             vm.prank(borrower);
             cdpManager.redeemCollateral(
                 toRedeem,
@@ -414,7 +419,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             console.log(debt);
 
             vm.prank(borrower);
-            borrowerOperations.repayDebt(cdps[0], debt - 1, ZERO_ID, ZERO_ID);
+            borrowerOperations.repayDebt(cdps[0], debt - minChange, ZERO_ID, ZERO_ID);
         } else if (action == 3) {
             //adjustCdp: adjustCdpWithColl (reduce debt + increase coll)
             debt = cdpManager.getCdpDebt(cdps[0]);
@@ -424,7 +429,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
             borrowerOperations.adjustCdpWithColl(
                 cdps[0],
                 0,
-                debt - 1,
+                debt - minChange,
                 false,
                 ZERO_ID,
                 ZERO_ID,
@@ -459,11 +464,11 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
     }
 
     /// @dev Run these checks immediately after action that sets grace period
-    function _postValidActionLiquidationChecks(bytes32[] memory cdps) internal {
+    function _postValidActionLiquidationChecks(uint256 _timeWarped, bytes32[] memory cdps) internal {
         // Grace period timestamp is now
         uint256 recoveryModeSetTimestamp = block.timestamp;
         assertEq(
-            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp() + _timeWarped,
             block.timestamp,
             "lastGracePeriodStartTimestamp set time"
         );
@@ -476,7 +481,7 @@ contract GracePeriodBaseTests is eBTCBaseFixture {
 
         // Grace period timestamp hasn't changed
         assertEq(
-            cdpManager.lastGracePeriodStartTimestamp(),
+            cdpManager.lastGracePeriodStartTimestamp() + _timeWarped,
             recoveryModeSetTimestamp,
             "lastGracePeriodStartTimestamp set time"
         );

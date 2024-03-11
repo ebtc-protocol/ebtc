@@ -1,0 +1,38 @@
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - "packages/contracts/**"
+
+name: invariant-test
+
+jobs:
+  check:
+    name: Invariant Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: recursive
+
+  invariant-test:
+    name: Run invariant test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Create Recon Job 
+        run: |
+          curl -XPOST                                     \
+          -H 'Content-Type: application/json'             \
+          -H 'x-api-key: ${{ env.apiKey }}'               \
+          --data '{"cmd":"${{ env.cmd }}","instanceType":"${{ env.instanceType }}","projectId":"${{ env.projectId }}","ref":"${{ env.ref }}","pullRequestNumber":"${{ env.pullRequestNumber }}"}' \
+          https://app.fuzzy.fyi/api/job 
+        env:
+          cmd: yarn && git submodule init && git submodule update && solc-select use 0.8.17 && cd packages/contracts/ && yarn echidna --test-mode assertion --test-limit 300000
+          instanceType: c5.2xlarge
+          ref: ${{ github.head_ref || github.ref_name }}
+          pullRequestNumber: ${{ github.event.number }}
+          projectId: ${{ secrets.FUZZY_PROJECT_ID }}
+          apiKey: ${{ secrets.FUZZY_API_KEY }}

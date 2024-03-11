@@ -27,9 +27,10 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
     function _assert_cdp_manager_invariant_liq2() internal {
         uint256 _sumColl;
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            bytes32 _cdpId = cdpManager.CdpIds(i);
-            (, uint256 _coll, , , , ) = cdpManager.Cdps(_cdpId);
+            bytes32 _cdpId = cdpIds[i];
+            (, uint256 _coll, , , ) = cdpManager.Cdps(_cdpId);
             _sumColl = _sumColl + _coll;
         }
         assertEq(
@@ -280,10 +281,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         // calc debt in system by summing up all CDPs debt
         uint256 _leftTotalDebt;
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         for (uint256 i = 0; i < cdpManager.getActiveCdpsCount(); ++i) {
-            (uint256 _cdpDebt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _cdpDebt, ) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _leftTotalDebt = (_leftTotalDebt + _cdpDebt);
-            _cdpLeftActive[cdpManager.CdpIds(i)] = true;
+            _cdpLeftActive[cdpIds[i]] = true;
         }
 
         console.log("_leftTotalDebt from system", _leftTotalDebt);
@@ -675,7 +677,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.expectRevert(
             "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
         );
-        cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(safeCdpId, 1234, bytes32(0), bytes32(0));
     }
 
     // Can NEVER liquidate if CDP above TCR
@@ -724,11 +726,11 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
         vm.expectRevert(
             "LiquidationLibrary: ICR is not below liquidation threshold in current mode"
         );
-        cdpManager.partiallyLiquidate(safeCdpId, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(safeCdpId, 1234, bytes32(0), bytes32(0));
 
         uint256 liquidationCheckpoint = vm.snapshot();
         // Liquidate the Whale
-        cdpManager.partiallyLiquidate(vulnerableCdpId, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(vulnerableCdpId, 1234, bytes32(0), bytes32(0));
 
         vm.revertTo(liquidationCheckpoint); // Revert to ensure we can always liquidate
         // Some liquidations could end up undoing RM
@@ -771,7 +773,7 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         vm.startPrank(users[0]);
         // Liquidate the Whale
-        cdpManager.partiallyLiquidate(liquidatableCdp, 123, bytes32(0), bytes32(0));
+        cdpManager.partiallyLiquidate(liquidatableCdp, 1234, bytes32(0), bytes32(0));
 
         cdpManager.liquidate(liquidatableCdp);
     }

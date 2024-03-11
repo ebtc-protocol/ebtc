@@ -14,6 +14,7 @@
 
 # Local addresses might differ
 /mainnetDeployment/localForkDeploymentOutput.json
+/mainnetDeployment/eBTCLocalDeploymentOutput.json
 
 # Exported function gas costs and test outputs
 /gasTest/outputs
@@ -41,6 +42,7 @@ yarn-error.log
 
 # Medusa
 /medusa
+/medusa-doomsday
 
 # brownie
 __pycache__

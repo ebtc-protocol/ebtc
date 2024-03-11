@@ -49,6 +49,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
   let functionCaller
   let borrowerOperations
   let collSurplusPool
+  let hintHelpers
 
   let contracts
   let _signer
@@ -80,6 +81,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     collSurplusPool = contracts.collSurplusPool
     debtToken = ebtcToken;
     collToken = contracts.collateral;
+    hintHelpers = contracts.hintHelpers;
     liqStipend = await cdpManager.LIQUIDATOR_REWARD();
     LICR = await cdpManager.LICR()
     MCR = await cdpManager.MCR()
@@ -137,8 +139,11 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isTrue(recoveryMode_Before)
 
     await contracts.collateral.approve(borrowerOperations.address, mv._1Be18BN, {from: alice});
-    await contracts.collateral.deposit({from: alice, value: '1'});
-    await borrowerOperations.addColl(_aliceCdpId, _aliceCdpId, _aliceCdpId, '1', { from: alice, value: 0 })
+    await contracts.collateral.deposit({from: alice, value: await borrowerOperations.MIN_CHANGE()});
+    await borrowerOperations.addColl(
+      _aliceCdpId, _aliceCdpId, _aliceCdpId, await borrowerOperations.MIN_CHANGE(), 
+      { from: alice, value: 0 }
+    )
 
     const recoveryMode_After = await th.checkRecoveryMode(contracts);
     assert.isTrue(recoveryMode_After)
@@ -1022,7 +1027,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     assert.isFalse(bob_Cdp_isInSortedList_After)
   })
 
-  it("liquidate(), with ICR > 110%: Cdp not in CdpOwners array any more", async () => {
+  it("liquidate(), with ICR > 110%: Cdp not in SortedCdps anymore", async () => {
     // --- SETUP ---
     // Alice withdraws up to 1500 EBTC of debt, and Dennis up to 150, resulting in ICRs of 266%.
     // Bob withdraws up to 250 EBTC of debt, resulting in ICR of 240%. Bob has lowest ICR.
@@ -1061,8 +1066,10 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     let addressFound = false;
     let addressIdx = 0;
 
+    cdpIds = await hintHelpers.sortedCdpsToArray()
+
     for (let i = 0; i < arrayLength; i++) {
-      const address = (await cdpManager.CdpIds(i)).toString()
+      const address = (cdpIds[i]).toString()
       if (address == _bobCdpId) {
         addressFound = true
         addressIdx = i
@@ -1730,6 +1737,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // check Bob’s collateral surplus: 5.76 * 100 - 480 * 1.1
     const bob_remainingCollateral = B_coll.sub(B_coll)
     th.assertIsApproximatelyEqual('0', bob_remainingCollateral.toString())
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Bob re-opens the cdp, price 200, total debt 80 EBTC, ICR = 120% (lowest one)
     // Dennis redeems 30, so Bob has a surplus of (200 * 0.48 - 30) / 200 = 0.33 ETH
@@ -1760,6 +1768,7 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     await openCdp({ ICR: toBN(dec(266, 16)), extraEBTCAmount: B_netDebt, extraParams: { from: dennis } })
 
     // --- TEST ---
+    await th.syncTwapSystemDebt(contracts, ethers.provider);
 
     // Dennis redeems 40, so Bob has a surplus of (200 * 1 - 40) / 200 = 0.8 ETH	
     await th.redeemCollateral(dennis, contracts, B_netDebt, GAS_PRICE)
@@ -2854,14 +2863,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Check C is in Cdp owners array
     const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
-    let addressIdx = 0;
+    let _id = await sortedCdps.getFirst();
 
     for (let i = 0; i < arrayLength; i++) {
-      const address = (await cdpManager.CdpIds(i)).toString()
-      if (address == _carolCdpId) {
-        addressFound = true
-        addressIdx = i
-      }
+       if (_id == _carolCdpId) {
+           addressFound = true
+       } else {
+           _id = await sortedCdps.getNext(_id);
+       }
     }
 
     assert.isFalse(addressFound);
@@ -3596,14 +3605,14 @@ contract('CdpManager - in Recovery Mode', async accounts => {
     // Check C is in Cdp owners array
     const arrayLength = (await cdpManager.getActiveCdpsCount()).toNumber()
     let addressFound = false;
-    let addressIdx = 0;
+    let _id = await sortedCdps.getFirst();
 
     for (let i = 0; i < arrayLength; i++) {
-      const address = (await cdpManager.CdpIds(i)).toString()
-      if (address == _carolCdpId) {
-        addressFound = true
-        addressIdx = i
-      }
+       if (_id == _carolCdpId) {
+           addressFound = true
+       } else {
+           _id = await sortedCdps.getNext(_id);
+       }
     }
 
     assert.isFalse(addressFound);

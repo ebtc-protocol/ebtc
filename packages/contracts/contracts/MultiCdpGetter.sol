@@ -83,16 +83,7 @@ contract MultiCdpGetter {
 
         for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
-            (
-                ,
-                ,
-                _cdps[idx].stake,
-                /* status */
-                /* arrayIndex */
-                ,
-                ,
-
-            ) = cdpManager.Cdps(currentCdpId);
+            (, , _cdps[idx].stake, , ) = cdpManager.Cdps(currentCdpId);
 
             (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
             (_cdps[idx].snapshotEBTCDebt) = cdpManager.cdpDebtRedistributionIndex(currentCdpId);
@@ -119,16 +110,7 @@ contract MultiCdpGetter {
 
         for (uint256 idx = 0; idx < _count; ++idx) {
             _cdps[idx].id = currentCdpId;
-            (
-                ,
-                ,
-                _cdps[idx].stake,
-                /* status */
-                /* arrayIndex */
-                ,
-                ,
-
-            ) = cdpManager.Cdps(currentCdpId);
+            (, , _cdps[idx].stake, , ) = cdpManager.Cdps(currentCdpId);
 
             (_cdps[idx].debt, _cdps[idx].coll) = cdpManager.getSyncedDebtAndCollShares(currentCdpId);
             (_cdps[idx].snapshotEBTCDebt) = cdpManager.cdpDebtRedistributionIndex(currentCdpId);

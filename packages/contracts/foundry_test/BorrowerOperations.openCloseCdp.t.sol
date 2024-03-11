@@ -2,6 +2,7 @@
 pragma solidity 0.8.17;
 import "forge-std/Test.sol";
 import {eBTCBaseInvariants} from "./BaseInvariants.sol";
+import {CdpManager} from "../contracts/CdpManager.sol";
 
 /*
  * Test suite that tests exactly one thing: opening CDPs
@@ -133,7 +134,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         vm.expectRevert(
             bytes("BorrowerOperations: Cdp's net stEth balance must not fall below minimum")
         );
-        borrowerOperations.openCdp(1, "hint", "hint", collPlusLiquidatorReward);
+        borrowerOperations.openCdp(minChange, "hint", "hint", collPlusLiquidatorReward);
         vm.stopPrank();
     }
 
@@ -200,7 +201,7 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
             // Check borrowed amount
             assertEq(eBTCToken.balanceOf(user), borrowedAmount);
             // Warp after each user to increase randomness of next collateralAmount
-            vm.warp(block.number + 1);
+            vm.warp(block.timestamp + 1);
             vm.stopPrank();
         }
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS);
@@ -271,5 +272,31 @@ contract OpenCloseCdpTest is eBTCBaseInvariants {
         // Make sure amount of SortedCDPs equals to `amountUsers` multiplied by `AMOUNT_OF_CDPS`
         assertEq(sortedCdps.getSize(), AMOUNT_OF_USERS * AMOUNT_OF_CDPS);
         _ensureSystemInvariants();
+    }
+
+    // test for overflow Liquidator Reward Share
+    function testOverflowLiquidatorRewardShare() public {
+        address payable[] memory users = _utils.createUsers(1);
+        address user = users[0];
+
+        CdpManager _dummyCdpMgr = new CdpManager(
+            user,
+            user,
+            user,
+            user,
+            user,
+            user,
+            user,
+            user,
+            address(collateral)
+        );
+
+        vm.startPrank(user);
+
+        uint256 _overflowedLRS = type(uint128).max;
+        vm.expectRevert("EbtcMath: downcast to uint128 will overflow");
+        _dummyCdpMgr.initializeCdp(bytes32(0), 1000, 2e18, (_overflowedLRS + 1), user);
+
+        vm.stopPrank();
     }
 }

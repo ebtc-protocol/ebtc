@@ -3,12 +3,12 @@
 pragma solidity 0.8.17;
 
 import "./IPool.sol";
+import "./ITwapWeightedObserver.sol";
 
-interface IActivePool is IPool {
+interface IActivePool is IPool, ITwapWeightedObserver {
     // --- Events ---
     event ActivePoolEBTCDebtUpdated(uint256 _EBTCDebt);
     event SystemCollSharesUpdated(uint256 _coll);
-    event FeeRecipientAddressChanged(address indexed _feeRecipientAddress);
     event FeeRecipientClaimableCollSharesIncreased(uint256 _coll, uint256 _fee);
     event FeeRecipientClaimableCollSharesDecreased(uint256 _coll, uint256 _fee);
     event FlashLoanSuccess(
@@ -37,6 +37,4 @@ interface IActivePool is IPool {
     function feeRecipientAddress() external view returns (address);
 
     function getFeeRecipientClaimableCollShares() external view returns (uint256);
-
-    function setFeeRecipientAddress(address _feeRecipientAddress) external;
 }

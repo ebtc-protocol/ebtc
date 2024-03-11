@@ -37,6 +37,19 @@ abstract contract Asserts {
         }
     }
 
+    /// @dev compare absoulte value
+    function _assertApproximateEq(
+        uint256 _num1,
+        uint256 _num2,
+        uint256 _tolerance
+    ) internal pure returns (bool) {
+        if (_num1 > _num2) {
+            return _tolerance >= (_num1 - _num2);
+        } else {
+            return _tolerance >= (_num2 - _num1);
+        }
+    }
+
     // https://ethereum.stackexchange.com/a/83577
     function _getRevertMsg(bytes memory returnData) internal pure returns (string memory) {
         // Check that the data has the right size: 4 bytes for signature + 32 bytes for panic code

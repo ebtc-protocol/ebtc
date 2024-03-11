@@ -1,0 +1,14 @@
+{
+  "ebtcRewards": {
+    "address": "0x37D6ba2ccc9653944a524Ca8EEF7e9ACAc420bf5",
+    "verification": "https://sepolia.etherscan.io/address/0x37D6ba2ccc9653944a524Ca8EEF7e9ACAc420bf5#code"
+  },
+  "ebtcRewardsImplementation": {
+    "address": "0x1Ca6d03F372Cc9F2AfB750D17092D71A0d953b57",
+    "verification": "https://sepolia.etherscan.io/address/0x1Ca6d03F372Cc9F2AfB750D17092D71A0d953b57#code"
+  },
+  "proxyAdmin": {
+    "address": "0xaFBf78A8812067a73881F18A0008573CC36382EE",
+    "verification": "https://sepolia.etherscan.io/address/0xaFBf78A8812067a73881F18A0008573CC36382EE#code"
+  }
+}

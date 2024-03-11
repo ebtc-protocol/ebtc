@@ -62,6 +62,7 @@ abstract contract PropertiesDescriptions {
         "BO-05: When a borrower closes their active CDP, the gas compensation is refunded to the user";
     string constant BO_07 = "BO-07: eBTC tokens are burned upon repayment of a CDP's debt";
     string constant BO_08 = "BO-08: TCR must increase after a repayment";
+    string constant BO_09 = "BO-09: Borrower can not open a CDP that is immediately liquidatable";
 
     ///////////////////////////////////////////////////////
     // General
@@ -89,6 +90,15 @@ abstract contract PropertiesDescriptions {
         "GENERAL-13: The SynchedICR of every CDP in the Linked List Matches the ICR the CDPs will have the call (as returned by CrLens)";
     string constant GENERAL_14 =
         "GENERAL-14: The NominalICR from `getNominalICR` matches `quoteRealNICR` (as returned by CrLens)";
+    string constant GENERAL_15 =
+        "GENERAL-15: CDP debt should always be greater than MIN_CHANGE (1000 Wei)";
+    string constant GENERAL_16 =
+        "GENERAL-16: Collateral and debt change amounts should always be greater than MIN_CHANGE (1000 Wei)";
+    string constant GENERAL_17 =
+        "GENERAL-17: Sum of synced debt values of all Cdps + the stored debt redistribution error accumulator should never be more than the total system debt + 1";
+    string constant GENERAL_18 =
+        "GENERAL-18: Sum of synced coll shares of all Cdps - cumulative errors should never be more than _systemCollShares";
+    string constant GENERAL_19 = "GENERAL-19: TWAP should never be disabled";
 
     ///////////////////////////////////////////////////////
     // Redemptions
@@ -105,13 +115,16 @@ abstract contract PropertiesDescriptions {
         "L-01: Liquidation only succeeds if ICR < 110% in Normal Mode, or if ICR < 125% in Recovery Mode";
     string constant L_09 =
         "L-09: Undercollateralized liquidations are also incentivized with the Gas Stipend";
-    string constant L_12 = "L-12: TCR must increase after liquidation with no redistributions";
+    string constant L_12 =
+        "L-12: TCR must increase after liquidation with no redistributions if the liquidated CDP's ICR is less than TCR before liquidation";
     string constant L_14 =
         "If the RM grace period is set and we're in recovery mode, new actions that keep the system in recovery mode should not change the cooldown timestamp";
     string constant L_15 =
-        "L-15: The RM grace period should set if a BO/liquidation/redistribution makes the TCR above CCR";
+        "L-15: The RM grace period should set if a BO/liquidation/redistribution makes the TCR below CCR";
     string constant L_16 =
-        "L-16: The RM grace period should reset if a BO/liquidation/redistribution makes the TCR below CCR";
+        "L-16: The RM grace period should reset if a BO/liquidation/redistribution makes the TCR above CCR";
+    string constant L_17 =
+        "L-17: Debt Redistribution Error Accumulator should be less than Total Stakes immediately after a bad debt redistribution";
 
     ///////////////////////////////////////////////////////
     // eBTC
@@ -142,4 +155,12 @@ abstract contract PropertiesDescriptions {
     string constant PF_05 =
         "PF-05: The price feed should never use the fallback if chainlink is Working";
     string constant PF_06 = "PF-06: The system never tries to use the fallback if it is not set";
+    string constant PF_07 =
+        "PF-07: The price feed should return the primary oracle price if it is working";
+    string constant PF_08 =
+        "PF-08: The price feed should return the secondary oracle price if the primary oracle is not working";
+    string constant PF_09 =
+        "PF-09: The price feed should return the last good price if both oracles are not working";
+    string constant PF_10 =
+        "PF-10: The price feed should never return different prices when called multiple times in a single tx";
 }

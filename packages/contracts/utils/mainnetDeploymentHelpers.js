@@ -96,8 +96,8 @@ class MainnetDeploymentHelper {
     // Deploy txs
     const priceFeed = await this.loadOrDeploy(priceFeedFactory, 'priceFeed', deploymentState)
     const sortedCdps = await this.loadOrDeploy(sortedCdpsFactory, 'sortedCdps', deploymentState)
-    const liquidationLibrary = await this.loadOrDeploy(liquidationLibraryFactory, 'cdpManager', deploymentState)
-    const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'liquidationLibrary', deploymentState, [liquidationLibrary.address])
+    const liquidationLibrary = await this.loadOrDeploy(liquidationLibraryFactory, 'liquidationLibrary', deploymentState)
+    const cdpManager = await this.loadOrDeploy(cdpManagerFactory, 'cdpManager', deploymentState, [liquidationLibrary.address])
     const activePool = await this.loadOrDeploy(activePoolFactory, 'activePool', deploymentState)
     const gasPool = await this.loadOrDeploy(gasPoolFactory, 'gasPool', deploymentState)
     const defaultPool = await this.loadOrDeploy(defaultPoolFactory, 'defaultPool', deploymentState)

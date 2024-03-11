@@ -47,9 +47,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 diff_tolerance
     ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _sum += _coll;
         }
         uint256 _activeColl = activePool.getSystemCollShares();
@@ -62,9 +64,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 diff_tolerance
     ) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpManager.CdpIds(i));
+            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
             _sum += _debt;
         }
 
@@ -84,20 +88,22 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
     function invariant_CDPM_02(CdpManager cdpManager) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+
         uint256 _sum;
+
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            _sum += cdpManager.getCdpStake(cdpManager.CdpIds(i));
+            _sum += cdpManager.getCdpStake(cdpIds[i]);
         }
         return (_sum == cdpManager.totalStakes());
     }
 
     function invariant_CDPM_03(CdpManager cdpManager) internal view returns (bool) {
         uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
         uint256 systemStEthFeePerUnitIndex = cdpManager.systemStEthFeePerUnitIndex();
         for (uint256 i = 0; i < _cdpCount; ++i) {
-            if (
-                systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpManager.CdpIds(i))
-            ) {
+            if (systemStEthFeePerUnitIndex < cdpManager.cdpStEthFeePerUnitIndex(cdpIds[i])) {
                 return false;
             }
         }
@@ -201,7 +207,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    uint256 NICR_ERROR_THRESHOLD = 1e8;
+    uint256 NICR_ERROR_THRESHOLD = 1e18; // NOTE: 1e20 is basically 1/1 so it's completely safe as a threshold
 
     function invariant_SL_05(CRLens crLens, SortedCdps sortedCdps) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
@@ -231,15 +237,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     function invariant_GENERAL_02(
         CdpManager cdpManager,
         PriceFeedTestnet priceFeedMock,
-        EBTCToken eBTCToken
+        EBTCToken eBTCToken,
+        ICollateralToken collateral
     ) internal view returns (bool) {
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getCachedTCR(priceFeedMock.getPrice()) > collateral.getPooledEthByShares(1e18)
-                ? (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 >=
+            cdpManager.getCachedTCR(priceFeedMock.getPrice()) > 1e18
+                ? (collateral.getPooledEthByShares(cdpManager.getSystemCollShares()) *
+                    priceFeedMock.getPrice()) /
+                    1e18 >=
                     eBTCToken.totalSupply()
-                : (cdpManager.getSystemCollShares() * priceFeedMock.getPrice()) / 1e18 <
+                : (collateral.getPooledEthByShares(cdpManager.getSystemCollShares()) *
+                    priceFeedMock.getPrice()) /
+                    1e18 <
                     eBTCToken.totalSupply();
     }
 
@@ -306,6 +317,69 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return totalSupply >= cdpsBalance;
     }
 
+    function invariant_GENERAL_17(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfDebt;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireDebt = cdpManager.getSyncedCdpDebt(currentCdp);
+            sumOfDebt += entireDebt;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+        sumOfDebt += cdpManager.lastEBTCDebtErrorRedistribution() / 1e18; // TODO: We need to add 1 wei for all CDPs at their time of redistribution
+        uint256 _systemDebt = activePool.getSystemDebt();
+
+        if (cdpManager.lastEBTCDebtErrorRedistribution() % 1e18 > 0) sumOfDebt += 1; // Round up debt
+
+        // SumOfDebt can have rounding error
+        // And rounding error is capped by:
+        // 1 wei of rounding error in lastEBTCDebtErrorRedistribution
+        // 1 wei for each cdp at each redistribution (as their index may round down causing them to lose 1 wei of debt)
+        return sumOfDebt <= _systemDebt && sumOfDebt + totalCdpDustMaxCap >= _systemDebt;
+    }
+
+    function invariant_GENERAL_18(
+        CdpManager cdpManager,
+        SortedCdps sortedCdps,
+        PriceFeedTestnet priceFeedTestnet,
+        ICollateralToken collateral
+    ) internal view returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumOfColl;
+        while (currentCdp != bytes32(0)) {
+            uint256 entireColl = cdpManager.getSyncedCdpCollShares(currentCdp);
+            sumOfColl += entireColl;
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        if (sumOfColl == 0) {
+            return sumOfColl == cdpManager.getSyncedSystemCollShares();
+        }
+
+        sumOfColl -= cdpManager.systemStEthFeePerUnitIndexError() / 1e18;
+        uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
+
+        if (cdpManager.systemStEthFeePerUnitIndexError() % 1e18 > 0) sumOfColl -= 1; // Round down coll
+
+        // sumOfColl can have rounding error
+        // And rounding error is capped by:
+        // 1 wei of rounding error in systemStEthFeePerUnitIndexError
+        // 1 wei for each cdp at each index change (as their index may round down causing them to lose 1 wei of fee split)
+        return
+            sumOfColl <= _systemCollShares &&
+            sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
+    }
+
+    function invariant_GENERAL_19(ActivePool activePool) internal view returns (bool) {
+        return !activePool.twapDisabled();
+    }
+
     function invariant_GENERAL_08(
         CdpManager cdpManager,
         SortedCdps sortedCdps,
@@ -326,6 +400,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
+        uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
+        uint256 _systemDebt = activePool.getSystemDebt();
         uint256 tcrFromSystem = cdpManager.getSyncedTCR(curentPrice);
 
         uint256 tcrFromSums = EbtcMath._computeCR(
@@ -333,8 +409,16 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             sumOfDebt,
             curentPrice
         );
-        /// @audit 1e8 precision
-        return isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+
+        bool _acceptedTcrDiff = _assertApproximateEq(tcrFromSystem, tcrFromSums, 1e8);
+
+        // add generic diff function (original, second, diff) - all at once
+
+        /// @audit 1e8 precision in absoulte value (not the percent)
+        //return  isApproximateEq(tcrFromSystem, tcrFromSums, 1e8); // Up to 1e8 precision is accepted
+        bool _acceptedCollDiff = _assertApproximateEq(_systemCollShares, sumOfColl, 1e8);
+        bool _acceptedDebtDiff = _assertApproximateEq(_systemDebt, sumOfDebt, 1e8);
+        return (_acceptedCollDiff && _acceptedDebtDiff);
     }
 
     function invariant_GENERAL_09(
@@ -445,5 +529,18 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal view returns (bool) {
         return priceFeedTestnet.getPrice() > 0;
+    }
+
+    function invariant_BO_09(
+        CdpManager cdpManager,
+        uint256 price,
+        bytes32 cdpId
+    ) internal view returns (bool) {
+        uint256 _icr = cdpManager.getSyncedICR(cdpId, price);
+        if (cdpManager.checkRecoveryMode(price)) {
+            return _icr >= cdpManager.CCR();
+        } else {
+            return _icr >= cdpManager.MCR();
+        }
     }
 }
