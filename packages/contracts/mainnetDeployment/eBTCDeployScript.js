@@ -52,8 +52,6 @@ class EBTCDeployerScript {
         this.highSecDelay = configParams.HIGHSEC_MIN_DELAY; // Deployment should fail if null
         this.lowSecDelay = configParams.LOWSEC_MIN_DELAY; // Deployment should fail if null
 
-        this.skipTimelockConfig = configPArams.SKIP_TIMELOCK_CONFIG
-
         this.collEthCLFeed = checkValidItem(configParams.externalAddress['collEthCLFeed']) ? configParams.externalAddress['collEthCLFeed'] : deployerWallet.address;
         this.ethBtcCLFeed = checkValidItem(configParams.externalAddress['ethBtcCLFeed']) ? configParams.externalAddress['ethBtcCLFeed'] : deployerWallet.address;
         this.chainlinkAdapter = checkValidItem(configParams.externalAddress['chainlinkAdapter']) ? configParams.externalAddress['chainlinkAdapter'] : deployerWallet.address;    
@@ -359,7 +357,7 @@ class EBTCDeployerScript {
         let tx;
         const authority = coreContracts.authority;
 
-        if (!this.skipTimelockConfig) {
+        if (!configParams.SKIP_TIMELOCK_CONFIG) {
 
             // === Timelocks Configuration === //
 
