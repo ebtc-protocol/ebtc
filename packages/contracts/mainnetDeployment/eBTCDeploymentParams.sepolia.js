@@ -3,7 +3,7 @@ const externalAddress  = {
   "btcUsdCLFeed": "",
   "ethUsdCLFeed": "",
   "chainlinkAdapter": "",
-  "authorityOwner": "0xC8A7768D2a9EE15437c981a7130268622083c2BD",// security multisig
+  "authorityOwner": "", // Leave empty for deployer, required for atomic governance wireup.
   "collateral": "0x97BA9AA7B7DC74f7a74864A62c4fF93b2b22f015", //sepolia
   "securityMultisig": "0xC8A7768D2a9EE15437c981a7130268622083c2BD", //sepolia
   "cdpTechOpsMultisig": "0x664F43229dDa9fdEE00e723753f88f3Ba81967F6", //sepolia
@@ -28,6 +28,9 @@ const LOWSEC_MIN_DELAY = 300 // 5 mins
 const ADDITIONAL_HIGHSEC_ADMIN = "0xC8A7768D2a9EE15437c981a7130268622083c2BD" // security msig
 const ADDITIONAL_LOWSEC_ADMIN = "0xC8A7768D2a9EE15437c981a7130268622083c2BD" // security msig
 
+// Toggle if reusing Timelocks already configured or if configuration is handled manually
+const SKIP_TIMELOCK_CONFIG = true
+
 module.exports = {
   OUTPUT_FILE,
   DEPLOY_WAIT,
@@ -40,5 +43,6 @@ module.exports = {
   HIGHSEC_MIN_DELAY,
   LOWSEC_MIN_DELAY,
   ADDITIONAL_HIGHSEC_ADMIN,
-  ADDITIONAL_LOWSEC_ADMIN
+  ADDITIONAL_LOWSEC_ADMIN,
+  SKIP_TIMELOCK_CONFIG
 };
