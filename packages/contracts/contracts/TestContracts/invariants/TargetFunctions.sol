@@ -251,7 +251,6 @@ abstract contract TargetFunctions is Properties {
                 gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2_4");
             }
 
-
             // if ICR >= TCR then we ignore
             // We could check that Liquidated is not above TCR
             if (
