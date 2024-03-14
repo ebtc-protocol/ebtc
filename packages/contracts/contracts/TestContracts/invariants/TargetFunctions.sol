@@ -258,7 +258,7 @@ abstract contract TargetFunctions is Properties {
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 if (vars.newIcrBefore <= vars.newTcrBefore) {
-                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                    gte(vars.newTcrAfter, vars.newTcrBefore - 1, L_12);
                 }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
@@ -340,7 +340,7 @@ abstract contract TargetFunctions is Properties {
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 if (vars.newIcrBefore <= vars.newTcrBefore) {
-                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                    gte(vars.newTcrAfter, vars.newTcrBefore - 1, L_12);
                 }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
