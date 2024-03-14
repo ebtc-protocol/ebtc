@@ -630,10 +630,10 @@ async function main() {
     // Flag if useMockCollateral and useMockPriceFeed 
     // also specify which parameter config file to use
     let useMockCollateral = false;
-    let useMockPriceFeed = true;
+    let useMockPriceFeed = false;
 
-    // let configParams = configParamsLocal;
-    let configParams = configParamsSepolia;
+    let configParams = configParamsLocal;
+    // let configParams = configParamsSepolia;
     // let configParams = configParamsMainnet;
     // let configParams = configParamsGoerli;
 
