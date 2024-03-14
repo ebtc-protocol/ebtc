@@ -237,8 +237,18 @@ abstract contract TargetFunctions is Properties {
         if (success) {
             // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: Proxy of growth, storage var would further refine
             if (_icrToLiq <= cdpManager.MCR()) {
-                gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1");
-                gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2");
+                gte(
+                    vars.collSurplusPoolBefore + 12,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_12"
+                );
+                gte(vars.userSurplusBefore + 12, vars.userSurplusAfter, "SURPLUS-CHECK-2_12");
+
+                gte(vars.collSurplusPoolBefore + 8, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_8");
+                gte(vars.userSurplusBefore + 8, vars.userSurplusAfter, "SURPLUS-CHECK-2_8");
+
+                gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1_4");
+                gte(vars.userSurplusBefore + 4, vars.userSurplusAfter, "SURPLUS-CHECK-2_4");
             }
 
             // if ICR >= TCR then we ignore
@@ -451,9 +461,6 @@ abstract contract TargetFunctions is Properties {
         _after(bytes32(0));
 
         if (success) {
-            // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: We use Liquidate for the exact CDP check
-            gte(vars.collSurplusPoolBefore + 4, vars.collSurplusPoolAfter, "SURPLUS-CHECK-1");
-
             Cdp[] memory cdpsAfter = _getCdpIdsAndICRs();
 
             Cdp[] memory cdpsLiquidated = _cdpIdsAndICRsDiff(cdpsBefore, cdpsAfter);
@@ -473,6 +480,33 @@ abstract contract TargetFunctions is Properties {
                 if (cdpsLiquidated[i].icr <= cdpManager.LICR()) {
                     _badDebtToRedistribute = true;
                 }
+            }
+
+            // SURPLUS-CHECK-1 | The surplus is capped at 4 wei | NOTE: We use Liquidate for the exact CDP check
+            bool hasCdpWithSurplus;
+            for (uint256 i = 0; i < cdpsLiquidated.length; ++i) {
+                if (cdpsLiquidated[i].icr > cdpManager.MCR()) {
+                    hasCdpWithSurplus = true;
+                    break;
+                }
+            }
+            // At most, each liquidate cdp must generate 4 wei of rounding error in the surplus
+            if (!hasCdpWithSurplus) {
+                gte(
+                    vars.collSurplusPoolBefore + 12 * cdpsLiquidated.length,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_12"
+                );
+                gte(
+                    vars.collSurplusPoolBefore + 8 * cdpsLiquidated.length,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_8"
+                );
+                gte(
+                    vars.collSurplusPoolBefore + 4 * cdpsLiquidated.length,
+                    vars.collSurplusPoolAfter,
+                    "SURPLUS-CHECK-1_4"
+                );
             }
 
             if (

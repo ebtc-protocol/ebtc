@@ -6,6 +6,7 @@ import "forge-std/console2.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {IERC3156FlashBorrower} from "../contracts/Interfaces/IERC3156FlashBorrower.sol";
+import {EchidnaProperties} from "../contracts/TestContracts/invariants/echidna/EchidnaProperties.sol";
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
 import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
@@ -20,6 +21,7 @@ contract EToFoundry is
     TargetContractSetup,
     FoundryAsserts,
     TargetFunctions,
+    EchidnaProperties,
     BeforeAfterWithLogging,
     IERC3156FlashBorrower
 {
@@ -58,6 +60,29 @@ contract EToFoundry is
 
         console2.log("sumOfDebt", sumOfDebt);
         console2.log("_systemDebt", _systemDebt);
+    }
+
+    function test_liquidateCdps_08() public {
+        openCdp(
+            59914065220882616393901627116916467295390012089046490709986378073849688866148,
+            10000000000000000
+        );
+        openCdp(
+            16002900921349397461820461540535496838629497080543343904020315696343902073030,
+            1250000000000000000
+        );
+        setEthPerShare(7913129639936);
+        setEthPerShare(
+            27102804808253893354785944191622943930425593039073810666902981047999574677831
+        );
+        vm.warp(1716900);
+        vm.roll(131713);
+        echidna_LS_01();
+        vm.warp(2182521);
+        vm.roll(135224);
+        liquidateCdps(
+            115792089237316195423570985008687907853269984665640564039457584007913129639928
+        );
     }
 
     function testgeneral17AgainByOneWei() public {
