@@ -1380,7 +1380,7 @@ abstract contract TargetFunctions is Properties {
     // > There are 11 slashing ongoing with the RockLogic GmbH node operator in Lido.
     // > the total projected impact is around 20 ETH,
     // > or about 3% of average daily protocol rewards/0.0004% of TVL.
-    function setEthPerShare(uint256 _newEthPerShare) public {
+    function setEthPerShare(uint256 _newEthPerShare) public virtual {
         uint256 currentEthPerShare = collateral.getEthPerShare();
         _newEthPerShare = between(
             _newEthPerShare,
@@ -1415,7 +1415,7 @@ abstract contract TargetFunctions is Properties {
     // Governance
     ///////////////////////////////////////////////////////
 
-    function setGovernanceParameters(uint256 parameter, uint256 value) public {
+    function setGovernanceParameters(uint256 parameter, uint256 value) public virtual {
         parameter = between(parameter, 0, 6);
 
         if (parameter == 0) {

@@ -572,4 +572,22 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             return _icr >= cdpManager.MCR();
         }
     }
+
+    function invariant_PYS_01(
+        CdpManager cdpManager,
+        bytes32 yieldTargetCdp,
+        address controlActor,
+        address yieldTarget
+    ) internal view returns (bool) {
+        // If not set we aren't testing PYS
+        if (yieldControlAddress == address(0)) return true;
+
+        // Get the current shares in the protocol
+        uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdp);
+    
+        // In case the Yield Actor closes or redeems, we check their address as well
+        uint256 yieldTargetCollateral = collateral.balanceOf(yieldTarget) + collateral.getPooledEthByShares(_coll);
+
+        return collateral.balanceOf(controlActor) == yieldTargetCollateral;
+    }
 }
