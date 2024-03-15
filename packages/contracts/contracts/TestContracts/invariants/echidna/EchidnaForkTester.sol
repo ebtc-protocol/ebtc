@@ -10,9 +10,10 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
     constructor() payable {
         _setUpFork();
         _setUpActors();
-        // https://etherscan.io/tx/0x3d20c053b83d4d49ba12c3251f14546511f8af7b5b99dbeb692f6f9458c075ab
-        hevm.roll(19258626);
-        hevm.warp(1708307303);
+        
+        // https://etherscan.io/tx/0xca4f2e9a7e8cc82969e435091576dbd8c8bfcc008e89906857056481e0542f23
+        hevm.roll(19437242); // Block
+        hevm.warp(1710460800);
     }
 
     function setPrice(uint256) public pure override {
