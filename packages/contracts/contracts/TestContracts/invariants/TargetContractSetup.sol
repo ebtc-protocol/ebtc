@@ -350,9 +350,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             liqudationLibrary = LiquidationLibrary(0x4Ae990C3b2F7C3961c51483eFba20760946a7681);
             cdpManager = CdpManager(0xc4cbaE499bb4Ca41E78f52F07f5d98c375711774);
             borrowerOperations = BorrowerOperations(0xd366e016Ae0677CdCE93472e603b75051E022AD0);
-            /// @audit TODO: Wrong token
-            eBTCToken = EBTCTokenTester(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
-
+            eBTCToken = EBTCTokenTester(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
             priceFeedMock = PriceFeedTestnet(address(0x6a24ECc18224857BD73A7aa53c2a4Eb43c17D5A8)); // Price Feed
             activePool = ActivePool(0x6dBDB6D420c110290431E863A1A978AE53F69ebC);
             collSurplusPool = CollSurplusPool(0x335982DaE827049d35f09D5ec927De2bc38df3De);
@@ -367,9 +365,10 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 address(priceFeedMock)
             );
 
+            // TODO: Contracts ar enot working on forked state
             liquidationSequencer = new LiquidationSequencer(
                 address(cdpManager),
-                address(sortedCdps), // For some reason calling here reverts?
+                address(cdpManager.sortedCdps()),
                 address(priceFeedMock),
                 address(activePool),
                 address(collateral)
