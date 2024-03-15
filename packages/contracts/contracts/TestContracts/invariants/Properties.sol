@@ -46,14 +46,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         ActivePool activePool,
         uint256 diff_tolerance
     ) internal view returns (bool) {
-        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
-        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
-        uint256 _sum;
+        (uint256 _sum, ) = sumAllCDPAssets();
 
-        for (uint256 i = 0; i < _cdpCount; ++i) {
-            (, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
-            _sum += _coll;
-        }
         uint256 _activeColl = activePool.getSystemCollShares();
         uint256 _diff = _sum > _activeColl ? (_sum - _activeColl) : (_activeColl - _sum);
         return (_diff * 1e18 <= diff_tolerance * _activeColl);
@@ -63,14 +57,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         CdpManager cdpManager,
         uint256 diff_tolerance
     ) internal view returns (bool) {
-        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
-        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
-        uint256 _sum;
-
-        for (uint256 i = 0; i < _cdpCount; ++i) {
-            (uint256 _debt, ) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
-            _sum += _debt;
-        }
+        (, uint256 _sum) = sumAllCDPAssets();
 
         bool oldCheck = isApproximateEq(_sum, cdpManager.getSystemDebt(), diff_tolerance);
         // New check ensures this is above 1000 wei
@@ -571,5 +558,19 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         } else {
             return _icr >= cdpManager.MCR();
         }
+    }
+
+    function sumAllCDPAssets() public view returns (uint256, uint256) {
+        uint256 _cdpCount = cdpManager.getActiveCdpsCount();
+        bytes32[] memory cdpIds = hintHelpers.sortedCdpsToArray();
+        uint256 _sumColl;
+        uint256 _sumDebt;
+
+        for (uint256 i = 0; i < _cdpCount; ++i) {
+            (uint256 _debt, uint256 _coll) = cdpManager.getSyncedDebtAndCollShares(cdpIds[i]);
+            _sumColl += _coll;
+            _sumDebt += _debt;
+        }
+        return (_sumColl, _sumDebt);
     }
 }
