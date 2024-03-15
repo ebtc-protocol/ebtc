@@ -357,91 +357,95 @@ class EBTCDeployerScript {
         let tx;
         const authority = coreContracts.authority;
 
-        // === Timelocks Configuration === //
+        if (!configParams.SKIP_TIMELOCK_CONFIG) {
 
-        const PROPOSER_ROLE = await this.highSecTimelock.PROPOSER_ROLE();
-        const EXECUTOR_ROLE = await this.highSecTimelock.EXECUTOR_ROLE();
-        const CANCELLER_ROLE = await this.highSecTimelock.CANCELLER_ROLE();
-        const TIMELOCK_ADMIN_ROLE = await this.highSecTimelock.TIMELOCK_ADMIN_ROLE();
+            // === Timelocks Configuration === //
 
-        // HIGHSEC TIMELOCK
-        // ==========================
-        // PROPOSERS: Security
-        // CANCELLERS: Security
-        // EXECUTORS: Security
-        // Admin: Only Timelock
-        // Delay: 7 days (mainnet)
-        // ==========================
+            const PROPOSER_ROLE = await this.highSecTimelock.PROPOSER_ROLE();
+            const EXECUTOR_ROLE = await this.highSecTimelock.EXECUTOR_ROLE();
+            const CANCELLER_ROLE = await this.highSecTimelock.CANCELLER_ROLE();
+            const TIMELOCK_ADMIN_ROLE = await this.highSecTimelock.TIMELOCK_ADMIN_ROLE();
 
-        assert.isTrue(await this.highSecTimelock.getMinDelay() == configParams.HIGHSEC_MIN_DELAY);
+            // HIGHSEC TIMELOCK
+            // ==========================
+            // PROPOSERS: Security
+            // CANCELLERS: Security
+            // EXECUTORS: Security
+            // Admin: Only Timelock
+            // Delay: 7 days (mainnet)
+            // ==========================
 
-        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 1);
-        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 1);
-        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1);
+            assert.isTrue(await this.highSecTimelock.getMinDelay() == configParams.HIGHSEC_MIN_DELAY);
 
-        assert.isTrue(await this.highSecTimelock.hasRole(PROPOSER_ROLE, this.securityMultisig));
-        assert.isTrue(await this.highSecTimelock.hasRole(EXECUTOR_ROLE, this.securityMultisig));
-        assert.isTrue(await this.highSecTimelock.hasRole(CANCELLER_ROLE, this.securityMultisig));
+            assert.isTrue(await this.highSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 1);
+            assert.isTrue(await this.highSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 1);
+            assert.isTrue(await this.highSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1);
 
-        // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
-        assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
-        if (await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
-            tx = await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
-            await tx.wait();
-            console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on highSecTimelock");
+            assert.isTrue(await this.highSecTimelock.hasRole(PROPOSER_ROLE, this.securityMultisig));
+            assert.isTrue(await this.highSecTimelock.hasRole(EXECUTOR_ROLE, this.securityMultisig));
+            assert.isTrue(await this.highSecTimelock.hasRole(CANCELLER_ROLE, this.securityMultisig));
+
+            // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
+            assert.isTrue(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.highSecTimelock.address));
+            if (await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
+                tx = await this.highSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+                await tx.wait();
+                console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on highSecTimelock");
+            }
+            assert.isFalse(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+            assert.isTrue(await this.highSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 1);
+
+            // Print out final state for sanity check
+            console.log(chalk.cyan("HIGH SEC TIMELOCK CONFIGURATION"))
+            await printOutTimelockState(this.highSecTimelock);
+
+            // LOWSEC TIMELOCK
+            // ==========================
+            // PROPOSERS: Security and CDP TechOps
+            // CANCELLERS: Security
+            // EXECUTORS: Security and CDP TechOps
+            // Admin: Only Timelock
+            // Delay: 2 days (mainnet)
+            // ==========================
+
+            assert.isTrue(await this.lowSecTimelock.getMinDelay() == configParams.LOWSEC_MIN_DELAY);
+
+            console.log(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE))
+            console.log(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE))
+
+            assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 2);
+            assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 2);
+
+            assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.securityMultisig));
+            assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpTechOpsMultisig));
+            assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.securityMultisig));
+            assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpTechOpsMultisig));
+            assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.securityMultisig));
+
+            // We remove the canceller from TechOps
+            if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig)) {
+                tx = await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
+                await tx.wait();
+                console.log("Revoked CANCELLER_ROLE of cdpTechOpsMultisig on lowSecTimelock");
+            }
+            assert.isFalse(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
+            assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1); // Only Security should be canceller
+
+            // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
+            assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.lowSecTimelock.address));
+            if (await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
+                tx = await this.lowSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
+                await tx.wait();
+                console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on lowSecTimelock");
+            }
+            assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
+            assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 1); // Only timelock should be admin
+
+            // Print out final state for sanity check
+            console.log(chalk.cyan("LOW SEC TIMELOCK CONFIGURATION"))
+            await printOutTimelockState(this.lowSecTimelock);
+        
         }
-        assert.isFalse(await this.highSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
-        assert.isTrue(await this.highSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 1);
-
-        // Print out final state for sanity check
-        console.log(chalk.cyan("HIGH SEC TIMELOCK CONFIGURATION"))
-        await printOutTimelockState(this.highSecTimelock);
-
-        // LOWSEC TIMELOCK
-        // ==========================
-        // PROPOSERS: Security and CDP TechOps
-        // CANCELLERS: Security
-        // EXECUTORS: Security and CDP TechOps
-        // Admin: Only Timelock
-        // Delay: 2 days (mainnet)
-        // ==========================
-
-        assert.isTrue(await this.lowSecTimelock.getMinDelay() == configParams.LOWSEC_MIN_DELAY);
-
-        console.log(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE))
-        console.log(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE))
-
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(PROPOSER_ROLE) == 2);
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(EXECUTOR_ROLE) == 2);
-
-        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.securityMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(PROPOSER_ROLE, this.cdpTechOpsMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.securityMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(EXECUTOR_ROLE, this.cdpTechOpsMultisig));
-        assert.isTrue(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.securityMultisig));
-
-        // We remove the canceller from TechOps
-        if (await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig)) {
-            tx = await this.lowSecTimelock.revokeRole(CANCELLER_ROLE, this.cdpTechOpsMultisig);
-            await tx.wait();
-            console.log("Revoked CANCELLER_ROLE of cdpTechOpsMultisig on lowSecTimelock");
-        }
-        assert.isFalse(await this.lowSecTimelock.hasRole(CANCELLER_ROLE, this.cdpTechOpsMultisig));
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(CANCELLER_ROLE) == 1); // Only Security should be canceller
-
-        // Only after confirming that the Timelock has admin role on itself, we revoke it from the deployer
-        assert.isTrue(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, this.lowSecTimelock.address));
-        if (await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address)) {
-            tx = await this.lowSecTimelock.revokeRole(TIMELOCK_ADMIN_ROLE, _deployer.address);
-            await tx.wait();
-            console.log("Revoked TIMELOCK_ADMIN_ROLE of deployer on lowSecTimelock");
-        }
-        assert.isFalse(await this.lowSecTimelock.hasRole(TIMELOCK_ADMIN_ROLE, _deployer.address));
-        assert.isTrue(await this.lowSecTimelock.getRoleMemberCount(TIMELOCK_ADMIN_ROLE) == 1); // Only timelock should be admin
-
-        // Print out final state for sanity check
-        console.log(chalk.cyan("LOW SEC TIMELOCK CONFIGURATION"))
-        await printOutTimelockState(this.lowSecTimelock);
 
         // === CDP Authority Configuration === //
 
@@ -462,6 +466,7 @@ class EBTCDeployerScript {
             8: "EbtcFeed: setPrimaryOracle",
             9: "EbtcFeed: setSecondaryOracle",
             10: "PriceFeed: setFallbackCaller",
+            11: "PriceFeed+CDPManager: CollFeedSource & RedemptionFeeFloor"
         };
 
         // Get the list of role numbers
@@ -534,6 +539,10 @@ class EBTCDeployerScript {
             ],
             10: [
                 { target: coreContracts.priceFeed, signature: govSig.SET_FALLBACK_CALLER_SIG },
+            ],
+            11: [
+                { target: coreContracts.priceFeed, signature: govSig.SET_COLLATERAL_FEED_SOURCE_SIG },
+                { target: coreContracts.cdpManager, signature: govSig.SET_REDEMPTION_FEE_FLOOR_SIG },
             ]
         };
 
@@ -561,8 +570,8 @@ class EBTCDeployerScript {
         // CDP TechOps should be able to pause redemptions and flash loans
         // Fee recipient should be able to claim collateral shares
         const userAddressToRoleNumberMap = {
-            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7, 8, 9, 10],
-            [this.lowSecTimelock.address]: [3, 4, 5, 6, 7, 9, 10],
+            [this.highSecTimelock.address]: [0, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            [this.lowSecTimelock.address]: [3, 4, 5, 6, 7, 9, 10, 11],
             [this.securityMultisig]: [4],
             [this.cdpTechOpsMultisig]: [4],
             [this.feeRecipientMultisig]: [6, 7],
@@ -621,7 +630,7 @@ async function main() {
     // Flag if useMockCollateral and useMockPriceFeed 
     // also specify which parameter config file to use
     let useMockCollateral = false;
-    let useMockPriceFeed = true;
+    let useMockPriceFeed = false;
 
     let configParams = configParamsLocal;
     // let configParams = configParamsSepolia;

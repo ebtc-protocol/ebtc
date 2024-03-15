@@ -81,7 +81,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
         liquidateInNormalMode,
         liquidateInRecoveryMode,
         redeemCollateral,
-        partiallyLiquidate
+        partiallyLiquidate,
+        failedPartialRedemption
     }
 
     enum Status {
@@ -265,4 +266,8 @@ interface ICdpManagerData is IRecoveryModeGracePeriod {
     ) external view returns (uint256 debt, uint256 collShares);
 
     function canLiquidateRecoveryMode(uint256 icr, uint256 tcr) external view returns (bool);
+
+    function totalCollateralSnapshot() external view returns (uint256);
+
+    function totalStakesSnapshot() external view returns (uint256);
 }

