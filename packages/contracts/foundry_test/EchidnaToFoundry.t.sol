@@ -1881,6 +1881,57 @@ contract EToFoundry is
         observe();
     }
 
+    function test_L12_20() public {
+        openCdp(1050000000000000036, 12346);
+        bytes32 _cdp1 = openCdp(
+            84746359951458533361379666561080719128061275448704836073067477433696183231925,
+            1250000000000000000
+        );
+        bytes32 _cdp2 = openCdp(
+            84746359951458533361379666561080719128061275448704836073067477433696183231925,
+            1250000000000000000
+        ); // Same as above, for any specific testing logic
+        setEthPerShare(
+            115792089237316195423570985008687907853269984665640563039457584007913129639936
+        );
+        setPrice(0);
+        redeemCollateral(
+            69716654700890763575378887911243781134427300215583588293317644570616677513807,
+            0x14afc158f87b4a37da9af688d444398ea3d666480473ae3e13323cfbb059e030,
+            115792089237316195423570985008687907853269984665640564039457584007913129639930,
+            true,
+            false,
+            true,
+            36578138744728324764067327965769263937759430854277381205751212946887573918252,
+            9469800751145575429906717862626050324141071729943851754606501858153871717162
+        );
+        setEthPerShare(
+            105924966980746142706427135390910987356918937126536348439738187706260037614260
+        );
+        setPrice(974);
+        console2.log("_stETHIndex:", collateral.getPooledEthByShares(1e18));
+        uint256 _p = priceFeedMock.fetchPrice();
+        console2.log("_price:", _p);
+        console2.log("_cdp1Coll:", cdpManager.getSyncedCdpCollShares(_cdp1));
+        console2.log("_cdp2Coll:", cdpManager.getSyncedCdpCollShares(_cdp2));
+        console2.log("_cdp1Debt:", cdpManager.getSyncedCdpDebt(_cdp1));
+        console2.log("_cdp2Debt:", cdpManager.getSyncedCdpDebt(_cdp2));
+        console2.log("_totalColl:", cdpManager.getSyncedSystemCollShares());
+        console2.log("_totalDebt:", cdpManager.getSystemDebt());
+        console2.log("_cdp1ICR:", cdpManager.getSyncedICR(_cdp1, _p));
+        console2.log("_cdp2ICR:", cdpManager.getSyncedICR(_cdp2, _p));
+        console2.log("_TCR:", cdpManager.getSyncedTCR(_p));
+        liquidate(27180256851312854598984369756275949100849075651009792737226616021791428607324);
+        console2.log("_cdp1Coll:", cdpManager.getSyncedCdpCollShares(_cdp1));
+        console2.log("_cdp2Coll:", cdpManager.getSyncedCdpCollShares(_cdp2));
+        console2.log("_cdp1Debt:", cdpManager.getSyncedCdpDebt(_cdp1));
+        console2.log("_cdp2Debt:", cdpManager.getSyncedCdpDebt(_cdp2));
+        console2.log("_totalColl:", cdpManager.getSyncedSystemCollShares());
+        console2.log("_totalDebt:", cdpManager.getSystemDebt());
+        console2.log("_cdp1ICR:", cdpManager.getSyncedICR(_cdp1, _p));
+        console2.log("_TCR:", cdpManager.getSyncedTCR(_p));
+    }
+
     function get_cdp(uint256 _i) internal returns (bytes32) {
         uint256 numberOfCdps = sortedCdps.cdpCountOf(address(actor));
 

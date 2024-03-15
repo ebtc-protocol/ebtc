@@ -258,7 +258,14 @@ abstract contract TargetFunctions is Properties {
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 if (vars.newIcrBefore <= vars.newTcrBefore) {
-                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                    (uint256 _sumColl, uint256 _sumDebt) = sumAllCDPAssets();
+                    uint256 _tcrAfterBySum = (collateral.getPooledEthByShares(_sumColl) *
+                        vars.priceAfter) / _sumDebt;
+                    gte(
+                        (_tcrAfterBySum > vars.newTcrAfter ? _tcrAfterBySum : vars.newTcrAfter),
+                        vars.newTcrBefore,
+                        L_12
+                    );
                 }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
@@ -340,7 +347,14 @@ abstract contract TargetFunctions is Properties {
             ) {
                 // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/5
                 if (vars.newIcrBefore <= vars.newTcrBefore) {
-                    gte(vars.newTcrAfter, vars.newTcrBefore, L_12);
+                    (uint256 _sumColl, uint256 _sumDebt) = sumAllCDPAssets();
+                    uint256 _tcrAfterBySum = (collateral.getPooledEthByShares(_sumColl) *
+                        vars.priceAfter) / _sumDebt;
+                    gte(
+                        (_tcrAfterBySum > vars.newTcrAfter ? _tcrAfterBySum : vars.newTcrAfter),
+                        vars.newTcrBefore,
+                        L_12
+                    );
                 }
             }
             // https://github.com/Badger-Finance/ebtc-fuzz-review/issues/12
