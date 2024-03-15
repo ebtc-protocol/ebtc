@@ -342,7 +342,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
     function _setUpFork() internal {
         // NOTE: Addresses from: https://gist.github.com/GalloDaSballo/75d77f8d0837821156fe061d0d8687e1
-        defaultGovernance = address(0x0);
+        defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
         ebtcDeployer = EBTCDeployer(0x5c42faC7eEa7e724986bB5e4F3B12912F046120a);
         collateral = CollateralTokenTester(payable(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // stETH
         {
@@ -350,8 +350,10 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             liqudationLibrary = LiquidationLibrary(0x4Ae990C3b2F7C3961c51483eFba20760946a7681);
             cdpManager = CdpManager(0xc4cbaE499bb4Ca41E78f52F07f5d98c375711774);
             borrowerOperations = BorrowerOperations(0xd366e016Ae0677CdCE93472e603b75051E022AD0);
-            eBTCToken = EBTCTokenTester(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
-            priceFeedMock = PriceFeedTestnet(address(0xa9a65B1B1dDa8376527E89985b221B6bfCA1Dc9a)); // eBTC Feed
+            /// @audit TODO: Wrong token
+            eBTCToken = EBTCTokenTester(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84);
+
+            priceFeedMock = PriceFeedTestnet(address(0x6a24ECc18224857BD73A7aa53c2a4Eb43c17D5A8)); // Price Feed
             activePool = ActivePool(0x6dBDB6D420c110290431E863A1A978AE53F69ebC);
             collSurplusPool = CollSurplusPool(0x335982DaE827049d35f09D5ec927De2bc38df3De);
             sortedCdps = SortedCdps(0x591AcB5AE192c147948c12651a0a5f24f0529BE3);
@@ -367,7 +369,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
             liquidationSequencer = new LiquidationSequencer(
                 address(cdpManager),
-                address(cdpManager.sortedCdps()),
+                address(sortedCdps), // For some reason calling here reverts?
                 address(priceFeedMock),
                 address(activePool),
                 address(collateral)
