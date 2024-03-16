@@ -584,7 +584,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (yieldControlAddress == address(0) || cdpManager.stakingRewardSplit() != 0) return true;
 
         // Get the current shares of this cdp in the protocol
-        uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdp);
+        uint256 _coll = cdpManager.getCdpCollShares(yieldTargetCdp);
     
         // In case the Yield Actor closes or redeems, we check their address as well
         // Note: we must also remember the gas stipend gets subtracted from the shares at the start
