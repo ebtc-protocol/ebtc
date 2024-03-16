@@ -8,11 +8,12 @@ import "../TargetFunctions.sol";
 
 contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
     constructor() payable {
-        _setUp();
-        _setUpActors();
-
         yieldControlAddress = address(0x5000000000000005);
         yieldTargetAddress =  address(0x6000000000000006);
+
+        _setUp();
+        _setUpActors();
+        _setupYieldActors();
     }
 
     // NOTE: Customized setup for a Yield Control actor and a Yield Target actor
@@ -26,8 +27,6 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
         callers[1] = address(activePool);
         address[] memory addresses = new address[](2);
 
-        // We don't want the control user to be used as part of an actor for now
-        addresses[1] = yieldControlAddress;
         addresses[0] = yieldTargetAddress;
         Actor[] memory actorsArray = new Actor[](2);
         // Just add Yield target, leaving as loop because we may want to make this more complex later
@@ -43,12 +42,22 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
             assert(success);
         }
 
+        // We set up our Control Address with an initial amount of collateral
+        // NOT as an actor (exposes control to outside tx)
+        (success, ) = yieldControlAddress.call{value: INITIAL_ETH_BALANCE}("");
+        hevm.prank(yieldControlAddress);
+        collateral.deposit{value: INITIAL_COLL_BALANCE - 0.2 ether}();
+
+        // Set the PYS at 0
+        TargetFunctions.setGovernanceParameters(2, 0);
+
         priceFeedMock.setPrice(1e8); /// TODO: Does this price make any sense?
 
         // The Yield Target opens a CDP. We want to follow their Yield Story
         // At the moment we aren't letting them do anything else
         actor = actors[yieldTargetAddress];
-        (success, yieldTargetCdpId) = _openCdp(INITIAL_COLL_BALANCE, 1e8);
+        // Small eBTC amount to prevent liquidations for now
+        (success, yieldTargetCdpId) = _openCdp(INITIAL_COLL_BALANCE, 1e4);
         assert(success);
     }
 
@@ -98,6 +107,9 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
             newCdpId = abi.decode(returnData, (bytes32));
         }
 
+        // We don't want the actor to do other things in this case (yet)
+        actors[yieldTargetAddress].setRestrictedMode(true);
+
         return (success, newCdpId);
     }
 
@@ -105,7 +117,7 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
     // This allows testing against 0 if we wish it
     function setGovernanceParameters(uint256 parameter, uint256 value) public override {
         if (parameter == 2) {
-            value = 0;
+            parameter++;
         }
 
         // Allows us flexibility that other params can still change.
@@ -114,15 +126,25 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
     }
 
     // WIP: Ideas with regards to tracking PYS as it changes
-    // Will become a property
+    // Assuming only upwards rebases for now
     function setEthPerShare(uint256 _newEthPerShare) public override {
+        /*
+        WIP: to be used later with PYS changes
+
         // The only time yield accrues is with the rebase
         // Amount of getETHByPooledShares at this moment in time - amount of getETHByPooledShares at previous moment in time
         yieldControlTracker = collateral.getPooledEthByShares(INITIAL_COLL_BALANCE) - yieldControlTracker;
 
-        uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdpId);
+        uint256 _coll = cdpManager.getCdpCollShares(yieldTargetCdpId);
         // Yield since last rebase
-        yieldActorTracker = (collateral.balanceOf(yieldTargetAddress) + collateral.getPooledEthByShares(_coll)) - yieldActorTracker;
+        uint256 yield = ((collateral.balanceOf(yieldTargetAddress) + collateral.getPooledEthByShares(_coll)) - yieldActorTracker);
+        uint256 protocolPYS = yield * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+        yieldActorTracker = yield - protocolPYS;
+
+        if (cdpManager.stakingRewardSplit() != 0) {
+            yieldProtocolTracker = protocolPYS - yieldProtocolTracker;
+        }
+        */
 
         TargetFunctions.setEthPerShare(_newEthPerShare);
     }

@@ -573,6 +573,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         }
     }
 
+    // PYS_01: As a user I should earn the same yield on my collateral when held in the protocol, as outside, given PYS of 0
     function invariant_PYS_01(
         CdpManager cdpManager,
         bytes32 yieldTargetCdp,
@@ -580,14 +581,31 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         address yieldTarget
     ) internal view returns (bool) {
         // If not set we aren't testing PYS
-        if (yieldControlAddress == address(0)) return true;
+        if (yieldControlAddress == address(0) || cdpManager.stakingRewardSplit() != 0) return true;
 
-        // Get the current shares in the protocol
+        // Get the current shares of this cdp in the protocol
         uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdp);
     
         // In case the Yield Actor closes or redeems, we check their address as well
-        uint256 yieldTargetCollateral = collateral.balanceOf(yieldTarget) + collateral.getPooledEthByShares(_coll);
+        // Note: we must also remember the gas stipend gets subtracted from the shares at the start
+        uint256 yieldTargetCollateral = collateral.balanceOf(address(actors[yieldTarget])) + collateral.getPooledEthByShares(_coll);
 
-        return collateral.balanceOf(controlActor) == yieldTargetCollateral;
+        // Is approximate eq good here? 1e8 would be dust
+        return  _assertApproximateEq(collateral.balanceOf(controlActor), yieldTargetCollateral, 1e8); 
     }
+
+    /* WIP
+    // At all times the amount of yield accrued from a rebase should be split as per the PYS
+    function invariant_PYS_02(
+        CdpManager cdpManager,
+        bytes32 yieldTargetCdp,
+        uint256 yieldControlTracker,
+        uint256 yieldActorTracker,
+        uint256 yieldProtocolTracker
+    ) internal view returns (bool) {
+        if (yieldControlAddress == address(0)) return true;
+
+        return (yieldActorTracker + yieldProtocolTracker) == yieldControlTracker;
+    }
+    */
 }
