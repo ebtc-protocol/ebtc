@@ -585,6 +585,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         // Get the current shares of this cdp in the protocol
         uint256 _coll = cdpManager.getCdpCollShares(yieldTargetCdp);
+
+        // If the CDP has 0 shares then it has been liquidated
+        if (_coll == 0) return true;
     
         // In case the Yield Actor closes or redeems, we check their address as well
         // Note: we must also remember the gas stipend gets subtracted from the shares at the start
