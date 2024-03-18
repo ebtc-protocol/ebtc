@@ -593,6 +593,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // Note: we must also remember the gas stipend gets subtracted from the shares at the start
         uint256 yieldTargetCollateral = collateral.balanceOf(address(actors[yieldTarget])) + collateral.getPooledEthByShares(_coll);
 
+        /**
+        If the collateral does not match then we prob have a cdp that has been partially redeemed by another party
+        This means we should check the value of the eBTC of the yield actor, as well as the outstanding loan on the actor's CDP
+        If the amount of stETH collateral the actor owes is less than the stETH collateral that they can obtain by closing their cdp
+        then we need to take into account the stETH value of the surplus collateral.
+         */
+        uint256 debt = cdpManager.getCdpDebt(yieldTargetCdp);
+        uint256 eBtcAmount = eBTCToken.balanceOf(yieldTarget);
+        uint256 collValue;
+        if (debt < eBtcAmount) {
+            // Price is in btc/stETH
+           yieldTargetCollateral += (eBtcAmount - debt) * priceFeedMock.getPrice() / 1e18;
+        }
+
         // Is approximate eq good here? 1e8 would be dust
         return  _assertApproximateEq(collateral.balanceOf(controlActor), yieldTargetCollateral, 1e8); 
     }
