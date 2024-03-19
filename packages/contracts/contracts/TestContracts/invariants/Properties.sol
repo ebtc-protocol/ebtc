@@ -143,7 +143,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-        return sumStakes == vars.totalStakesAfter;
+        return sumStakes == cdpManager.totalStakes();
     }
 
     function invariant_CSP_01(
