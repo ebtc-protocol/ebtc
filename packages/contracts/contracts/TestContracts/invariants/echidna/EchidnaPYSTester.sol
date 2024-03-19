@@ -49,13 +49,18 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
         collateral.deposit{value: INITIAL_COLL_BALANCE - 0.2 ether}();
 
         // Set the PYS at 0
-        TargetFunctions.setGovernanceParameters(2, 0);
+        //TargetFunctions.setGovernanceParameters(2, 0);
 
         priceFeedMock.setPrice(1e8); /// TODO: Does this price make any sense?
 
         // The Yield Target opens a CDP. We want to follow their Yield Story
         // At the moment we aren't letting them do anything else
         actor = actors[yieldTargetAddress];
+        // Small eBTC amount to prevent liquidations for now
+        (success, yieldTargetCdpId) = _openCdp(INITIAL_COLL_BALANCE, 1e4);
+        assert(success);
+
+        actor = actors[USER1];
         // Small eBTC amount to prevent liquidations for now
         (success, yieldTargetCdpId) = _openCdp(INITIAL_COLL_BALANCE, 1e4);
         assert(success);
@@ -133,7 +138,7 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
         TargetFunctions.setEthPerShare(_newEthPerShare);
         // Sync the accounting for our tracked cdp after rebase
         hevm.prank(address(borrowerOperations));
-        cdpManager.syncGlobalAccounting();
+        cdpManager.syncAccounting(yieldTargetCdpId);
 
         _after(yieldTargetCdpId);
     }
