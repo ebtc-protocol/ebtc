@@ -154,24 +154,13 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
             yieldTargetAddress
         );
     }
-/*
-    // An actor that actively participates in the system
-    function echidna_PYS_01_A() public returns (bool) {
-        return invariant_PYS_01(
-            cdpManager,
-            yieldTargetCdpId,
-            yieldControlAddress,
-            USER1
-        );
+
+    // Per rebase check of the cdp split
+    function echidna_PYS_02() public returns (bool) {
+        return invariant_PYS_02(cdpManager, vars);
     }
 
-    function echidna_PYS_02() public returns (bool) {
-        return invariant_PYS_02(
-            cdpManager,
-            yieldTargetCdpId,
-            yieldControlTracker,
-            yieldActorTracker,
-            yieldProtocolTracker
-        );
-    }*/
+    function echidna_PYS_03() public returns (bool) {
+        return invariant_PYS_03(cdpManager, vars);
+    }
 }

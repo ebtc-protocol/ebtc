@@ -81,6 +81,17 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 totalStakesSnapshotAfter;
         uint256 totalCollateralSnapshotBefore;
         uint256 totalCollateralSnapshotAfter;
+        uint256 yieldControlValueBefore;
+        uint256 yieldActorValueBefore;
+        uint256 yieldProtocolValueBefore;
+        uint256 yieldControlValueAfter;
+        uint256 yieldActorValueAfter;
+        uint256 yieldProtocolValueAfter;
+        uint256 yieldProtocolCollSharesBefore;
+        uint256 yieldProtocolCollSharesAfter;
+        uint256 yieldProtocolValuePerNewIndex;
+        uint256 yieldActorSharesBefore;
+        uint256 yieldActorSharesAfter;
     }
 
     Vars vars;
@@ -155,6 +166,12 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.totalStakesBefore = cdpManager.totalStakes();
         vars.totalStakesSnapshotBefore = cdpManager.totalStakesSnapshot();
         vars.totalCollateralSnapshotBefore = cdpManager.totalCollateralSnapshot();
+
+        vars.yieldControlValueBefore = collateral.balanceOf(yieldControlAddress);
+        vars.yieldActorValueBefore = collateral.getPooledEthByShares(cdpManager.getSyncedCdpCollShares(_cdpId));
+        vars.yieldProtocolValueBefore = collateral.getPooledEthByShares(activePool.getSystemCollShares());
+        vars.yieldProtocolCollSharesBefore = activePool.getSystemCollShares();
+        vars.yieldActorSharesBefore = cdpManager.getSyncedCdpCollShares(_cdpId);
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -228,6 +245,14 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.totalStakesAfter = cdpManager.totalStakes();
         vars.totalStakesSnapshotAfter = cdpManager.totalStakesSnapshot();
         vars.totalCollateralSnapshotAfter = cdpManager.totalCollateralSnapshot();
+
+        // PYS
+        vars.yieldControlValueAfter = collateral.balanceOf(yieldControlAddress);
+        vars.yieldActorValueAfter = collateral.getPooledEthByShares(cdpManager.getSyncedCdpCollShares(_cdpId));
+        vars.yieldProtocolValuePerNewIndex = collateral.getPooledEthByShares(vars.activePoolCollBefore);
+        vars.yieldProtocolCollSharesAfter = activePool.getSystemCollShares();
+        vars.yieldActorSharesAfter = cdpManager.getSyncedCdpCollShares(_cdpId);
+
     }
 
     function _diff() internal view returns (string memory log) {

@@ -61,7 +61,7 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
         assert(success);
     }
 
-    // From EchidnaDoomsDayTester, left as is
+    // From EchidnaDoomsDayTester
     function _openCdp(uint256 _col, uint256 _EBTCAmount) internal returns (bool, bytes32) {
         bool success;
         bytes memory returnData;
@@ -116,9 +116,9 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
     // We override just the part of set Governance parameters that might set the stakingRewardSplit
     // This allows testing against 0 if we wish it
     function setGovernanceParameters(uint256 parameter, uint256 value) public override {
-        if (parameter == 2) {
+        /*if (parameter == 2) {
             parameter++;
-        }
+        }*/
 
         // Allows us flexibility that other params can still change.
         // For now we just want the PYS to be 0
@@ -128,24 +128,13 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
     // WIP: Ideas with regards to tracking PYS as it changes
     // Assuming only upwards rebases for now
     function setEthPerShare(uint256 _newEthPerShare) public override {
-        /*
-        WIP: to be used later with PYS changes
-
-        // The only time yield accrues is with the rebase
-        // Amount of getETHByPooledShares at this moment in time - amount of getETHByPooledShares at previous moment in time
-        yieldControlTracker = collateral.getPooledEthByShares(INITIAL_COLL_BALANCE) - yieldControlTracker;
-
-        uint256 _coll = cdpManager.getCdpCollShares(yieldTargetCdpId);
-        // Yield since last rebase
-        uint256 yield = ((collateral.balanceOf(yieldTargetAddress) + collateral.getPooledEthByShares(_coll)) - yieldActorTracker);
-        uint256 protocolPYS = yield * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
-        yieldActorTracker = yield - protocolPYS;
-
-        if (cdpManager.stakingRewardSplit() != 0) {
-            yieldProtocolTracker = protocolPYS - yieldProtocolTracker;
-        }
-        */
+        _before(yieldTargetCdpId);
 
         TargetFunctions.setEthPerShare(_newEthPerShare);
+        // Sync the accounting for our tracked cdp after rebase
+        hevm.prank(address(borrowerOperations));
+        cdpManager.syncGlobalAccounting();
+
+        _after(yieldTargetCdpId);
     }
 }

@@ -584,7 +584,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (yieldControlAddress == address(0) || cdpManager.stakingRewardSplit() != 0) return true;
 
         // Get the current shares of this cdp in the protocol
-        uint256 _coll = cdpManager.getCdpCollShares(yieldTargetCdp);
+        uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdp);
 
         // If the CDP has 0 shares then it has been liquidated
         if (_coll == 0) return true;
@@ -611,18 +611,60 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return  _assertApproximateEq(collateral.balanceOf(controlActor), yieldTargetCollateral, 1e8); 
     }
 
-    /* WIP
-    // At all times the amount of yield accrued from a rebase should be split as per the PYS
+    // At all times the fees taken from systemCollShares should be added to feeRecipientCollShares
     function invariant_PYS_02(
         CdpManager cdpManager,
-        bytes32 yieldTargetCdp,
-        uint256 yieldControlTracker,
-        uint256 yieldActorTracker,
-        uint256 yieldProtocolTracker
+        Vars memory vars
     ) internal view returns (bool) {
+        // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
+        // If our target CDP has no collateral then we cannot test this invariant
+        if (cdpManager.getCdpCollShares(yieldTargetCdpId) == 0) return true;
 
-        return (yieldActorTracker + yieldProtocolTracker) == yieldControlTracker;
+        // In total the yield growth percentage of the control must be equal to protocol growth percentage
+        // Has there been yield?
+        if (vars.prevStEthFeeIndex < vars.afterStEthFeeIndex) {
+            return _assertApproximateEq(vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter, vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBefore, 1e4);
+        }
+
+        // Implies there was no yield
+        return true;
+
     }
-    */
+
+    // As a user, the value of my CDP after rebase should be equal to it's value prior to rebase + yield - fee, according to the PYS at the moment of rebase
+    function invariant_PYS_03(
+        CdpManager cdpManager,
+        Vars memory vars
+    ) internal view returns (bool) {
+        // If yieldControlAddress is not set this invariant cannot be tested
+        if (yieldControlAddress == address(0)) return true;
+        // If our target CDP has no collateral then we cannot test this invariant
+        if (cdpManager.getCdpCollShares(yieldTargetCdpId) == 0) return true;
+
+        // Has there been yield?
+        if (vars.prevStEthFeeIndex < vars.afterStEthFeeIndex) {
+            // Could use `cdpManager::calcFeeUponStakingReward()` but this makes the underlying calc explicit
+            uint256 deltaIndex = vars.afterStEthFeeIndex - vars.prevStEthFeeIndex;
+            uint256 deltaIndexFees = (deltaIndex * cdpManager.stakingRewardSplit()) / cdpManager.MAX_REWARD_SPLIT();
+
+            uint256 deltaFeeSplit = deltaIndexFees * vars.yieldActorSharesAfter;
+            //uint256 feeTaken = collateral.getSharesByPooledEth(deltaFeeSplit) / 1e18;
+            uint256 stETHIndex = cdpManager.stEthIndex();
+            (uint256 expectedFee, , ) = cdpManager.calcFeeUponStakingReward(vars.afterStEthFeeIndex, vars.prevStEthFeeIndex);
+
+            //uint256 valueTaken = collateral.getPooledEthByShares(feeTaken);
+
+            return _assertApproximateEq(
+                deltaFeeSplit / 1e18,
+                (vars.yieldActorValueAfter - vars.yieldActorValueBefore) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT(),
+                1e8
+            );
+        }
+
+        // Implies there was no yield
+        return true;
+
+    }
+    //
 }
