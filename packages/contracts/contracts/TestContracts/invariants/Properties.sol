@@ -673,7 +673,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
                 // It seems that the actual fees taken are always slightly higher than expected. Why?
                 collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares), // Ex. 2 087 548 350 606 173 726 // 2 156 939 755 107 038 381 // 98 954 949 586 519 170 312
                 collateral.getPooledEthByShares(vars.yieldActorSharesAfter),                // Ex. 2 087 548 349 024 394 375 // 2 156 939 754 539 366 819 // 98 954 949 420 330 051 355
-                1e12 // @audit this needs to be investigated --> not acceptable tolerance setting // Losing precision somewhere
+                1e8 // @audit this needs to be investigated --> not acceptable tolerance setting // Losing precision somewhere
                 // TO DO: tweak and decrease tolerance until acceptable
             );
         }
