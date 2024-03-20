@@ -534,7 +534,7 @@ contract CdpManagerStorage is EbtcBase, ReentrancyGuard, ICdpManagerData, AuthNo
             systemStEthFeePerUnitIndexError;
         uint256 _deltaFeePerUnit = _deltaFeeSplitShare / _cachedAllStakes;
         uint256 _perUnitError = _deltaFeeSplitShare - (_deltaFeePerUnit * _cachedAllStakes);
-        return (_feeTaken, _deltaFeePerUnit, _perUnitError);
+        return (_feeTaken + 1, _deltaFeePerUnit, _perUnitError);
     }
 
     // Take the cut from staking reward
