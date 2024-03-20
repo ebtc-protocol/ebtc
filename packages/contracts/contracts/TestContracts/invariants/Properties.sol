@@ -649,12 +649,12 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (vars.yieldActorSharesAfter == vars.yieldActorSharesBefore) return true;
 
         // Need to narrow the error down
-        if (cdpManager.stakingRewardSplit() > 2000) return true;
+        //if (cdpManager.stakingRewardSplit() > 2000) return true;
 
         // Has there been yield?
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
             // Determine the growth, adjusted to 1e18 precision
-            uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e8 / vars.yieldStEthIndexBefore;
+            uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
 
             // Just calling here to check if there is a change (which is expected)
             // Chasing down a bug, please excuse the calls
@@ -666,14 +666,14 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             collateral._getTotalShares();
 
             // Expected fee is (growth % * startingVal) * feeSplit %
-            uint256 expectedFee = (vars.yieldActorValueBefore * yieldGrowthPercent / 1e8) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+            uint256 expectedFee = (vars.yieldActorValueBefore * yieldGrowthPercent / 1e18) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
             uint256 feeInShares = collateral.getSharesByPooledEth(expectedFee);
 
             return _assertApproximateEq(
                 // It seems that the actual fees taken are always slightly higher than expected. Why?
-                collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares), // Ex. 2 087 548 350 606 173 726 // 2 156 939 755 107 038 381 // 98 954 949 586 519 170 312
-                collateral.getPooledEthByShares(vars.yieldActorSharesAfter),                // Ex. 2 087 548 349 024 394 375 // 2 156 939 754 539 366 819 // 98 954 949 420 330 051 355
-                1e8 // @audit this needs to be investigated --> not acceptable tolerance setting // Losing precision somewhere
+                collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares),
+                collateral.getPooledEthByShares(vars.yieldActorSharesAfter),
+                1e6 // @audit more acceptable precision loss
                 // TO DO: tweak and decrease tolerance until acceptable
             );
         }
