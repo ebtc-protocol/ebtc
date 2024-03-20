@@ -648,7 +648,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // @audit Why do we run into this case though?
         if (vars.yieldActorSharesAfter == vars.yieldActorSharesBefore) return true;
 
-        //if (cdpManager.stakingRewardSplit() > 2000) return true;
+        // Need to narrow the error down
+        if (cdpManager.stakingRewardSplit() > 2000) return true;
 
         // Has there been yield?
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
