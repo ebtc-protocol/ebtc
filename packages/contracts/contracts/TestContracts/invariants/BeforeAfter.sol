@@ -96,6 +96,8 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 yieldStEthIndexAfter;
         uint256 yieldCdpDebtBefore;
         uint256 yieldCdpDebtAfter;
+        uint256 yieldActorSplitFeeIdxBefore;
+        uint256 yieldActorSplitFeeIdxAfter;
     }
 
     Vars vars;
@@ -172,12 +174,16 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.totalCollateralSnapshotBefore = cdpManager.totalCollateralSnapshot();
 
         vars.yieldControlValueBefore = collateral.balanceOf(yieldControlAddress);
-        ( vars.yieldCdpDebtBefore, vars.yieldActorSharesBefore) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (vars.yieldCdpDebtBefore, vars.yieldActorSharesBefore) = cdpManager
+            .getSyncedDebtAndCollShares(_cdpId);
         vars.yieldActorValueBefore = collateral.getPooledEthByShares(vars.yieldActorSharesBefore);
-        vars.yieldProtocolValueBefore = collateral.getPooledEthByShares(activePool.getSystemCollShares());
+        vars.yieldProtocolValueBefore = collateral.getPooledEthByShares(
+            activePool.getSystemCollShares()
+        );
         vars.yieldProtocolCollSharesBefore = activePool.getSystemCollShares();
-        
+
         vars.yieldStEthIndexBefore = cdpManager.stEthIndex();
+        vars.yieldActorSplitFeeIdxBefore = cdpManager.cdpStEthFeePerUnitIndex(_cdpId);
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -254,11 +260,16 @@ abstract contract BeforeAfter is BaseStorageVariables {
 
         // PYS
         vars.yieldControlValueAfter = collateral.balanceOf(yieldControlAddress);
-        (vars.yieldCdpDebtAfter, vars.yieldActorSharesAfter) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
+        (vars.yieldCdpDebtAfter, vars.yieldActorSharesAfter) = cdpManager.getSyncedDebtAndCollShares(
+            _cdpId
+        );
         vars.yieldActorValueAfter = collateral.getPooledEthByShares(vars.yieldActorSharesAfter);
-        vars.yieldProtocolValuePerNewIndex = collateral.getPooledEthByShares(vars.activePoolCollBefore);
+        vars.yieldProtocolValuePerNewIndex = collateral.getPooledEthByShares(
+            vars.activePoolCollBefore
+        );
         vars.yieldProtocolCollSharesAfter = activePool.getSystemCollShares();
         vars.yieldStEthIndexAfter = cdpManager.stEthIndex();
+        vars.yieldActorSplitFeeIdxAfter = cdpManager.cdpStEthFeePerUnitIndex(_cdpId);
     }
 
     function _diff() internal view returns (string memory log) {
