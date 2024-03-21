@@ -10,8 +10,6 @@ interface AggregatorV3Interface {
 
     function version() external view returns (uint256);
 
-    function latestRound() external view returns (uint80);
-
     // getRoundData and latestRoundData should both raise "No data present"
     // if they do not have data to report, instead of returning unset values
     // which could be misinterpreted as actual reported values.

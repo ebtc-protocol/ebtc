@@ -1,0 +1,10 @@
+{
+    "highSecTimelock": {
+      "address": "0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264",
+      "verification": "https://etherscan.io/address/0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264#code"
+    },
+    "lowSecTimelock": {
+      "address": "0xE2F2D9e226e5236BeC4531FcBf1A22A7a2bD0602",
+      "verification": "https://etherscan.io/address/0xE2F2D9e226e5236BeC4531FcBf1A22A7a2bD0602#code"
+    }
+  }

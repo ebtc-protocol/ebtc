@@ -23,6 +23,9 @@ const LOWSEC_MIN_DELAY = "300" // 5 mins
 const ADDITIONAL_HIGHSEC_ADMIN = ""
 const ADDITIONAL_LOWSEC_ADMIN = ""
 
+// Toggle if reusing Timelocks already configured or if configuration is handled manually
+const SKIP_TIMELOCK_CONFIG = true
+
 module.exports = {
   OUTPUT_FILE,
   DEPLOY_WAIT,
@@ -35,5 +38,6 @@ module.exports = {
   HIGHSEC_MIN_DELAY,
   LOWSEC_MIN_DELAY,
   ADDITIONAL_HIGHSEC_ADMIN,
-  ADDITIONAL_LOWSEC_ADMIN
+  ADDITIONAL_LOWSEC_ADMIN,
+  SKIP_TIMELOCK_CONFIG
 };

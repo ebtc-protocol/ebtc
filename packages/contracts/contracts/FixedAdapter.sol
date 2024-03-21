@@ -17,10 +17,6 @@ contract FixedAdapter is AggregatorV3Interface {
         return "stETH/ETH Fixed Adapter";
     }
 
-    function latestRound() external view returns (uint80) {
-        return CURRENT_ROUND;
-    }
-
     // getRoundData and latestRoundData should both raise "No data present"
     // if they do not have data to report, instead of returning unset values
     // which could be misinterpreted as actual reported values.

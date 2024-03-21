@@ -969,4 +969,47 @@ contract CdpManagerLiquidationTest is eBTCBaseInvariants {
 
         return (cdpIds, _newPrice);
     }
+
+    function testSurplusInRMWhenICRBelowMCR() public {
+        address wallet = users[0];
+
+        // set eth per stETH share
+        collateral.setEthPerShare(1158379174506084879);
+
+        // fetch price before open
+        uint256 oldprice = priceFeedMock.fetchPrice();
+
+        // open five cdps
+        _openTestCDP(wallet, 2e18 + 2e17, ((2e18 * oldprice) / 240e16));
+        _openTestCDP(wallet, 2e18 + 2e17, ((2e18 * oldprice) / 240e16));
+        _openTestCDP(wallet, 2e18 + 2e17, ((2e18 * oldprice) / 240e16));
+        _openTestCDP(wallet, 2e18 + 2e17, ((2e18 * oldprice) / 240e16));
+        bytes32 underwater = _openTestCDP(wallet, 2e18 + 2e17, ((2e18 * oldprice) / 210e16));
+
+        // reduce the price by half to make underwater cdp
+        priceFeedMock.setPrice(oldprice / 2);
+
+        // fetch new price after reduce
+        uint256 newPrice = priceFeedMock.fetchPrice();
+
+        // ensure the system is in recovery mode
+        assert(cdpManager.getSyncedTCR(newPrice) < CCR);
+
+        // liquidate underwater cdp with ICR < MCR
+        vm.startPrank(wallet);
+        cdpManager.liquidate(underwater);
+        vm.stopPrank();
+
+        // make sure the cdp is no longer in the sorted list
+        assert(!sortedCdps.contains(underwater));
+
+        // fetch the surplus after the liquidation
+        uint256 surplus = collSurplusPool.getSurplusCollShares(wallet);
+
+        // console log the surplus coll
+        console.log("Surplus:", surplus);
+
+        // ensure that the surplus is zero
+        assert(surplus == 0);
+    }
 }

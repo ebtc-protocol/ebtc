@@ -1,8 +1,4 @@
 {
-  "eBTCDeployer": {
-    "address": "0x21D4211d6125B40bA6049308204B091A8efE3452",
-    "verification": "https://sepolia.etherscan.io/address/0x21D4211d6125B40bA6049308204B091A8efE3452#code"
-  },
   "highSecTimelock": {
     "address": "0x0393846e97ab5Ec1DC8CB7A59Ee8505F72A6aEEb",
     "verification": "https://sepolia.etherscan.io/address/0x0393846e97ab5Ec1DC8CB7A59Ee8505F72A6aEEb#code"
@@ -11,56 +7,60 @@
     "address": "0xaADf07C98E2420E4d995Ba41Db53399648f50076",
     "verification": "https://sepolia.etherscan.io/address/0xaADf07C98E2420E4d995Ba41Db53399648f50076#code"
   },
+  "eBTCDeployer": {
+    "address": "0xb52022369F2DF47054c08BF3eee4e5A802e46080",
+    "verification": "https://sepolia.etherscan.io/address/0xb52022369F2DF47054c08BF3eee4e5A802e46080#code"
+  },
   "authority": {
-    "address": "0x85A074FF5adDf47fD66c94C780E7596922B3d1D9",
-    "verification": "https://sepolia.etherscan.io/address/0x85A074FF5adDf47fD66c94C780E7596922B3d1D9#code"
+    "address": "0x68Aa57A7b02c02f53A99e8Fd451CaE761210C5d2",
+    "verification": "https://sepolia.etherscan.io/address/0x68Aa57A7b02c02f53A99e8Fd451CaE761210C5d2#code"
   },
   "liquidationLibrary": {
-    "address": "0x64B22874Bdc9F2e98C11b1bd6BA5527cf42Ef5c9",
-    "verification": "https://sepolia.etherscan.io/address/0x64B22874Bdc9F2e98C11b1bd6BA5527cf42Ef5c9#code"
+    "address": "0xD036320bf778651684415AB372c7ab58acB5f3d8",
+    "verification": "https://sepolia.etherscan.io/address/0xD036320bf778651684415AB372c7ab58acB5f3d8#code"
   },
   "cdpManager": {
-    "address": "0x39D6613ABEDd78a0b8edEEfE62cDEc85FCbe08c0",
-    "verification": "https://sepolia.etherscan.io/address/0x39D6613ABEDd78a0b8edEEfE62cDEc85FCbe08c0#code"
+    "address": "0xe89A0378237c21B94126f77eD5Fa0FDd2eDE2b36",
+    "verification": "https://sepolia.etherscan.io/address/0xe89A0378237c21B94126f77eD5Fa0FDd2eDE2b36#code"
   },
   "borrowerOperations": {
-    "address": "0x3D6697c8Cfcc36b68a3077d0a94385B8904B1299",
-    "verification": "https://sepolia.etherscan.io/address/0x3D6697c8Cfcc36b68a3077d0a94385B8904B1299#code"
+    "address": "0x58aa3dE50CfeF7450657C52766dD43da8747285e",
+    "verification": "https://sepolia.etherscan.io/address/0x58aa3dE50CfeF7450657C52766dD43da8747285e#code"
   },
   "eBTCToken": {
-    "address": "0xeA2D83AA5e7da0668AdbddADAAc28e51318DDd86",
-    "verification": "https://sepolia.etherscan.io/address/0xeA2D83AA5e7da0668AdbddADAAc28e51318DDd86#code"
+    "address": "0xa78F78Aba222d20cE82eA4868a9E00c954e469c0",
+    "verification": "https://sepolia.etherscan.io/address/0xa78F78Aba222d20cE82eA4868a9E00c954e469c0#code"
   },
   "priceFeed": {
-    "address": "0xd2Bdc5Acb219ECeEE3578DA86774BBE4dd85665E",
-    "verification": "https://sepolia.etherscan.io/address/0xd2Bdc5Acb219ECeEE3578DA86774BBE4dd85665E#code"
+    "address": "0x240E4141E13c6613bBBC53049dFEc0dAC70D692e",
+    "verification": "https://sepolia.etherscan.io/address/0x240E4141E13c6613bBBC53049dFEc0dAC70D692e#code"
   },
   "ebtcFeed": {
-    "address": "0x14BBa0A866f49D1ef33096557e661bE20BeBADA0",
-    "verification": "https://sepolia.etherscan.io/address/0x14BBa0A866f49D1ef33096557e661bE20BeBADA0#code"
+    "address": "0xF08F9Ae30e19f2CA9b0876a7Dc57E6695010dE40",
+    "verification": "https://sepolia.etherscan.io/address/0xF08F9Ae30e19f2CA9b0876a7Dc57E6695010dE40#code"
   },
   "activePool": {
-    "address": "0x8EbA6a17Fcd480A96a87308C560170206186D3EA",
-    "verification": "https://sepolia.etherscan.io/address/0x8EbA6a17Fcd480A96a87308C560170206186D3EA#code"
+    "address": "0x7e0A97660B477a79C2e9f472bbFCFd8A715D9E6f",
+    "verification": "https://sepolia.etherscan.io/address/0x7e0A97660B477a79C2e9f472bbFCFd8A715D9E6f#code"
   },
   "collSurplusPool": {
-    "address": "0x6a6Ee2146f851fA745016B9e5592379f775b4ff3",
-    "verification": "https://sepolia.etherscan.io/address/0x6a6Ee2146f851fA745016B9e5592379f775b4ff3#code"
+    "address": "0xd5E6e5c5F46fa1A038b62B0625e21B97a4897F8F",
+    "verification": "https://sepolia.etherscan.io/address/0xd5E6e5c5F46fa1A038b62B0625e21B97a4897F8F#code"
   },
   "sortedCdps": {
-    "address": "0x0ADF592E25ba775b89cA37e0Fc01420CA96563C8",
-    "verification": "https://sepolia.etherscan.io/address/0x0ADF592E25ba775b89cA37e0Fc01420CA96563C8#code"
+    "address": "0xbc79539670992A4E1948dAdB737472a2FaD7CEcf",
+    "verification": "https://sepolia.etherscan.io/address/0xbc79539670992A4E1948dAdB737472a2FaD7CEcf#code"
   },
   "hintHelpers": {
-    "address": "0x6AAB2e5f4bA902890197e5F60EB1aA420F2c079F",
-    "verification": "https://sepolia.etherscan.io/address/0x6AAB2e5f4bA902890197e5F60EB1aA420F2c079F#code"
+    "address": "0xD4612689dC45a84dE503dc375eAE348d034e7df1",
+    "verification": "https://sepolia.etherscan.io/address/0xD4612689dC45a84dE503dc375eAE348d034e7df1#code"
   },
   "feeRecipient": {
-    "address": "0xed072C4DaA8c3068eAda19B17ec63172975Abe7e",
-    "verification": "https://sepolia.etherscan.io/address/0xed072C4DaA8c3068eAda19B17ec63172975Abe7e#code"
+    "address": "0x76Fb3d53Dc44eE733d8fD7b1581b35B7C76349F8",
+    "verification": "https://sepolia.etherscan.io/address/0x76Fb3d53Dc44eE733d8fD7b1581b35B7C76349F8#code"
   },
   "multiCdpGetter": {
-    "address": "0xBdd15a507945557ef039c847FB70d31f65522150",
-    "verification": "https://sepolia.etherscan.io/address/0xBdd15a507945557ef039c847FB70d31f65522150#code"
+    "address": "0x1a951f87347bD16a7aD2B44add9B4522E6452af6",
+    "verification": "https://sepolia.etherscan.io/address/0x1a951f87347bD16a7aD2B44add9B4522E6452af6#code"
   }
 }

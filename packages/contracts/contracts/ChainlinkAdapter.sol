@@ -56,19 +56,17 @@ contract ChainlinkAdapter is AggregatorV3Interface {
             (ETH_USD_PRECISION * btcUsdPrice);
     }
 
-    function latestRound() external view returns (uint80) {
-        return CURRENT_ROUND;
-    }
-
     function _getRoundData(
         AggregatorV3Interface _feed,
         uint80 _roundId
     ) private view returns (int256 answer, uint256 updatedAt) {
-        uint80 latestRoundId = _feed.latestRound();
         uint80 feedRoundId;
-        (feedRoundId, answer, , updatedAt, ) = _feed.getRoundData(
-            _roundId == CURRENT_ROUND ? latestRoundId : latestRoundId - 1
-        );
+        if (_roundId == CURRENT_ROUND) {
+            (feedRoundId, answer, , updatedAt, ) = _feed.latestRoundData();
+        } else {
+            (uint80 latestRoundId, , , , ) = _feed.latestRoundData();
+            (feedRoundId, answer, , updatedAt, ) = _feed.getRoundData(latestRoundId - 1);
+        }
         require(feedRoundId > 0);
         require(answer > 0);
     }

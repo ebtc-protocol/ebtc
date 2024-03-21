@@ -117,6 +117,35 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             isApproximateEq(vars.valueInSystemAfter, vars.valueInSystemBefore, 0.01e18);
     }
 
+    function invariant_CDPM_10(CdpManager cdpManager) internal view returns (bool) {
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            return cdpManager.totalStakesSnapshot() == cdpManager.totalStakes();
+        }
+        return true;
+    }
+
+    function invariant_CDPM_11(CdpManager cdpManager) internal view returns (bool) {
+        if (vars.afterStEthFeeIndex > vars.prevStEthFeeIndex) {
+            return cdpManager.totalCollateralSnapshot() == cdpManager.getSystemCollShares();
+        }
+        return true;
+    }
+
+    function invariant_CDPM_12(
+        SortedCdps sortedCdps,
+        Vars memory vars
+    ) internal view returns (bool) {
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        uint256 sumStakes;
+        while (currentCdp != bytes32(0)) {
+            sumStakes += cdpManager.getCdpStake(currentCdp);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        return sumStakes == vars.totalStakesAfter;
+    }
+
     function invariant_CSP_01(
         ICollateralToken collateral,
         CollSurplusPool collSurplusPool
