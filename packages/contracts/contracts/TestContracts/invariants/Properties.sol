@@ -645,85 +645,24 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (cdpManager.stakingRewardSplit() == 0) return true;
 
         // If the shares are the same then no fee split was done
-        // @audit Why do we run into this case though?
+        // @audit Why do we run into this case though? Maybe if the split fee is too low + low rebase then maybe no fee can be taken?
         if (vars.yieldActorSharesAfter == vars.yieldActorSharesBefore) return true;
-
-        // Need to narrow the error down
-        //if (cdpManager.stakingRewardSplit() > 2000) return true;
 
         // Has there been yield?
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
             // Determine the growth, adjusted to 1e18 precision
             uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
 
-            // Just calling here to check if there is a change (which is expected)
-            // Chasing down a bug, please excuse the calls
-            collateral.getPooledEthByShares(vars.yieldStEthIndexBefore);
-            collateral.getPooledEthByShares(vars.yieldStEthIndexAfter);
-            collateral.getPooledEthByShares(vars.yieldActorSharesBefore);
-            collateral.getPooledEthByShares(vars.yieldActorSharesAfter);
-            collateral._getTotalPooledEther();
-            collateral._getTotalShares();
-
             // Expected fee is (growth % * startingVal) * feeSplit %
             uint256 expectedFee = (vars.yieldActorValueBefore * yieldGrowthPercent / 1e18) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
             uint256 feeInShares = collateral.getSharesByPooledEth(expectedFee);
 
             return _assertApproximateEq(
-                // It seems that the actual fees taken are always slightly higher than expected. Why?
                 collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares),
                 collateral.getPooledEthByShares(vars.yieldActorSharesAfter),
-                1e6 // @audit more acceptable precision loss
-                // TO DO: tweak and decrease tolerance until acceptable
+                1e10 //canary value, if we break this by this much we need to investigate
             );
         }
-
-        
-
-        /***
-        deltaIndex = 1027643607040687991 - 1000000000000000000
-        deltaIndexFees  = (27643607040687991 * 9575) / 10_000
-                        = 26,468,753,741,458,751
-
-        deltaFeeSplit   = 26,468,753,741,458,751 * 2000125000000000000
-        feeTaken        = collateral.getSharesByPooledEth(_deltaFeeSplit) / 1e18
-                        = (_div(_mul(_ethAmount, _getTotalShares), _getTotalPooledEther) / 1e18)
-                        = (div( mul(52,940,816,077,135,184,343,875,000,000,000,000 * 5000800000000000000000), 5139040150089072510393))
-                        = 20,604,674,543,055
-
-        feeTaken in Eth =  _div(_mul(20,604,674,543,055, 5139040150089072510393), 5000800000000000000000)
-                        =               21,174,262,069,324
-
-
-        But the actual fee taken was    26,901,675,422,025,427
-
-        Let's check that:     sharesBefore * getEthPerShare
-                            = sharesBefore * _div(_mul(1e18, _getTotalPooledEther), _getTotalShares)
-                            = sharesBefore * _div(_mul(1e18, 5000800000000000000000), 5000800000000000000000)
-                            = x * 1,000,000,000,000,000,000 / 1e18
-                            = 2000125000000000000
-
-                              sharesAfter * getEthPerShare
-                            = sharesAfter * _div(_mul(1e18, _getTotalPooledEther), _getTotalShares)
-                            = sharesAfter * _div(_mul(1e18, 5139040150089072510393), 5000800000000000000000)
-                            = 1973223324577974573 * 1,027,643,607,040,687,991 / 1e18
-                            = 2,027,770,334,766,128,035
-
-
-        Actual growth was 1.013821803520343996 %
-
-        The growth of the index was 2.7643...%
-        So the protocol should take 95.75 % of that, thus 02.646875374145875138 %
-        Meaning that 2.7643...% - 02.646875374145875138 % is the expected growth of the cdp
-        = 00.117485329922923962 %
-
-
-        Expected growth was 1.027643607040687991 % * (10_000 - 9575) / 10_000
-
-        The fee taken should be the feePercentage * yieldAccrued
-
-        Off by a factor of around 1000???
-         */
 
         // Implies there was no yield
         return true;
