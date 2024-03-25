@@ -121,17 +121,11 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
     // We override just the part of set Governance parameters that might set the stakingRewardSplit
     // This allows testing against 0 if we wish it
     function setGovernanceParameters(uint256 parameter, uint256 value) public override {
-        /*if (parameter == 2) {
-            parameter++;
-        }*/
-
         // Allows us flexibility that other params can still change.
-        // For now we just want the PYS to be 0
         TargetFunctions.setGovernanceParameters(parameter, value);
     }
 
-    // WIP: Ideas with regards to tracking PYS as it changes
-    // Assuming only upwards rebases for now
+
     function setEthPerShare(uint256 _newEthPerShare) public override {
         _before(yieldTargetCdpId);
 

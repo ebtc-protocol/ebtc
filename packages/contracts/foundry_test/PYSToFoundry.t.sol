@@ -162,13 +162,15 @@ contract EToFoundry is
         _setUpActors();
         _setupYieldActors();
         actor = actors[address(USER1)];
+
+        setGovernanceParameters(2, 50);
     }
 
     function test_pys03() public {
-        setGovernanceParameters(1330542754484184068175487167963499571844581389081, 115792089237316195423570985008687907853269984665640564039456484007913129639955);
-        setEthPerShare(1050000000000000000);
+        setGovernanceParameters(2, 1);
+        setEthPerShare(92486899360406498);
 
-        assertTrue(invariant_PYS_03(
+        assertTrue(invariant_PYS_03_A(
             cdpManager,
             vars
         ), "PYS");
@@ -177,6 +179,28 @@ contract EToFoundry is
         console2.log("yieldTargetCdpId", uint256(yieldTargetCdpId));
         console2.log("vars.prevStEthFeeIndex", vars.prevStEthFeeIndex);
         console2.log("vars.afterStEthFeeIndex", vars.afterStEthFeeIndex);
+
+    }
+
+    function test_pys04() public {
+        setEthPerShare(99930128941342140000266291552701334095267781396938829755845405936407078624212);
+        //setGovernanceParameters(703936011954574190096648107132477385862451789338, 921840306035071876313799756458405179838510662337);
+
+        assertTrue(invariant_PYS_04(
+            cdpManager,
+            vars
+        ), "PYS");
+
+        console2.log("Index Before", vars.yieldStEthIndexBefore);
+        console2.log("Index After", vars.yieldStEthIndexAfter);
+        console2.log("vars.prevStEthFeeIndex", vars.prevStEthFeeIndex);
+        console2.log("vars.afterStEthFeeIndex", vars.afterStEthFeeIndex);
+        console2.log("vars.stakingRewardSplitBefore", vars.stakingRewardSplitBefore);
+        console2.log("vars.stakingRewardSplitAfter", vars.stakingRewardSplitAfter);
+        console2.log("vars.yieldProtocolCollSharesBefore", vars.yieldProtocolCollSharesBefore);
+        console2.log("vars.yieldProtocolCollSharesAfter", vars.yieldProtocolCollSharesAfter);
+        console2.log("vars.yieldProtocolValueBefore", vars.yieldProtocolValueBefore);
+        console2.log("vars.yieldProtocolValueAfter", vars.yieldProtocolValueAfter);
 
     }
 }

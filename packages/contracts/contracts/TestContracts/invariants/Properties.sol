@@ -582,12 +582,17 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     ) internal view returns (bool) {
         // If not set we aren't testing PYS
         if (yieldControlAddress == address(0) || cdpManager.stakingRewardSplit() != 0) return true;
+        if (!vars.inRebase) return true;
 
         // Get the current shares of this cdp in the protocol
         uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdp);
 
         // If the CDP has 0 shares then it has been liquidated
         if (_coll == 0) return true;
+        if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
+        // In this case we aren't in a rebase
+        if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
+
     
         // In case the Yield Actor closes or redeems, we check their address as well
         // Note: we must also remember the gas stipend gets subtracted from the shares at the start
@@ -633,7 +638,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     }
 
     // As a user, the value of my CDP after rebase should be equal to it's value prior to rebase + yield - fee, according to the PYS at the moment of rebase
-    function invariant_PYS_03(
+    function invariant_PYS_03_A(
         CdpManager cdpManager,
         Vars memory vars
     ) internal view returns (bool) {
@@ -643,10 +648,18 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (cdpManager.getCdpCollShares(yieldTargetCdpId) == 0) return true;
         // If stakingRewardSplit is 0 then there is no fee split
         if (cdpManager.stakingRewardSplit() == 0) return true;
+        // In this case we are not testing the setEthPerShare
+        if (vars.prevStEthFeeIndex == vars.afterStEthFeeIndex) return true;
+
+        // In this case we aren't in a rebase
+        if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
+        if (!vars.inRebase) return true;
 
         // If the shares are the same then no fee split was done
         // @audit Why do we run into this case though? Maybe if the split fee is too low + low rebase then maybe no fee can be taken?
         if (vars.yieldActorSharesAfter == vars.yieldActorSharesBefore) return true;
+
+        if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
 
         // Has there been yield?
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
@@ -660,13 +673,124 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             return _assertApproximateEq(
                 collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares),
                 collateral.getPooledEthByShares(vars.yieldActorSharesAfter),
-                1e10 //canary value, if we break this by this much we need to investigate
+                1e6 //canary value, if we break this by this much we need to investigate
             );
         }
 
         // Implies there was no yield
         return true;
-
     }
-    //
+
+    // Aleternative PYS_03 calculation using protocol's math, not a generalized derivement
+    function invariant_PYS_03_B(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
+        if (!vars.inRebase) return true;
+        // If yieldControlAddress is not set this invariant cannot be tested
+        if (yieldControlAddress == address(0)) return true;
+        // If our target CDP has no collateral then we cannot test this invariant
+        if (cdpManager.getCdpCollShares(yieldTargetCdpId) == 0) return true;
+        // If stakingRewardSplit is 0 then there is no fee split
+        if (cdpManager.stakingRewardSplit() == 0) return true;
+        // In this case we are not testing the setEthPerShare
+        if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
+
+        // In this case we aren't in a rebase
+        if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
+
+        // If the shares are the same then no fee split was done
+        if (vars.yieldActorSharesAfter == vars.yieldActorSharesBefore) return true;
+
+        // Has there been yield?
+        if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
+
+            // Expected fee is (growth % * startingVal) * feeSplit %
+            uint256 feeInShares = vars.cdpStakeBefore *
+                (vars.afterStEthFeeIndex - vars.yieldActorSplitFeeIdxBefore);
+            require(
+                vars.yieldActorSplitFeeIdxAfter == vars.afterStEthFeeIndex,
+                "!fee index should be synced"
+            );
+            uint256 _collAfterFeeApplied = (vars.yieldActorSharesBefore * 1e18 - feeInShares) / 1e18;
+            // CDP collateral value should increase after positive rebase even with fee split
+            require(
+                (vars.yieldActorSharesBefore * vars.yieldStEthIndexBefore) <
+                    (vars.yieldActorSharesAfter * vars.yieldStEthIndexAfter),
+                "!CDP collateral value should increase after positive rebase"
+            );
+
+            return
+                _assertApproximateEq(
+                    (_collAfterFeeApplied),
+                    (vars.yieldActorSharesAfter),
+                    1e6
+                );
+        }
+
+        return true;
+    }
+
+    // As a protocol, we expect the yield growth from moment to moment to be equal to the PYS, given a positive yield 
+    function invariant_PYS_04(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
+        // If yieldControlAddress is not set this invariant cannot be tested
+        if (yieldControlAddress == address(0)) return true;
+        // In this case we are not testing the setEthPerShare
+        if (vars.prevStEthFeeIndex == vars.afterStEthFeeIndex) return true;
+
+        // If there is no PYS there is no yield
+        if (cdpManager.stakingRewardSplit() == 0) return true;
+
+        // In this case we aren't in a rebase
+        if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
+
+        if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
+
+        if (!vars.inRebase) return true;
+
+        if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
+            uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
+            // The protocol's claimable fees should increase by the PYS % on the expected increase of the system collateral shares value
+            /**
+            The growth is given by index growth
+            Then the amount of fees taken should be the growth in value, which is (base value * growth - base value) * split
+             */
+            uint256 feesTakenExpected = (vars.yieldProtocolValueBefore * yieldGrowthPercent / 1e18) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+            uint256 feesTakenActual = vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBefore;
+            require((vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter) == feesTakenActual, "!fees taken should be synced");
+
+            feesTakenExpected = collateral.getSharesByPooledEth(feesTakenExpected);
+            collateral.getSharesByPooledEth(feesTakenActual);
+
+            return _assertApproximateEq(feesTakenExpected, feesTakenActual, 1e6);
+        }
+
+        // Implies there was no rebase
+        return true;
+    }
+
+    // The amount of yield accumulated throughout a period of time by the protocol should equal the cumulative yield * PYS for each period
+    function invariant_PYS_05(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
+        // If yieldControlAddress is not set this invariant cannot be tested
+        if (yieldControlAddress == address(0)) return true;
+        // In this case we are not testing the setEthPerShare
+        if (vars.prevStEthFeeIndex == vars.afterStEthFeeIndex) return true;
+
+        // If there is no PYS there is no yield
+        if (cdpManager.stakingRewardSplit() == 0) return true;
+
+        // In this case we aren't in a rebase
+        if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
+
+        if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
+
+        if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) return true;
+        /*  For this we need the following:
+            We need to track the yield of the protocol, this we can get by adding the yield for every segment * the PYS at the end of that segment
+            How do we compare this?
+            We have a control amount outside the protocol.
+
+            As an APR, we could get the total amount of yield for control amount, the APR of the control amount should be equal to segmented returns over time.
+            We can't track one var over time (except the control var), because of liquidations / redemptions / feeRecipient claims.
+            But we can track the acrued yield from rebase to rebase
+        */
+    }
+
 }

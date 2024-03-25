@@ -96,6 +96,13 @@ abstract contract BeforeAfter is BaseStorageVariables {
         uint256 yieldStEthIndexAfter;
         uint256 yieldCdpDebtBefore;
         uint256 yieldCdpDebtAfter;
+        uint256 yieldActorSplitFeeIdxBefore;
+        uint256 yieldActorSplitFeeIdxAfter;
+        uint256 cumulativeProtocolYieldBefore;
+        uint256 cumulativeProtocolYieldAfter;
+        uint256 stakingRewardSplitBefore;
+        uint256 stakingRewardSplitAfter;
+        bool inRebase;
     }
 
     Vars vars;
@@ -171,6 +178,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.totalStakesSnapshotBefore = cdpManager.totalStakesSnapshot();
         vars.totalCollateralSnapshotBefore = cdpManager.totalCollateralSnapshot();
 
+        // PYS Vars
         vars.yieldControlValueBefore = collateral.balanceOf(yieldControlAddress);
         ( vars.yieldCdpDebtBefore, vars.yieldActorSharesBefore) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         vars.yieldActorValueBefore = collateral.getPooledEthByShares(vars.yieldActorSharesBefore);
@@ -178,6 +186,14 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.yieldProtocolCollSharesBefore = activePool.getSystemCollShares();
         
         vars.yieldStEthIndexBefore = cdpManager.stEthIndex();
+        vars.yieldActorSplitFeeIdxBefore = cdpManager.cdpStEthFeePerUnitIndex(_cdpId);
+        vars.yieldActorSplitFeeIdxAfter = cdpManager.cdpStEthFeePerUnitIndex(_cdpId);
+
+        vars.stakingRewardSplitBefore = cdpManager.stakingRewardSplit();
+
+        // The total yield before a new rebase is the total yield after the previous rebase
+        vars.cumulativeProtocolYieldBefore = vars.cumulativeProtocolYieldAfter;
+        vars.inRebase = false;
     }
 
     function _after(bytes32 _cdpId) internal {
@@ -257,8 +273,19 @@ abstract contract BeforeAfter is BaseStorageVariables {
         (vars.yieldCdpDebtAfter, vars.yieldActorSharesAfter) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
         vars.yieldActorValueAfter = collateral.getPooledEthByShares(vars.yieldActorSharesAfter);
         vars.yieldProtocolValuePerNewIndex = collateral.getPooledEthByShares(vars.activePoolCollBefore);
+        vars.yieldProtocolValueAfter = collateral.getPooledEthByShares(activePool.getSystemCollShares());
         vars.yieldProtocolCollSharesAfter = activePool.getSystemCollShares();
         vars.yieldStEthIndexAfter = cdpManager.stEthIndex();
+
+        // The yield increases by the diff in feeRecipient yield from rebase to rebase
+        vars.cumulativeProtocolYieldAfter += vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBalBefore;
+
+        // Always update this to the latest
+        vars.stakingRewardSplitAfter = cdpManager.stakingRewardSplit();
+
+        // We are only in a rebase when the current index is greater than the before index
+        vars.inRebase = cdpManager.stEthIndex() > vars.yieldStEthIndexBefore;
+
     }
 
     function _diff() internal view returns (string memory log) {
