@@ -748,12 +748,11 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
             uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
             // The protocol's claimable fees should increase by the PYS % on the expected increase of the system collateral shares value
-            /**
-            The growth is given by index growth
-            Then the amount of fees taken should be the growth in value, which is (base value * growth - base value) * split
-             */
-            uint256 feesTakenExpected = (vars.yieldProtocolValueBefore * yieldGrowthPercent / 1e18) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+            uint256 feesTakenExpected = (vars.yieldProtocolValueBefore * yieldGrowthPercent / 1e18)
+                * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+
             uint256 feesTakenActual = vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBefore;
+
             require((vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter) == feesTakenActual, "!fees taken should be synced");
 
             feesTakenExpected = collateral.getSharesByPooledEth(feesTakenExpected);
@@ -767,6 +766,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     }
 
     // The amount of yield accumulated throughout a period of time by the protocol should equal the cumulative yield * PYS for each period
+    // WIP
     function invariant_PYS_05(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
