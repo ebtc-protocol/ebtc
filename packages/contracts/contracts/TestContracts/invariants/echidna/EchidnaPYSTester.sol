@@ -62,7 +62,7 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
 
         actor = actors[USER1];
         // Small eBTC amount to prevent liquidations for now
-        (success, yieldTargetCdpId) = _openCdp(INITIAL_COLL_BALANCE, 1e4);
+        (success, ) = _openCdp(INITIAL_COLL_BALANCE, 1e4);
         assert(success);
     }
 

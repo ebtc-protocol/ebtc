@@ -579,12 +579,16 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         bytes32 yieldTargetCdp,
         address controlActor,
         address yieldTarget
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         // If not set we aren't testing PYS
-        if (yieldControlAddress == address(0) || cdpManager.stakingRewardSplit() != 0) return true;
-        if (!vars.inRebase) return true;
+        require(yieldControlAddress == address(0), "PYS: !yieldcontrolactor");
+        require(cdpManager.stakingRewardSplit() == 0, "PYS: !control scenario");
+        require(vars.yieldStEthIndexBefore < vars.yieldStEthIndexAfter, "PYS: !rebase event");
 
         // Get the current shares of this cdp in the protocol
+        require(vars.yieldActorSharesBefore == vars.yieldActorSharesAfter, "PYS: liquidated");
+        require(vars.yieldActorSharesBefore > 0, "PYS: liquidated");
+
         uint256 _coll = cdpManager.getSyncedCdpCollShares(yieldTargetCdp);
 
         // If the CDP has 0 shares then it has been liquidated
@@ -592,39 +596,32 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
         // In this case we aren't in a rebase
         if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
+        // In this case we aren't in a rebase
+        require(vars.stakingRewardSplitAfter == vars.stakingRewardSplitBefore, "PYS: !rebase");
 
-    
-        // In case the Yield Actor closes or redeems, we check their address as well
-        // Note: we must also remember the gas stipend gets subtracted from the shares at the start
-        uint256 yieldTargetCollateral = collateral.balanceOf(address(actors[yieldTarget])) + collateral.getPooledEthByShares(_coll);
+        require(vars.inRebase, "PYS: !rebase");
+        vars.inRebase = false;
 
-        /**
-        If the collateral does not match then we prob have a cdp that has been partially redeemed by another party
-        This means we should check the value of the eBTC of the yield actor, as well as the outstanding loan on the actor's CDP
-        If the amount of stETH collateral the actor owes is less than the stETH collateral that they can obtain by closing their cdp
-        then we need to take into account the stETH value of the surplus collateral.
-         */
-        uint256 debt = cdpManager.getCdpDebt(yieldTargetCdp);
-        uint256 eBtcAmount = eBTCToken.balanceOf(address(actors[yieldTarget]));
-        uint256 collValue;
-        if (debt < eBtcAmount) {
-            // Price is in btc/stETH
-           yieldTargetCollateral += (eBtcAmount - debt) * priceFeedMock.getPrice() / 1e18;
-        }
+        // It's probably going to be simpler to check that `yield on collateral == yield on control, for each rebase event, @ PYS == 0`
+        uint256 yieldGrowthControl = (vars.yieldControlValueAfter - vars.yieldControlValueBefore * 1e18) / vars.yieldControlValueBefore;
+        uint256 yieldGrowthActor = (vars.yieldActorValueAfter - vars.yieldActorValueBefore * 1e18) / vars.yieldActorValueBefore;
 
         // Is approximate eq good here? 1e8 would be dust
-        return  _assertApproximateEq(collateral.balanceOf(controlActor), yieldTargetCollateral, 1e8); 
+        return  _assertApproximateEq(yieldGrowthControl / 1e18, yieldGrowthActor / 1e18, 1e8); 
     }
 
     // At all times the fees taken from systemCollShares should be added to feeRecipientCollShares
     function invariant_PYS_02(
         CdpManager cdpManager,
         Vars memory vars
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
         // If our target CDP has no collateral then we cannot test this invariant
         if (cdpManager.getCdpCollShares(yieldTargetCdpId) == 0) return true;
+
+        require(vars.inRebase, "PYS: !rebase");
+        vars.inRebase = false;
 
         // In total the yield growth percentage of the control must be equal to protocol growth percentage
         // Has there been yield?
@@ -634,14 +631,13 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         // Implies there was no yield
         return true;
-
     }
 
     // As a user, the value of my CDP after rebase should be equal to it's value prior to rebase + yield - fee, according to the PYS at the moment of rebase
     function invariant_PYS_03_A(
         CdpManager cdpManager,
         Vars memory vars
-    ) internal view returns (bool) {
+    ) internal returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
         // If our target CDP has no collateral then we cannot test this invariant
@@ -653,7 +649,9 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         // In this case we aren't in a rebase
         if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
-        if (!vars.inRebase) return true;
+
+        require(vars.inRebase, "PYS: !rebase");
+        vars.inRebase = false;
 
         // If the shares are the same then no fee split was done
         // @audit Why do we run into this case though? Maybe if the split fee is too low + low rebase then maybe no fee can be taken?
@@ -681,8 +679,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return true;
     }
 
-    // Aleternative PYS_03 calculation using protocol's math, not a generalized derivement
-    function invariant_PYS_03_B(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
+    // Alternative PYS_03 calculation using protocol's math, not a generalized derivement
+    function invariant_PYS_03_B(CdpManager cdpManager, Vars memory vars) internal returns (bool) {
         if (!vars.inRebase) return true;
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
@@ -705,10 +703,12 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             // Expected fee is (growth % * startingVal) * feeSplit %
             uint256 feeInShares = vars.cdpStakeBefore *
                 (vars.afterStEthFeeIndex - vars.yieldActorSplitFeeIdxBefore);
+
             require(
                 vars.yieldActorSplitFeeIdxAfter == vars.afterStEthFeeIndex,
                 "!fee index should be synced"
             );
+
             uint256 _collAfterFeeApplied = (vars.yieldActorSharesBefore * 1e18 - feeInShares) / 1e18;
             // CDP collateral value should increase after positive rebase even with fee split
             require(
@@ -729,7 +729,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     }
 
     // As a protocol, we expect the yield growth from moment to moment to be equal to the PYS, given a positive yield 
-    function invariant_PYS_04(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
+    function invariant_PYS_04(CdpManager cdpManager, Vars memory vars) internal returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
         // In this case we are not testing the setEthPerShare
@@ -743,7 +743,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
 
         if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
 
-        if (!vars.inRebase) return true;
+        require(vars.inRebase, "PYS: !rebase");
+        vars.inRebase = false;
 
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
             uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
