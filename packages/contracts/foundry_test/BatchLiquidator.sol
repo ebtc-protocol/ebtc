@@ -78,7 +78,13 @@ contract BatchLiquidator {
         swapRouter = IV3SwapRouter(_swapRouter);
         owner = _owner;
 
+        // For flash loan repayment
+        IERC20(address(ebtcToken)).safeApprove(address(borrowerOperations), type(uint256).max);
+
+        // For wrapping
         IERC20(address(stETH)).safeApprove(address(wstETH), type(uint256).max);
+
+        // For trading
         IERC20(address(wstETH)).safeApprove(address(swapRouter), type(uint256).max);
     }
 
@@ -88,6 +94,10 @@ contract BatchLiquidator {
         for (uint256 i; i < cdps.length; i++) {
             flashLoanAmount = cdpManager.getSyncedCdpDebt(cdps[i]);
         }
+    }
+
+    function sweep(address token) external {
+        IERC20(token).safeTransfer(owner, IERC20(token).balanceOf(address(this)));
     }
 
     function batchLiquidate(uint256 _n, uint256 _slippageLimit) external {
