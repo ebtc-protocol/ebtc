@@ -92,7 +92,7 @@ contract BatchLiquidator {
         cdps = syncedLiquidationSequencer.sequenceLiqToBatchLiq(_n);
 
         for (uint256 i; i < cdps.length; i++) {
-            flashLoanAmount = cdpManager.getSyncedCdpDebt(cdps[i]);
+            flashLoanAmount += cdpManager.getSyncedCdpDebt(cdps[i]);
         }
     }
 
