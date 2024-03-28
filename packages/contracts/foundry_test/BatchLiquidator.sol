@@ -58,8 +58,8 @@ contract BatchLiquidator {
     address public immutable owner;
 
     constructor(
-        address _sequencer, 
-        address _borrowerOperations, 
+        address _sequencer,
+        address _borrowerOperations,
         address _wstETH,
         address _weth,
         address _wbtc,
@@ -88,7 +88,9 @@ contract BatchLiquidator {
         IERC20(address(wstETH)).safeApprove(address(swapRouter), type(uint256).max);
     }
 
-    function _getCdpsToLiquidate(uint256 _n) private returns (bytes32[] memory cdps, uint256 flashLoanAmount) {
+    function _getCdpsToLiquidate(
+        uint256 _n
+    ) private returns (bytes32[] memory cdps, uint256 flashLoanAmount) {
         cdps = syncedLiquidationSequencer.sequenceLiqToBatchLiq(_n);
 
         for (uint256 i; i < cdps.length; i++) {
@@ -138,7 +140,7 @@ contract BatchLiquidator {
 
     function _calcMinAmount(uint256 _collBalance, uint256 _slippageLimit) private returns (uint256) {
         uint256 price = priceFeed.fetchPrice();
-        return (_collBalance * price * _slippageLimit) / (SLIPPAGE_LIMIT_PRECISION *  1e18);
+        return (_collBalance * price * _slippageLimit) / (SLIPPAGE_LIMIT_PRECISION * 1e18);
     }
 
     function _swapStethToEbtc(uint256 _collBalance, uint256 _minEbtcOut) internal returns (uint256) {
@@ -153,10 +155,19 @@ contract BatchLiquidator {
         return IWstETH(address(wstETH)).wrap(_initialStETH);
     }
 
-    function _uniSwapWstETHToEbtc(uint256 _wstETHAmount, uint256 _minEbtcOut) internal returns (uint256) {
+    function _uniSwapWstETHToEbtc(
+        uint256 _wstETHAmount,
+        uint256 _minEbtcOut
+    ) internal returns (uint256) {
         IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter.ExactInputParams({
             path: abi.encodePacked(
-                address(wstETH), POOL_FEE_100, address(weth), POOL_FEE_500, address(wbtc), POOL_FEE_500, address(ebtcToken)
+                address(wstETH),
+                POOL_FEE_100,
+                address(weth),
+                POOL_FEE_500,
+                address(wbtc),
+                POOL_FEE_500,
+                address(ebtcToken)
             ),
             recipient: address(this),
             amountIn: _wstETHAmount,

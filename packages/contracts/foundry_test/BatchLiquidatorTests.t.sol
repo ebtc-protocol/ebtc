@@ -20,7 +20,7 @@ contract BatchLiquidatorTests is Test {
     ActivePool internal activePool;
     BorrowerOperations internal borrowerOperations;
     PriceFeedTestnet internal priceFeedMock;
-    CollateralTokenTester internal collateral; 
+    CollateralTokenTester internal collateral;
     SyncedLiquidationSequencer internal syncedLiquidationSequencer;
     EBTCTokenTester internal eBTCToken;
     IERC20 internal wstEth;
@@ -52,11 +52,11 @@ contract BatchLiquidatorTests is Test {
         batchLiq = new BatchLiquidator(
             address(syncedLiquidationSequencer),
             address(borrowerOperations),
-            address(wstEth),  // wstETH
-            address(weth),  // weth
-            address(wbtc),  // wbtc
-            0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45,  // univ3
-            0x2CEB95D4A67Bf771f1165659Df3D11D8871E906f   // Fee recipient multisig
+            address(wstEth), // wstETH
+            address(weth), // weth
+            address(wbtc), // wbtc
+            0x68b3465833fb72A70ecDF485E0e4C7bD8665Fc45, // univ3
+            0x2CEB95D4A67Bf771f1165659Df3D11D8871E906f // Fee recipient multisig
         );
     }
 
