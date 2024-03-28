@@ -476,7 +476,9 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
 
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
+        vm.stopPrank();
         _before(_cdpId);
+        vm.startPrank(user);
         _syncSystemDebtTwapToSpotValue();
         cdpManager.redeemCollateral(
             77233452000714940,
@@ -487,8 +489,9 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
             1,
             302083018134466905
         );
-
+        vm.stopPrank();
         _after(_cdpId);
+        vm.startPrank(user);
         console.log(_diff());
 
         uint256 redeemedColl = (vars.actorCollAfter - vars.actorCollBefore);

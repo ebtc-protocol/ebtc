@@ -27,7 +27,7 @@ import {BytecodeReader} from "./utils/BytecodeReader.sol";
 import {IERC3156FlashLender} from "../contracts/Interfaces/IERC3156FlashLender.sol";
 import {BaseStorageVariables} from "../contracts/TestContracts/BaseStorageVariables.sol";
 import {Actor} from "../contracts/TestContracts/invariants/Actor.sol";
-import {CRLens} from "../contracts/CRLens.sol";
+import {CRLens} from "../contracts/TestContracts/CRLens.sol";
 import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 import {Pretty, Strings} from "../contracts/TestContracts/Pretty.sol";
@@ -403,7 +403,7 @@ contract eBTCBaseFixture is
         authority.setUserRole(defaultGovernance, 5, true);
         authority.setUserRole(defaultGovernance, 6, true);
 
-        crLens = new CRLens(address(cdpManager), address(ebtcFeed));
+        crLens = new CRLens(address(cdpManager), address(borrowerOperations), address(ebtcFeed));
         liquidationSequencer = new LiquidationSequencer(
             address(cdpManager),
             address(sortedCdps),
