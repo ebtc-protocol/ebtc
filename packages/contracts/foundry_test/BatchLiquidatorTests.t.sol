@@ -29,8 +29,8 @@ contract BatchLiquidatorTests is Test {
     BatchLiquidator internal batchLiq;
 
     function setUp() public {
-        //       vm.selectFork(vm.createFork(vm.envString("MAINNET_RPC_URL")));
-        //     vm.rollFork(19521269);
+        vm.selectFork(vm.createFork(vm.envString("MAINNET_RPC_URL")));
+        vm.rollFork(19521269);
 
         borrowerOperations = BorrowerOperations(0xd366e016Ae0677CdCE93472e603b75051E022AD0);
         cdpManager = CdpManager(0xc4cbaE499bb4Ca41E78f52F07f5d98c375711774);
