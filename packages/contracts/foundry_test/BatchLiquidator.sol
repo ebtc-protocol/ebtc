@@ -126,6 +126,11 @@ contract BatchLiquidator {
     ) external returns (bytes32) {
         // Verify we started the FL
         require(initiator == address(this), "BatchLiquidator: wrong initiator for flashloan");
+        require(
+            msg.sender == address(borrowerOperations),
+            "BatchLiquidator: wrong lender for eBTC flashloan"
+        );
+        require(token == address(ebtcToken));
 
         (bytes32[] memory cdps, uint256 slippageLimit) = abi.decode(data, (bytes32[], uint256));
 
