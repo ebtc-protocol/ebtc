@@ -366,10 +366,19 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
 
             // TODO: Contracts ar enot working on forked state
+            // Liq should now be working correctly in forked state
             liquidationSequencer = new LiquidationSequencer(
                 address(cdpManager),
                 address(cdpManager.sortedCdps()),
                 address(priceFeedMock),
+                address(activePool),
+                address(collateral)
+            );
+
+            syncedLiquidationSequencer = new SyncedLiquidationSequencer(
+                address(cdpManager),
+                address(cdpManager.sortedCdps()),
+                address(0x6a24ECc18224857BD73A7aa53c2a4Eb43c17D5A8),
                 address(activePool),
                 address(collateral)
             );
