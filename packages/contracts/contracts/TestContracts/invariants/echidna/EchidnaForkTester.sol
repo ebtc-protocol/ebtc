@@ -9,8 +9,8 @@ import "../TargetFunctions.sol";
 contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
     constructor() payable {
         // https://etherscan.io/tx/0xca4f2e9a7e8cc82969e435091576dbd8c8bfcc008e89906857056481e0542f23
-        hevm.roll(19568260); // Block
-        hevm.warp(1712062679);
+        hevm.roll(19573841); // Block
+        hevm.warp(1712130263);
         
         _setUpFork();
         _setUpActors();
