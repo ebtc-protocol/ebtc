@@ -22,7 +22,17 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         require(false, "Skip. TODO: call hevm.store to bypass timelock");
     }
 
-    function setEthPerShare(uint256) public pure override {
-        require(false, "Skip. TODO: call hevm.store to seth ETH per share");
+    function setEthPerShare(uint256 newValue) public override {
+        // Our approach is to to increase the amount of ether without increasing the number of shares
+        // We load the bulk share of staked ether, then modify it, then change the value in the slot directly.
+        uint256 oldValue = uint256(hevm.load(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483));
+
+        newValue = between(
+            newValue,
+            (oldValue * 1e18) / MAX_REBASE_PERCENT,
+            (oldValue * MAX_REBASE_PERCENT) / 1e18
+        );
+
+        hevm.store(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483, bytes32(newValue));
     }
 }
