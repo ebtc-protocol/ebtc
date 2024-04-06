@@ -18,8 +18,11 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         require(false, "Skip. TODO: call hevm.store to update the price");
     }
 
-    function setGovernanceParameters(uint256, uint256) public pure override {
-        require(false, "Skip. TODO: call hevm.store to bypass timelock");
+    // Can delete this and will still be called via `TargetFunctions`
+    // Don't need to etch storage, mocking it as a call from default governance should be enough
+    // as the timelock logic happens in the TimelockController, and governance params only care about who is the caller
+    function setGovernanceParameters(uint256 parameter, uint256 value) public override {
+        TargetFunctions.setGovernanceParameters(parameter, value);
     }
 
     function setEthPerShare(uint256 newValue) public override {
