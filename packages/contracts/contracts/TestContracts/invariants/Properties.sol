@@ -402,7 +402,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // 1 wei for each cdp at each index change (as their index may round down causing them to lose 1 wei of fee split)
         return
             sumOfColl <= _systemCollShares &&
-            sumOfColl + cdpManager.getActiveCdpsCount() >= _systemCollShares;
+            sumOfColl + sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
     }
 
     function invariant_GENERAL_19(ActivePool activePool) internal view returns (bool) {

@@ -23,6 +23,7 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
     }
 
     function setEthPerShare(uint256 newValue) public override {
+        _before(bytes32(0));
         // Our approach is to to increase the amount of ether without increasing the number of shares
         // We load the bulk share of staked ether, then modify it, then change the value in the slot directly.
         uint256 oldValue = uint256(hevm.load(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483));
@@ -34,5 +35,7 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         );
 
         hevm.store(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483, bytes32(newValue));
+
+        _after(bytes32(0));
     }
 }
