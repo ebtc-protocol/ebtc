@@ -378,6 +378,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         PriceFeedTestnet priceFeedTestnet,
         ICollateralToken collateral
     ) internal view returns (bool) {
+
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 sumOfColl;
@@ -395,14 +396,14 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
 
         if (cdpManager.systemStEthFeePerUnitIndexError() % 1e18 > 0) sumOfColl -= 1; // Round down coll
-
         // sumOfColl can have rounding error
         // And rounding error is capped by:
         // 1 wei of rounding error in systemStEthFeePerUnitIndexError
         // 1 wei for each cdp at each index change (as their index may round down causing them to lose 1 wei of fee split)
         return
             sumOfColl <= _systemCollShares &&
-            sumOfColl + sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
+            sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
+        //return true;
     }
 
     function invariant_GENERAL_19(ActivePool activePool) internal view returns (bool) {
