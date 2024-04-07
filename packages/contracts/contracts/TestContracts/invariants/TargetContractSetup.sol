@@ -351,7 +351,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             cdpManager = CdpManager(0xc4cbaE499bb4Ca41E78f52F07f5d98c375711774);
             borrowerOperations = BorrowerOperations(0xd366e016Ae0677CdCE93472e603b75051E022AD0);
             eBTCToken = EBTCTokenTester(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
-            priceFeedMock = PriceFeedTestnet(address(0x6a24ECc18224857BD73A7aa53c2a4Eb43c17D5A8)); // Price Feed
+            priceFeedMock = PriceFeedTestnet(address(0xa9a65B1B1dDa8376527E89985b221B6bfCA1Dc9a)); // eBTC Price Feed
             activePool = ActivePool(0x6dBDB6D420c110290431E863A1A978AE53F69ebC);
             collSurplusPool = CollSurplusPool(0x335982DaE827049d35f09D5ec927De2bc38df3De);
             sortedCdps = SortedCdps(0x591AcB5AE192c147948c12651a0a5f24f0529BE3);
@@ -378,7 +378,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             syncedLiquidationSequencer = new SyncedLiquidationSequencer(
                 address(cdpManager),
                 address(cdpManager.sortedCdps()),
-                address(0x6a24ECc18224857BD73A7aa53c2a4Eb43c17D5A8),
+                address(priceFeedMock),
                 address(activePool),
                 address(collateral)
             );
