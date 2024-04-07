@@ -38,6 +38,7 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         );
 
         hevm.store(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483, bytes32(newValue));
+        cdpManager.syncGlobalAccountingAndGracePeriod();
 
         _after(bytes32(0));
     }
