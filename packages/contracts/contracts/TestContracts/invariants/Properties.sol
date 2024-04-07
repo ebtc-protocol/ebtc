@@ -378,7 +378,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         PriceFeedTestnet priceFeedTestnet,
         ICollateralToken collateral
     ) internal view returns (bool) {
-
         bytes32 currentCdp = sortedCdps.getFirst();
 
         uint256 sumOfColl;
@@ -403,7 +402,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         return
             sumOfColl <= _systemCollShares &&
             sumOfColl + vars.cumulativeCdpsAtTimeOfRebase >= _systemCollShares;
-        //return true;
     }
 
     function invariant_GENERAL_19(ActivePool activePool) internal view returns (bool) {
