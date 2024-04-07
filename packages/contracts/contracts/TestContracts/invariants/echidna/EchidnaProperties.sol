@@ -4,7 +4,7 @@ import {TargetContractSetup} from "../TargetContractSetup.sol";
 import {Properties} from "../Properties.sol";
 
 abstract contract EchidnaProperties is TargetContractSetup, Properties {
-    function echidna_false_canary_price() public returns (bool) {
+    function echidna_canary_price() public returns (bool) {
         return invariant_DUMMY_01(priceFeedMock);
     }
 
