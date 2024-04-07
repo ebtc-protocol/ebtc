@@ -12,6 +12,17 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
 
         _setUpFork();
         _setUpActors();
+
+        // If the accounting hasn't been synced since the last rebase
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        while (currentCdp != bytes32(0)) {
+            hevm.prank(address(borrowerOperations));
+            cdpManager.syncAccounting(currentCdp);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        vars.cumulativeCdpsAtTimeOfRebase = 200;
     }
 
     function setPrice(uint256) public pure override {
