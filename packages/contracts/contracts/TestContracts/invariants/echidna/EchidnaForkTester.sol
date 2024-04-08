@@ -22,11 +22,31 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
+        // Previous cumulative CDPs per each rebase
+        // Will need to be adjusted
         vars.cumulativeCdpsAtTimeOfRebase = 200;
     }
 
-    function setPrice(uint256) public pure override {
-        require(false, "Skip. TODO: call hevm.store to update the price");
+    function setPrice(uint256 newPrice) public override {
+        _before(bytes32(0));
+
+        hevm.store(address(priceFeedMock), 0x0000000000000000000000000000000000000000000000000000000000000002, bytes32(0));
+
+        // Load last good price
+        uint256 oldPrice = uint256(hevm.load(address(priceFeedMock), 0x0000000000000000000000000000000000000000000000000000000000000001));
+        // New Price
+        newPrice = between(
+            newPrice,
+            (oldPrice * 1e18) / MAX_PRICE_CHANGE_PERCENT,
+            (oldPrice * MAX_PRICE_CHANGE_PERCENT) / 1e18
+        );
+
+        // Set new price by etching last good price
+        hevm.store(address(priceFeedMock), 0x0000000000000000000000000000000000000000000000000000000000000001, bytes32(newPrice));
+
+        cdpManager.syncGlobalAccountingAndGracePeriod();
+
+        _after(bytes32(0));
     }
 
     // Can delete this and will still be called via `TargetFunctions`
