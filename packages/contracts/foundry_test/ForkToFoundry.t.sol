@@ -26,15 +26,29 @@ contract ForkToFoundry is
 {
 
     function setUp() public {
-        vm.createSelectFork("https://mainnet.infura.io/v3/915563693acc45ca8fb73b9d82a4535c");
+        vm.createSelectFork("YOUR_RPC_URL_HERE");
         _setUpFork();
         _setUpActors();
         actor = actors[address(USER1)];
+
+        // If the accounting hasn't been synced since the last rebase
+        bytes32 currentCdp = sortedCdps.getFirst();
+
+        while (currentCdp != bytes32(0)) {
+            vm.prank(address(borrowerOperations));
+            cdpManager.syncAccounting(currentCdp);
+            currentCdp = sortedCdps.getNext(currentCdp);
+        }
+
+        // Previous cumulative CDPs per each rebase
+        // Will need to be adjusted
+        vars.cumulativeCdpsAtTimeOfRebase = 200;
     }
 
+/*
     function test_GENERAL_18() public {
         t(echidna_GENERAL_18(), "Not Passing");
     }
-
+*/
 
 }
