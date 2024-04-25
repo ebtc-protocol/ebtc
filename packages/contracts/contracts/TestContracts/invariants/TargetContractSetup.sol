@@ -402,11 +402,25 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actors[addresses[i]] = new Actor(tokens, callers);
             (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
             assert(success);
-            (success, ) = actors[addresses[i]].proxy(address(collateral), "", INITIAL_COLL_BALANCE);
+            (success, ) = actors[addresses[i]].proxy(
+                address(collateral),
+                abi.encodeWithSignature("submit(address)", address(0)),
+                INITIAL_COLL_BALANCE
+            );
             assert(success);
+            assert(collateral.balanceOf(address(actors[addresses[i]])) > 0);
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    // Simple canaries for fork health
+    function _setUpCanaries() internal {
+        try cdpManager.totalStakes() {} catch {
+            assert(false);
+        }
+
+        assert(cdpManager.getSystemDebt() > 0);
     }
 
     function _syncSystemDebtTwapToSpotValue() internal {
