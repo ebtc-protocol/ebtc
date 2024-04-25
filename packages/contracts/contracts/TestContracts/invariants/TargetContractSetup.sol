@@ -404,6 +404,35 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             assert(success);
             (success, ) = actors[addresses[i]].proxy(
                 address(collateral),
+                abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
+                INITIAL_COLL_BALANCE
+            );
+            assert(success);
+            assert(collateral.balanceOf(address(actors[addresses[i]])) > 0);
+            actorsArray[i] = actors[addresses[i]];
+        }
+        simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    function _setUpActorsFork() internal {
+        bool success;
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(eBTCToken);
+        tokens[1] = address(collateral);
+        address[] memory callers = new address[](2);
+        callers[0] = address(borrowerOperations);
+        callers[1] = address(activePool);
+        address[] memory addresses = new address[](3);
+        addresses[0] = USER1;
+        addresses[1] = USER2;
+        addresses[2] = USER3;
+        Actor[] memory actorsArray = new Actor[](NUMBER_OF_ACTORS);
+        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
+            actors[addresses[i]] = new Actor(tokens, callers);
+            (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
+            assert(success);
+            (success, ) = actors[addresses[i]].proxy(
+                address(collateral),
                 abi.encodeWithSignature("submit(address)", address(0)),
                 INITIAL_COLL_BALANCE
             );
