@@ -24,7 +24,6 @@ contract ForkToFoundry is
     EchidnaProperties,
     BeforeAfterWithLogging
 {
-
     function setUp() public {
         vm.createSelectFork("YOUR_RPC_URL_HERE");
         _setUpFork();
@@ -45,10 +44,9 @@ contract ForkToFoundry is
         vars.cumulativeCdpsAtTimeOfRebase = 200;
     }
 
-/*
+    /*
     function test_GENERAL_18() public {
         t(echidna_GENERAL_18(), "Not Passing");
     }
 */
-
 }

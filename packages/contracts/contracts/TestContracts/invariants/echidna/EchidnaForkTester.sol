@@ -30,10 +30,19 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
     function setPrice(uint256 newPrice) public override {
         _before(bytes32(0));
 
-        hevm.store(address(priceFeedMock), 0x0000000000000000000000000000000000000000000000000000000000000002, bytes32(0));
+        hevm.store(
+            address(priceFeedMock),
+            0x0000000000000000000000000000000000000000000000000000000000000002,
+            bytes32(0)
+        );
 
         // Load last good price
-        uint256 oldPrice = uint256(hevm.load(address(priceFeedMock), 0x0000000000000000000000000000000000000000000000000000000000000001));
+        uint256 oldPrice = uint256(
+            hevm.load(
+                address(priceFeedMock),
+                0x0000000000000000000000000000000000000000000000000000000000000001
+            )
+        );
         // New Price
         newPrice = between(
             newPrice,
@@ -42,7 +51,11 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         );
 
         // Set new price by etching last good price
-        hevm.store(address(priceFeedMock), 0x0000000000000000000000000000000000000000000000000000000000000001, bytes32(newPrice));
+        hevm.store(
+            address(priceFeedMock),
+            0x0000000000000000000000000000000000000000000000000000000000000001,
+            bytes32(newPrice)
+        );
 
         cdpManager.syncGlobalAccountingAndGracePeriod();
 
@@ -60,7 +73,12 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
         _before(bytes32(0));
         // Our approach is to to increase the amount of ether without increasing the number of shares
         // We load the bulk share of staked ether, then modify it, then change the value in the slot directly.
-        uint256 oldValue = uint256(hevm.load(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483));
+        uint256 oldValue = uint256(
+            hevm.load(
+                address(collateral),
+                0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483
+            )
+        );
 
         newValue = between(
             newValue,
@@ -68,7 +86,11 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
             (oldValue * MAX_REBASE_PERCENT) / 1e18
         );
 
-        hevm.store(address(collateral), 0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483, bytes32(newValue));
+        hevm.store(
+            address(collateral),
+            0xa66d35f054e68143c18f32c990ed5cb972bb68a68f500cd2dd3a16bbf3686483,
+            bytes32(newValue)
+        );
         cdpManager.syncGlobalAccountingAndGracePeriod();
 
         _after(bytes32(0));
