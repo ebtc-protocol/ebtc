@@ -642,4 +642,98 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
         cdpManager.redeemCollateral(debt, userCdpId, bytes32(0), bytes32(0), 0, 0, 1e18);
         vm.stopPrank();
     }
+
+    function testStakeUpdateForPartialRedemption() public {
+        address wallet = _utils.getNextUserAddress();
+        uint256 _yearlyInc = 36000000000000000;
+        uint256 _dailyInc = _yearlyInc / 365;
+
+        // fetch the price
+        uint256 price = priceFeedMock.fetchPrice();
+
+        // calculate the net coll + liquidator reward
+        uint256 grossColl = 10e18 + cdpManager.LIQUIDATOR_REWARD();
+
+        // calculate the debt allowed with collateral ratio of 110%
+        uint256 debtMCR = _utils.calculateBorrowAmount(10e18, price, MINIMAL_COLLATERAL_RATIO);
+
+        // calculate the debt allowed with collateral ratio of 125%
+        uint256 debtColl = _utils.calculateBorrowAmount(10e18, price, COLLATERAL_RATIO);
+
+        // open 5 cdps in the system
+        _openTestCDP(wallet, grossColl, debtColl - 20000);
+        _openTestCDP(wallet, grossColl, debtColl - 10000);
+        _openTestCDP(wallet, grossColl, debtColl - 7500);
+        bytes32 partialCdp = _openTestCDP(wallet, grossColl, debtColl);
+        _openTestCDP(wallet, grossColl, debtMCR);
+
+        vm.startPrank(wallet);
+
+        // approve ebtc token to cdp manager
+        eBTCToken.approve(address(cdpManager), eBTCToken.balanceOf(wallet));
+
+        // increase the eth per share with one day split fee
+        collateral.setEthPerShare(1e18 + _dailyInc);
+
+        // get the last Cdp in the system
+        bytes32 last = sortedCdps.getLast();
+
+        // record the old coll and stake of the partial redeemed cdp
+        uint256 oldCollBefore = cdpManager.getCdpCollShares(partialCdp);
+        uint256 oldStakeBefore = cdpManager.getCdpStake(partialCdp);
+
+        // sync the debt twap spot value
+        _syncSystemDebtTwapToSpotValue();
+
+        uint256 _syncedCollAfter = cdpManager.getSyncedCdpCollShares(partialCdp);
+
+        // fully redeem the last cdp and try to partial redeem but cancel with wrong NICR
+        cdpManager.redeemCollateral(
+            debtMCR + (debtColl / 2),
+            last,
+            bytes32(0),
+            bytes32(0),
+            0,
+            0,
+            1e18
+        );
+
+        vm.stopPrank();
+
+        // record the new coll and stake after the canceled partial redeeming
+        uint256 newCollAfter = cdpManager.getCdpCollShares(partialCdp);
+        uint256 newStakeAfter = cdpManager.getCdpStake(partialCdp);
+        require(
+            _syncedCollAfter == newCollAfter,
+            "!collateral share for cancelled partially-redeemed CDP should be synced"
+        );
+
+        // ensure that the last cdp was fully redeemed
+        assert(!sortedCdps.contains(last));
+
+        // console log the old and new stats of the canceled cdp
+        console.log("================Before");
+        console.log("CollBefore            :", oldCollBefore);
+        console.log("StakeBefore           :", oldStakeBefore);
+        console.log("================After");
+        console.log("CollAfter             :", newCollAfter);
+        console.log("StakeAfter            :", newStakeAfter);
+
+        // fetch the stake and coll snapshots
+        uint256 stakeSnapshot = cdpManager.totalStakesSnapshot();
+        uint256 collSnapshot = cdpManager.totalCollateralSnapshot();
+
+        // calculate the correct stake based on the cdp new coll and latest stake ratio
+        uint256 correctStake = (newCollAfter * stakeSnapshot) / collSnapshot;
+
+        // console log the correct stake
+        console.log("=====================");
+        console.log("CorrectStake          :", correctStake);
+
+        // The diference is based on 5 cdps in the system and only one daily increase.
+        require(
+            correctStake == newStakeAfter,
+            "!stake for cancelled partially-redeemed CDP should be updated"
+        );
+    }
 }
