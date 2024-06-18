@@ -122,7 +122,7 @@ abstract contract LeverageMacroBase {
         LeverageMacroOperation calldata operation,
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
-    ) external {
+    ) external virtual {
         _assertOwner();
 
         // Figure out the expected CDP ID using sortedCdps.toCdpId
