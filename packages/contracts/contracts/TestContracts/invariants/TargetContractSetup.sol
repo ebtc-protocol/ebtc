@@ -3,7 +3,6 @@ pragma solidity 0.8.17;
 import "@crytic/properties/contracts/util/PropertiesConstants.sol";
 import "@crytic/properties/contracts/util/Hevm.sol";
 
-import "../../Interfaces/ICdpManagerData.sol";
 import "../../Dependencies/SafeMath.sol";
 import "../../CdpManager.sol";
 import "../AccruableCdpManager.sol";
@@ -316,7 +315,11 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             authority.setUserRole(defaultGovernance, 4, true);
             authority.setUserRole(defaultGovernance, 5, true);
 
-            crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+            crLens = new CRLens(
+                address(cdpManager),
+                address(borrowerOperations),
+                address(priceFeedMock)
+            );
 
             liquidationSequencer = new LiquidationSequencer(
                 address(cdpManager),
@@ -338,25 +341,41 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     event Log(string);
 
     function _setUpFork() internal {
-        defaultGovernance = address(0xA967Ba66Fb284EC18bbe59f65bcf42dD11BA8128);
-        ebtcDeployer = EBTCDeployer(0xe90f99c08F286c48db4D1AfdAE6C122de69B7219);
-        collateral = CollateralTokenTester(payable(0xf8017430A0efE03577f6aF88069a21900448A373));
+        // NOTE: Addresses from: https://gist.github.com/GalloDaSballo/75d77f8d0837821156fe061d0d8687e1
+        defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
+        ebtcDeployer = EBTCDeployer(0x5c42faC7eEa7e724986bB5e4F3B12912F046120a);
+        collateral = CollateralTokenTester(payable(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // stETH
         {
-            authority = Governor(0x4945Fc25282b1bC103d2C62C251Cd022138c1de9);
-            liqudationLibrary = LiquidationLibrary(0xE8943a17363DE9A6e0d4A5d48d5Ab45283199F77);
-            cdpManager = CdpManager(0x0c5C2B93b96C9B3aD7fb9915952BD7BA256C4f04);
-            borrowerOperations = BorrowerOperations(0xA178BFBc42E3D886d540CDDcf4562c53a8Fc02c1);
-            priceFeedMock = PriceFeedTestnet(0x5C819E5D61EFCfBd7e4635f1112f3bF94663999b);
-            sortedCdps = SortedCdps(0xDeFF25eC3cd3041BC8B9A464F9BEc12EB8247Be6);
-            activePool = ActivePool(0x55abdfb760dd032627D531f7cF3DAa72549CEbA2);
-            collSurplusPool = CollSurplusPool(0x7b4D951D7b8090f62bD009b371abd7Fe04aB7e1A);
-            hintHelpers = HintHelpers(0xCaBdBc4218dd4b9E3fB9842232aD0aFc7c431693);
-            eBTCToken = EBTCTokenTester(0x9Aa69Db8c53E504EF22615390EE9Eb72cb8bE498);
-            feeRecipient = FeeRecipient(0x40FF68eaE525233950B63C2BCEa39770efDE52A4);
+            authority = Governor(0x2A095d44831C26cFB6aCb806A6531AE3CA32DBc1);
+            liqudationLibrary = LiquidationLibrary(0x4Ae990C3b2F7C3961c51483eFba20760946a7681);
+            cdpManager = CdpManager(0xc4cbaE499bb4Ca41E78f52F07f5d98c375711774);
+            borrowerOperations = BorrowerOperations(0xd366e016Ae0677CdCE93472e603b75051E022AD0);
+            eBTCToken = EBTCTokenTester(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
+            priceFeedMock = PriceFeedTestnet(address(0xa9a65B1B1dDa8376527E89985b221B6bfCA1Dc9a)); // eBTC Price Feed
+            activePool = ActivePool(0x6dBDB6D420c110290431E863A1A978AE53F69ebC);
+            collSurplusPool = CollSurplusPool(0x335982DaE827049d35f09D5ec927De2bc38df3De);
+            sortedCdps = SortedCdps(0x591AcB5AE192c147948c12651a0a5f24f0529BE3);
+            hintHelpers = HintHelpers(0x2591554c5EE0b62B8E2725556Cc27744D8C2E7eB);
+            feeRecipient = FeeRecipient(0xD4D1e77C69E7AA63D0E66a06df89A2AA5d3b1d9E);
+            // multiCdpGetter
 
-            crLens = new CRLens(address(cdpManager), address(priceFeedMock));
+            crLens = new CRLens(
+                address(cdpManager),
+                address(borrowerOperations),
+                address(priceFeedMock)
+            );
 
+            // TODO: Contracts ar enot working on forked state
+            // Liq should now be working correctly in forked state
             liquidationSequencer = new LiquidationSequencer(
+                address(cdpManager),
+                address(cdpManager.sortedCdps()),
+                address(priceFeedMock),
+                address(activePool),
+                address(collateral)
+            );
+
+            syncedLiquidationSequencer = new SyncedLiquidationSequencer(
                 address(cdpManager),
                 address(cdpManager.sortedCdps()),
                 address(priceFeedMock),
@@ -389,9 +408,48 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 INITIAL_COLL_BALANCE
             );
             assert(success);
+            assert(collateral.balanceOf(address(actors[addresses[i]])) > 0);
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    function _setUpActorsFork() internal {
+        bool success;
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(eBTCToken);
+        tokens[1] = address(collateral);
+        address[] memory callers = new address[](2);
+        callers[0] = address(borrowerOperations);
+        callers[1] = address(activePool);
+        address[] memory addresses = new address[](3);
+        addresses[0] = USER1;
+        addresses[1] = USER2;
+        addresses[2] = USER3;
+        Actor[] memory actorsArray = new Actor[](NUMBER_OF_ACTORS);
+        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
+            actors[addresses[i]] = new Actor(tokens, callers);
+            (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
+            assert(success);
+            (success, ) = actors[addresses[i]].proxy(
+                address(collateral),
+                abi.encodeWithSignature("submit(address)", address(0)),
+                INITIAL_COLL_BALANCE
+            );
+            assert(success);
+            assert(collateral.balanceOf(address(actors[addresses[i]])) > 0);
+            actorsArray[i] = actors[addresses[i]];
+        }
+        simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    // Simple canaries for fork health
+    function _setUpCanaries() internal {
+        try cdpManager.totalStakes() {} catch {
+            assert(false);
+        }
+
+        assert(cdpManager.getSystemDebt() > 0);
     }
 
     function _syncSystemDebtTwapToSpotValue() internal {
