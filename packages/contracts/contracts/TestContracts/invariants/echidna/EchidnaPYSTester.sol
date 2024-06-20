@@ -9,7 +9,7 @@ import "../TargetFunctions.sol";
 contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
     constructor() payable {
         yieldControlAddress = address(0x5000000000000005);
-        yieldTargetAddress =  address(0x6000000000000006);
+        yieldTargetAddress = address(0x6000000000000006);
 
         _setUp();
         _setUpActors();
@@ -124,7 +124,6 @@ contract EchidnaPYSTester is EchidnaAsserts, EchidnaProperties, TargetFunctions 
         // Allows us flexibility that other params can still change.
         TargetFunctions.setGovernanceParameters(parameter, value);
     }
-
 
     function setEthPerShare(uint256 _newEthPerShare) public override {
         _before(yieldTargetCdpId);

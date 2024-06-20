@@ -2,7 +2,7 @@ pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../Interfaces/IERC3156FlashBorrower.sol";
 import {IERC20} from "../../Dependencies/IERC20.sol";
-import { CollateralTokenTester } from "../CollateralTokenTester.sol";
+import {CollateralTokenTester} from "../CollateralTokenTester.sol";
 
 contract Actor is IERC3156FlashBorrower {
     address[] internal tokens;

@@ -592,27 +592,27 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // In this case we aren't in a rebase
         if (vars.stakingRewardSplitAfter != vars.stakingRewardSplitBefore) return true;
 
-    
         // In case the Yield Actor closes or redeems, we check their address as well
         // Note: we must also remember the gas stipend gets subtracted from the shares at the start
-        uint256 yieldTargetCollateral = collateral.balanceOf(address(actors[yieldTarget])) + collateral.getPooledEthByShares(_coll);
+        uint256 yieldTargetCollateral = collateral.balanceOf(address(actors[yieldTarget])) +
+            collateral.getPooledEthByShares(_coll);
 
         // Simpler to check that `yield on collateral == yield on control, for each rebase event, @ PYS == 0`
-        uint256 yieldGrowthControl = (vars.yieldControlValueAfter - vars.yieldControlValueBefore * 1e18) / vars.yieldControlValueBefore;
-        uint256 yieldGrowthActor = (vars.yieldActorValueAfter - vars.yieldActorValueBefore * 1e18) / vars.yieldActorValueBefore;
+        uint256 yieldGrowthControl = (vars.yieldControlValueAfter -
+            vars.yieldControlValueBefore *
+            1e18) / vars.yieldControlValueBefore;
+        uint256 yieldGrowthActor = (vars.yieldActorValueAfter - vars.yieldActorValueBefore * 1e18) /
+            vars.yieldActorValueBefore;
 
         // Is approximate eq good here? 1e8 would be dust
-        return  _assertApproximateEq(yieldGrowthControl / 1e18, yieldGrowthActor / 1e18, 1e8); 
+        return _assertApproximateEq(yieldGrowthControl / 1e18, yieldGrowthActor / 1e18, 1e8);
 
         // Is approximate eq good here? 1e8 would be dust
-        //return  _assertApproximateEq(collateral.balanceOf(controlActor), yieldTargetCollateral, 1e8); 
+        //return  _assertApproximateEq(collateral.balanceOf(controlActor), yieldTargetCollateral, 1e8);
     }
 
     // At all times the fees taken from systemCollShares should be added to feeRecipientCollShares
-    function invariant_PYS_02(
-        CdpManager cdpManager,
-        Vars memory vars
-    ) internal view returns (bool) {
+    function invariant_PYS_02(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
         // If our target CDP has no collateral then we cannot test this invariant
@@ -621,19 +621,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // In total the yield growth percentage of the control must be equal to protocol growth percentage
         // Has there been yield?
         if (vars.prevStEthFeeIndex < vars.afterStEthFeeIndex) {
-            return _assertApproximateEq(vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter, vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBefore, 1e4);
+            return
+                _assertApproximateEq(
+                    vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter,
+                    vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBefore,
+                    1e4
+                );
         }
 
         // Implies there was no yield
         return true;
-
     }
 
     // As a user, the value of my CDP after rebase should be equal to it's value prior to rebase + yield - fee, according to the PYS at the moment of rebase
-    function invariant_PYS_03(
-        CdpManager cdpManager,
-        Vars memory vars
-    ) internal view returns (bool) {
+    function invariant_PYS_03(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
         // If our target CDP has no collateral then we cannot test this invariant
@@ -656,24 +657,27 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // Has there been yield?
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
             // Determine the growth, adjusted to 1e18 precision
-            uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
+            uint256 yieldGrowthPercent = ((vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) *
+                1e18) / vars.yieldStEthIndexBefore;
 
             // Expected fee is (growth % * startingVal) * feeSplit %
-            uint256 expectedFee = (vars.yieldActorValueBefore * yieldGrowthPercent / 1e18) * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+            uint256 expectedFee = (((vars.yieldActorValueBefore * yieldGrowthPercent) / 1e18) *
+                cdpManager.stakingRewardSplit()) / cdpManager.MAX_REWARD_SPLIT();
             uint256 feeInShares = collateral.getSharesByPooledEth(expectedFee);
 
-            return _assertApproximateEq(
-                collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares),
-                collateral.getPooledEthByShares(vars.yieldActorSharesAfter),
-                1e6 //canary value, if we break this by this much we need to investigate
-            );
+            return
+                _assertApproximateEq(
+                    collateral.getPooledEthByShares(vars.yieldActorSharesBefore - feeInShares),
+                    collateral.getPooledEthByShares(vars.yieldActorSharesAfter),
+                    1e6 //canary value, if we break this by this much we need to investigate
+                );
         }
 
         // Implies there was no yield
         return true;
     }
 
-    // As a protocol, we expect the yield growth from moment to moment to be equal to the PYS, given a positive yield 
+    // As a protocol, we expect the yield growth from moment to moment to be equal to the PYS, given a positive yield
     function invariant_PYS_04(CdpManager cdpManager, Vars memory vars) internal view returns (bool) {
         // If yieldControlAddress is not set this invariant cannot be tested
         if (yieldControlAddress == address(0)) return true;
@@ -689,14 +693,20 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         if (vars.feeRecipientCollSharesAfter < vars.feeRecipientCollSharesBefore) return true;
 
         if (vars.yieldStEthIndexAfter > vars.yieldStEthIndexBefore) {
-            uint256 yieldGrowthPercent = (vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) * 1e18 / vars.yieldStEthIndexBefore;
+            uint256 yieldGrowthPercent = ((vars.yieldStEthIndexAfter - vars.yieldStEthIndexBefore) *
+                1e18) / vars.yieldStEthIndexBefore;
             // The protocol's claimable fees should increase by the PYS % on the expected increase of the system collateral shares value
-            uint256 feesTakenExpected = (vars.yieldProtocolValueBefore * yieldGrowthPercent / 1e18)
-                * cdpManager.stakingRewardSplit() / cdpManager.MAX_REWARD_SPLIT();
+            uint256 feesTakenExpected = (((vars.yieldProtocolValueBefore * yieldGrowthPercent) /
+                1e18) * cdpManager.stakingRewardSplit()) / cdpManager.MAX_REWARD_SPLIT();
 
-            uint256 feesTakenActual = vars.feeRecipientCollSharesAfter - vars.feeRecipientCollSharesBefore;
+            uint256 feesTakenActual = vars.feeRecipientCollSharesAfter -
+                vars.feeRecipientCollSharesBefore;
 
-            require((vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter) == feesTakenActual, "!fees taken should be synced");
+            require(
+                (vars.yieldProtocolCollSharesBefore - vars.yieldProtocolCollSharesAfter) ==
+                    feesTakenActual,
+                "!fees taken should be synced"
+            );
 
             feesTakenExpected = collateral.getSharesByPooledEth(feesTakenExpected);
             collateral.getSharesByPooledEth(feesTakenActual);
@@ -707,5 +717,4 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // Implies there was no rebase
         return true;
     }
-
 }

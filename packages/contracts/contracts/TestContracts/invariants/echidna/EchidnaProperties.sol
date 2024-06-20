@@ -147,12 +147,8 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
 
     // An actor who deposits and holds
     function echidna_PYS_01() public returns (bool) {
-        return invariant_PYS_01(
-            cdpManager, 
-            yieldTargetCdpId, 
-            yieldControlAddress, 
-            yieldTargetAddress
-        );
+        return
+            invariant_PYS_01(cdpManager, yieldTargetCdpId, yieldControlAddress, yieldTargetAddress);
     }
 
     // Per rebase check of the cdp split

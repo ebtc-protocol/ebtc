@@ -56,7 +56,7 @@ abstract contract BaseStorageVariables {
 
     // PYS Stuff
     bytes32 internal yieldTargetCdpId;
-    address internal yieldControlAddress; 
+    address internal yieldControlAddress;
     address internal yieldTargetAddress;
     // Yield tracking
     uint256 internal yieldControlTracker;
