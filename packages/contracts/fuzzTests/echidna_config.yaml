@@ -40,7 +40,7 @@ stopOnFail: false
 coverage: true
 
 #directory to save the corpus; by default is disabled
-corpusDir: "fuzzTests/corpus"
+corpusDir: "echidna"
 # constants for corpus mutations (for experimentation only)
 #mutConsts: [100, 1, 1]
 

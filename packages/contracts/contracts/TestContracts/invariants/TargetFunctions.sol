@@ -1437,9 +1437,11 @@ abstract contract TargetFunctions is Properties {
                 gte(vars.feeRecipientTotalCollAfter, vars.feeRecipientTotalCollBefore, F_01);
             }
         } else if (parameter == 2) {
+            _before(bytes32(0));
             value = between(value, 0, cdpManager.MAX_REWARD_SPLIT());
             hevm.prank(defaultGovernance);
             cdpManager.setStakingRewardSplit(value);
+            _after(bytes32(0));
         } else if (parameter == 3) {
             value = between(
                 value,

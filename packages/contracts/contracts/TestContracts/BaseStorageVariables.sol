@@ -54,6 +54,15 @@ abstract contract BaseStorageVariables {
     CRLens internal crLens;
     Simulator internal simulator;
 
+    // PYS Stuff
+    bytes32 internal yieldTargetCdpId;
+    address internal yieldControlAddress; 
+    address internal yieldTargetAddress;
+    // Yield tracking
+    uint256 internal yieldControlTracker;
+    uint256 internal yieldProtocolTracker;
+    uint256 internal yieldActorTracker;
+
     uint internal constant NUMBER_OF_ACTORS = 3;
     uint internal constant INITIAL_ETH_BALANCE = 1e24;
     uint internal constant INITIAL_COLL_BALANCE = 1e21;

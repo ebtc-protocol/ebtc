@@ -2,10 +2,12 @@ pragma solidity 0.8.17;
 
 import {IERC3156FlashBorrower} from "../../Interfaces/IERC3156FlashBorrower.sol";
 import {IERC20} from "../../Dependencies/IERC20.sol";
+import { CollateralTokenTester } from "../CollateralTokenTester.sol";
 
 contract Actor is IERC3156FlashBorrower {
     address[] internal tokens;
     address[] internal callers;
+    bool public restrictedMode;
 
     constructor(address[] memory _tokens, address[] memory _callers) payable {
         tokens = _tokens;
@@ -27,7 +29,13 @@ contract Actor is IERC3156FlashBorrower {
         bytes memory _calldata,
         uint256 value
     ) public returns (bool success, bytes memory returnData) {
+        if (restrictedMode) return (false, "");
+
         (success, returnData) = address(_target).call{value: value}(_calldata);
+    }
+
+    function setRestrictedMode(bool toggle) public {
+        restrictedMode = toggle;
     }
 
     receive() external payable {}

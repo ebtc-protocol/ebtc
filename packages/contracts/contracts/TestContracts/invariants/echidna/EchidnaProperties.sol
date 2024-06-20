@@ -144,4 +144,27 @@ abstract contract EchidnaProperties is TargetContractSetup, Properties {
                 priceFeedMock
             );
     }
+
+    // An actor who deposits and holds
+    function echidna_PYS_01() public returns (bool) {
+        return invariant_PYS_01(
+            cdpManager, 
+            yieldTargetCdpId, 
+            yieldControlAddress, 
+            yieldTargetAddress
+        );
+    }
+
+    // Per rebase check of the cdp split
+    function echidna_PYS_02() public returns (bool) {
+        return invariant_PYS_02(cdpManager, vars);
+    }
+
+    function echidna_PYS_03() public returns (bool) {
+        return invariant_PYS_03(cdpManager, vars);
+    }
+
+    function echidna_PYS_04() public returns (bool) {
+        return invariant_PYS_04(cdpManager, vars);
+    }
 }

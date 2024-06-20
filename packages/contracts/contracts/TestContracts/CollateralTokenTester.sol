@@ -32,8 +32,8 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     uint256 public mintCooldown = 60 * 60 * 24;
 
     // NOTE: Seeded a 1e18 to avoid bs
-    uint256 _getTotalShares = 1e18;
-    uint256 _getTotalPooledEther = 1e18;
+    uint256 public _getTotalShares = 1e18;
+    uint256 public _getTotalPooledEther = 1e18;
     mapping(address => uint256) public shares;
 
     uint256 private epochsPerFrame = 225;
