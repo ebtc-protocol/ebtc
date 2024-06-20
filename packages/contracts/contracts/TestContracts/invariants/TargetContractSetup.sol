@@ -341,21 +341,23 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     event Log(string);
 
     function _setUpFork() internal {
-        defaultGovernance = address(0x0);
-        ebtcDeployer = EBTCDeployer(0xA93A9CBBD47AA7B57853D460f442E2de2FB1dA4D);
+        // NOTE: Addresses from: https://gist.github.com/GalloDaSballo/75d77f8d0837821156fe061d0d8687e1
+        defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
+        ebtcDeployer = EBTCDeployer(0x5c42faC7eEa7e724986bB5e4F3B12912F046120a);
         collateral = CollateralTokenTester(payable(0xae7ab96520DE3A18E5e111B5EaAb095312D7fE84)); // stETH
         {
-            authority = Governor(0x93d4f82903B87E94796Ec3665efa5f67F2072c6e);
-            liqudationLibrary = LiquidationLibrary(0x55262e1128FafD9Bb0B0fD59A8998c13299c4AD4);
-            cdpManager = CdpManager(0x3c672ee8e13Cde7617923658138B111e157C8997);
-            borrowerOperations = BorrowerOperations(0x99c4ea5d7aDF5d115c85AEEDD98Bd26DdBa714Cb);
-            priceFeedMock = PriceFeedTestnet(address(0x4039ca03Ce49021655c9B7C52Ab817d42DB7325e)); // PriceFeed
-            sortedCdps = SortedCdps(0x6cb99cF839c5AD3C24431c85da5Fdb7c7ab66d97);
-            activePool = ActivePool(0x1e3Bf0965dca89Cd057d63c0cD65A37Acf920590);
-            collSurplusPool = CollSurplusPool(0x596EfaF17dFb3fd2CAE7543Ffa399F6e31658E4D);
-            hintHelpers = HintHelpers(0xE5A25E39A95750326322175249699eC5Cd66919F);
-            eBTCToken = EBTCTokenTester(0xead18fD27CAa1CFf909B5f2BD26ac9a46a6Ab1b5);
-            feeRecipient = FeeRecipient(0x522ef088d94BD2125eC47F0967bf5B4E79Af4ed8);
+            authority = Governor(0x2A095d44831C26cFB6aCb806A6531AE3CA32DBc1);
+            liqudationLibrary = LiquidationLibrary(0x4Ae990C3b2F7C3961c51483eFba20760946a7681);
+            cdpManager = CdpManager(0xc4cbaE499bb4Ca41E78f52F07f5d98c375711774);
+            borrowerOperations = BorrowerOperations(0xd366e016Ae0677CdCE93472e603b75051E022AD0);
+            eBTCToken = EBTCTokenTester(0x661c70333AA1850CcDBAe82776Bb436A0fCfeEfB);
+            priceFeedMock = PriceFeedTestnet(address(0xa9a65B1B1dDa8376527E89985b221B6bfCA1Dc9a)); // eBTC Price Feed
+            activePool = ActivePool(0x6dBDB6D420c110290431E863A1A978AE53F69ebC);
+            collSurplusPool = CollSurplusPool(0x335982DaE827049d35f09D5ec927De2bc38df3De);
+            sortedCdps = SortedCdps(0x591AcB5AE192c147948c12651a0a5f24f0529BE3);
+            hintHelpers = HintHelpers(0x2591554c5EE0b62B8E2725556Cc27744D8C2E7eB);
+            feeRecipient = FeeRecipient(0xD4D1e77C69E7AA63D0E66a06df89A2AA5d3b1d9E);
+            // multiCdpGetter
 
             crLens = new CRLens(
                 address(cdpManager),
@@ -363,7 +365,17 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
                 address(priceFeedMock)
             );
 
+            // TODO: Contracts ar enot working on forked state
+            // Liq should now be working correctly in forked state
             liquidationSequencer = new LiquidationSequencer(
+                address(cdpManager),
+                address(cdpManager.sortedCdps()),
+                address(priceFeedMock),
+                address(activePool),
+                address(collateral)
+            );
+
+            syncedLiquidationSequencer = new SyncedLiquidationSequencer(
                 address(cdpManager),
                 address(cdpManager.sortedCdps()),
                 address(priceFeedMock),
@@ -390,11 +402,54 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actors[addresses[i]] = new Actor(tokens, callers);
             (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
             assert(success);
-            (success, ) = actors[addresses[i]].proxy(address(collateral), "", INITIAL_COLL_BALANCE);
+            (success, ) = actors[addresses[i]].proxy(
+                address(collateral),
+                abi.encodeWithSelector(CollateralTokenTester.deposit.selector, ""),
+                INITIAL_COLL_BALANCE
+            );
             assert(success);
+            assert(collateral.balanceOf(address(actors[addresses[i]])) > 0);
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    function _setUpActorsFork() internal {
+        bool success;
+        address[] memory tokens = new address[](2);
+        tokens[0] = address(eBTCToken);
+        tokens[1] = address(collateral);
+        address[] memory callers = new address[](2);
+        callers[0] = address(borrowerOperations);
+        callers[1] = address(activePool);
+        address[] memory addresses = new address[](3);
+        addresses[0] = USER1;
+        addresses[1] = USER2;
+        addresses[2] = USER3;
+        Actor[] memory actorsArray = new Actor[](NUMBER_OF_ACTORS);
+        for (uint i = 0; i < NUMBER_OF_ACTORS; i++) {
+            actors[addresses[i]] = new Actor(tokens, callers);
+            (success, ) = address(actors[addresses[i]]).call{value: INITIAL_ETH_BALANCE}("");
+            assert(success);
+            (success, ) = actors[addresses[i]].proxy(
+                address(collateral),
+                abi.encodeWithSignature("submit(address)", address(0)),
+                INITIAL_COLL_BALANCE
+            );
+            assert(success);
+            assert(collateral.balanceOf(address(actors[addresses[i]])) > 0);
+            actorsArray[i] = actors[addresses[i]];
+        }
+        simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+    }
+
+    // Simple canaries for fork health
+    function _setUpCanaries() internal {
+        try cdpManager.totalStakes() {} catch {
+            assert(false);
+        }
+
+        assert(cdpManager.getSystemDebt() > 0);
     }
 
     function _syncSystemDebtTwapToSpotValue() internal {

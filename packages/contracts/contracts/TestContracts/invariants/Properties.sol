@@ -143,7 +143,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-        return sumStakes == vars.totalStakesAfter;
+        return sumStakes == cdpManager.totalStakes();
     }
 
     function invariant_CSP_01(
@@ -395,7 +395,6 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 _systemCollShares = cdpManager.getSyncedSystemCollShares();
 
         if (cdpManager.systemStEthFeePerUnitIndexError() % 1e18 > 0) sumOfColl -= 1; // Round down coll
-
         // sumOfColl can have rounding error
         // And rounding error is capped by:
         // 1 wei of rounding error in systemStEthFeePerUnitIndexError
