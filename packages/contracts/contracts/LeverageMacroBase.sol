@@ -122,7 +122,7 @@ abstract contract LeverageMacroBase {
         LeverageMacroOperation calldata operation,
         PostOperationCheck postCheckType,
         PostCheckParams calldata checkParams
-    ) external {
+    ) external virtual {
         _assertOwner();
 
         // Figure out the expected CDP ID using sortedCdps.toCdpId
@@ -507,7 +507,7 @@ abstract contract LeverageMacroBase {
     }
 
     /// @dev Must be memory since we had to decode it
-    function _openCdpCallback(bytes memory data) internal {
+    function _openCdpCallback(bytes memory data) internal virtual {
         OpenCdpOperation memory flData = abi.decode(data, (OpenCdpOperation));
 
         /**
@@ -521,7 +521,7 @@ abstract contract LeverageMacroBase {
         );
     }
 
-    function _openCdpForCallback(bytes memory data) internal {
+    function _openCdpForCallback(bytes memory data) internal virtual {
         OpenCdpForOperation memory flData = abi.decode(data, (OpenCdpForOperation));
 
         /**
@@ -537,7 +537,7 @@ abstract contract LeverageMacroBase {
     }
 
     /// @dev Must be memory since we had to decode it
-    function _closeCdpCallback(bytes memory data) internal {
+    function _closeCdpCallback(bytes memory data) internal virtual {
         CloseCdpOperation memory flData = abi.decode(data, (CloseCdpOperation));
 
         // Initiator must be added by this contract, else it's not trusted
@@ -545,7 +545,7 @@ abstract contract LeverageMacroBase {
     }
 
     /// @dev Must be memory since we had to decode it
-    function _adjustCdpCallback(bytes memory data) internal {
+    function _adjustCdpCallback(bytes memory data) internal virtual {
         AdjustCdpOperation memory flData = abi.decode(data, (AdjustCdpOperation));
 
         borrowerOperations.adjustCdpWithColl(
@@ -559,7 +559,7 @@ abstract contract LeverageMacroBase {
         );
     }
 
-    function _claimSurplusCallback() internal {
+    function _claimSurplusCallback() internal virtual {
         borrowerOperations.claimSurplusCollShares();
     }
 
