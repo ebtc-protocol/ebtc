@@ -170,7 +170,7 @@ contract EToFoundry is
         setGovernanceParameters(2, 1);
         setEthPerShare(92486899360406498);
 
-        assertTrue(invariant_PYS_03_A(
+        assertTrue(invariant_PYS_03(
             cdpManager,
             vars
         ), "PYS");
