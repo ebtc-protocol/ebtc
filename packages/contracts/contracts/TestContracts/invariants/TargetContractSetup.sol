@@ -441,6 +441,9 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+
+        // Make sure there is always an actor for any actor related calls in setup to be successful
+        actor = actors[addresses[0]];
     }
 
     // Simple canaries for fork health
