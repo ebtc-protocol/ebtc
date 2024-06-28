@@ -193,7 +193,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         PriceFeedTestnet priceFeedMock
     ) internal returns (bool) {
         bytes32 _first = sortedCdps.getFirst();
-        uint256 _price = priceFeedMock.fetchPrice();
+        uint256 _price = priceFeedMock.lastGoodPrice();
         uint256 _firstICR = cdpManager.getCachedICR(_first, _price);
         uint256 _TCR = cdpManager.getCachedTCR(_price);
 
@@ -214,7 +214,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.fetchPrice();
+        uint256 _price = priceFeedMock.lastGoodPrice();
         if (_price == 0) return true;
 
         while (currentCdp != bytes32(0)) {
@@ -272,13 +272,13 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         // TODO how to calculate "the dollar value of eBTC"?
         // TODO how do we take into account underlying/shares into this calculation?
         return
-            cdpManager.getCachedTCR(priceFeedMock.fetchPrice()) > 1e18
+            cdpManager.getCachedTCR(priceFeedMock.lastGoodPrice()) > 1e18
                 ? (collateral.getPooledEthByShares(cdpManager.getSystemCollShares()) *
-                    priceFeedMock.fetchPrice()) /
+                    priceFeedMock.lastGoodPrice()) /
                     1e18 >=
                     eBTCToken.totalSupply()
                 : (collateral.getPooledEthByShares(cdpManager.getSystemCollShares()) *
-                    priceFeedMock.fetchPrice()) /
+                    priceFeedMock.lastGoodPrice()) /
                     1e18 <
                     eBTCToken.totalSupply();
     }
@@ -414,7 +414,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         PriceFeedTestnet priceFeedTestnet,
         ICollateralToken collateral
     ) internal returns (bool) {
-        uint256 curentPrice = priceFeedTestnet.fetchPrice();
+        uint256 curentPrice = priceFeedTestnet.lastGoodPrice();
 
         bytes32 currentCdp = sortedCdps.getFirst();
 
@@ -466,7 +466,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         PriceFeedTestnet priceFeedMock,
         CRLens crLens
     ) internal returns (bool) {
-        uint256 curentPrice = priceFeedMock.fetchPrice();
+        uint256 curentPrice = priceFeedMock.lastGoodPrice();
         return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
     }
 
@@ -478,7 +478,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.fetchPrice();
+        uint256 _price = priceFeedMock.lastGoodPrice();
 
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
@@ -532,7 +532,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         uint256 n = cdpManager.getActiveCdpsCount();
 
         // Get
-        uint256 price = priceFeedTestnet.fetchPrice();
+        uint256 price = priceFeedTestnet.lastGoodPrice();
 
         // Get lists
         bytes32[] memory cdpsFromCurrent = ls.sequenceLiqToBatchLiqWithPrice(n, price);
@@ -556,7 +556,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     }
 
     function invariant_DUMMY_01(PriceFeedTestnet priceFeedTestnet) internal returns (bool) {
-        return priceFeedTestnet.fetchPrice() > 0;
+        return priceFeedTestnet.lastGoodPrice() > 0;
     }
 
     function invariant_BO_09(

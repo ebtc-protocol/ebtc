@@ -58,10 +58,11 @@ abstract contract EchidnaForkAssertions is TargetContractSetup, Properties {
         t(invariant_CSP_01(collateral, collSurplusPool), CSP_01);
     }
 
+/*  Not testable on fork
     function asserts_coll_surplus_pool_invariant_2() public {
         t(invariant_CSP_02(collSurplusPool), CSP_02);
     }
-
+*/
     function asserts_sorted_list_invariant_1() public {
         t(invariant_SL_01(cdpManager, sortedCdps), SL_01);
     }

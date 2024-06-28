@@ -465,7 +465,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         Actor actor = actors[USER3]; // USER3 is the whale CDP holder
         uint256 _col = INITIAL_COLL_BALANCE / 2; // 50% of their initial collateral balance
 
-        uint256 price = priceFeedMock.getPrice();
+        uint256 price = priceFeedMock.lastGoodPrice();
         uint256 _EBTCAmount = (_col * price) / cdpManager.CCR();
 
         (success, ) = actor.proxy(
@@ -502,5 +502,35 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
             assert(success);
         }
+    }
+
+    function _setUpCdpFork() internal {
+        bool success;
+        bytes memory returnData;
+
+        (success, ) = actor.proxy(
+            address(collateral),
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                18e18
+            )
+        );
+
+        assert(success);
+
+        // @audit Note the bias here, we assume that 18 ETH is enough to overcollateralize a 0.4EBTC position
+        (success, returnData) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.openCdp.selector,
+                4e17,
+                bytes32(0),
+                bytes32(0),
+                18e18
+            )
+        );
+
+        assert(eBTCToken.balanceOf(address(actor)) > 0);
     }
 }

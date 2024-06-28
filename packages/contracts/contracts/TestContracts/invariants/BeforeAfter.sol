@@ -90,7 +90,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
     }
 
     function _before(bytes32 _cdpId) internal {
-        vars.priceBefore = priceFeedMock.fetchPrice();
+        vars.priceBefore = priceFeedMock.lastGoodPrice();
 
         address ownerToCheck = sortedCdps.getOwnerAddress(_cdpId);
         vars.userSurplusBefore = collSurplusPool.getSurplusCollShares(ownerToCheck);
@@ -101,6 +101,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.icrBefore = _cdpId != bytes32(0)
             ? cdpManager.getCachedICR(_cdpId, vars.priceBefore)
             : 0;
+        
         vars.cdpCollBefore = _cdpId != bytes32(0) ? collBefore : 0;
         vars.cdpDebtBefore = _cdpId != bytes32(0) ? debtBefore : 0;
         vars.cdpStakeBefore = _cdpId != bytes32(0) ? crLens.getRealStake(_cdpId) : 0;
@@ -117,6 +118,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.stEthIndex()
             )
             : (0, 0, 0);
+
         vars.feeRecipientTotalCollBefore = collateral.balanceOf(activePool.feeRecipientAddress());
         vars.feeRecipientCollSharesBefore = activePool.getFeeRecipientClaimableCollShares();
         vars.feeRecipientCollSharesBalBefore = collateral.sharesOf(activePool.feeRecipientAddress());
@@ -161,7 +163,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         address ownerToCheck = sortedCdps.getOwnerAddress(_cdpId);
         vars.userSurplusAfter = collSurplusPool.getSurplusCollShares(ownerToCheck);
 
-        vars.priceAfter = priceFeedMock.fetchPrice();
+        vars.priceAfter = priceFeedMock.lastGoodPrice();
 
         (, uint256 collAfter) = cdpManager.getSyncedDebtAndCollShares(_cdpId);
 

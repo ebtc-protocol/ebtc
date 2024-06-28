@@ -48,36 +48,9 @@ contract EchidnaRedemptionForkTester is EchidnaAsserts, EchidnaForkAssertions, T
             t(false, "Redemptions did not unpause successfully");
         }
 
-        bool success;
-        bytes memory returnData;
-
-        // we pass in CCR instead of MCR in case it's the first one
-        uint price = priceFeedMock.fetchPrice();
-
-        (success, ) = actor.proxy(
-            address(collateral),
-            abi.encodeWithSelector(
-                CollateralTokenTester.approve.selector,
-                address(borrowerOperations),
-                18e18
-            )
-        );
-
-        t(success, "Approve never fails");
-
-        (success, returnData) = actor.proxy(
-            address(borrowerOperations),
-            abi.encodeWithSelector(
-                BorrowerOperations.openCdp.selector,
-                5e17,
-                bytes32(0),
-                bytes32(0),
-                18e18
-            )
-        );
-
-
-        t(eBTCToken.balanceOf(address(actor)) > 0, "CDP not opened");
+        // Sets up at least one actor with a CDP on the fork
+        // the fuzzer still has the ability open cdps, but this allows the tests to start with an open cdp
+        _setUpCdpFork();
     }
 
     // This overrides the PriceOracle's last good price

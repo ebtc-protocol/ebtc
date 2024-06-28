@@ -24,9 +24,7 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-        // Previous cumulative CDPs per each rebase
-        // Will need to be adjusted
-        vars.cumulativeCdpsAtTimeOfRebase = 200;
+        _setUpCdpFork();
     }
 
     function setPrice(uint256 newPrice) public override {

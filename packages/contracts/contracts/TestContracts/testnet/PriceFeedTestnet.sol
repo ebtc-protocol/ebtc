@@ -44,6 +44,10 @@ contract PriceFeedTestnet is IPriceFeed, Ownable, AuthNoOwner {
         return _price;
     }
 
+    function lastGoodPrice() external view returns (uint256) {
+        return _price;
+    }
+
     function fetchPrice() external override returns (uint256) {
         // Fire an event just like the mainnet version would.
         // This lets the subgraph rely on events to get the latest price even when developing locally.

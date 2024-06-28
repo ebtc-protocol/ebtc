@@ -83,6 +83,7 @@ contract CRLens {
     }
 
     function getRealStake(bytes32 cdpId) external returns (uint256) {
+        hevm.prank(address(borrowerOperations));
         cdpManager.syncAccounting(cdpId);
         uint256 collShares = cdpManager.getCdpCollShares(cdpId);
         return

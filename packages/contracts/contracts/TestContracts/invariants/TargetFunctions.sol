@@ -41,7 +41,7 @@ abstract contract TargetFunctions is Properties {
         uint256 ans;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.fetchPrice();
+        uint256 _price = priceFeedMock.lastGoodPrice();
 
         while (currentCdp != bytes32(0)) {
             if (cdpManager.getCachedICR(currentCdp, _price) < cdpManager.MCR()) {
@@ -59,7 +59,7 @@ abstract contract TargetFunctions is Properties {
         uint256 i = 0;
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.fetchPrice();
+        uint256 _price = priceFeedMock.lastGoodPrice();
 
         while (currentCdp != bytes32(0)) {
             uint256 _currentCdpDebt = cdpManager.getSyncedCdpDebt(currentCdp);
@@ -179,7 +179,7 @@ abstract contract TargetFunctions is Properties {
         // Find the first cdp with ICR >= MCR
         while (
             currentBorrower != address(0) &&
-            cdpManager.getCachedICR(_cId, priceFeedMock.fetchPrice()) < cdpManager.MCR()
+            cdpManager.getCachedICR(_cId, priceFeedMock.lastGoodPrice()) < cdpManager.MCR()
         ) {
             _cId = sortedCdps.getPrev(_cId);
             currentBorrower = sortedCdps.getOwnerAddress(_cId);
@@ -225,7 +225,7 @@ abstract contract TargetFunctions is Properties {
 
         _before(_cdpId);
 
-        uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.getPrice());
+        uint256 _icrToLiq = cdpManager.getSyncedICR(_cdpId, priceFeedMock.lastGoodPrice());
 
         (success, returnData) = actor.proxy(
             address(cdpManager),
@@ -604,9 +604,8 @@ abstract contract TargetFunctions is Properties {
         bytes32 _cdpId = _getFirstCdpWithIcrGteMcr();
 
         _before(_cdpId);
-
         {
-            uint price = priceFeedMock.fetchPrice();
+            uint price = priceFeedMock.lastGoodPrice();
 
             (bytes32 firstRedemptionHintVal, uint256 partialRedemptionHintNICR, , ) = hintHelpers
                 .getRedemptionHints(_EBTCAmount, price, _maxIterations);
@@ -803,7 +802,7 @@ abstract contract TargetFunctions is Properties {
         bytes memory returnData;
 
         // we pass in CCR instead of MCR in case it's the first one
-        uint price = priceFeedMock.fetchPrice();
+        uint price = priceFeedMock.lastGoodPrice();
 
         uint256 requiredCollAmount = (_EBTCAmount * cdpManager.CCR()) / (price);
         uint256 minCollAmount = max(
@@ -878,7 +877,7 @@ abstract contract TargetFunctions is Properties {
 
             gte(_EBTCAmount, borrowerOperations.MIN_CHANGE(), GENERAL_16);
             gte(vars.cdpDebtAfter, borrowerOperations.MIN_CHANGE(), GENERAL_15);
-            require(invariant_BO_09(cdpManager, priceFeedMock.getPrice(), _cdpId), BO_09);
+            require(invariant_BO_09(cdpManager, priceFeedMock.lastGoodPrice(), _cdpId), BO_09);
 
             _checkStakeInvariants();
         } else {
@@ -1402,7 +1401,7 @@ abstract contract TargetFunctions is Properties {
     ///////////////////////////////////////////////////////
 
     function setPrice(uint256 _newPrice) public virtual {
-        uint256 currentPrice = priceFeedMock.fetchPrice();
+        uint256 currentPrice = priceFeedMock.lastGoodPrice();
         _newPrice = between(
             _newPrice,
             (currentPrice * 1e18) / MAX_PRICE_CHANGE_PERCENT,
