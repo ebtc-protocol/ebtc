@@ -453,7 +453,8 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         uint256 debt = 1e18;
         uint256 margin = 5 ether;
         uint256 flAmount = _debtToCollateral(debt);
-        uint256 totalCollateral = ((flAmount + margin) * 9995) / 1e4;
+        // remove 3 basis points from flAmount to account for flash loan fee
+        uint256 totalCollateral = (flAmount * 9997 / 10000) + margin;
 
         LeverageMacroBase.OpenCdpForOperation memory cdp;
 
@@ -477,6 +478,13 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
                 address(eBTCToken),
                 address(collateral),
                 debt
+            ),
+            _postCheckParams: _getPostCheckParams(
+                bytes32(0),
+                debt,
+                // expected collateral should exclude LIQUIDATOR_REWARD and be converted to shares
+                collateral.getSharesByPooledEth(totalCollateral - borrowerOperations.LIQUIDATOR_REWARD()),
+                ICdpManagerData.Status.active
             )
         });
     }
@@ -505,7 +513,8 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         LeverageMacroBase.OpenCdpForOperation memory _cdp,
         uint256 _flAmount,
         uint256 _stEthBalance,
-        bytes memory _exchangeData
+        bytes memory _exchangeData,
+        LeverageMacroBase.PostCheckParams memory _postCheckParams
     ) internal {
         LeverageMacroBase.LeverageMacroOperation memory op;
 
@@ -521,12 +530,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
             _flAmount,
             op,
             LeverageMacroBase.PostOperationCheck.openCdp,
-            _getPostCheckParams(
-                bytes32(0),
-                _cdp.eBTCToMint,
-                _cdp.stETHToDeposit,
-                ICdpManagerData.Status.active
-            )
+            _postCheckParams
         );
     }
 
