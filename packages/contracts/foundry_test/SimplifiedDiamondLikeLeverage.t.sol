@@ -454,7 +454,7 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
         uint256 margin = 5 ether;
         uint256 flAmount = _debtToCollateral(debt);
         // remove 3 basis points from flAmount to account for flash loan fee
-        uint256 totalCollateral = (flAmount * 9997 / 10000) + margin;
+        uint256 totalCollateral = ((flAmount * 9997) / 10000) + margin;
 
         LeverageMacroBase.OpenCdpForOperation memory cdp;
 
@@ -483,7 +483,9 @@ contract SimplifiedDiamondLikeLeverageTests is eBTCBaseInvariants {
                 bytes32(0),
                 debt,
                 // expected collateral should exclude LIQUIDATOR_REWARD and be converted to shares
-                collateral.getSharesByPooledEth(totalCollateral - borrowerOperations.LIQUIDATOR_REWARD()),
+                collateral.getSharesByPooledEth(
+                    totalCollateral - borrowerOperations.LIQUIDATOR_REWARD()
+                ),
                 ICdpManagerData.Status.active
             )
         });
