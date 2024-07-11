@@ -126,7 +126,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.sortedCdpsSizeBefore = sortedCdps.getSize();
         vars.tcrBefore = cdpManager.getCachedTCR(vars.priceBefore);
         vars.ebtcTotalSupplyBefore = eBTCToken.totalSupply();
-        vars.ethPerShareBefore = collateral.getEthPerShare();
+        vars.ethPerShareBefore = collateral.getPooledEthByShares(1e18);
         vars.activePoolDebtBefore = activePool.getSystemDebt();
         vars.activePoolCollBefore = activePool.getSystemCollShares();
         vars.collSurplusPoolBefore = collSurplusPool.getTotalSurplusCollShares();
@@ -140,7 +140,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
                 cdpManager.recoveryModeGracePeriodDuration();
         vars.systemDebtRedistributionIndexBefore = cdpManager.systemDebtRedistributionIndex();
         vars.newTcrBefore = crLens.quoteRealTCR();
-        vars.newIcrBefore = crLens.quoteRealICR(_cdpId);
+        vars.newIcrBefore = _cdpId != bytes32(0) ? crLens.quoteRealICR(_cdpId) : 0;
 
         vars.valueInSystemBefore ==
             (collateral.getPooledEthByShares(
@@ -193,7 +193,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.sortedCdpsSizeAfter = sortedCdps.getSize();
         vars.tcrAfter = cdpManager.getCachedTCR(vars.priceAfter);
         vars.ebtcTotalSupplyAfter = eBTCToken.totalSupply();
-        vars.ethPerShareAfter = collateral.getEthPerShare();
+        vars.ethPerShareAfter = collateral.getPooledEthByShares(1e18);
         vars.activePoolDebtAfter = activePool.getSystemDebt();
         vars.activePoolCollAfter = activePool.getSystemCollShares();
         vars.collSurplusPoolAfter = collSurplusPool.getTotalSurplusCollShares();
@@ -208,7 +208,7 @@ abstract contract BeforeAfter is BaseStorageVariables {
         vars.systemDebtRedistributionIndexAfter = cdpManager.systemDebtRedistributionIndex();
 
         vars.newTcrAfter = crLens.quoteRealTCR();
-        vars.newIcrAfter = crLens.quoteRealICR(_cdpId);
+        vars.newIcrAfter = _cdpId != bytes32(0) ? crLens.quoteRealICR(_cdpId) : 0;
 
         // Value in system after
         vars.valueInSystemAfter =
