@@ -40,6 +40,8 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
     uint256 private slotsPerEpoch = 32;
     uint256 private secondsPerSlot = 12;
 
+    bool public submitShouldRevert;
+
     receive() external payable {
         deposit();
     }
@@ -51,6 +53,18 @@ contract CollateralTokenTester is ICollateralToken, ICollateralTokenOracle, Owna
         _getTotalPooledEther += msg.value;
 
         emit Deposit(msg.sender, msg.value, _share);
+    }
+
+    function submit(address _referral) public payable returns (uint256) {
+        if (submitShouldRevert) {
+            revert();
+        }
+
+        deposit();
+    }
+
+    function setSubmitShouldRevert(bool _submitShouldRevert) public {
+        submitShouldRevert = _submitShouldRevert;
     }
 
     /// @dev Deposit collateral without ether for testing purposes
