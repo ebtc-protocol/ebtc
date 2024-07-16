@@ -131,6 +131,10 @@ contract MockAggregator is AggregatorV3Interface {
         return (prevRoundId, prevPrice, 0, updateTime, 0);
     }
 
+    function readWithAge() external view returns (uint256 value, uint256 age) {
+        return (uint256(price), updateTime);
+    }
+
     function description() external pure override returns (string memory) {
         return "";
     }
