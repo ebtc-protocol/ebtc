@@ -4,6 +4,8 @@ pragma solidity 0.8.17;
 import {IPriceFetcher} from "./Interfaces/IOracleCaller.sol";
 import {IChronicle} from "./Interfaces/IChronicle.sol";
 
+/// @notice Chronicle oracle adapter for EbtcFeed
+/// @notice https://etherscan.io/address/0x02238bb0085395ae52cd4755456891fc2fd5934d
 contract ChronicleAdapter is IPriceFetcher {
     uint256 public constant MAX_STALENESS = 24 hours;
     uint256 public constant ADAPTER_PRECISION = 1e18;
