@@ -279,11 +279,11 @@ abstract contract LeverageMacroBase {
             // Early return
             return;
         } else if (check.operator == Operator.gte) {
-            require(check.value >= valueToCheck, "!LeverageMacroReference: gte post check");
+            require(valueToCheck >= check.value, "!LeverageMacroBase: gte post check");
         } else if (check.operator == Operator.lte) {
-            require(check.value <= valueToCheck, "!LeverageMacroReference: let post check");
+            require(valueToCheck <= check.value, "!LeverageMacroBase: lte post check");
         } else if (check.operator == Operator.equal) {
-            require(check.value == valueToCheck, "!LeverageMacroReference: equal post check");
+            require(check.value == valueToCheck, "!LeverageMacroBase: equal post check");
         } else {
             revert("Operator not found");
         }

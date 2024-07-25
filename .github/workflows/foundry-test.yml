@@ -44,6 +44,6 @@ jobs:
 
       - name: Foundry Test
         working-directory: ./packages/contracts/
-        run: forge test -vvv ${{ github.base_ref == 'main' && '--fuzz-runs 200' || '' }}
+        run: forge test -vv ${{ github.base_ref == 'main' && '--fuzz-runs 200' || '' }}
         env:
           MAINNET_RPC_URL: ${{ secrets.MAINNET_RPC_URL }}
