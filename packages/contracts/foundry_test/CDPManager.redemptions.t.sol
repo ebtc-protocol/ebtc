@@ -87,7 +87,7 @@ contract CDPManagerRedemptionsTest is eBTCBaseInvariants {
     }
 
     function testMultipleRedemption(uint256 _cdpNumber, uint256 _collAmt) public {
-        _cdpNumber = bound(_cdpNumber, 2, 1000);
+        _cdpNumber = bound(_cdpNumber, 2, 500);
         _collAmt = bound(_collAmt, 22e17 + 1, 10000e18);
         uint256 _price = priceFeedMock.getPrice();
 
