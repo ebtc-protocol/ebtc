@@ -25,9 +25,6 @@ contract BatchLiquidator {
     using SafeERC20 for IERC20;
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-    uint8 constant OP_GET_COLLATERAL = 0;
-    uint8 constant OP_BATCH_LIQUIDATE = 0;
-    uint8 constant OP_PARTIAL_LIQUIDATE = 0;
 
     ISyncedLiquidationSequencer public immutable syncedLiquidationSequencer;
     ICdpManager public immutable cdpManager;
