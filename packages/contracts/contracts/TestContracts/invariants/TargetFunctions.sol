@@ -23,7 +23,7 @@ import "../../EBTCDeployer.sol";
 import "./Properties.sol";
 import "./Actor.sol";
 import "./BeforeAfter.sol";
-import "./TargetContractSetup.sol";
+import "./Setup.sol";
 import "./Asserts.sol";
 import "../BaseStorageVariables.sol";
 

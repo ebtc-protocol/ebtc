@@ -24,7 +24,7 @@ import "./Properties.sol";
 import "./Actor.sol";
 import "../BaseStorageVariables.sol";
 
-abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstants {
+abstract contract Setup is BaseStorageVariables, PropertiesConstants {
     using SafeMath for uint;
 
     bytes4 internal constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
@@ -341,6 +341,10 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
     event Log(string);
 
     function _setUpFork() internal {
+        // Add timestamp and block for Recon dynamic replacement
+        vm.roll();
+        vm.warp();
+
         // NOTE: Addresses from: https://gist.github.com/GalloDaSballo/75d77f8d0837821156fe061d0d8687e1
         defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
         ebtcDeployer = EBTCDeployer(0x5c42faC7eEa7e724986bB5e4F3B12912F046120a);

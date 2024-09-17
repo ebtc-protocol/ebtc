@@ -1,9 +1,9 @@
 pragma solidity 0.8.17;
 
-import {TargetContractSetup} from "../TargetContractSetup.sol";
+import {Setup} from "../Setup.sol";
 import {Properties} from "../Properties.sol";
 
-abstract contract EchidnaProperties is TargetContractSetup, Properties {
+abstract contract EchidnaProperties is Setup, Properties {
     function echidna_canary_price() public returns (bool) {
         return invariant_DUMMY_01(priceFeedMock);
     }

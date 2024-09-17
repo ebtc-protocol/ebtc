@@ -8,7 +8,7 @@ import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {EchidnaProperties} from "../contracts/TestContracts/invariants/echidna/EchidnaProperties.sol";
 import {EchidnaForkTester} from "../contracts/TestContracts/invariants/echidna/EchidnaForkTester.sol";
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
-import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
+import {Setup} from "../contracts/TestContracts/invariants/Setup.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 
@@ -18,7 +18,7 @@ import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
  */
 contract ForkToFoundry is
     Test,
-    TargetContractSetup,
+    Setup,
     FoundryAsserts,
     TargetFunctions,
     EchidnaProperties,
