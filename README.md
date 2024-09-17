@@ -5,7 +5,7 @@ After locking up stETH as collateral in a smart contract and creating an individ
 
 The redemption and liquidation mechanisms help ensure that stability is maintained through economically-driven user interactions and arbitrage, rather than through active governance or monetary interventions.
 
-## eBTC Audits
+## eBTC Audit Reports
 
 - RiskDAO: https://github.com/Risk-DAO/Reports/blob/main/eBTC.pdf
 - Trust: https://badger.com/images/uploads/trust-ebtc-audit-report.pdf
