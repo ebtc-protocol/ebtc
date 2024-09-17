@@ -342,8 +342,8 @@ abstract contract Setup is BaseStorageVariables, PropertiesConstants {
 
     function _setUpFork() internal {
         // Add timestamp and block for Recon dynamic replacement
-        vm.roll();
-        vm.warp();
+        vm.roll(20770509);
+        vm.warp(1726578263);
 
         // NOTE: Addresses from: https://gist.github.com/GalloDaSballo/75d77f8d0837821156fe061d0d8687e1
         defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
