@@ -9,10 +9,7 @@ import "../TargetFunctions.sol";
 // Run locally with: `echidna contracts/TestContracts/invariants/echidna/EchidnaRedemptionForkTester.sol --contract EchidnaRedemptionForkTester --test-mode property --rpc-url YOUR_RPC_URL --config fuzzTests/echidna_config.yaml`
 contract EchidnaRedemptionForkTester is EchidnaAsserts, EchidnaForkAssertions, TargetFunctions {
     constructor() payable {
-        // We perform this check at a specific time
-        // 6/27/2024 @ 08:22:47
-        hevm.warp(1719476567);
-        hevm.roll(20181802);
+        // Timestamp and block height setup in `_setUpFork()`
 
         // https://etherscan.io/tx/0xca4f2e9a7e8cc82969e435091576dbd8c8bfcc008e89906857056481e0542f23
         _setUpFork();

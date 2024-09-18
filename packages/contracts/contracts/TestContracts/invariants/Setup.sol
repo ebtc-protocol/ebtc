@@ -340,6 +340,9 @@ abstract contract Setup is BaseStorageVariables, PropertiesConstants {
 
     event Log(string);
 
+    // This is a fix to allow facilitate dynamic replacement that searches for the `vm.roll` statements.
+    IHevm constant vm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+
     function _setUpFork() internal {
         // Add timestamp and block for Recon dynamic replacement
         vm.roll(20770509);
