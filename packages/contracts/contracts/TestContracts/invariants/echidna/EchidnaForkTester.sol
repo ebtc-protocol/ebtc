@@ -3,14 +3,12 @@
 pragma solidity 0.8.17;
 
 import "./EchidnaAsserts.sol";
-import "./EchidnaProperties.sol";
+import "./EchidnaForkAssertions.sol";
 import "../TargetFunctions.sol";
 
-contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
+contract EchidnaForkTester is EchidnaAsserts, EchidnaForkAssertions, TargetFunctions {
     constructor() payable {
-        // https://etherscan.io/tx/0xca4f2e9a7e8cc82969e435091576dbd8c8bfcc008e89906857056481e0542f23
-        hevm.warp(1719476567);
-        hevm.roll(20181802);
+        // Timestamp and block height set in `_setUpFork()`
 
         _setUpFork();
         _setUpActorsFork();

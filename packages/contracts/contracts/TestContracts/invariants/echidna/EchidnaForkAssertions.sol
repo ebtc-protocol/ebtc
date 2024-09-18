@@ -4,6 +4,11 @@ import {Setup} from "../Setup.sol";
 import {Properties} from "../Properties.sol";
 
 abstract contract EchidnaForkAssertions is Setup, Properties {
+
+    function asserts_test_fail() public {
+        t(false, "Dummy fail");
+    }
+
     function asserts_canary_price() public {
         t(invariant_DUMMY_01(priceFeedMock), "Dummy");
     }
