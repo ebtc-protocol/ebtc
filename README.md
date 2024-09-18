@@ -11,7 +11,7 @@ The redemption and liquidation mechanisms help ensure that stability is maintain
 - Trust: https://badger.com/images/uploads/trust-ebtc-audit-report.pdf
 - Spearbit: https://badger.com/images/uploads/ebtc-security-review-spearbit.pdf
 - Cantina: https://badger.com/images/uploads/ebtc-security-review-cantina.pdf
-- Cantina Part 2: https://github.com/GalloDaSballo/ebtc-cantina-latest
+- Cantina Part 2: https://cantina.xyz/portfolio/e7dac53a-6098-4aa1-aa0f-ea44ee87050e
 - C4 Contest: https://code4rena.com/reports/2023-10-badger
 
 ## eBTC System Summary
