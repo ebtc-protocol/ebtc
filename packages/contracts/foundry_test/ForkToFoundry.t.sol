@@ -6,6 +6,7 @@ import "forge-std/console2.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {EchidnaProperties} from "../contracts/TestContracts/invariants/echidna/EchidnaProperties.sol";
+import {EchidnaForkAssertions} from "../contracts/TestContracts/invariants/echidna/EchidnaForkAssertions.sol";
 import {EchidnaForkTester} from "../contracts/TestContracts/invariants/echidna/EchidnaForkTester.sol";
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
 import {Setup} from "../contracts/TestContracts/invariants/Setup.sol";
@@ -21,11 +22,11 @@ contract ForkToFoundry is
     Setup,
     FoundryAsserts,
     TargetFunctions,
-    EchidnaProperties,
+    EchidnaForkAssertions,
     BeforeAfterWithLogging
 {
     function setUp() public {
-        vm.createSelectFork("YOUR_RPC_URL_HERE");
+        vm.createSelectFork("YOUR_RPC_URL", 20777211);
         _setUpFork();
         _setUpActors();
         actor = actors[address(USER1)];
@@ -44,9 +45,21 @@ contract ForkToFoundry is
         vars.cumulativeCdpsAtTimeOfRebase = 200;
     }
 
-    /*
-    function test_GENERAL_18() public {
-        t(echidna_GENERAL_18(), "Not Passing");
+    // forge test --match-test test_asserts_GENERAL_13_1 -vv 
+    function test_asserts_GENERAL_13_1() public {
+
+        //vm.roll(30256);
+        //vm.warp(16802);
+        asserts_GENERAL_13();
+
     }
-*/
+
+        // forge test --match-test test_asserts_GENERAL_12_0 -vv 
+    function test_asserts_GENERAL_12_0() public {
+
+        vm.roll(block.number + 4963);
+        vm.warp(block.timestamp + 50417);
+        asserts_GENERAL_12();
+
+    }
 }
