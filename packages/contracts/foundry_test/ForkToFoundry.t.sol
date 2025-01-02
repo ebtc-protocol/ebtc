@@ -6,9 +6,10 @@ import "forge-std/console2.sol";
 import {Properties} from "../contracts/TestContracts/invariants/Properties.sol";
 import {IERC20} from "../contracts/Dependencies/IERC20.sol";
 import {EchidnaProperties} from "../contracts/TestContracts/invariants/echidna/EchidnaProperties.sol";
+import {EchidnaForkAssertions} from "../contracts/TestContracts/invariants/echidna/EchidnaForkAssertions.sol";
 import {EchidnaForkTester} from "../contracts/TestContracts/invariants/echidna/EchidnaForkTester.sol";
 import {TargetFunctions} from "../contracts/TestContracts/invariants/TargetFunctions.sol";
-import {TargetContractSetup} from "../contracts/TestContracts/invariants/TargetContractSetup.sol";
+import {Setup} from "../contracts/TestContracts/invariants/Setup.sol";
 import {FoundryAsserts} from "./utils/FoundryAsserts.sol";
 import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
 
@@ -18,16 +19,19 @@ import {BeforeAfterWithLogging} from "./utils/BeforeAfterWithLogging.sol";
  */
 contract ForkToFoundry is
     Test,
-    TargetContractSetup,
+    Setup,
     FoundryAsserts,
     TargetFunctions,
-    EchidnaProperties,
+    EchidnaForkAssertions,
     BeforeAfterWithLogging
 {
     function setUp() public {
-        vm.createSelectFork("YOUR_RPC_URL_HERE");
+        string memory MAINNET_RPC_URL = vm.envString("MAINNET_RPC_URL");
+        // TODO: when testing locally change this block with block from coverage report set inside _setUpFork
+        vm.createSelectFork(MAINNET_RPC_URL, 20996709); 
+        
         _setUpFork();
-        _setUpActors();
+        _setUpActorsFork();
         actor = actors[address(USER1)];
 
         // If the accounting hasn't been synced since the last rebase
@@ -41,12 +45,61 @@ contract ForkToFoundry is
 
         // Previous cumulative CDPs per each rebase
         // Will need to be adjusted
-        vars.cumulativeCdpsAtTimeOfRebase = 200;
+        // @audit removed because inconsistent with EchidnaForkTester setup
+        // vars.cumulativeCdpsAtTimeOfRebase = 200;
+
+        _setUpCdpFork();
     }
 
-    /*
-    function test_GENERAL_18() public {
-        t(echidna_GENERAL_18(), "Not Passing");
+    // forge test --match-test test_asserts_GENERAL_13_1 -vv 
+    function test_asserts_GENERAL_13_1() public {
+
+        //vm.roll(30256);
+        //vm.warp(16802);
+        asserts_GENERAL_13();
+
     }
-*/
+
+    // forge test --match-test test_asserts_GENERAL_12_0 -vv 
+    function test_asserts_GENERAL_12_0() public {
+        vm.roll(block.number + 4963);
+        vm.warp(block.timestamp + 50417);
+        asserts_GENERAL_12();
+    }
+
+    // forge test --match-test test_asserts_GENERAL_12_1 -vv 
+    function test_asserts_GENERAL_12_1() public {
+        // NOTE: from reproducer test immediately breaks but when asserts_test_fail is commented it doesn't
+        // vm.roll(block.number + 60364);
+        // vm.warp(block.timestamp + 11077);
+        // asserts_active_pool_invariant_5();
+
+        // // NOTE: removing this assertion and warp causes a failure
+        // // vm.roll(block.number + 1984);
+        // // vm.warp(block.timestamp + 322370);
+        // // asserts_test_fail();
+
+        // vm.roll(block.number + 33560);
+        // vm.warp(block.timestamp + 95);
+        // asserts_GENERAL_12();
+        // ========================
+
+        // NOTE: from shrunken logs breaks immediately
+        vm.roll(block.number + 1);
+        vm.warp(block.timestamp + 2973);
+        asserts_GENERAL_12();
+    }
+
+    // forge test --match-test test_asserts_GENERAL_13_2 -vv 
+    function test_asserts_GENERAL_13_2() public {
+        // NOTE: from shrunken logs
+        // vm.roll(block.number + 1);
+        // vm.warp(block.timestamp + 2963);
+
+        // NOTE: from reproducer
+        vm.roll(block.number + 60471);
+        vm.warp(block.timestamp + 6401);
+
+        asserts_GENERAL_13();
+    }
 }

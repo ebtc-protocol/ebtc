@@ -24,7 +24,7 @@ import "./Properties.sol";
 import "./Actor.sol";
 import "../BaseStorageVariables.sol";
 
-abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstants {
+abstract contract Setup is BaseStorageVariables, PropertiesConstants {
     using SafeMath for uint;
 
     bytes4 internal constant BURN_SIG = bytes4(keccak256(bytes("burn(address,uint256)")));
@@ -340,7 +340,15 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
 
     event Log(string);
 
+    // This is a fix to allow facilitate dynamic replacement that searches for the `vm.roll` statements.
+
     function _setUpFork() internal {
+        IHevm vm = IHevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+
+        // Add timestamp and block for Recon dynamic replacement
+        vm.roll(20996709);
+        vm.warp(1729305851);
+
         // NOTE: Addresses from: https://gist.github.com/GalloDaSballo/75d77f8d0837821156fe061d0d8687e1
         defaultGovernance = address(0xaDDeE229Bd103bb5B10C3CdB595A01c425dd3264);
         ebtcDeployer = EBTCDeployer(0x5c42faC7eEa7e724986bB5e4F3B12912F046120a);
@@ -441,6 +449,9 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             actorsArray[i] = actors[addresses[i]];
         }
         simulator = new Simulator(actorsArray, cdpManager, sortedCdps, borrowerOperations);
+
+        // Make sure there is always an actor for any actor related calls in setup to be successful
+        actor = actors[addresses[0]];
     }
 
     // Simple canaries for fork health
@@ -462,7 +473,7 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
         Actor actor = actors[USER3]; // USER3 is the whale CDP holder
         uint256 _col = INITIAL_COLL_BALANCE / 2; // 50% of their initial collateral balance
 
-        uint256 price = priceFeedMock.getPrice();
+        uint256 price = priceFeedMock.lastGoodPrice();
         uint256 _EBTCAmount = (_col * price) / cdpManager.CCR();
 
         (success, ) = actor.proxy(
@@ -499,5 +510,35 @@ abstract contract TargetContractSetup is BaseStorageVariables, PropertiesConstan
             );
             assert(success);
         }
+    }
+
+    function _setUpCdpFork() internal {
+        bool success;
+        bytes memory returnData;
+
+        (success, ) = actor.proxy(
+            address(collateral),
+            abi.encodeWithSelector(
+                CollateralTokenTester.approve.selector,
+                address(borrowerOperations),
+                18e18
+            )
+        );
+
+        assert(success);
+
+        // @audit Note the bias here, we assume that 18 ETH is enough to overcollateralize a 0.4EBTC position
+        (success, returnData) = actor.proxy(
+            address(borrowerOperations),
+            abi.encodeWithSelector(
+                BorrowerOperations.openCdp.selector,
+                4e17,
+                bytes32(0),
+                bytes32(0),
+                18e18
+            )
+        );
+
+        assert(eBTCToken.balanceOf(address(actor)) > 0);
     }
 }

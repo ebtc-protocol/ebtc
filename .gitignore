@@ -25,3 +25,5 @@ cache
 # ngrok config is individual to each dev
 ngrok.config.yml
 .idea/
+
+packages/contracts/fuzzTests/corpus

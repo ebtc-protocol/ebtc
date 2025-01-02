@@ -3,12 +3,12 @@
 pragma solidity 0.8.17;
 
 import "./EchidnaAsserts.sol";
-import "./EchidnaProperties.sol";
+import "./EchidnaForkAssertions.sol";
 import "../TargetFunctions.sol";
 
-contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions {
+contract EchidnaForkTester is EchidnaAsserts, EchidnaForkAssertions, TargetFunctions {
     constructor() payable {
-        // https://etherscan.io/tx/0xca4f2e9a7e8cc82969e435091576dbd8c8bfcc008e89906857056481e0542f23
+        // Timestamp and block height set in `_setUpFork()`
 
         _setUpFork();
         _setUpActorsFork();
@@ -22,9 +22,7 @@ contract EchidnaForkTester is EchidnaAsserts, EchidnaProperties, TargetFunctions
             currentCdp = sortedCdps.getNext(currentCdp);
         }
 
-        // Previous cumulative CDPs per each rebase
-        // Will need to be adjusted
-        vars.cumulativeCdpsAtTimeOfRebase = 200;
+        _setUpCdpFork();
     }
 
     function setPrice(uint256 newPrice) public override {
