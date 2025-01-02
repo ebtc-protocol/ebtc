@@ -466,8 +466,8 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
         PriceFeedTestnet priceFeedMock,
         CRLens crLens
     ) internal returns (bool) {
-        uint256 curentPrice = priceFeedMock.lastGoodPrice();
-        return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(curentPrice);
+        uint256 currentPrice = priceFeedMock.fetchPrice();
+        return crLens.quoteRealTCR() == cdpManager.getSyncedTCR(currentPrice);
     }
 
     function invariant_GENERAL_13(
@@ -478,7 +478,7 @@ abstract contract Properties is BeforeAfter, PropertiesDescriptions, Asserts, Pr
     ) internal returns (bool) {
         bytes32 currentCdp = sortedCdps.getFirst();
 
-        uint256 _price = priceFeedMock.lastGoodPrice();
+        uint256 _price = priceFeedMock.fetchPrice();
 
         // Compare synched with quote for all Cdps
         while (currentCdp != bytes32(0)) {
