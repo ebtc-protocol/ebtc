@@ -11,22 +11,6 @@ import "../contracts/Interfaces/IWstETH.sol";
 import "../contracts/Dependencies/ICollateralToken.sol";
 import "../contracts/Dependencies/SafeERC20.sol";
 
-interface IV3SwapRouter {
-    struct ExactInputParams {
-        bytes path;
-        address recipient;
-        uint256 amountIn;
-        uint256 amountOutMinimum;
-    }
-
-    /// @notice Swaps `amountIn` of one token for as much as possible of another along the specified path
-    /// @param params The parameters necessary for the multi-hop swap, encoded as `ExactInputParams` in calldata
-    /// @return amountOut The amount of the received token
-    function exactInput(
-        ExactInputParams calldata params
-    ) external payable returns (uint256 amountOut);
-}
-
 interface IAddressGetter {
     function cdpManager() external view returns (address);
 
@@ -41,51 +25,31 @@ contract BatchLiquidator {
     using SafeERC20 for IERC20;
 
     bytes32 constant FLASH_LOAN_SUCCESS = keccak256("ERC3156FlashBorrower.onFlashLoan");
-    uint24 constant POOL_FEE_100 = 100;
-    uint24 constant POOL_FEE_500 = 500;
-    uint256 constant SLIPPAGE_LIMIT_PRECISION = 1e5;
 
     ISyncedLiquidationSequencer public immutable syncedLiquidationSequencer;
     ICdpManager public immutable cdpManager;
     IBorrowerOperations public immutable borrowerOperations;
     IEBTCToken public immutable ebtcToken;
     ICollateralToken public immutable stETH;
-    IWstETH public immutable wstETH;
-    address public immutable weth;
-    address public immutable wbtc;
-    IPriceFeed public immutable priceFeed;
-    IV3SwapRouter public immutable swapRouter;
+    address public immutable dex;
     address public immutable owner;
 
-    constructor(
-        address _sequencer,
-        address _borrowerOperations,
-        address _wstETH,
-        address _weth,
-        address _wbtc,
-        address _swapRouter,
-        address _owner
-    ) {
+    error GetCollateralOnly(uint256 amount);
+
+    constructor(address _sequencer, address _borrowerOperations, address _dex, address _owner) {
         syncedLiquidationSequencer = ISyncedLiquidationSequencer(_sequencer);
         borrowerOperations = IBorrowerOperations(_borrowerOperations);
         cdpManager = ICdpManager(IAddressGetter(_borrowerOperations).cdpManager());
         ebtcToken = IEBTCToken(IAddressGetter(_borrowerOperations).ebtcToken());
-        priceFeed = IPriceFeed(IAddressGetter(_borrowerOperations).priceFeed());
         stETH = ICollateralToken(IAddressGetter(_borrowerOperations).collateral());
-        wstETH = IWstETH(_wstETH);
-        weth = _weth;
-        wbtc = _wbtc;
-        swapRouter = IV3SwapRouter(_swapRouter);
+        dex = _dex;
         owner = _owner;
 
         // For flash loan repayment
         IERC20(address(ebtcToken)).safeApprove(address(borrowerOperations), type(uint256).max);
 
-        // For wrapping
-        IERC20(address(stETH)).safeApprove(address(wstETH), type(uint256).max);
-
         // For trading
-        IERC20(address(wstETH)).safeApprove(address(swapRouter), type(uint256).max);
+        IERC20(address(stETH)).safeApprove(address(dex), type(uint256).max);
     }
 
     function _getCdpsToLiquidate(
@@ -102,14 +66,37 @@ contract BatchLiquidator {
         IERC20(token).safeTransfer(owner, IERC20(token).balanceOf(address(this)));
     }
 
-    function batchLiquidate(uint256 _n, uint256 _slippageLimit) external {
+    function batchLiquidate(uint256 _n, bytes calldata exchangeData, bool getCollOnly) external {
         (bytes32[] memory cdps, uint256 flashLoanAmount) = _getCdpsToLiquidate(_n);
 
         IERC3156FlashLender(address(borrowerOperations)).flashLoan(
             IERC3156FlashBorrower(address(this)),
             address(ebtcToken),
             flashLoanAmount,
-            abi.encode(cdps, _slippageLimit)
+            abi.encode(getCollOnly, false, cdps, exchangeData, bytes32(0), bytes32(0))
+        );
+
+        ebtcToken.transfer(owner, ebtcToken.balanceOf(address(this)));
+        stETH.transferShares(owner, stETH.sharesOf(address(this)));
+    }
+
+    function partiallyLiquidate(
+        bytes32 _cdpId,
+        uint256 _partialAmount,
+        bytes32 _upperPartialHint,
+        bytes32 _lowerPartialHint,
+        bytes calldata exchangeData,
+        bool getCollOnly
+    ) external {
+        bytes32[] memory cdps = new bytes32[](1);
+
+        cdps[0] = _cdpId;
+
+        IERC3156FlashLender(address(borrowerOperations)).flashLoan(
+            IERC3156FlashBorrower(address(this)),
+            address(ebtcToken),
+            _partialAmount,
+            abi.encode(getCollOnly, true, cdps, exchangeData, _upperPartialHint, _lowerPartialHint)
         );
 
         ebtcToken.transfer(owner, ebtcToken.balanceOf(address(this)));
@@ -132,53 +119,28 @@ contract BatchLiquidator {
         );
         require(token == address(ebtcToken));
 
-        (bytes32[] memory cdps, uint256 slippageLimit) = abi.decode(data, (bytes32[], uint256));
+        (
+            bool getCollOnly,
+            bool partialLiq,
+            bytes32[] memory cdps,
+            bytes memory exchangeData,
+            bytes32 upperPartialHint,
+            bytes32 lowerPartialHint
+        ) = abi.decode(data, (bool, bool, bytes32[], bytes, bytes32, bytes32));
 
-        cdpManager.batchLiquidateCdps(cdps);
+        if (partialLiq) {
+            cdpManager.partiallyLiquidate(cdps[0], amount, upperPartialHint, lowerPartialHint);
+        } else {
+            cdpManager.batchLiquidateCdps(cdps);
+        }
 
-        uint256 collBalance = stETH.balanceOf(address(this));
+        if (getCollOnly) {
+            revert GetCollateralOnly(stETH.balanceOf(address(this)));
+        }
 
-        _swapStethToEbtc(collBalance, _calcMinAmount(collBalance, slippageLimit));
+        (bool success, ) = dex.call(exchangeData);
+        require(success, "BatchLiquidator: trade failed");
 
         return FLASH_LOAN_SUCCESS;
-    }
-
-    function _calcMinAmount(uint256 _collBalance, uint256 _slippageLimit) private returns (uint256) {
-        uint256 price = priceFeed.fetchPrice();
-        return (_collBalance * price * _slippageLimit) / (SLIPPAGE_LIMIT_PRECISION * 1e18);
-    }
-
-    function _swapStethToEbtc(uint256 _collBalance, uint256 _minEbtcOut) internal returns (uint256) {
-        // STETH -> WSTETH
-        uint256 wstETHCol = _lidoDepositStethToWstETH(_collBalance);
-
-        // WSTETH -> WETH -> WBTC -> eBTC
-        return _uniSwapWstETHToEbtc(wstETHCol, _minEbtcOut);
-    }
-
-    function _lidoDepositStethToWstETH(uint256 _initialStETH) internal returns (uint256) {
-        return IWstETH(address(wstETH)).wrap(_initialStETH);
-    }
-
-    function _uniSwapWstETHToEbtc(
-        uint256 _wstETHAmount,
-        uint256 _minEbtcOut
-    ) internal returns (uint256) {
-        IV3SwapRouter.ExactInputParams memory params = IV3SwapRouter.ExactInputParams({
-            path: abi.encodePacked(
-                address(wstETH),
-                POOL_FEE_100,
-                address(weth),
-                POOL_FEE_500,
-                address(wbtc),
-                POOL_FEE_500,
-                address(ebtcToken)
-            ),
-            recipient: address(this),
-            amountIn: _wstETHAmount,
-            amountOutMinimum: _minEbtcOut
-        });
-
-        return swapRouter.exactInput(params);
     }
 }
