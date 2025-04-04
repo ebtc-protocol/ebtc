@@ -754,6 +754,23 @@ An attacker trying to DoS redemptions could be bypassed by redeeming an amount t
 
 Finally, this DoS could be avoided if the initial transaction avoids the public gas auction entirely and is sent direct-to-miner, via (for example) Flashbots.
 
+# TWAP Math Can be incorrect if nobody interacts with it for over 1 week
+
+The impact is at most 40 BPS
+
+The issue seems to be tied to the following:
+- If you update the TWAP you will make the previous average match the current one, meaning after a week your average will be equal to the `valueToTrack`
+
+If you don't update the TWAP, the following happens:
+- After 1 week, the relative delta time and value is the highest, causing up to 40 BPS of discrepancy between the correct value (which should be equal to `valueToTrack`) and the value the math will report
+- Every subsequent week the value will trend towards `valueToTrack` (never reaching it)
+
+## Logs from the test
+
+https://gist.github.com/GalloDaSballo/5cdc0170a6c2481eb616cfd5c57eb84b
+
+We can see that the maximum impact is 40 BPS and happens after one week has passed
+
 ## Periphery
 
 ### Leverage Macro
